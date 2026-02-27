@@ -39,7 +39,7 @@ export function PriceResult({ data }: PriceResultProps) {
           <p className="text-xs text-muted-foreground mt-0.5">
             {data.counterparty_name} ·{' '}
             <span className={tierColor}>Tier {data.counterparty_tier}</span>
-            {' · '}<span className="font-mono">{data.pd_tier_used}</span>
+            {' · '}<span className="font-mono">{data.pd_tier_label}</span>
           </p>
         </div>
         <div className="flex gap-1 flex-wrap justify-end">
@@ -54,7 +54,7 @@ export function PriceResult({ data }: PriceResultProps) {
         {[
           { label: 'APR', value: formatBps(data.annualized_rate_bps), accent: 'text-blue-400' },
           { label: 'Expected Loss', value: formatCurrency(data.expected_loss_usd), accent: 'text-red-400' },
-          { label: 'Bridge Amount', value: formatCurrency(data.bridge_loan_amount), accent: 'text-emerald-400' },
+          { label: 'EAD', value: formatCurrency(data.ead_usd), accent: 'text-emerald-400' },
           { label: 'Horizon', value: `${data.bridge_horizon_days}d`, accent: 'text-yellow-400' },
         ].map(({ label, value, accent }) => (
           <div key={label} className="rounded border border-border bg-muted/30 p-3">

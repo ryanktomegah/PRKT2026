@@ -69,11 +69,10 @@ export interface PriceResponse {
   net_margin_bps: number
   annualized_rate_bps: number
   apr_decimal: number
-  bridge_loan_amount: number
   bridge_horizon_days: number
   expected_profit_usd: number
   offer_valid_seconds: number
-  pd_tier_used: string
+  pd_tier_label: string
   pd_model_diagnostics: Record<string, unknown>
   lgd_model_diagnostics: Record<string, unknown>
   top_risk_factors: RiskFactor[]
@@ -150,20 +149,39 @@ export async function scorePayment(req: ScoreRequest): Promise<ScoreResponse> {
 }
 
 export async function pricePayment(scoreData: ScoreResponse): Promise<PriceResponse> {
+  const priceReq = {
+    uetr: scoreData.uetr,
+    pd: scoreData.failure_probability,
+    ead: scoreData.amount_usd,
+    currency_pair: scoreData.currency_pair,
+    sending_bic: scoreData.sending_bic,
+    receiving_bic: scoreData.receiving_bic,
+    settlement_lag_days: scoreData.settlement_lag_days,
+    payment_status: scoreData.payment_status,
+    top_risk_factors: scoreData.top_risk_factors,
+    threshold_exceeded: scoreData.threshold_exceeded,
+  }
   const res = await fetch(`${API_URL}/price`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(scoreData),
+    body: JSON.stringify(priceReq),
   })
   if (!res.ok) throw new Error(`Price request failed: ${res.statusText}`)
   return res.json()
 }
 
 export async function executePayment(priceData: PriceResponse): Promise<ExecuteResponse> {
+  // Extract integer tier (1, 2, or 3) from the label string, e.g. "Tier 1 — Merton/KMV…"
+  const tierMatch = priceData.pd_tier_label?.match(/Tier (\d)/)
+  if (!tierMatch) {
+    throw new Error(`Cannot determine pd_tier_used from label: ${priceData.pd_tier_label}`)
+  }
+  const pdTierUsed = parseInt(tierMatch[1], 10)
+  const executeReq = { ...priceData, pd_tier_used: pdTierUsed }
   const res = await fetch(`${API_URL}/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(priceData),
+    body: JSON.stringify(executeReq),
   })
   if (!res.ok) throw new Error(`Execute request failed: ${res.statusText}`)
   return res.json()

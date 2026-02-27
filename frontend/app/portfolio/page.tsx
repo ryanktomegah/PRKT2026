@@ -18,7 +18,7 @@ export default function PortfolioPage() {
       ? portfolio.reduce((s, p) => s + p.scoreResult.failure_probability, 0) / total
       : 0
   const totalPool = portfolio.reduce(
-    (s, p) => s + (p.priceResult?.bridge_loan_amount ?? 0),
+    (s, p) => s + (p.priceResult?.ead_usd ?? 0),
     0
   )
   const netReturn = portfolio.reduce(
@@ -56,7 +56,7 @@ export default function PortfolioPage() {
             accent={avgProb > 0.5 ? 'red' : avgProb > 0.3 ? 'yellow' : 'green'}
           />
           <MetricCard
-            label="Total Advance Pool"
+            label="Total EAD Pool"
             value={total > 0 ? formatCurrency(totalPool) : '—'}
             accent="blue"
           />
