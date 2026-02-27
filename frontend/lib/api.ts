@@ -144,7 +144,11 @@ export async function scorePayment(req: ScoreRequest): Promise<ScoreResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   })
-  if (!res.ok) throw new Error(`Score request failed: ${res.statusText}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body?.detail ? JSON.stringify(body.detail) : res.statusText
+    throw new Error(`Score validation error: ${detail}`)
+  }
   return res.json()
 }
 
@@ -166,7 +170,11 @@ export async function pricePayment(scoreData: ScoreResponse): Promise<PriceRespo
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(priceReq),
   })
-  if (!res.ok) throw new Error(`Price request failed: ${res.statusText}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body?.detail ? JSON.stringify(body.detail) : res.statusText
+    throw new Error(`Price validation error: ${detail}`)
+  }
   return res.json()
 }
 
@@ -183,6 +191,10 @@ export async function executePayment(priceData: PriceResponse): Promise<ExecuteR
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(executeReq),
   })
-  if (!res.ok) throw new Error(`Execute request failed: ${res.statusText}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body?.detail ? JSON.stringify(body.detail) : res.statusText
+    throw new Error(`Execute validation error: ${detail}`)
+  }
   return res.json()
 }
