@@ -18,14 +18,14 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
   const [sendingBic, setSendingBic] = useState('CHASUS33')
   const [receivingBic, setReceivingBic] = useState('SBINMUMU')
   const [amountUsd, setAmountUsd] = useState(5_000_000)
-  const [paymentStatus, setPaymentStatus] = useState('RJCT')
-  const [rejectionCode, setRejectionCode] = useState('AC01')
+  const [paymentStatus, setPaymentStatus] = useState('PDNG')
+  const [rejectionCode, setRejectionCode] = useState('NONE')
   const [hourOfDay, setHourOfDay] = useState(14)
-  const [settlementLag, setSettlementLag] = useState(3)
+  const [settlementLag, setSettlementLag] = useState(1)
   const [messagePriority, setMessagePriority] = useState('NORM')
-  const [priorRejections, setPriorRejections] = useState(2)
-  const [correspondentDepth, setCorrespondentDepth] = useState(3)
-  const [dataQuality, setDataQuality] = useState(0.85)
+  const [priorRejections, setPriorRejections] = useState(0)
+  const [correspondentDepth, setCorrespondentDepth] = useState(2)
+  const [dataQuality, setDataQuality] = useState(0.92)
 
   const currencyPair = getCurrencyPair(sendingBic, receivingBic)
 
@@ -114,7 +114,7 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
         </label>
         <input
           type="range"
-          min={100_000}
+          min={1_000}
           max={50_000_000}
           step={100_000}
           value={amountUsd}
@@ -176,7 +176,7 @@ export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
       {/* Sliders */}
       {[
         { label: 'Hour of Day', value: hourOfDay, set: setHourOfDay, min: 0, max: 23, step: 1, fmt: (v: number) => `${v}:00` },
-        { label: 'Settlement Lag Days', value: settlementLag, set: setSettlementLag, min: 0, max: 30, step: 1, fmt: (v: number) => `${v}d` },
+        { label: 'Settlement Lag Days', value: settlementLag, set: setSettlementLag, min: 0, max: 5, step: 1, fmt: (v: number) => `${v}d` },
         { label: 'Prior Rejections (30d)', value: priorRejections, set: setPriorRejections, min: 0, max: 10, step: 1, fmt: (v: number) => String(v) },
         { label: 'Correspondent Depth', value: correspondentDepth, set: setCorrespondentDepth, min: 1, max: 5, step: 1, fmt: (v: number) => String(v) },
         { label: 'Data Quality Score', value: dataQuality, set: setDataQuality, min: 0, max: 1, step: 0.05, fmt: (v: number) => v.toFixed(2) },
