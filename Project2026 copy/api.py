@@ -42,11 +42,13 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import os
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # =============================================================================
@@ -161,6 +163,17 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
+)
+
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000"
+_cors_origins = os.getenv("ALBS_CORS_ORIGINS", _default_origins).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
