@@ -81,7 +81,7 @@ RISK_FREE_RATES: Dict[str, float] = {
 }
 
 # Fallback €STR rate used when API is unavailable
-_ESTR_FALLBACK: float = 0.040
+_ESTR_FALLBACK: float = 0.01935
 
 # Baseline CDS spreads by tier (bps) — used as centre of simulated range
 # Claim 1(e) — counterparty credit risk component
@@ -260,7 +260,7 @@ def _fetch_estr_series(lookback_days: int = 130) -> List[float]:
     """
     Fetch €STR (Euro Short-Term Rate) daily rates from ECB Data Portal.
 
-    Endpoint: EST/EST.B.EU000A2X2A25.WT
+    Endpoint: EST/B.EU000A2X2A25.WT
     Claim 1(e) — systemic funding stress signal.
 
     Returns list of daily €STR rates (decimal), most-recent last.
@@ -273,7 +273,7 @@ def _fetch_estr_series(lookback_days: int = 130) -> List[float]:
 
     start, end = _build_date_range(lookback_days)
     url = (
-        f"{_ECB_BASE_URL}/EST/EST.B.EU000A2X2A25.WT"
+        f"{_ECB_BASE_URL}/EST/B.EU000A2X2A25.WT"
         f"?startPeriod={start}&endPeriod={end}&format=csvdata"
     )
     try:
