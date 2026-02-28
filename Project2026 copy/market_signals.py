@@ -500,7 +500,7 @@ def _deterministic_float(seed_str: str, min_val: float, max_val: float) -> float
     Generate a deterministic float in [min_val, max_val] from a seed string.
     Uses MD5 hash for reproducibility — same seed always gives same value.
     """
-    digest = hashlib.md5(seed_str.encode("utf-8")).digest()  # noqa: S324
+    digest = hashlib.sha256(seed_str.encode("utf-8")).digest()
     # Use first 4 bytes as unsigned int, normalise to [0, 1)
     uint_val = int.from_bytes(digest[:4], byteorder="big")
     frac     = uint_val / (2 ** 32)

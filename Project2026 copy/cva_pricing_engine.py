@@ -1121,6 +1121,7 @@ def format_offer_sheet(assessment: CVAAssessment, rank: int) -> str:
     lines += [
         "  ── CVA COMPONENTS ───────────────────────────────────────────",
         f"  Counterparty      {assessment.counterparty_name}  [{assessment.receiving_bic}]",
+        f"  PD model          {_TIER_LABELS[assessment.pd_tier_used]}",
         _fmt_pd_detail(assessment),
         f"  PD structural     {assessment.pd_structural:.5%}  [{assessment.bridge_horizon_days}d]",
         f"  PD ML signal      {assessment.pd_ml_signal:.5%}  [Component 1 failure_prob]",
