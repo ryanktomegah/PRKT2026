@@ -50,6 +50,7 @@ DEPENDENCIES
 import json
 import math
 import uuid
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -77,6 +78,16 @@ try:
 except ImportError:
     _COMPONENT1_AVAILABLE = False
     BANK_PROFILES: Dict[str, Tuple] = {}
+
+# ---------------------------------------------------------------------------
+# Optional market signal import (market_signals.py in same directory)
+# ---------------------------------------------------------------------------
+try:
+    from market_signals import MarketSignalAggregator as _MarketSignalAggregator
+    _MARKET_SIGNALS_AVAILABLE = True
+except ImportError:
+    _MarketSignalAggregator = None  # type: ignore[assignment,misc]
+    _MARKET_SIGNALS_AVAILABLE = False
 
 
 # =============================================================================
@@ -734,6 +745,7 @@ class CVAPricer:
     def __init__(self) -> None:
         self._pd_engine  = TieredPDEngine()
         self._lgd_engine = LGDEstimator()
+        self._market_signals = _MarketSignalAggregator() if _MARKET_SIGNALS_AVAILABLE else None
 
     def _risk_free_for_pair(self, currency_pair: str) -> float:
         """Extract the receiving (CCY2) settlement currency and look up the OIS rate."""
@@ -801,6 +813,43 @@ class CVAPricer:
         # We record both signals for transparency but price on pd_structural.
         pd_blended = pd_structural     # Credit risk only — no operational blend
 
+        # -- Step 2b: Market stress adjustment --------------------------------
+        market_stress_multiplier = 1.0
+        market_signals_dict: Dict[str, Any] = {}
+        if self._market_signals is not None:
+            try:
+                sig = self._market_signals.get_market_signals(
+                    currency_pair, receiving_bic, tier_used
+                )
+                market_stress_multiplier = sig.market_stress_multiplier
+                market_signals_dict = {
+                    "composite_zscore": sig.composite_zscore,
+                    "regime": sig.regime,
+                    "multiplier": sig.market_stress_multiplier,
+                    "zscores": {
+                        "cds":    sig.zscore_cds,
+                        "fx_vol": sig.zscore_fxvol,
+                        "lag":    sig.zscore_lag,
+                        "estr":   sig.zscore_estr,
+                    },
+                    "signals": {
+                        "estr":   sig.estr,
+                        "fx_vol": sig.fx_vol,
+                        "cds":    sig.cds,
+                        "lag":    sig.lag,
+                    },
+                    "computed_at": sig.computed_at,
+                }
+            except Exception as _ms_exc:
+                warnings.warn(
+                    f"Market signal aggregation failed; falling back to multiplier=1.0: {_ms_exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+
+        pd_adjusted = min(pd_structural * market_stress_multiplier, 0.99)
+        pd_blended = pd_adjusted       # market-adjusted PD used in CVA formula
+
         # -- Step 3: LGD ------------------------------------------------------
         lgd, lgd_diag = self._lgd_engine.estimate_lgd(
             currency_pair, payment_status, ead
@@ -856,6 +905,8 @@ class CVAPricer:
             lgd_model_diagnostics = lgd_diag,
             top_risk_factors      = top_factors,
             threshold_exceeded    = threshold_exc,
+            market_stress_multiplier = round(market_stress_multiplier, 6),
+            market_signals           = market_signals_dict,
         )
 
 
@@ -914,6 +965,10 @@ class CVAAssessment:
     lgd_model_diagnostics: Dict[str, Any]
     top_risk_factors:      List[Dict[str, Any]]
     threshold_exceeded:    bool
+
+    # Market signal layer ------------------------------------------------------
+    market_stress_multiplier: float = 1.0
+    market_signals:           Dict[str, Any] = field(default_factory=dict)
 
     def to_execution_input(self) -> Dict[str, Any]:
         """
@@ -1047,6 +1102,30 @@ def format_offer_sheet(assessment: CVAAssessment, rank: int) -> str:
         f"  Discount factor   {assessment.discount_factor:.6f}  [r = {assessment.risk_free_rate:.2%}]",
         f"  Expected Loss     ${assessment.expected_loss_usd:>12,.2f}",
         "",
+    ]
+
+    # ── MARKET SIGNALS (only shown when aggregator is active) ────────────────
+    ms = assessment.market_signals
+    if ms:
+        regime = ms.get("regime", "N/A")
+        badge_map = {"CALM": "🟢", "ELEVATED": "🟡", "STRESSED": "🟠", "CRISIS": "🔴"}
+        badge = badge_map.get(regime, "⚪")
+        zs = ms.get("zscores", {})
+        lines += [
+            "  ── MARKET SIGNALS ───────────────────────────────────────────",
+            f"  Regime            {badge} {regime}",
+            f"  Stress multiplier {assessment.market_stress_multiplier:.4f}×  "
+            f"[composite z = {ms.get('composite_zscore', 0.0):.4f}]",
+            f"  PD structural     {assessment.pd_structural:.5%}  →  "
+            f"PD adjusted  {assessment.pd_blended:.5%}",
+            f"  z-scores:  CDS {zs.get('cds', 0.0):+.3f}  "
+            f"FX-vol {zs.get('fx_vol', 0.0):+.3f}  "
+            f"Lag {zs.get('lag', 0.0):+.3f}  "
+            f"€STR {zs.get('estr', 0.0):+.3f}",
+            "",
+        ]
+
+    lines += [
         "  ── SECURITY & REPAYMENT (CLAIMS D7 + 5) ────────────────────",
         f"  Collateral        Assignment of receivable UETR {assessment.uetr[:8]}…",
         f"  Repayment trigger SWIFT gpi settlement confirmation (Claim 5)",

@@ -86,6 +86,13 @@ from bridge_loan_execution import (                        # noqa: E402
     SettlementStatus,
 )
 
+try:
+    from market_signals import MarketSignalAggregator as _MarketSignalAggregator  # noqa: E402
+    _MARKET_SIGNALS_AVAILABLE = True
+except ImportError:
+    _MarketSignalAggregator = None  # type: ignore[assignment,misc]
+    _MARKET_SIGNALS_AVAILABLE = False
+
 
 # =============================================================================
 # SECTION 2: Global runtime state (populated at startup; read-only thereafter)
@@ -280,6 +287,9 @@ class PriceResponse(BaseModel):
     lgd_model_diagnostics: Dict[str, Any]
     top_risk_factors:      List[Dict[str, Any]]
     threshold_exceeded:    bool
+    # Market signal layer
+    market_stress_multiplier: float = 1.0
+    market_signals:           Dict[str, Any] = Field(default_factory=dict)
     claim_coverage:        Dict[str, str]
 
 
@@ -523,6 +533,8 @@ def price(req: PriceRequest) -> PriceResponse:
         lgd_model_diagnostics = assessment.lgd_model_diagnostics,
         top_risk_factors      = assessment.top_risk_factors,
         threshold_exceeded    = assessment.threshold_exceeded,
+        market_stress_multiplier = assessment.market_stress_multiplier,
+        market_signals           = assessment.market_signals,
         claim_coverage = {
             "Claim 1(e)":  "CVA formula: EL = PD_structural × EAD × LGD × DF; APR = (EL/EAD)/T + spread + margin",
             "Dep. D4":     f"Tier 1 PD (Merton/KMV) — Newton-Raphson structural model for listed GSIBs",
@@ -702,6 +714,42 @@ def catalogue_rejection_codes() -> Dict[str, Any]:
             for code, (desc, risk) in REJECTION_CODES.items()
         ]
     }
+
+
+# ─── /market-signals  (Monitoring / Debugging) ─────────────────────────────
+
+@app.get("/market-signals", tags=["Market Signals"])
+def market_signals(
+    currency_pair: str = "EUR/USD",
+    receiving_bic: str = "CHASUS33",
+    tier: int = 1,
+) -> Dict[str, Any]:
+    """
+    Market Signal Snapshot — live ECB €STR + FX vol + simulated CDS & lag.
+
+    Returns the current market_stress_multiplier and all underlying signals
+    for monitoring and debugging purposes.
+
+    Query parameters
+    ----------------
+    currency_pair : str  (default "EUR/USD")
+        Currency pair for FX vol and settlement lag signals.
+    receiving_bic : str  (default "CHASUS33")
+        BIC of the counterparty used for simulated CDS spread signal.
+    tier : int  (default 1)
+        Counterparty tier (1 = GSIB, 2 = private regional, 3 = data-sparse).
+    """
+    if not _MARKET_SIGNALS_AVAILABLE or _MarketSignalAggregator is None:
+        raise HTTPException(
+            status_code=503,
+            detail="market_signals module not available — ensure market_signals.py is in the same directory as api.py",
+        )
+    agg = _MarketSignalAggregator()
+    return agg.get_signal_snapshot(
+        currency_pair=currency_pair,
+        receiving_bic=receiving_bic,
+        tier=tier,
+    )
 
 
 # =============================================================================
