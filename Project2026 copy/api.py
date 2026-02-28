@@ -86,6 +86,13 @@ from bridge_loan_execution import (                        # noqa: E402
     SettlementStatus,
 )
 
+# Market signal layer (Claim 1(e) enhancement) — optional import
+try:
+    from market_signals import MarketSignalAggregator as _MarketSignalAggregator
+    _MARKET_AGGREGATOR = _MarketSignalAggregator()
+except ImportError:
+    _MARKET_AGGREGATOR = None
+
 
 # =============================================================================
 # SECTION 2: Global runtime state (populated at startup; read-only thereafter)
@@ -281,6 +288,9 @@ class PriceResponse(BaseModel):
     top_risk_factors:      List[Dict[str, Any]]
     threshold_exceeded:    bool
     claim_coverage:        Dict[str, str]
+    # Market signals (Claim 1(e) — real-time market adjustment) ---------------
+    market_stress_multiplier: float = 1.0
+    market_signals: Dict[str, Any] = {}
 
 
 # ─── /execute  (Component 3) ───────────────────────────────────────────────
@@ -530,7 +540,9 @@ def price(req: PriceRequest) -> PriceResponse:
             "Dep. D6":     "Tier 3 PD (Altman Z') — Z'-score → Moody's annual default rate table",
             "Dep. D7":     "LGD base 0.30 — bridge loan secured by programmatic receivable assignment",
             "Note":        "ML pd (operational risk) displayed above; NOT in CVA formula — see Component 1",
-        }
+        },
+        market_stress_multiplier = assessment.market_stress_multiplier,
+        market_signals           = assessment.market_signals,
     )
 
 
@@ -656,6 +668,63 @@ def execute(req: ExecuteRequest) -> ExecuteResponse:
 # needs to populate its dropdowns.  The dashboard calls these at startup to
 # avoid importing the engine files directly.
 # =============================================================================
+
+@app.get("/market-signals", tags=["Infrastructure"])
+def market_signals_endpoint(
+    currency_pair: str = "EUR/USD",
+    receiving_bic: str = "SBINMUMU",
+) -> Dict[str, Any]:
+    """
+    Live market signal snapshot for a given corridor and counterparty.
+
+    Returns the four market stress signals and combined market_stress_multiplier
+    used by the CVA pricing engine to adjust the structural PD in real-time.
+
+    Claim 1(e) — counterparty-specific risk-adjusted liquidity cost:
+    This endpoint exposes the real-time market adjustment layer directly for
+    debugging and monitoring purposes.
+
+    Claim 2(iv) — liquidity pricing component:
+    The market_stress_multiplier returned here is used in the CVA formula:
+      PD_adjusted = PD_structural × market_stress_multiplier
+    """
+    if _MARKET_AGGREGATOR is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Market signal module not available.",
+        )
+
+    # Default tier 2 for unknown BICs — conservative assumption
+    tier = 2
+
+    sigs = _MARKET_AGGREGATOR.get_market_signals(
+        currency_pair=currency_pair,
+        receiving_bic=receiving_bic,
+        counterparty_tier=tier,
+    )
+
+    return {
+        "currency_pair":            currency_pair,
+        "receiving_bic":            receiving_bic,
+        "estr_rate":                sigs.estr_rate,
+        "estr_z_score":             round(sigs.estr_z_score, 3),
+        "fx_implied_vol":           round(sigs.fx_implied_vol, 4),
+        "fx_vol_z_score":           round(sigs.fx_vol_z_score, 3),
+        "settlement_lag_hours":     round(sigs.settlement_lag_hours, 1),
+        "settlement_lag_z_score":   round(sigs.settlement_lag_z_score, 3),
+        "cds_spread_bps":           round(sigs.cds_spread_bps, 1),
+        "cds_z_score":              round(sigs.cds_z_score, 3),
+        "composite_z":              round(sigs.composite_z, 3),
+        "market_stress_multiplier": sigs.market_stress_multiplier,
+        "regime":                   sigs.regime,
+        "data_freshness":           sigs.data_freshness,
+        "sources":                  sigs.sources,
+        "claim_coverage": {
+            "Claim 1(e)": "Real-time market signals adjust structural PD for counterparty-specific cost",
+            "Claim 2(iv)": "market_stress_multiplier is a direct input to the liquidity pricing component",
+        },
+    }
+
 
 @app.get("/catalogue/bics", tags=["Reference Data"])
 def catalogue_bics() -> Dict[str, Any]:

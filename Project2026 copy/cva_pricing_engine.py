@@ -54,6 +54,17 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
+# Market Signal Layer — real-time market condition adjustment (Claim 1(e))
+# Import is optional; falls back gracefully if module is absent.
+# ---------------------------------------------------------------------------
+try:
+    from market_signals import MarketSignalAggregator
+    _MARKET_SIGNALS_AVAILABLE = True
+except ImportError:
+    _MARKET_SIGNALS_AVAILABLE = False
+    MarketSignalAggregator = None  # type: ignore[assignment,misc]
+
+# ---------------------------------------------------------------------------
 # Normal CDF from standard library — no scipy required
 # math.erf is available since Python 3.2 and is exact to machine precision.
 # N(x) = Φ(x) = ½ · (1 + erf(x / √2))
@@ -734,6 +745,8 @@ class CVAPricer:
     def __init__(self) -> None:
         self._pd_engine  = TieredPDEngine()
         self._lgd_engine = LGDEstimator()
+        # Market signal aggregator — real-time adjustment (Claim 1(e) enhancement)
+        self._market_signals = MarketSignalAggregator() if _MARKET_SIGNALS_AVAILABLE else None
 
     def _risk_free_for_pair(self, currency_pair: str) -> float:
         """Extract the receiving (CCY2) settlement currency and look up the OIS rate."""
@@ -801,6 +814,43 @@ class CVAPricer:
         # We record both signals for transparency but price on pd_structural.
         pd_blended = pd_structural     # Credit risk only — no operational blend
 
+        # -- Step 2b: Market signal adjustment (Claim 1(e) enhancement) ------
+        # Real-time market signals adjust the structural PD to reflect current
+        # market conditions.  The structural PD captures long-run creditworthiness;
+        # the market multiplier captures short-run stress.
+        #
+        # Patent relevance: Claim 1(e) specifies "counterparty-specific
+        # risk-adjusted liquidity cost". Market signals make the cost genuinely
+        # real-time rather than based on quarterly balance sheets alone.
+        #
+        # Extension (future filing): Real-time market data integration for
+        # dynamic credit risk adjustment.
+        market_stress_multiplier = 1.0
+        market_signals_dict: Dict[str, Any] = {}
+        if self._market_signals is not None:
+            market_sigs = self._market_signals.get_market_signals(
+                currency_pair, receiving_bic, tier_used
+            )
+            pd_market_adjusted = min(
+                pd_structural * market_sigs.market_stress_multiplier, 0.99
+            )
+            pd_blended = pd_market_adjusted
+            market_stress_multiplier = market_sigs.market_stress_multiplier
+            market_signals_dict = {
+                "estr_rate":              market_sigs.estr_rate,
+                "estr_z_score":           round(market_sigs.estr_z_score, 3),
+                "fx_implied_vol":         round(market_sigs.fx_implied_vol, 4),
+                "fx_vol_z_score":         round(market_sigs.fx_vol_z_score, 3),
+                "settlement_lag_hours":   round(market_sigs.settlement_lag_hours, 1),
+                "settlement_lag_z_score": round(market_sigs.settlement_lag_z_score, 3),
+                "cds_spread_bps":         round(market_sigs.cds_spread_bps, 1),
+                "cds_z_score":            round(market_sigs.cds_z_score, 3),
+                "composite_z":            round(market_sigs.composite_z, 3),
+                "regime":                 market_sigs.regime,
+                "data_freshness":         market_sigs.data_freshness,
+                "sources":                market_sigs.sources,
+            }
+
         # -- Step 3: LGD ------------------------------------------------------
         lgd, lgd_diag = self._lgd_engine.estimate_lgd(
             currency_pair, payment_status, ead
@@ -856,6 +906,8 @@ class CVAPricer:
             lgd_model_diagnostics = lgd_diag,
             top_risk_factors      = top_factors,
             threshold_exceeded    = threshold_exc,
+            market_stress_multiplier = market_stress_multiplier,
+            market_signals        = market_signals_dict,
         )
 
 
@@ -914,6 +966,10 @@ class CVAAssessment:
     lgd_model_diagnostics: Dict[str, Any]
     top_risk_factors:      List[Dict[str, Any]]
     threshold_exceeded:    bool
+
+    # Market signals (Claim 1(e) — real-time market adjustment) ---------------
+    market_stress_multiplier: float = 1.0
+    market_signals: Dict[str, Any] = field(default_factory=dict)
 
     def to_execution_input(self) -> Dict[str, Any]:
         """
@@ -1033,6 +1089,36 @@ def format_offer_sheet(assessment: CVAAssessment, rank: int) -> str:
         f"  Total cost (borrower)  ${total_cost:>12,.2f}",
         f"  Expected profit        ${assessment.expected_profit_usd:>12,.2f}",
         "",
+    ]
+
+    # ── MARKET SIGNALS (Claim 1(e) — real-time adjustment) ──────────────
+    msigs = assessment.market_signals
+    if msigs:
+        _REGIME_EMOJI = {"CALM": "🟢", "ELEVATED": "🟡", "STRESSED": "🟠", "CRISIS": "🔴"}
+        regime     = msigs.get("regime", "CALM")
+        emoji      = _REGIME_EMOJI.get(regime, "⚪")
+        multiplier = assessment.market_stress_multiplier
+        estr_src   = msigs.get("sources", {}).get("estr", "")
+        fx_src     = msigs.get("sources", {}).get("fx_vol", "")
+        lag_src    = msigs.get("sources", {}).get("settlement_lag", "")
+        cds_src    = msigs.get("sources", {}).get("cds", "")
+        lines += [
+            "  ── MARKET SIGNALS (Claim 1(e) — real-time adjustment) ───────────",
+            f"  Regime:           {regime} {emoji}",
+            f"  Stress multiplier: {multiplier:.2f}×  "
+            f"(PD adjusted from {assessment.pd_structural:.4%} → {assessment.pd_blended:.4%})",
+            f"  €STR rate:        {msigs.get('estr_rate', 0):.2%}"
+            f"     (z: {msigs.get('estr_z_score', 0):+.1f})  [{estr_src}]",
+            f"  FX vol (30d ann): {msigs.get('fx_implied_vol', 0):.1%}"
+            f"     (z: {msigs.get('fx_vol_z_score', 0):+.1f})  [{fx_src}]",
+            f"  Settlement lag:   {msigs.get('settlement_lag_hours', 0):.1f} hrs"
+            f"   (z: {msigs.get('settlement_lag_z_score', 0):+.1f})  [{lag_src}]",
+            f"  CDS spread:       {msigs.get('cds_spread_bps', 0):.1f} bps"
+            f"  (z: {msigs.get('cds_z_score', 0):+.1f})  [{cds_src}]",
+            "",
+        ]
+
+    lines += [
         "  ── CVA COMPONENTS ───────────────────────────────────────────",
         f"  Counterparty      {assessment.counterparty_name}  [{assessment.receiving_bic}]",
         f"  PD model          {_TIER_LABELS[assessment.pd_tier_used]}",
