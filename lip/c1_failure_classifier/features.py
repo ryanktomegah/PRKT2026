@@ -228,8 +228,8 @@ class TabularFeatureEngineer:
         sender_std = float(s_stats.get("std_amount", 1.0)) + 1e-9
         corridor_std = float(c_stats.get("std_amount", 1.0)) + 1e-9
 
-        vec[0] = math.log1p(amount_usd)                          # log1p raw
-        vec[1] = math.log1p(amount_usd)                          # log1p (alias kept for naming)
+        vec[0] = amount_usd                                       # raw USD amount
+        vec[1] = math.log1p(amount_usd)                          # log1p(amount_usd)
         vec[2] = math.sqrt(amount_usd) if amount_usd >= 0 else 0.0
         vec[3] = float(amount_usd < 1_000)
         vec[4] = float(1_000 <= amount_usd < 10_000)

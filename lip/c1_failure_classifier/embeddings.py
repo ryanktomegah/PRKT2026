@@ -274,7 +274,7 @@ class CorridorEmbeddingPipeline:
                 embedding_128 = self._project_to_128(embedding_full)
                 self.store(currency_pair, embedding_128)
                 count += 1
-            except Exception as exc:  # noqa: BLE001
+            except (ValueError, TypeError, AttributeError, KeyError) as exc:
                 logger.error("rebuild_all: failed for %s: %s", currency_pair, exc)
 
         logger.info("rebuild_all: stored %d corridor embeddings", count)
