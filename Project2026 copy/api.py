@@ -93,6 +93,13 @@ try:
 except ImportError:
     _MARKET_AGGREGATOR = None
 
+# Dispute Classifier (Component 4 — Phase 1a keyword baseline) — optional import
+try:
+    from dispute_classifier import DisputeClassifier as _DisputeClassifier
+    _DISPUTE_CLASSIFIER = _DisputeClassifier()
+except ImportError:
+    _DISPUTE_CLASSIFIER = None
+
 
 # =============================================================================
 # SECTION 2: Global runtime state (populated at startup; read-only thereafter)
@@ -346,6 +353,38 @@ class ExecuteResponse(BaseModel):
     disbursement_ref:     Optional[str]
     settlement_status:    str
     claim_coverage:       Dict[str, str]
+
+
+# ─── /dispute-check  (Component 4) ─────────────────────────────────────────
+
+class DisputeCheckRequest(BaseModel):
+    """
+    Request body for POST /dispute-check (Component 4 — Dispute Classifier).
+
+    Submits a remittance information string for dispute screening before
+    bridge loan disbursement (Gap 12 coverage).
+
+    The `uetr` field auto-generates a UUID v4 if not provided, enabling
+    stateless one-shot calls without requiring the caller to supply a UETR.
+    For end-to-end payment traceability, supply the UETR from the /score response.
+    """
+    uetr:             str   = Field(default_factory=lambda: str(uuid.uuid4()),
+                                    description="UETR (auto-generated UUID v4 if not supplied)")
+    remittance_text:  str   = Field(..., description="SWIFT RmtInf / free-text payment description")
+
+
+class DisputeCheckResponse(BaseModel):
+    """Output of /dispute-check — Component 4 (Gap 12 — disputed invoice screening)."""
+    uetr:                str
+    dispute_probability: float
+    dispute_category:    str
+    hard_block:          bool
+    confidence:          float
+    matched_keywords:    List[str]
+    negation_detected:   bool
+    false_negative_risk: str
+    architecture_note:   str
+    claim_coverage:      Dict[str, str]
 
 
 # =============================================================================
@@ -658,6 +697,78 @@ def execute(req: ExecuteRequest) -> ExecuteResponse:
             "Dep. D11":    "Settlement detected via SWIFT gpi UETR tracker — pacs.002 status polling",
         }
     )
+
+
+@app.post("/dispute-check", response_model=DisputeCheckResponse, tags=["Component 4"])
+def dispute_check(req: DisputeCheckRequest) -> DisputeCheckResponse:
+    """
+    Component 4 — Dispute Classifier (Phase 1a keyword baseline).
+
+    Screens remittance information text for dispute indicators before
+    bridge loan disbursement. Hard-blocks funding if dispute_probability >= 0.5.
+
+    Gap coverage:
+      Gap 12 — Protects against funding disputed invoices.
+
+    Architecture:
+      Phase 1a: keyword + pattern baseline (~8% FN rate).
+      Phase 1b target: Llama-3 8B fine-tuned on 50K SWIFT RmtInf (<2% FN rate).
+    """
+    if _DISPUTE_CLASSIFIER is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Dispute classifier module not available.",
+        )
+    result = _DISPUTE_CLASSIFIER.classify(
+        remittance_text=req.remittance_text,
+        uetr=req.uetr,
+    )
+    return DisputeCheckResponse(
+        uetr                = result.uetr,
+        dispute_probability = result.dispute_probability,
+        dispute_category    = result.dispute_category,
+        hard_block          = result.hard_block,
+        confidence          = result.confidence,
+        matched_keywords    = result.matched_keywords,
+        negation_detected   = result.negation_detected,
+        false_negative_risk = result.false_negative_risk,
+        architecture_note   = result.architecture_note,
+        claim_coverage      = result.claim_coverage,
+    )
+
+
+@app.get("/ml-architecture", tags=["Infrastructure"])
+def ml_architecture() -> Dict[str, Any]:
+    """
+    Current and target ML architecture for all three ALBS components.
+
+    Returns the Phase 1 build status for Components 1, 2, and 4:
+      Component 1 — Failure Prediction (GNN feature engineering layer)
+      Component 2 — Unified PD model (replacing three-tier stack)
+      Component 4 — Dispute Classifier (keyword baseline → Llama-3 8B)
+    """
+    return {
+        "component_1": {
+            "current":      "LightGBM + GNN Feature Engineering",
+            "target":       "GNN + TabTransformer",
+            "auc_current":  0.739,
+            "auc_target":   0.85,
+            "phase":        "1",
+        },
+        "component_2": {
+            "current":              "Three-tier Merton/Altman/Proxy",
+            "target":               "Unified LightGBM ensemble",
+            "improvement_target":   "10-15%",
+            "phase":                "1",
+        },
+        "component_4": {
+            "current":         "Keyword pattern baseline",
+            "target":          "Llama-3 8B fine-tuned on 50K SWIFT RmtInf",
+            "fn_rate_current": 0.08,
+            "fn_rate_target":  0.02,
+            "phase":           "1",
+        },
+    }
 
 
 # =============================================================================

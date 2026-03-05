@@ -5,7 +5,11 @@
 # Tested on Python 3.9+ (macOS, Linux).
 # Install: pip install -r requirements.txt
 #
-# Component 1 (failure_prediction_engine.py)
+# Phase 1 ML Core dependencies
+# Component 1: Failure Prediction (GNN feature engineering layer)
+# Component 2: Unified PD model
+# Component 4: Dispute Classifier (Phase 1a keyword baseline; Phase 1b: transformers)
+#
 lightgbm>=4.3.0
 shap>=0.44.0
 scikit-learn>=1.4.0
