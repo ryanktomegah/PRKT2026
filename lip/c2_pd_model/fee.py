@@ -22,8 +22,10 @@ from typing import Optional
 # 300 bps annualized floor  (C2 Spec Section 9)
 FEE_FLOOR_BPS: Decimal = Decimal("300")
 
-# Per-7-day-cycle equivalent of the 300 bps floor:
-#   300 / 10000 * 7 / 365 = 0.000575342...  ≈ 0.0575 %
+# 300 bps annualized over a 7-day cycle as a decimal multiplier:
+#   300 / 10000 * 7 / 365 = 0.000575342...
+#   Expressed as a percentage: ≈ 0.0575% per 7-day cycle.
+#   The value stored here is the DECIMAL (not percentage) representation.
 FEE_FLOOR_PER_7DAY_CYCLE: Decimal = Decimal("0.000575")
 
 _DAYS_IN_YEAR: Decimal = Decimal("365")
@@ -40,7 +42,8 @@ def compute_fee_bps_from_el(
 
     ANNUALIZED rate in basis points.  Per-cycle fee =
     ``loan_amount * (fee_bps/10000) * (days_funded/365)``.
-    Floor: 300 bps annualized = 0.0575% per 7-day cycle.
+    Floor: 300 bps annualized.  As a decimal multiplier over a 7-day cycle:
+    300/10000 * 7/365 = 0.000575 (i.e. ≈ 0.0575% of the loan amount).
     DO NOT apply as flat per-cycle rate.
 
     Formula
