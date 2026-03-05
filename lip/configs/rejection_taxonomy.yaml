@@ -1,0 +1,89 @@
+# rejection_taxonomy.yaml
+# Architecture Specification v1.2 Section S8
+# Full SWIFT rejection code taxonomy: code → class mapping
+# T = f(rejection_code_class): A=3d, B=7d, C=21d, BLOCK=0d (no bridge)
+
+maturity_days:
+  CLASS_A: 3    # temporary/technical failures
+  CLASS_B: 7    # systemic/processing failures
+  CLASS_C: 21   # investigation/complex cases
+  BLOCK:   0    # dispute/legal block — no bridge offered
+
+class_a:
+  description: "Temporary / technical failures — 3 day maturity window"
+  codes:
+    AC01: "IncorrectAccountNumber"
+    AC04: "ClosedAccountNumber"
+    AC06: "BlockedAccount"
+    AM01: "ZeroAmount"
+    AM02: "NotAllowedAmount"
+    AM03: "NotAllowedCurrency"
+    AM04: "InsufficientFunds"
+    AM05: "Duplication"
+    AM06: "TooLowAmount"
+    AM09: "WrongAmount"
+    AM10: "InvalidControlSum"
+    AM12: "InvalidAmount"
+    BE01: "InconsistentWithEndCustomer"
+    BE05: "UnrecognisedInitiatingParty"
+    DT01: "InvalidDate"
+    ED01: "CorrespondentBankNotAllowed"
+    ED03: "BalanceInfoRequest"
+    ED05: "SettlementFailed"
+    FF01: "InvalidFileFormat"
+    FF03: "InvalidPaymentTypeInfo"
+    FF05: "InvalidLocalInstrumentCode"
+    MD01: "NoMandate"
+    MD02: "MissingMandatoryInfo"
+    MD06: "RefundRequestedByEndCustomer"
+    RC01: "BankIdentifierIncorrect"
+    RR01: "MissingDebtorAccountOrIdentification"
+    RR02: "MissingDebtorNameOrAddress"
+    RR03: "MissingCreditorNameOrAddress"
+    RR04: "RegulatoryReason"
+
+class_b:
+  description: "Systemic / processing failures — 7 day maturity window"
+  codes:
+    AG01: "TransactionForbidden"
+    AG02: "InvalidBankOperationCode"
+    CURR: "UnrecognisedCurrency"
+    CUST: "RequestedByCustomer"
+    DNOR: "DebtorNotAllowedToSend"
+    FOCR: "FollowingCancellationRequest"
+    MS02: "NotSpecifiedReasonCustomerGenerated"
+    MS03: "NotSpecifiedReasonAgentGenerated"
+    NARR: "Narrative"
+    NOAS: "NoAnswerFromCustomer"
+    NOOR: "NoOriginalTransactionReceived"
+    PTNA: "PassThroughNotAllowed"
+    RCON: "SettlementFailedContinuous"
+    SVNR: "ServiceNotRendered"
+    TECH: "TechnicalProblem"
+    TIMO: "TimeOut"
+    UPAY: "UnduePayment"
+
+class_c:
+  description: "Investigation / complex cases — 21 day maturity window"
+  codes:
+    AGNT: "IncorrectAgent"
+    CNOR: "CreditorNotAllowedToReceive"
+    CVCY: "CurrencyConversionFailed"
+    FRSP: "FollowUpResponseToBankReceived"
+    INDM: "IndemnificationRequest"
+    INVB: "InvalidBIC"
+    INVR: "InvalidReference"
+    LEGL: "LegalDecision"
+    OPAY: "OtherPayment"
+    PCOR: "PartiallyCorrupt"
+    QMIS: "QualityMismatch"
+    SMND: "SpecificMandateInformation"
+    UMKA: "UnmatchedAmount"
+
+block:
+  description: "Dispute / legal block — no bridge offered (T=0)"
+  codes:
+    DISP: "DisputedTransaction"
+    DUPL: "DuplicateDetected"
+    FRAD: "FraudulentOrigin"
+    FRAU: "Fraud"

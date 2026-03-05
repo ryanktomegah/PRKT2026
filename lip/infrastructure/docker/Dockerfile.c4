@@ -1,0 +1,44 @@
+# Dockerfile.c4 — C4 Dispute Classifier (Bank Container with GPTQ model)
+# Zero outbound network — all model files baked into image at build time
+# Architecture Spec: Bank-side container, no external calls
+
+FROM python:3.11-slim
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c4-dispute-classifier"
+LABEL description="LIP C4 LLM dispute classifier — GPTQ quantized, zero-outbound bank container"
+
+# System packages (no network access after build)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+RUN pip install --no-cache-dir \
+    numpy>=1.26.0 \
+    pydantic>=2.5.0 \
+    # GPTQ inference (auto-gptq or exllamav2 — uncomment as appropriate)
+    # auto-gptq>=0.7.0 \
+    # transformers>=4.38.0 \
+    # accelerate>=0.27.0 \
+    cryptography>=42.0.0
+
+# Copy LIP package
+WORKDIR /app
+COPY lip/ ./lip/
+
+# GPTQ model files are copied at build time (no network access at runtime)
+# In production: COPY models/mistral-7b-gptq/ ./models/mistral-7b-gptq/
+RUN mkdir -p /app/models
+
+# Non-root user
+RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app
+USER lipuser
+
+# Bank container: NO outbound ports; only inbound from C7
+EXPOSE 8080
+
+ENV LIP_COMPONENT=c4
+ENV PYTHONPATH=/app
+
+CMD ["python", "-m", "uvicorn", "lip.c4_dispute_classifier.model:app", "--host", "0.0.0.0", "--port", "8080"]

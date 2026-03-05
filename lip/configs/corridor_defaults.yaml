@@ -1,0 +1,54 @@
+# corridor_defaults.yaml
+# Architecture Specification v1.2 Section S11.4
+# Tier 0 corridor buffer defaults — conservative P95 settlement latency (days)
+# Used when no empirical data is available for a corridor.
+
+# Bootstrap tier definitions:
+#   Tier 0: No data available      → use default below
+#   Tier 1: < 30 observations      → default * 1.5
+#   Tier 2: 30–100 observations    → 50% empirical P95 + 50% default
+#   Tier 3: > 100 observations     → pure empirical P95
+
+defaults:
+  # Major cross-currency corridors (days)
+  USD_EUR: 3.0
+  USD_GBP: 3.0
+  USD_JPY: 1.5
+  USD_CNY: 5.0
+  USD_CHF: 3.0
+  USD_CAD: 1.5
+  USD_AUD: 2.0
+  USD_SGD: 2.0
+  USD_HKD: 1.5
+  EUR_GBP: 1.5
+  EUR_USD: 3.0
+  EUR_JPY: 3.0
+  EUR_CHF: 1.5
+  EUR_CNY: 5.0
+  GBP_USD: 3.0
+  GBP_EUR: 1.5
+  GBP_JPY: 3.0
+  JPY_USD: 1.5
+  JPY_EUR: 3.0
+  CNY_USD: 5.0
+  # Emerging market corridors (higher latency)
+  USD_INR: 5.0
+  USD_BRL: 7.0
+  USD_MXN: 3.0
+  USD_ZAR: 5.0
+  USD_NGN: 7.0
+  EUR_INR: 5.0
+  # Default for unknown corridors (conservative)
+  DEFAULT: 7.0
+
+maturity_extension_rules:
+  # Additional maturity days to add based on P95 tier
+  tier_0_extension: 0   # Use default as-is
+  tier_1_extension: 2   # Add 2 days for sparse data
+  tier_2_extension: 1   # Add 1 day for moderate data
+  tier_3_extension: 0   # No extension for pure empirical P95
+
+observation_thresholds:
+  tier_1_max: 30
+  tier_2_max: 100
+  tier_3_min: 100

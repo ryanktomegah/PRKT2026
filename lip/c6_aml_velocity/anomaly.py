@@ -73,7 +73,9 @@ class AnomalyDetector:
         features = self._extract_features(transaction)
         if self._model is not None:
             score = float(self._model.score_samples(features.reshape(1, -1))[0])
-            is_anomaly = score < self._model.threshold_
+            # IsolationForest.predict() returns -1 for anomalies, 1 for inliers
+            label = int(self._model.predict(features.reshape(1, -1))[0])
+            is_anomaly = label == -1
             return AnomalyResult(is_anomaly=is_anomaly, anomaly_score=score, features_used=FEATURE_NAMES)
         if self._mean is not None:
             z = np.abs((features - self._mean) / self._std)

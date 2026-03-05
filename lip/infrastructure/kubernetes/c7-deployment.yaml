@@ -1,0 +1,94 @@
+# C7 Execution Agent — Bank-side Container (8GB RAM, T4 GPU optional)
+# Zero outbound network policy enforced via NetworkPolicy (see network-policies.yaml)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c7-execution-agent
+  namespace: lip
+  labels:
+    app: lip-c7-execution-agent
+    component: c7-execution-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lip-c7-execution-agent
+  template:
+    metadata:
+      labels:
+        app: lip-c7-execution-agent
+        component: c7-execution-agent
+    spec:
+      nodeSelector:
+        # Bank-side container — dedicated node pool
+        lip/node-type: bank-container
+      containers:
+        - name: c7-agent
+          image: lip/c7-execution-agent:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          resources:
+            requests:
+              cpu: "2"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"   # Hard 8GB RAM limit per spec
+          env:
+            - name: LIP_COMPONENT
+              value: c7
+            - name: HMAC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lip-hmac-secret
+                  key: key
+            - name: KMS_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: lip-kms-secret
+                  key: endpoint
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lip-redis-secret
+                  key: url
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      # Zero outbound enforced by NetworkPolicy — no egress allowed
+      automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lip-c7-execution-agent-svc
+  namespace: lip
+spec:
+  selector:
+    app: lip-c7-execution-agent
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+  type: ClusterIP

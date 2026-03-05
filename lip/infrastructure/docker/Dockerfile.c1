@@ -1,0 +1,33 @@
+# Dockerfile.c1 — C1 Failure Classifier GPU Inference Container
+# Uses Triton Inference Server with CUDA support
+
+FROM nvcr.io/nvidia/tritonserver:24.01-py3
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c1-failure-classifier"
+LABEL description="LIP C1 GraphSAGE+TabTransformer failure classifier — GPU inference"
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    numpy>=1.26.0 \
+    scikit-learn>=1.4.0 \
+    shap>=0.44.0 \
+    pydantic>=2.5.0 \
+    redis>=5.0.0 \
+    cryptography>=42.0.0
+
+# Copy LIP package
+WORKDIR /app
+COPY lip/ ./lip/
+
+# Model store will be mounted at /models
+RUN mkdir -p /models
+
+# Non-root user for security
+RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app
+USER lipuser
+
+# Triton server runs on port 8000 (HTTP), 8001 (gRPC), 8002 (metrics)
+EXPOSE 8000 8001 8002
+
+CMD ["tritonserver", "--model-repository=/models", "--log-verbose=0"]

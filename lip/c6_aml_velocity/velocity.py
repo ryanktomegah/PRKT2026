@@ -110,19 +110,23 @@ class VelocityChecker:
                 count_24h=cnt, beneficiary_concentration=conc,
             )
         # Check beneficiary concentration after hypothetical add
+        # Only apply when there are already existing transactions AND
+        # a second distinct beneficiary (concentration is only meaningful with >1 beneficiary)
         total_after = vol + amount
-        if total_after > 0:
+        existing_count = cnt
+        if total_after > 0 and existing_count >= 2:
             by_bene: Dict[str, Decimal] = defaultdict(Decimal)
             for _, a, b in self._window._records[entity_hash]:
                 by_bene[b] += a
             by_bene[bene_hash] += amount
-            new_conc = max(by_bene.values()) / total_after
-            if new_conc > BENEFICIARY_CONCENTRATION_THRESHOLD:
-                return VelocityResult(
-                    passed=False, reason="BENEFICIARY_CONCENTRATION_EXCEEDED",
-                    entity_id_hash=entity_hash, dollar_volume_24h=vol,
-                    count_24h=cnt, beneficiary_concentration=new_conc,
-                )
+            if len(by_bene) >= 2:  # only flag if there are multiple beneficiaries
+                new_conc = max(by_bene.values()) / total_after
+                if new_conc > BENEFICIARY_CONCENTRATION_THRESHOLD:
+                    return VelocityResult(
+                        passed=False, reason="BENEFICIARY_CONCENTRATION_EXCEEDED",
+                        entity_id_hash=entity_hash, dollar_volume_24h=vol,
+                        count_24h=cnt, beneficiary_concentration=new_conc,
+                    )
         return VelocityResult(
             passed=True, reason=None,
             entity_id_hash=entity_hash, dollar_volume_24h=vol,

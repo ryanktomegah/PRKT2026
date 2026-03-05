@@ -1,0 +1,48 @@
+# Dockerfile.c7 — C7 Execution Agent Container
+# Bank-side execution orchestrator (ELO)
+# Zero outbound, 8GB RAM limit, T4 GPU optional for CPU fallback path
+# Architecture Spec S2.5: Kill switch, KMS unavailability, EU AI Act Art.14
+
+FROM python:3.11-slim
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c7-execution-agent"
+LABEL description="LIP C7 bank-side execution agent — zero-outbound, HMAC-signed decision log"
+
+# System packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+RUN pip install --no-cache-dir \
+    numpy>=1.26.0 \
+    pydantic>=2.5.0 \
+    redis>=5.0.0 \
+    cryptography>=42.0.0 \
+    uvicorn[standard]>=0.27.0 \
+    fastapi>=0.110.0
+
+# Copy LIP package
+WORKDIR /app
+COPY lip/ ./lip/
+
+# Decision log storage (7-year retention backed by persistent volume)
+RUN mkdir -p /data/decision-log && chmod 700 /data/decision-log
+
+# Non-root user
+RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app /data
+USER lipuser
+
+EXPOSE 8080 9090
+
+ENV LIP_COMPONENT=c7
+ENV PYTHONPATH=/app
+# 8GB RAM hard limit enforced via Kubernetes resources.limits.memory
+# Kill switch state stored in Redis (mounted via secret)
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/health/live || exit 1
+
+CMD ["python", "-m", "uvicorn", "lip.c7_execution_agent.agent:app", "--host", "0.0.0.0", "--port", "8080"]

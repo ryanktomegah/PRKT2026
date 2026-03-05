@@ -1,0 +1,164 @@
+# C5 Streaming — Kafka + Redis + Flink Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-flink-jobmanager
+  namespace: lip
+  labels:
+    app: lip-flink
+    component: c5-streaming
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lip-flink
+      role: jobmanager
+  template:
+    metadata:
+      labels:
+        app: lip-flink
+        role: jobmanager
+        component: c5-streaming
+    spec:
+      containers:
+        - name: flink-jobmanager
+          image: flink:1.18-scala_2.12
+          args: ["jobmanager"]
+          ports:
+            - containerPort: 6123
+              name: rpc
+            - containerPort: 8081
+              name: ui
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: lip-flink-jobmanager
+                state.backend: rocksdb
+                state.checkpoints.dir: s3://lip-checkpoints/flink
+                execution.checkpointing.interval: 60000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-flink-taskmanager
+  namespace: lip
+  labels:
+    app: lip-flink
+    component: c5-streaming
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: lip-flink
+      role: taskmanager
+  template:
+    metadata:
+      labels:
+        app: lip-flink
+        role: taskmanager
+        component: c5-streaming
+    spec:
+      containers:
+        - name: flink-taskmanager
+          image: flink:1.18-scala_2.12
+          args: ["taskmanager"]
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: lip-flink-jobmanager
+                taskmanager.numberOfTaskSlots: 4
+                state.backend: rocksdb
+---
+# Kafka (3-broker cluster)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lip-kafka
+  namespace: lip
+  labels:
+    app: lip-kafka
+    component: c5-streaming
+spec:
+  serviceName: lip-kafka
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lip-kafka
+  template:
+    metadata:
+      labels:
+        app: lip-kafka
+        component: c5-streaming
+    spec:
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.6.0
+          ports:
+            - containerPort: 9092
+              name: kafka
+            - containerPort: 9093
+              name: ssl
+          resources:
+            requests:
+              cpu: "2"
+              memory: "8Gi"
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+          env:
+            - name: KAFKA_LISTENERS
+              value: "SSL://0.0.0.0:9093,PLAINTEXT://0.0.0.0:9092"
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: "SSL"
+            - name: KAFKA_REPLICATION_FACTOR
+              value: "3"
+---
+# Redis Cluster (6-node: 3 primary, 3 replica)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lip-redis
+  namespace: lip
+  labels:
+    app: lip-redis
+    component: c5-streaming
+spec:
+  serviceName: lip-redis
+  replicas: 6
+  selector:
+    matchLabels:
+      app: lip-redis
+  template:
+    metadata:
+      labels:
+        app: lip-redis
+        component: c5-streaming
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          command: ["redis-server", "--cluster-enabled", "yes", "--tls-port", "6380", "--port", "0"]
+          ports:
+            - containerPort: 6380
+              name: redis-tls
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "4Gi"

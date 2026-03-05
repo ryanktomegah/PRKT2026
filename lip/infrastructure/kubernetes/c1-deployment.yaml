@@ -1,0 +1,97 @@
+# C1 Failure Classifier — GPU Inference Deployment
+# Triton Inference Server on GPU node pool (T4/A10G)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c1-classifier
+  namespace: lip
+  labels:
+    app: lip-c1-classifier
+    component: c1-failure-classifier
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lip-c1-classifier
+  template:
+    metadata:
+      labels:
+        app: lip-c1-classifier
+        component: c1-failure-classifier
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-t4
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: c1-inference
+          image: lip/c1-inference:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+            - containerPort: 8001
+              name: grpc
+            - containerPort: 8002
+              name: metrics
+          resources:
+            requests:
+              cpu: "2"
+              memory: "8Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+          env:
+            - name: TRITON_MODEL_REPOSITORY
+              value: /models
+            - name: LIP_COMPONENT
+              value: c1
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lip-redis-secret
+                  key: url
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /v2/health/live
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+      volumes:
+        - name: model-store
+          persistentVolumeClaim:
+            claimName: lip-model-store-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lip-c1-classifier-svc
+  namespace: lip
+spec:
+  selector:
+    app: lip-c1-classifier
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+    - name: grpc
+      port: 8001
+      targetPort: 8001
+    - name: metrics
+      port: 8002
+      targetPort: 8002
+  type: ClusterIP

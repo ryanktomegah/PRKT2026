@@ -1,0 +1,110 @@
+# Network Policies — Zero outbound for C4 (Dispute Classifier) and C7 (Execution Agent)
+# Architecture Spec: Bank-side containers must have zero outbound network access
+---
+# C4 Dispute Classifier — zero outbound
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lip-c4-zero-outbound
+  namespace: lip
+spec:
+  podSelector:
+    matchLabels:
+      component: c4-dispute-classifier
+  policyTypes:
+    - Egress
+    - Ingress
+  ingress:
+    # Allow inbound from C7 execution agent only
+    - from:
+        - podSelector:
+            matchLabels:
+              component: c7-execution-agent
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # NO egress rules = zero outbound traffic allowed
+    []
+---
+# C7 Execution Agent — zero outbound
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lip-c7-zero-outbound
+  namespace: lip
+spec:
+  podSelector:
+    matchLabels:
+      component: c7-execution-agent
+  policyTypes:
+    - Egress
+    - Ingress
+  ingress:
+    # Allow inbound from internal LIP components only
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow only intra-namespace traffic (Redis, decision log storage)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+        - podSelector:
+            matchLabels:
+              app: lip-redis
+      ports:
+        - protocol: TCP
+          port: 6380
+    # Allow DNS resolution (required for service discovery)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# C1 Classifier — allow GPU node pool + internal only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lip-c1-internal-only
+  namespace: lip
+spec:
+  podSelector:
+    matchLabels:
+      component: c1-failure-classifier
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# Default deny all for lip namespace (baseline)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lip-default-deny-all
+  namespace: lip
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
