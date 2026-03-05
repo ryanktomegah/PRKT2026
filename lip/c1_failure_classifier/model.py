@@ -1,0 +1,361 @@
+"""
+Three-entity role mapping:
+  MLO  — Money Lending Organisation
+  MIPLO — Money In / Payment Lending Organisation
+  ELO  — Execution Lending Organisation (bank-side agent, C7)
+
+model.py — Combined C1 Classifier
+GraphSAGE[384] + TabTransformer[88] → 472-dim → MLP(256→64→1) → sigmoid
+C1 Spec Section 7
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from typing import List, Optional, Tuple
+
+import numpy as np
+
+from .graphsage import GraphSAGEModel, GRAPHSAGE_OUTPUT_DIM
+from .tabtransformer import TabTransformerModel, TABTRANSFORMER_INPUT_DIM
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Dimension constants
+# ---------------------------------------------------------------------------
+
+_COMBINED_DIM: int = GRAPHSAGE_OUTPUT_DIM + TABTRANSFORMER_INPUT_DIM  # 472
+_RNG = np.random.default_rng(seed=7)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _relu(x: np.ndarray) -> np.ndarray:
+    return np.maximum(0.0, x)
+
+
+def _sigmoid(x: float) -> float:
+    """Numerically stable sigmoid for a scalar."""
+    if x >= 0:
+        return 1.0 / (1.0 + np.exp(-x))
+    exp_x = np.exp(x)
+    return exp_x / (1.0 + exp_x)
+
+
+def _sigmoid_arr(x: np.ndarray) -> np.ndarray:
+    """Element-wise numerically stable sigmoid for an array."""
+    result = np.where(
+        x >= 0,
+        1.0 / (1.0 + np.exp(-np.clip(x, -500, 500))),
+        np.exp(np.clip(x, -500, 500)) / (1.0 + np.exp(np.clip(x, -500, 500))),
+    )
+    return result
+
+
+def _xavier_uniform(in_dim: int, out_dim: int, rng: np.random.Generator) -> np.ndarray:
+    limit = np.sqrt(6.0 / (in_dim + out_dim))
+    return rng.uniform(-limit, limit, size=(in_dim, out_dim)).astype(np.float64)
+
+
+# ---------------------------------------------------------------------------
+# MLPHead
+# ---------------------------------------------------------------------------
+
+class MLPHead:
+    """Two-hidden-layer MLP that maps the 472-dim fused embedding to [0,1].
+
+    Architecture:
+        472 → Linear(256) → ReLU → Dropout(0.3) →
+              Linear(64)  → ReLU → Dropout(0.3) →
+              Linear(1)   → Sigmoid
+
+    Dropout is disabled at inference time (no ``training`` flag needed
+    because this module is always used for inference only; training is
+    handled at the pipeline level).
+
+    Parameters
+    ----------
+    input_dim:
+        Dimensionality of the concatenated GraphSAGE + TabTransformer vector.
+    hidden1:
+        Size of the first hidden layer.
+    hidden2:
+        Size of the second hidden layer.
+    output_dim:
+        Output size (1 for binary classification).
+    """
+
+    def __init__(
+        self,
+        input_dim: int = _COMBINED_DIM,
+        hidden1: int = 256,
+        hidden2: int = 64,
+        output_dim: int = 1,
+    ) -> None:
+        self.input_dim = input_dim
+        self.hidden1 = hidden1
+        self.hidden2 = hidden2
+        self.output_dim = output_dim
+
+        self.W1: np.ndarray = _xavier_uniform(input_dim, hidden1, _RNG)
+        self.b1: np.ndarray = np.zeros(hidden1, dtype=np.float64)
+
+        self.W2: np.ndarray = _xavier_uniform(hidden1, hidden2, _RNG)
+        self.b2: np.ndarray = np.zeros(hidden2, dtype=np.float64)
+
+        self.W3: np.ndarray = _xavier_uniform(hidden2, output_dim, _RNG)
+        self.b3: np.ndarray = np.zeros(output_dim, dtype=np.float64)
+
+    def forward(self, x: np.ndarray) -> float:
+        """Compute the failure probability for a fused feature vector.
+
+        Parameters
+        ----------
+        x:
+            1-D array of shape ``(input_dim,)`` = ``(472,)``.
+
+        Returns
+        -------
+        float
+            Predicted failure probability in ``[0, 1]``.
+        """
+        x = np.asarray(x, dtype=np.float64).reshape(-1)
+        h1 = _relu(x @ self.W1 + self.b1)       # (256,)
+        h2 = _relu(h1 @ self.W2 + self.b2)      # (64,)
+        logit = float((h2 @ self.W3 + self.b3)[0])
+        return _sigmoid(logit)
+
+    def get_weights(self) -> dict:
+        return {
+            "W1": self.W1, "b1": self.b1,
+            "W2": self.W2, "b2": self.b2,
+            "W3": self.W3, "b3": self.b3,
+        }
+
+    def set_weights(self, weights: dict) -> None:
+        self.W1 = np.asarray(weights["W1"], dtype=np.float64)
+        self.b1 = np.asarray(weights["b1"], dtype=np.float64)
+        self.W2 = np.asarray(weights["W2"], dtype=np.float64)
+        self.b2 = np.asarray(weights["b2"], dtype=np.float64)
+        self.W3 = np.asarray(weights["W3"], dtype=np.float64)
+        self.b3 = np.asarray(weights["b3"], dtype=np.float64)
+
+
+# ---------------------------------------------------------------------------
+# ClassifierModel
+# ---------------------------------------------------------------------------
+
+class ClassifierModel:
+    """Combined C1 failure classifier.
+
+    Fuses a GraphSAGE corridor embedding (384-dim) with a TabTransformer
+    tabular representation (88-dim) into a 472-dim vector, then passes it
+    through an MLP head to produce a failure probability.
+
+    Parameters
+    ----------
+    graphsage:
+        Pre-initialised :class:`~lip.c1_failure_classifier.graphsage.GraphSAGEModel`.
+    tabtransformer:
+        Pre-initialised :class:`~lip.c1_failure_classifier.tabtransformer.TabTransformerModel`.
+    mlp:
+        Pre-initialised :class:`MLPHead` with ``input_dim=472``.
+    """
+
+    def __init__(
+        self,
+        graphsage: GraphSAGEModel,
+        tabtransformer: TabTransformerModel,
+        mlp: MLPHead,
+    ) -> None:
+        self.graphsage = graphsage
+        self.tabtransformer = tabtransformer
+        self.mlp = mlp
+
+    # ------------------------------------------------------------------
+    # Inference
+    # ------------------------------------------------------------------
+
+    def predict_proba(
+        self,
+        node_features: np.ndarray,
+        neighbors_l1: List[np.ndarray],
+        neighbors_l2: List[np.ndarray],
+        tabular_features: np.ndarray,
+    ) -> float:
+        """Return the predicted failure probability for a payment.
+
+        Parameters
+        ----------
+        node_features:
+            8-dim feature vector for the sending BIC node.
+        neighbors_l1:
+            List of 8-dim vectors for hop-1 neighbours (k ≤ 5 at inference).
+        neighbors_l2:
+            List of 8-dim vectors for hop-2 neighbours.
+        tabular_features:
+            88-dim tabular feature vector from
+            :class:`~lip.c1_failure_classifier.features.TabularFeatureEngineer`.
+
+        Returns
+        -------
+        float
+            Failure probability in ``[0, 1]``.
+        """
+        sage_emb = self.graphsage.forward(node_features, neighbors_l1, neighbors_l2)
+        tab_emb = self.tabtransformer.forward(tabular_features)
+        fused = np.concatenate([sage_emb, tab_emb])  # (472,)
+        return self.mlp.forward(fused)
+
+    # ------------------------------------------------------------------
+    # Loss
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def asymmetric_bce_loss(
+        y_true: float,
+        y_pred: float,
+        alpha: float = 0.7,
+    ) -> float:
+        """Asymmetric binary cross-entropy loss (false negatives penalised more).
+
+        .. math::
+            \\mathcal{L} = -\\bigl[\\alpha \\cdot y \\log(p) + (1-\\alpha)(1-y)\\log(1-p)\\bigr]
+
+        Setting ``alpha=0.7`` means missed failures (false negatives) are
+        weighted 2.33× more than false positives.
+
+        Parameters
+        ----------
+        y_true:
+            Ground-truth binary label (0 or 1).
+        y_pred:
+            Predicted probability in ``(0, 1)``.
+        alpha:
+            Weight for the positive (failure) class.  ``0 < alpha < 1``.
+
+        Returns
+        -------
+        float
+            Scalar loss value ≥ 0.
+        """
+        eps = 1e-12
+        p = float(np.clip(y_pred, eps, 1.0 - eps))
+        y = float(y_true)
+        return -(alpha * y * np.log(p) + (1.0 - alpha) * (1.0 - y) * np.log(1.0 - p))
+
+    # ------------------------------------------------------------------
+    # Threshold calibration
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def select_f2_threshold(
+        y_true: np.ndarray,
+        y_scores: np.ndarray,
+    ) -> float:
+        """Select the decision threshold that maximises the F2-score.
+
+        The F2-score weights recall twice as heavily as precision, which is
+        appropriate for the C1 use-case where missing a genuine failure is
+        more costly than a false alarm.
+
+        .. math::
+            F_2 = \\frac{5 \\cdot TP}{5 \\cdot TP + 4 \\cdot FN + FP}
+
+        Parameters
+        ----------
+        y_true:
+            Binary ground-truth labels, shape ``(n,)``.
+        y_scores:
+            Predicted probabilities, shape ``(n,)``.
+
+        Returns
+        -------
+        float
+            Optimal threshold in ``[0, 1]``.
+        """
+        y_true = np.asarray(y_true, dtype=np.float64)
+        y_scores = np.asarray(y_scores, dtype=np.float64)
+
+        thresholds = np.unique(y_scores)
+        best_thresh = 0.5
+        best_f2 = -1.0
+
+        for thresh in thresholds:
+            y_pred = (y_scores >= thresh).astype(np.float64)
+            tp = float(np.sum((y_pred == 1) & (y_true == 1)))
+            fp = float(np.sum((y_pred == 1) & (y_true == 0)))
+            fn = float(np.sum((y_pred == 0) & (y_true == 1)))
+            denom = 5 * tp + 4 * fn + fp
+            f2 = (5 * tp / denom) if denom > 0 else 0.0
+            if f2 > best_f2:
+                best_f2 = f2
+                best_thresh = float(thresh)
+
+        logger.info("select_f2_threshold: best=%.4f  F2=%.4f", best_thresh, best_f2)
+        return best_thresh
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: str) -> None:
+        """Save all sub-model weights under *path* as separate ``.npz`` files.
+
+        Three files are written:
+
+        - ``<path>/graphsage.npz``
+        - ``<path>/tabtransformer.npz``
+        - ``<path>/mlp.npz``
+
+        Parameters
+        ----------
+        path:
+            Directory path.  Created automatically if absent.
+        """
+        os.makedirs(path, exist_ok=True)
+        self.graphsage.save_weights(os.path.join(path, "graphsage"))
+        self.tabtransformer.save_weights(os.path.join(path, "tabtransformer"))
+        np.savez(os.path.join(path, "mlp"), **self.mlp.get_weights())
+        logger.info("ClassifierModel saved to %s", path)
+
+    def load(self, path: str) -> None:
+        """Load all sub-model weights from *path*.
+
+        Parameters
+        ----------
+        path:
+            Directory path previously used with :meth:`save`.
+        """
+        self.graphsage.load_weights(os.path.join(path, "graphsage.npz"))
+        self.tabtransformer.load_weights(os.path.join(path, "tabtransformer.npz"))
+        mlp_data = np.load(os.path.join(path, "mlp.npz"))
+        self.mlp.set_weights(dict(mlp_data))
+        logger.info("ClassifierModel loaded from %s", path)
+
+
+# ---------------------------------------------------------------------------
+# Factory
+# ---------------------------------------------------------------------------
+
+def create_default_model() -> ClassifierModel:
+    """Instantiate a :class:`ClassifierModel` with default architecture.
+
+    Weights are randomly initialised using the fixed seeds defined in each
+    sub-module.  Call :meth:`ClassifierModel.load` to overlay trained weights.
+
+    Returns
+    -------
+    ClassifierModel
+        Ready-to-use (untrained) classifier.
+    """
+    graphsage = GraphSAGEModel()
+    tabtransformer = TabTransformerModel()
+    mlp = MLPHead()
+    model = ClassifierModel(graphsage=graphsage, tabtransformer=tabtransformer, mlp=mlp)
+    logger.info("create_default_model: ClassifierModel ready (dims 384+88→472→1)")
+    return model
