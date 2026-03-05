@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------------------------------------------------------------------------
@@ -586,8 +586,3 @@ class DecisionLogEntry(BaseModel):
         ),
     )
     created_at: datetime = Field(..., description="UTC creation timestamp.")
-
-    @field_validator("repayment_type", mode="before", check_fields=False)
-    @classmethod
-    def _no_op(cls, v: Any) -> Any:  # pragma: no cover
-        return v
