@@ -1,0 +1,63 @@
+# HPA — Horizontal Pod Autoscaler on inference queue depth
+# Scale out when queue depth > 100, scale in when < 20
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lip-c1-classifier-hpa
+  namespace: lip
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lip-c1-classifier
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c1-failure-classifier
+        target:
+          type: AverageValue
+          # Scale out when queue depth per replica > 100
+          averageValue: "100"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+---
+# HPA for Flink TaskManagers (C5 Streaming)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lip-flink-taskmanager-hpa
+  namespace: lip
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lip-flink-taskmanager
+  minReplicas: 4
+  maxReplicas: 16
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600

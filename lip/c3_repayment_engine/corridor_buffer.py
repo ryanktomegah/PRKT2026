@@ -1,0 +1,183 @@
+"""
+corridor_buffer.py — 4-tier corridor buffer bootstrap model
+Architecture Spec S11.4: P95 settlement latency estimation
+
+Tier 0: Conservative defaults (no data)
+Tier 1: Sparse data (< 30 observations)
+Tier 2: Moderate data (30-100 observations)
+Tier 3: Pure P95 from data (> 100 observations)
+"""
+import logging
+import numpy as np
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Dict, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+# Tier thresholds — Architecture Spec S11.4
+_TIER1_MIN = 1
+_TIER1_MAX = 29
+_TIER2_MIN = 30
+_TIER2_MAX = 100
+_TIER3_MIN = 101
+
+_P95_PERCENTILE = 95.0
+
+
+def _default_corridor_defaults() -> dict:
+    return {
+        "USD_EUR": 3.0,
+        "USD_GBP": 3.0,
+        "USD_JPY": 1.5,
+        "USD_CNY": 5.0,
+        "EUR_GBP": 1.5,
+        "EUR_USD": 3.0,
+        "GBP_USD": 3.0,
+        "DEFAULT": 7.0,
+    }
+
+
+@dataclass
+class CorridorBufferDefaults:
+    """Tier 0 conservative defaults for major currency corridors.
+
+    Keys are formatted as ``<FROM>_<TO>`` (e.g. ``USD_EUR``).
+    The ``DEFAULT`` key is used as a fallback for unknown corridors.
+    Values represent P95 settlement latency in calendar days.
+    """
+
+    defaults: dict = field(default_factory=_default_corridor_defaults)
+
+    def get(self, corridor: str) -> float:
+        """Return the default P95 latency for a corridor, falling back to DEFAULT."""
+        normalised = corridor.strip().upper()
+        return self.defaults.get(normalised, self.defaults.get("DEFAULT", 7.0))
+
+
+class CorridorBuffer:
+    """Maintains per-corridor settlement-time observations and estimates P95.
+
+    The estimation tier is determined by the number of observations per corridor:
+      - Tier 0 (0 obs)     → use CorridorBufferDefaults
+      - Tier 1 (1–29 obs)  → default × 1.5 (conservative padding)
+      - Tier 2 (30–100 obs)→ 50 % empirical P95 + 50 % default
+      - Tier 3 (> 100 obs) → pure empirical P95
+    """
+
+    def __init__(self, defaults: Optional[CorridorBufferDefaults] = None) -> None:
+        self._defaults = defaults or CorridorBufferDefaults()
+        self._observations: Dict[str, list] = {}
+
+    # ── Observation management ────────────────────────────────────────────────
+
+    def add_observation(self, corridor: str, settlement_days: float) -> None:
+        """Record an observed settlement latency (in days) for a corridor.
+
+        Args:
+            corridor: Corridor key, e.g. ``"USD_EUR"``.
+            settlement_days: Observed settlement latency in calendar days.
+        """
+        if settlement_days < 0:
+            raise ValueError(
+                f"settlement_days must be non-negative, got {settlement_days}"
+            )
+        key = corridor.strip().upper()
+        self._observations.setdefault(key, []).append(float(settlement_days))
+        logger.debug(
+            "Corridor %s: added observation %.2f days (n=%d)",
+            key, settlement_days, len(self._observations[key]),
+        )
+
+    # ── Tier detection ────────────────────────────────────────────────────────
+
+    def get_buffer_tier(self, corridor: str) -> int:
+        """Return the estimation tier for the corridor (0, 1, 2, or 3)."""
+        n = len(self._observations.get(corridor.strip().upper(), []))
+        if n == 0:
+            return 0
+        if n <= _TIER1_MAX:
+            return 1
+        if n <= _TIER2_MAX:
+            return 2
+        return 3
+
+    # ── P95 estimation ────────────────────────────────────────────────────────
+
+    def estimate_p95(self, corridor: str) -> float:
+        """Estimate the P95 settlement latency (days) for the corridor.
+
+        Blending strategy is determined by the observation tier:
+          Tier 0 → default
+          Tier 1 → default × 1.5
+          Tier 2 → 0.5 × empirical_p95 + 0.5 × default
+          Tier 3 → empirical_p95
+        """
+        key = corridor.strip().upper()
+        tier = self.get_buffer_tier(key)
+        default_p95 = self._defaults.get(key)
+
+        if tier == 0:
+            logger.debug("Corridor %s Tier 0: using default %.2f days", key, default_p95)
+            return default_p95
+
+        observations = self._observations[key]
+        empirical_p95 = float(np.percentile(observations, _P95_PERCENTILE))
+
+        if tier == 1:
+            result = default_p95 * 1.5
+            logger.debug(
+                "Corridor %s Tier 1 (n=%d): conservative %.2f days",
+                key, len(observations), result,
+            )
+            return result
+
+        if tier == 2:
+            result = 0.5 * empirical_p95 + 0.5 * default_p95
+            logger.debug(
+                "Corridor %s Tier 2 (n=%d): blended %.2f days "
+                "(empirical=%.2f, default=%.2f)",
+                key, len(observations), result, empirical_p95, default_p95,
+            )
+            return result
+
+        # Tier 3
+        logger.debug(
+            "Corridor %s Tier 3 (n=%d): pure empirical P95 = %.2f days",
+            key, len(observations), empirical_p95,
+        )
+        return empirical_p95
+
+    # ── Maturity extension ────────────────────────────────────────────────────
+
+    def get_maturity_extension(self, corridor: str) -> int:
+        """Return additional whole days to add to the base maturity window.
+
+        The extension is the ceiling of the P95 estimate, rounded to the nearest
+        integer day.  This is layered on top of the rejection-class maturity.
+        """
+        p95 = self.estimate_p95(corridor)
+        extension = int(np.ceil(p95))
+        logger.debug(
+            "Corridor %s maturity extension: +%d days (P95=%.2f)",
+            corridor.strip().upper(), extension, p95,
+        )
+        return extension
+
+    # ── Serialisation ─────────────────────────────────────────────────────────
+
+    def to_dict(self) -> dict:
+        """Serialise the buffer state to a plain dict (JSON-safe)."""
+        return {
+            "defaults": dict(self._defaults.defaults),
+            "observations": dict(self._observations),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "CorridorBuffer":
+        """Restore a CorridorBuffer from a serialised dict."""
+        defaults = CorridorBufferDefaults(defaults=dict(d.get("defaults", {})))
+        instance = cls(defaults=defaults)
+        for corridor, obs in d.get("observations", {}).items():
+            instance._observations[corridor] = [float(v) for v in obs]
+        return instance

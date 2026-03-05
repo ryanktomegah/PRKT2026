@@ -1,0 +1,354 @@
+"""
+repayment_loop.py — Settlement monitoring and auto-repayment trigger logic
+Architecture Spec S2.3: Dual-signal repayment
+"""
+import logging
+import threading
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from enum import Enum
+from typing import Callable, Dict, List, Optional
+
+from .rejection_taxonomy import classify_rejection_code, maturity_days, RejectionClass
+from .settlement_handlers import SettlementHandlerRegistry, SettlementRail
+from lip.c2_pd_model.fee import compute_loan_fee
+
+logger = logging.getLogger(__name__)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)
+
+
+# ── Domain types ───────────────────────────────────────────────────────────────
+
+@dataclass
+class ActiveLoan:
+    """Represents a live loan position tracked by the repayment engine.
+
+    Attributes:
+        loan_id: Unique loan identifier within the LIP system.
+        uetr: SWIFT Unique End-to-end Transaction Reference (UUID format).
+        individual_payment_id: Payment-leg identifier (e.g. RTP EndToEndId).
+        principal: Loan principal in the settlement currency.
+        fee_bps: Fee in basis points charged by the MLO/MIPLO.
+        maturity_date: Absolute UTC datetime after which buffer repayment triggers.
+        rejection_class: String representation of the RejectionClass that sized the
+                         maturity window (e.g. ``"CLASS_A"``).
+        corridor: Corridor key used for buffer P95 estimation, e.g. ``"USD_EUR"``.
+        funded_at: UTC datetime when the loan was funded.
+    """
+
+    loan_id: str
+    uetr: str
+    individual_payment_id: str
+    principal: Decimal
+    fee_bps: int
+    maturity_date: datetime
+    rejection_class: str
+    corridor: str
+    funded_at: datetime
+
+
+class RepaymentTrigger(str, Enum):
+    SETTLEMENT_CONFIRMED = "SETTLEMENT_CONFIRMED"
+    MATURITY_REACHED = "MATURITY_REACHED"
+    BUFFER_SETTLEMENT = "BUFFER_SETTLEMENT"
+    MANUAL = "MANUAL"
+
+
+# ── Settlement monitor ────────────────────────────────────────────────────────
+
+class SettlementMonitor:
+    """Processes incoming settlement signals and matches them to active loans.
+
+    Responsibilities:
+      - Accept raw settlement messages from any of the 5 supported rails.
+      - Dispatch to the correct handler via SettlementHandlerRegistry.
+      - Resolve the UETR via UETRMappingTable for RTP EndToEndId messages.
+      - Match the resolved signal against the active loan registry.
+      - Return a repayment trigger dict when a match is found.
+    """
+
+    def __init__(
+        self,
+        handler_registry: SettlementHandlerRegistry,
+        uetr_mapping,
+        corridor_buffer,
+    ) -> None:
+        self._registry = handler_registry
+        self._uetr_mapping = uetr_mapping
+        self._corridor_buffer = corridor_buffer
+        self._active_loans: Dict[str, ActiveLoan] = {}  # keyed by uetr
+        self._lock = threading.Lock()
+
+    def register_loan(self, loan: ActiveLoan) -> None:
+        """Add a loan to the monitor's active loan registry."""
+        with self._lock:
+            self._active_loans[loan.uetr] = loan
+            logger.info(
+                "Loan registered: loan_id=%s uetr=%s maturity=%s",
+                loan.loan_id, loan.uetr, loan.maturity_date.isoformat(),
+            )
+
+    def deregister_loan(self, uetr: str) -> Optional[ActiveLoan]:
+        """Remove and return a loan from the active registry."""
+        with self._lock:
+            loan = self._active_loans.pop(uetr, None)
+            if loan:
+                logger.info("Loan deregistered: uetr=%s loan_id=%s", uetr, loan.loan_id)
+            return loan
+
+    def process_signal(self, rail: str, raw_message: dict) -> Optional[dict]:
+        """Process an incoming settlement signal for a given rail.
+
+        Steps:
+          1. Dispatch the raw message to the appropriate handler.
+          2. For RTP, resolve EndToEndId → UETR via the mapping table.
+          3. Match the UETR against the active loan registry.
+          4. Return a repayment trigger dict, or None if no match.
+
+        Args:
+            rail: String name of the settlement rail (e.g. ``"SWIFT"``).
+            raw_message: Rail-specific raw message payload.
+
+        Returns:
+            A repayment trigger dict with keys ``loan_id``, ``uetr``,
+            ``trigger``, ``settlement_amount``, ``signal_rail``, and
+            ``triggered_at``; or None if no matching loan was found.
+        """
+        try:
+            settlement_rail = SettlementRail(rail.upper())
+        except ValueError:
+            logger.error("Unknown settlement rail: %s", rail)
+            return None
+
+        try:
+            signal = self._registry.dispatch(settlement_rail, raw_message)
+        except Exception as exc:
+            logger.exception("Handler dispatch failed for rail %s: %s", rail, exc)
+            return None
+
+        # For RTP, the UETR may need to be resolved from the EndToEndId.
+        uetr = signal.uetr
+        if settlement_rail is SettlementRail.RTP and not uetr:
+            uetr = self._uetr_mapping.lookup(signal.individual_payment_id) or ""
+            logger.debug(
+                "RTP UETR resolution: EndToEndId=%s → uetr=%s",
+                signal.individual_payment_id, uetr,
+            )
+
+        loan = self.match_loan(uetr)
+        if loan is None:
+            logger.debug(
+                "No active loan matched for uetr=%s rail=%s", uetr, rail
+            )
+            return None
+
+        logger.info(
+            "Settlement matched: loan_id=%s uetr=%s rail=%s amount=%s %s",
+            loan.loan_id, uetr, rail, signal.amount, signal.currency,
+        )
+        return {
+            "loan_id": loan.loan_id,
+            "uetr": uetr,
+            "trigger": RepaymentTrigger.SETTLEMENT_CONFIRMED,
+            "settlement_amount": signal.amount,
+            "signal_rail": rail,
+            "rejection_code": signal.rejection_code,
+            "triggered_at": _utcnow().isoformat(),
+        }
+
+    def match_loan(self, uetr: str) -> Optional[ActiveLoan]:
+        """Return the ActiveLoan matching the given UETR, or None."""
+        with self._lock:
+            return self._active_loans.get(uetr)
+
+    def get_active_loans(self) -> List[ActiveLoan]:
+        """Return a snapshot of all currently active loans."""
+        with self._lock:
+            return list(self._active_loans.values())
+
+
+# ── Repayment loop ────────────────────────────────────────────────────────────
+
+class RepaymentLoop:
+    """Orchestrates settlement monitoring and maturity-based repayment triggers.
+
+    The loop maintains the active loan registry, delegates settlement signal
+    processing to SettlementMonitor, and periodically checks for maturity
+    breaches that require buffer repayment.
+
+    Architecture Spec S2.3: Dual-signal repayment:
+      Signal 1 — Settlement confirmed on the external rail (SWIFT/FedNow/RTP/SEPA).
+      Signal 2 — Maturity timer elapsed → buffer settlement triggered.
+    """
+
+    def __init__(
+        self,
+        monitor: SettlementMonitor,
+        repayment_callback: Callable[[dict], None],
+    ) -> None:
+        self._monitor = monitor
+        self._callback = repayment_callback
+        self._active_loans: Dict[str, ActiveLoan] = {}  # loan_id → ActiveLoan
+        self._lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+
+    # ── Loan lifecycle ────────────────────────────────────────────────────────
+
+    def register_loan(self, loan: ActiveLoan) -> None:
+        """Add a loan to both the repayment loop and the settlement monitor."""
+        with self._lock:
+            self._active_loans[loan.loan_id] = loan
+        self._monitor.register_loan(loan)
+        logger.info(
+            "RepaymentLoop: loan registered loan_id=%s uetr=%s", loan.loan_id, loan.uetr
+        )
+
+    def _deregister_loan(self, loan_id: str) -> Optional[ActiveLoan]:
+        with self._lock:
+            loan = self._active_loans.pop(loan_id, None)
+        if loan:
+            self._monitor.deregister_loan(loan.uetr)
+        return loan
+
+    # ── Repayment dispatch ────────────────────────────────────────────────────
+
+    def trigger_repayment(
+        self,
+        loan: ActiveLoan,
+        trigger: RepaymentTrigger,
+        settlement_amount: Decimal,
+    ) -> dict:
+        """Build a repayment record, invoke the callback, and deregister the loan.
+
+        Returns:
+            A repayment record dict with standardised fields.
+        """
+        now = _utcnow()
+        days_funded = max(1, (now - loan.funded_at.replace(tzinfo=timezone.utc)
+                              if loan.funded_at.tzinfo is None
+                              else now - loan.funded_at).days)
+        fee = compute_loan_fee(loan.principal, Decimal(str(loan.fee_bps)), days_funded)
+        repayment_record = {
+            "loan_id": loan.loan_id,
+            "uetr": loan.uetr,
+            "individual_payment_id": loan.individual_payment_id,
+            "principal": str(loan.principal),
+            "fee": str(fee),
+            "fee_bps": loan.fee_bps,
+            "settlement_amount": str(settlement_amount),
+            "corridor": loan.corridor,
+            "rejection_class": loan.rejection_class,
+            "trigger": trigger.value,
+            "funded_at": loan.funded_at.isoformat(),
+            "maturity_date": loan.maturity_date.isoformat(),
+            "repaid_at": _utcnow().isoformat(),
+        }
+        logger.info(
+            "Repayment triggered: loan_id=%s trigger=%s amount=%s",
+            loan.loan_id, trigger.value, settlement_amount,
+        )
+        try:
+            self._callback(repayment_record)
+        except Exception as exc:
+            logger.exception(
+                "Repayment callback raised for loan_id=%s: %s", loan.loan_id, exc
+            )
+        self._deregister_loan(loan.loan_id)
+        return repayment_record
+
+    # ── Maturity check ────────────────────────────────────────────────────────
+
+    def check_maturities(self) -> List[dict]:
+        """Inspect all active loans and trigger buffer repayment for matured loans.
+
+        A loan is considered matured when ``_utcnow() >= loan.maturity_date``.
+        BLOCK-class loans (maturity_days == 0) are skipped here — they must be
+        resolved through the dispute path.
+
+        Returns:
+            List of repayment records for every loan that was triggered.
+        """
+        now = _utcnow()
+        triggered: List[dict] = []
+
+        with self._lock:
+            snapshot = list(self._active_loans.values())
+
+        for loan in snapshot:
+            # Skip BLOCK loans — no automated bridge repayment
+            if loan.rejection_class == RejectionClass.BLOCK.value:
+                logger.debug(
+                    "Skipping BLOCK loan in maturity check: loan_id=%s", loan.loan_id
+                )
+                continue
+
+            maturity_dt = loan.maturity_date
+            if maturity_dt.tzinfo is None:
+                maturity_dt = maturity_dt.replace(tzinfo=timezone.utc)
+
+            if now >= maturity_dt:
+                logger.info(
+                    "Maturity reached: loan_id=%s uetr=%s maturity=%s",
+                    loan.loan_id, loan.uetr, maturity_dt.isoformat(),
+                )
+                record = self.trigger_repayment(
+                    loan,
+                    RepaymentTrigger.MATURITY_REACHED,
+                    loan.principal,  # repay full principal on maturity
+                )
+                triggered.append(record)
+
+        return triggered
+
+    # ── Background monitoring loop ────────────────────────────────────────────
+
+    def run_monitoring_loop(self, interval_seconds: int = 30) -> None:
+        """Start the background monitoring thread.
+
+        The thread calls ``check_maturities()`` every ``interval_seconds``
+        seconds until ``stop()`` is called.  It is safe to call this method
+        multiple times — a second call is a no-op if the thread is alive.
+
+        Args:
+            interval_seconds: Poll interval in seconds (default 30).
+        """
+        if self._thread is not None and self._thread.is_alive():
+            logger.warning("Monitoring loop already running; ignoring duplicate start.")
+            return
+
+        self._stop_event.clear()
+
+        def _loop() -> None:
+            logger.info(
+                "RepaymentLoop monitoring thread started (interval=%ds).",
+                interval_seconds,
+            )
+            while not self._stop_event.wait(timeout=interval_seconds):
+                try:
+                    triggered = self.check_maturities()
+                    if triggered:
+                        logger.info(
+                            "Maturity check: %d repayment(s) triggered.", len(triggered)
+                        )
+                except Exception as exc:
+                    logger.exception("Error in maturity check iteration: %s", exc)
+            logger.info("RepaymentLoop monitoring thread stopped.")
+
+        self._thread = threading.Thread(target=_loop, daemon=True, name="RepaymentLoop")
+        self._thread.start()
+
+    def stop(self) -> None:
+        """Signal the monitoring thread to stop and wait for it to exit."""
+        if self._thread is None:
+            return
+        logger.info("Stopping RepaymentLoop monitoring thread…")
+        self._stop_event.set()
+        self._thread.join(timeout=10)
+        if self._thread.is_alive():
+            logger.warning("RepaymentLoop thread did not stop within timeout.")
+        self._thread = None

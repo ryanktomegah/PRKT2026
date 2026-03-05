@@ -1,0 +1,76 @@
+# canonical_numbers.yaml
+# Architecture Specification v1.2 — Appendix A Canonical Numbers
+# All values are normative; changes require sign-off from all agents.
+
+market_sizing:
+  market_size_usd: 31_700_000_000_000     # FXC Intelligence 2024: $31.7T annual cross-border volume
+  addressable_market_note: "Annual cross-border B2B payment flow; failure liquidity gap"
+
+failure_rates:
+  conservative: 0.030    # 3.0% of transactions fail
+  midpoint:     0.035    # 3.5%
+  upside:       0.040    # 4.0%
+
+fee_parameters:
+  fee_floor_bps: 300                 # 300 bps annualized minimum
+  fee_floor_per_7day_cycle: 0.000575 # 300/10000 * 7/365 = 0.0575% per 7-day cycle
+  fee_formula: "fee = loan_amount * (fee_bps / 10000) * (days_funded / 365)"
+  warning: "DO NOT apply fee_bps as a flat per-cycle rate"
+
+latency_targets_ms:
+  p50: 100
+  p99: 200
+
+ml_performance:
+  baseline_auc: 0.739    # XGBoost baseline (prototype)
+  target_auc:   0.850    # GraphSAGE + TabTransformer production target
+
+dispute_classifier:
+  false_negative_rate_current: 0.08   # 8% current FN rate
+  false_negative_rate_target:  0.02   # 2% target FN rate
+  timeout_fallback_class: "DISPUTE_POSSIBLE"  # conservative on timeout
+
+aml_velocity:
+  dollar_cap_usd: 1_000_000           # per entity per 24hr rolling window
+  count_cap: 100                      # transactions per entity per 24hr
+  beneficiary_concentration_threshold: 0.80  # >80% to single beneficiary
+
+corridor_embeddings:
+  dimension: 128
+  rebuild_interval_days: 7            # weekly rebuild
+  storage: "Redis HASH"
+
+graphsage:
+  output_dim: 384
+  layers: 2
+  aggregator: "MEAN"
+  k_train: 10
+  k_infer: 5
+
+tabtransformer:
+  output_dim: 88
+  num_layers: 4
+  num_heads: 8
+  embed_dim_per_categorical: 32
+
+combined_model:
+  input_dim: 472    # 384 + 88
+  mlp_layers: [256, 64, 1]
+  loss_alpha: 0.7   # asymmetric BCE, false negatives more costly
+  fbeta_beta: 2     # F2-optimal threshold
+
+maturity_windows_days:
+  class_a: 3
+  class_b: 7
+  class_c: 21
+
+salt_rotation:
+  interval_days: 365
+  overlap_days: 30   # dual-salt overlap period
+
+retention:
+  decision_log_years: 7
+
+hpa_thresholds:
+  scale_out_queue_depth: 100
+  scale_in_queue_depth: 20
