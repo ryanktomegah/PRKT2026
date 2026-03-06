@@ -195,7 +195,7 @@ def _prepare_pipeline_data(records: List[dict]) -> List[dict]:
     for r in records:
         entry = dict(r)
         # Map is_failure → label (pipeline expectation)
-        entry.setdefault("label", r.get("is_failure", 0))
+        entry.setdefault("label", r["is_failure"])
         # Map timestamp_utc → numeric timestamp (pipeline expectation)
         ts_str = r.get("timestamp_utc", "")
         if ts_str:
