@@ -209,7 +209,7 @@ _REQUIRED_FIELDS = frozenset({
     "hour_of_day", "day_of_week", "settlement_lag_days", "prior_rejections_30d",
     "rejection_code", "rejection_class", "payment_status", "correspondent_depth",
     "data_quality_score", "message_priority", "is_failure", "corpus_tag",
-    "generation_timestamp", "generation_seed",
+    "generation_timestamp", "generation_seed", "timestamp_utc",
 })
 
 
@@ -265,10 +265,21 @@ class SyntheticPaymentGenerator:
         - corpus_tag: str = "SYNTHETIC_CORPUS"
         - generation_timestamp: str (ISO 8601)
         - generation_seed: int
+        - timestamp_utc: str (ISO 8601) — simulated payment submission time
         """
         records: list[dict] = []
         for _ in range(n_transactions):
             records.append(self._generate_base_record())
+
+        # Assign monotonically increasing timestamps across a 90-day window.
+        # Each record gets a timestamp consistent with its hour_of_day/day_of_week.
+        base_epoch = 1_704_067_200.0  # 2024-01-01T00:00:00Z
+        window_seconds = 90 * 86_400  # 90 days
+        offsets = np.sort(self._rng.uniform(0.0, window_seconds, size=n_transactions))
+        for i, record in enumerate(records):
+            ts = base_epoch + offsets[i]
+            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            record["timestamp_utc"] = dt.isoformat()
 
         # Two-pass failure assignment: compute risk scores, normalise, then sample.
         scores = np.array([self._compute_risk_score(r) for r in records], dtype=float)
@@ -291,6 +302,58 @@ class SyntheticPaymentGenerator:
             records[i] = record
 
         return records
+
+    def generate(self, n: int = 100_000) -> list[dict]:
+        """Convenience alias for :meth:`generate_dataset`.
+
+        Parameters
+        ----------
+        n:
+            Number of synthetic payment records to produce.
+
+        Returns
+        -------
+        list[dict]
+            Generated payment records with ``timestamp_utc`` field.
+        """
+        return self.generate_dataset(n_transactions=n)
+
+    def train_val_test_split(
+        self,
+        transactions: list[dict],
+        train_pct: float = 0.70,
+        val_pct: float = 0.15,
+    ) -> tuple[list[dict], list[dict], list[dict]]:
+        """Time-based train/val/test split — NO random shuffling.
+
+        Sorts records by ``timestamp_utc`` and cuts at the 70th and 85th
+        percentiles.  This avoids look-ahead bias on time-series financial
+        data, as required by the C1 spec.
+
+        Parameters
+        ----------
+        transactions:
+            Payment records containing a ``timestamp_utc`` field.
+        train_pct:
+            Fraction of data for training (default 0.70 → 70th percentile).
+        val_pct:
+            Fraction of data for validation (default 0.15 → 85th percentile).
+
+        Returns
+        -------
+        tuple[list[dict], list[dict], list[dict]]
+            ``(train, val, test)`` — disjoint, temporally ordered splits.
+        """
+        sorted_txns = sorted(transactions, key=lambda tx: tx["timestamp_utc"])
+        n = len(sorted_txns)
+        train_end = int(n * train_pct)
+        val_end = int(n * (train_pct + val_pct))
+
+        train = sorted_txns[:train_end]
+        val = sorted_txns[train_end:val_end]
+        test = sorted_txns[val_end:]
+
+        return train, val, test
 
     def generate_graph_data(self, transactions: list[dict]) -> dict:
         """

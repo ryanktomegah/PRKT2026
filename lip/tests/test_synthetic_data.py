@@ -633,3 +633,106 @@ class TestBICRegistry:
             assert info["region_type"] in {"G7", "EM", "HIGH_FRICTION"}, (
                 f"{corridor} has invalid region_type '{info['region_type']}'"
             )
+
+
+# ── TestTimestampUTC ─────────────────────────────────────────────────────────
+
+class TestTimestampUTC:
+    """Tests for the timestamp_utc field on generated records."""
+
+    @pytest.fixture(scope="class")
+    def ts_txns(self) -> list[dict]:
+        gen = SyntheticPaymentGenerator(seed=42)
+        return gen.generate_dataset(2_000)
+
+    def test_timestamp_utc_present(self, ts_txns: list[dict]) -> None:
+        """Every record has a timestamp_utc field."""
+        for tx in ts_txns:
+            assert "timestamp_utc" in tx, f"Record {tx['uetr']} missing timestamp_utc"
+
+    def test_timestamp_utc_is_iso_format(self, ts_txns: list[dict]) -> None:
+        """timestamp_utc is a valid ISO 8601 string."""
+        from datetime import datetime
+        for tx in ts_txns[:50]:
+            dt = datetime.fromisoformat(tx["timestamp_utc"])
+            assert dt.tzinfo is not None, "timestamp_utc should be timezone-aware"
+
+    def test_timestamps_span_90_day_window(self, ts_txns: list[dict]) -> None:
+        """Timestamps span approximately a 90-day window."""
+        from datetime import datetime
+        timestamps = [datetime.fromisoformat(tx["timestamp_utc"]) for tx in ts_txns]
+        span = (max(timestamps) - min(timestamps)).total_seconds()
+        # Should be close to 90 days (7,776,000 seconds), allow some tolerance
+        assert span > 80 * 86_400, f"Timestamp span too narrow: {span / 86_400:.1f} days"
+        assert span <= 90 * 86_400, f"Timestamp span too wide: {span / 86_400:.1f} days"
+
+
+# ── TestGenerateAlias ────────────────────────────────────────────────────────
+
+class TestGenerateAlias:
+    """Tests for the generate() convenience method."""
+
+    def test_generate_returns_correct_count(self) -> None:
+        gen = SyntheticPaymentGenerator(seed=42)
+        records = gen.generate(n=500)
+        assert len(records) == 500
+
+    def test_generate_same_as_generate_dataset(self) -> None:
+        gen1 = SyntheticPaymentGenerator(seed=99)
+        gen2 = SyntheticPaymentGenerator(seed=99)
+        r1 = gen1.generate(n=100)
+        r2 = gen2.generate_dataset(n_transactions=100)
+        assert [r["uetr"] for r in r1] == [r["uetr"] for r in r2]
+
+
+# ── TestTimeBasedSplit ───────────────────────────────────────────────────────
+
+class TestTimeBasedSplit:
+    """Tests for the time-based train_val_test_split instance method."""
+
+    @pytest.fixture(scope="class")
+    def split_data(self) -> tuple:
+        gen = SyntheticPaymentGenerator(seed=42)
+        records = gen.generate(n=2_000)
+        train, val, test = gen.train_val_test_split(records)
+        return records, train, val, test
+
+    def test_split_sizes_70_15_15(self, split_data: tuple) -> None:
+        records, train, val, test = split_data
+        n = len(records)
+        assert abs(len(train) / n - 0.70) <= 0.02
+        assert abs(len(val) / n - 0.15) <= 0.02
+        assert abs(len(test) / n - 0.15) <= 0.02
+
+    def test_split_is_temporally_ordered(self, split_data: tuple) -> None:
+        """Train timestamps < val timestamps < test timestamps."""
+        _, train, val, test = split_data
+        assert train[-1]["timestamp_utc"] <= val[0]["timestamp_utc"]
+        assert val[-1]["timestamp_utc"] <= test[0]["timestamp_utc"]
+
+    def test_split_covers_all_records(self, split_data: tuple) -> None:
+        records, train, val, test = split_data
+        orig_ids = {t["uetr"] for t in records}
+        split_ids = {t["uetr"] for t in train} | {t["uetr"] for t in val} | {t["uetr"] for t in test}
+        assert orig_ids == split_ids
+
+    def test_split_no_leakage(self, split_data: tuple) -> None:
+        _, train, val, test = split_data
+        train_ids = {t["uetr"] for t in train}
+        val_ids = {t["uetr"] for t in val}
+        test_ids = {t["uetr"] for t in test}
+        assert train_ids.isdisjoint(val_ids)
+        assert train_ids.isdisjoint(test_ids)
+        assert val_ids.isdisjoint(test_ids)
+
+    def test_split_deterministic(self) -> None:
+        """Same generator seed + records produce identical splits."""
+        gen1 = SyntheticPaymentGenerator(seed=42)
+        gen2 = SyntheticPaymentGenerator(seed=42)
+        r1 = gen1.generate(n=500)
+        r2 = gen2.generate(n=500)
+        t1, v1, ts1 = gen1.train_val_test_split(r1)
+        t2, v2, ts2 = gen2.train_val_test_split(r2)
+        assert [t["uetr"] for t in t1] == [t["uetr"] for t in t2]
+        assert [t["uetr"] for t in v1] == [t["uetr"] for t in v2]
+        assert [t["uetr"] for t in ts1] == [t["uetr"] for t in ts2]
