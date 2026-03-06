@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-from .synthetic_data import SyntheticPaymentGenerator, train_val_test_split
+from .synthetic_data import SyntheticPaymentGenerator
 from .training import TrainingConfig, TrainingPipeline
 from .model import ClassifierModel
 
@@ -276,6 +276,12 @@ def generate_model_card(
 
 def _build_audit_checklist() -> Dict[str, Any]:
     """C1 Spec Section 15 — Audit Gate 1.1 checklist.
+
+    Returns a dict where each key is a checklist item name and each value
+    is a dict with:
+    - ``status``: ``"PASS"`` or ``"NOT_CHECKABLE_YET"``
+    - ``detail``: Human-readable explanation of the check or why it cannot
+      be verified yet.
 
     Items that cannot be verified without production infrastructure
     are marked ``NOT_CHECKABLE_YET`` with a reason.

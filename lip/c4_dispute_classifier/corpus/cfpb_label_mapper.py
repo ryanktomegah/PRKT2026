@@ -113,7 +113,7 @@ def filter_and_label(
             continue
 
         lang = (record.get("tags") or "").strip()
-        if lang and lang.lower() not in ("", "older american", "servicemember"):
+        if lang and lang.lower() not in ("older american", "servicemember"):
             continue
 
         sub_issue = (record.get("sub_issue") or "").strip()
