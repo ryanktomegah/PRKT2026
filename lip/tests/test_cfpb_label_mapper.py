@@ -3,6 +3,11 @@ test_cfpb_label_mapper.py — Tests for C4 CFPB label mapper.
 """
 from __future__ import annotations
 
+import csv
+import json
+import os
+import tempfile
+
 import pytest
 
 from lip.c4_dispute_classifier.corpus.cfpb_label_mapper import (
@@ -11,6 +16,8 @@ from lip.c4_dispute_classifier.corpus.cfpb_label_mapper import (
     TARGET_PER_CLASS,
     filter_and_label,
     map_label,
+    save_corpus,
+    summary_stats,
 )
 
 
@@ -95,3 +102,66 @@ class TestFilterAndLabel:
 
     def test_target_per_class_default(self) -> None:
         assert TARGET_PER_CLASS == 12_500
+
+
+class TestSaveCorpus:
+    """Tests for save_corpus()."""
+
+    def _make_labelled(self) -> list:
+        return [
+            {
+                "consumer_complaint_narrative": "I was scammed",
+                "sub_issue": "Fraud or scam",
+                "dispute_class": "DISPUTE_CONFIRMED",
+            },
+            {
+                "consumer_complaint_narrative": "Wrong charge",
+                "sub_issue": "Charged wrong amount",
+                "dispute_class": "DISPUTE_POSSIBLE",
+            },
+        ]
+
+    def test_writes_csv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "corpus.csv")
+            save_corpus(self._make_labelled(), path)
+            assert os.path.exists(path)
+            with open(path, newline="") as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+            assert len(rows) == 2
+            assert rows[0]["dispute_class"] == "DISPUTE_CONFIRMED"
+
+    def test_empty_corpus(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "empty.csv")
+            save_corpus([], path)
+
+
+class TestSummaryStats:
+    """Tests for summary_stats()."""
+
+    def test_returns_expected_keys(self) -> None:
+        labelled = [
+            {
+                "consumer_complaint_narrative": "Some narrative text here",
+                "dispute_class": "DISPUTE_CONFIRMED",
+            }
+        ]
+        stats = summary_stats(labelled)
+        assert "total_records" in stats
+        assert "class_distribution" in stats
+        assert "narrative_length_min" in stats
+        assert "narrative_length_max" in stats
+        assert "narrative_length_mean" in stats
+        assert stats["total_records"] == 1
+
+    def test_class_distribution(self) -> None:
+        labelled = [
+            {"consumer_complaint_narrative": "a", "dispute_class": "DISPUTE_CONFIRMED"},
+            {"consumer_complaint_narrative": "b", "dispute_class": "DISPUTE_CONFIRMED"},
+            {"consumer_complaint_narrative": "c", "dispute_class": "NOT_DISPUTE"},
+        ]
+        stats = summary_stats(labelled)
+        assert stats["class_distribution"]["DISPUTE_CONFIRMED"] == 2
+        assert stats["class_distribution"]["NOT_DISPUTE"] == 1

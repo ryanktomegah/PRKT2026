@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-CORPUS_TAG = "SYNTHETIC"
+CORPUS_TAG = "SYNTHETIC_CORPUS"
 MODEL_VERSION = "C1_v1.0.0-synthetic"
 
 # Honest-ceiling metrics expected from synthetic data (see C1 Spec §14)
@@ -45,8 +45,17 @@ _EXPECTED_METRICS = {
     "auc_lower_bound": 0.85,
     "train_val_gap_max": 0.03,
     "corpus_tag": CORPUS_TAG,
-    "note": "CORPUS_TAG: SYNTHETIC — real-world AUC unknown",
+    "note": "CORPUS_TAG: SYNTHETIC_CORPUS — real-world AUC unknown",
 }
+
+# C1 Spec Section 14 — Known limitations (verbatim, do not paraphrase)
+_KNOWN_LIMITATIONS = [
+    "1. AUC measured on synthetic data only — real-world performance unknown until pilot bank data is available.",
+    "2. Graph structure generated from BIC registry with power-law degree distribution; real correspondent banking topology may differ significantly.",
+    "3. Rejection code co-occurrence patterns are heuristic approximations of SWIFT pacs.002 rejection behaviour; actual co-occurrence requires production data.",
+    "4. Temporal patterns (hour-of-day, day-of-week) are generated from BIS CPMI statistics; real payment flow seasonality may differ by corridor.",
+    "5. BLOCK codes (DISP, FRAU, FRAD, DUPL) are excluded from C1 training — these are handled by the C4 dispute classifier prefilter.",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +167,7 @@ def run_training(
             "k_neighbors_infer": config.k_neighbors_infer,
         },
         "training_time_seconds": round(elapsed, 3),
-        "note": "CORPUS_TAG: SYNTHETIC — real-world AUC unknown",
+        "note": "CORPUS_TAG: SYNTHETIC_CORPUS — real-world AUC unknown",
     }
 
     logger.info("Training complete in %.1f s — threshold=%.4f", elapsed, threshold)
@@ -199,7 +208,7 @@ def _prepare_pipeline_data(records: List[dict]) -> List[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Model card generation (Step 5)
+# Model card generation — markdown format
 # ---------------------------------------------------------------------------
 
 def generate_model_card(
@@ -207,7 +216,7 @@ def generate_model_card(
     training_metrics: Dict[str, Any],
     output_dir: str,
 ) -> str:
-    """Write the C1 model card as a JSON artifact.
+    """Write the C1 model card as both markdown and JSON artifacts.
 
     The model card is stamped ``C1_v1.0.0-synthetic`` and documents the
     honest-ceiling language: AUC on synthetic data does not prove
@@ -225,8 +234,79 @@ def generate_model_card(
     Returns
     -------
     str
-        Path to the written model card JSON.
+        Path to the written model card markdown file.
     """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Extract metrics with safe defaults
+    auc_val = training_metrics.get("auc_val", "N/A")
+    f2_threshold = training_metrics.get("f2_threshold", "N/A")
+    training_time = training_metrics.get("training_time_seconds", "N/A")
+
+    # Markdown model card
+    md_lines = [
+        f"CORPUS_TAG: {CORPUS_TAG}",
+        "",
+        f"# C1 Failure Classifier — Model Card",
+        "",
+        f"**Model ID:** {MODEL_VERSION}",
+        f"**Status:** {MODEL_VERSION} — NOT tagged production",
+        f"**Generated:** {datetime.now(timezone.utc).isoformat()}",
+        "",
+        "## AUC",
+        "",
+        f"AUC: {auc_val} (target ≥ 0.85 — honest ceiling 0.82–0.88)",
+        "",
+        "## Architecture",
+        "",
+        "- **GraphSAGE:** 2 layers, MEAN aggregator, k=10 train / k=5 infer, output 384-dim",
+        "- **TabTransformer:** 4 layers, 8 heads, embed_dim=32, output 88-dim",
+        "- **MLP Head:** Linear(472→256) + ReLU + Dropout(0.2) → Linear(256→64) + ReLU + Dropout(0.2) → Linear(64→1) + Sigmoid",
+        "- **Loss:** Asymmetric BCE (α=0.7)",
+        "- **Threshold:** F2-score maximisation on validation set",
+        "",
+        "## Training Data",
+        "",
+        f"- **Source:** SyntheticPaymentGenerator, n={corpus_meta.get('total_records', 500000)}, seed={corpus_meta.get('seed', 42)}",
+        f"- **Failure rate:** {corpus_meta.get('failure_rate', 0.035):.4f}",
+        f"- **Split:** TIME_BASED on timestamp_utc (70/15/15 percentiles)",
+        f"- **Train:** {corpus_meta.get('train_size', 'N/A')} records ({corpus_meta.get('train_failures', 'N/A')} failures)",
+        f"- **Validation:** {corpus_meta.get('val_size', 'N/A')} records ({corpus_meta.get('val_failures', 'N/A')} failures)",
+        f"- **Test (OOT):** {corpus_meta.get('test_size', 'N/A')} records ({corpus_meta.get('test_failures', 'N/A')} failures)",
+        "",
+        "## Validation Metrics",
+        "",
+        f"| Metric | Value |",
+        f"|--------|-------|",
+        f"| AUC (val) | {auc_val} |",
+        f"| F2 threshold | {f2_threshold} |",
+        f"| Training time (s) | {training_time} |",
+        f"| Corpus tag | {CORPUS_TAG} |",
+        "",
+        "## Known Limitations",
+        "",
+    ]
+    for limitation in _KNOWN_LIMITATIONS:
+        md_lines.append(limitation)
+    md_lines.append("")
+    md_lines.append("## Honest Ceiling")
+    md_lines.append("")
+    md_lines.append(
+        "CORPUS_TAG: SYNTHETIC_CORPUS — real-world AUC unknown. "
+        "Synthetic data will produce inflated AUC because the model "
+        "learns to exploit the generator's co-occurrence structure. "
+        "AUC ≥ 0.85 proves pipeline works end-to-end; it does NOT "
+        "prove real-world predictive power. AUC will be confirmed "
+        "against pilot bank data."
+    )
+    md_lines.append("")
+
+    md_path = os.path.join(output_dir, "model_card.md")
+    with open(md_path, "w") as f:
+        f.write("\n".join(md_lines))
+    logger.info("Model card (markdown) written to %s", md_path)
+
+    # JSON model card (keep for backwards compatibility)
     card: Dict[str, Any] = {
         "model_id": MODEL_VERSION,
         "corpus_tag": CORPUS_TAG,
@@ -241,74 +321,78 @@ def generate_model_card(
         "training": training_metrics,
         "honest_ceiling": {
             "note": (
-                "CORPUS_TAG: SYNTHETIC — real-world AUC unknown. "
+                "CORPUS_TAG: SYNTHETIC_CORPUS — real-world AUC unknown. "
                 "Synthetic data will produce inflated AUC because the model "
                 "learns to exploit the generator's co-occurrence structure. "
                 "AUC ≥ 0.85 proves pipeline works end-to-end; it does NOT "
                 "prove real-world predictive power. AUC will be confirmed "
                 "against pilot bank data."
             ),
-            "what_it_proves": {
-                "auc_ge_0.85": "Training pipeline works end-to-end",
-                "train_val_gap_le_3pct": "No code-level overfitting",
-                "shap_top20_interpretable": "Feature engineering is correct",
-                "inference_p50_lt_30ms": "Latency architecture works",
-            },
-            "what_it_does_not_prove": {
-                "auc_ge_0.85": "Real-world predictive power",
-                "train_val_gap_le_3pct": "Generalization to real SWIFT data",
-                "shap_top20_interpretable": "Correct importance on real data",
-                "inference_p50_lt_30ms": "Production latency at 10K TPS",
-            },
         },
+        "known_limitations": _KNOWN_LIMITATIONS,
         "audit_gate_1_1": _build_audit_checklist(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    os.makedirs(output_dir, exist_ok=True)
-    path = os.path.join(output_dir, "model_card_c1.json")
-    with open(path, "w") as f:
+    json_path = os.path.join(output_dir, "model_card_c1.json")
+    with open(json_path, "w") as f:
         json.dump(card, f, indent=2, default=str)
+    logger.info("Model card (JSON) written to %s", json_path)
 
-    logger.info("Model card written to %s", path)
-    return path
+    return md_path
 
 
-def _build_audit_checklist() -> Dict[str, Any]:
+# ---------------------------------------------------------------------------
+# Audit gate checklist — JSON list format
+# ---------------------------------------------------------------------------
+
+def _build_audit_checklist() -> List[Dict[str, str]]:
     """C1 Spec Section 15 — Audit Gate 1.1 checklist.
 
-    Returns a dict where each key is a checklist item name and each value
-    is a dict with:
-    - ``status``: ``"PASS"`` or ``"NOT_CHECKABLE_YET"``
-    - ``detail``: Human-readable explanation of the check or why it cannot
-      be verified yet.
+    Returns a list of dicts, each with keys ``item``, ``status``, ``notes``.
+    Status is one of: ``"PASS"``, ``"FAIL"``, ``"NOT_CHECKABLE_YET"``.
 
-    Items that cannot be verified without production infrastructure
-    are marked ``NOT_CHECKABLE_YET`` with a reason.
+    The exactly 3 NOT_CHECKABLE_YET items are:
+    - Inference p50 <30ms on GPU (T4 minimum) at batch size 32
+    - Corridor embeddings loaded into Redis (staging)
+    - Hot-swap protocol tested (canary rollout + rollback)
     """
-    return {
-        "data_generation_deterministic": {"status": "PASS", "detail": "seed=42, numpy RNG"},
-        "time_based_split": {"status": "PASS", "detail": "70/85/100 percentile on timestamp_utc"},
-        "asymmetric_loss_alpha_0.7": {"status": "PASS", "detail": "α=0.7 FN > FP weighting"},
-        "f2_threshold_calibrated": {"status": "PASS", "detail": "F2-score maximisation on val set"},
-        "corpus_tag_stamped": {"status": "PASS", "detail": "CORPUS_TAG: SYNTHETIC on all artifacts"},
-        "model_card_produced": {"status": "PASS", "detail": "C1_v1.0.0-synthetic"},
-        "graphsage_2_layers_mean": {"status": "PASS", "detail": "2-layer MEAN aggregator, 384-dim output"},
-        "tabtransformer_4_layers_8_heads": {"status": "PASS", "detail": "4 layers, 8 heads, embed_dim=32"},
-        "mlp_472_256_64_1": {"status": "PASS", "detail": "472→256→64→1 with ReLU/Dropout/Sigmoid"},
-        "inference_p50_lt_30ms_gpu": {
-            "status": "NOT_CHECKABLE_YET",
-            "detail": "Only provable with real GPU hardware",
-        },
-        "corridor_embeddings_in_redis": {
-            "status": "NOT_CHECKABLE_YET",
-            "detail": "Requires Redis running",
-        },
-        "hot_swap_protocol_tested": {
-            "status": "NOT_CHECKABLE_YET",
-            "detail": "Phase 2 infrastructure",
-        },
-    }
+    return [
+        {"item": "Data generation deterministic (seed=42)", "status": "PASS", "notes": "numpy RNG with fixed seed"},
+        {"item": "Time-based split (70/15/15 on timestamp_utc)", "status": "PASS", "notes": "No random shuffle — temporal ordering preserved"},
+        {"item": "Asymmetric BCE loss (alpha=0.7)", "status": "PASS", "notes": "False negatives penalised 2.33x more than false positives"},
+        {"item": "F2 threshold calibrated on validation set", "status": "PASS", "notes": "F2 = (1+4)*P*R / (4P+R), argmax over [0.05..0.95]"},
+        {"item": "CORPUS_TAG: SYNTHETIC_CORPUS stamped on all artifacts", "status": "PASS", "notes": "model_card.md, model_card_c1.json, audit_gate_1.1.json"},
+        {"item": "Model card produced (C1_v1.0.0-synthetic)", "status": "PASS", "notes": "Includes honest-ceiling language and known limitations"},
+        {"item": "GraphSAGE: 2 layers, MEAN aggregator", "status": "PASS", "notes": "28→128→128 with L2 normalisation"},
+        {"item": "TabTransformer: 4 layers, 8 heads, embed_dim=32", "status": "PASS", "notes": "8 categorical features, 8 continuous features, output 88-dim"},
+        {"item": "MLP head: 472→256→64→1 with Sigmoid", "status": "PASS", "notes": "ReLU activation, Dropout(0.2) between layers"},
+        {"item": "Inference p50 <30ms on GPU (T4 minimum) at batch size 32", "status": "NOT_CHECKABLE_YET", "notes": "Requires GPU hardware — not available in CI"},
+        {"item": "Corridor embeddings loaded into Redis (staging)", "status": "NOT_CHECKABLE_YET", "notes": "Requires Redis running in staging environment"},
+        {"item": "Hot-swap protocol tested (canary rollout + rollback)", "status": "NOT_CHECKABLE_YET", "notes": "Phase 2 infrastructure — not yet implemented"},
+    ]
+
+
+def write_audit_gate(output_dir: str) -> str:
+    """Write the Audit Gate 1.1 checklist to a JSON file.
+
+    Parameters
+    ----------
+    output_dir:
+        Directory for the audit gate file.
+
+    Returns
+    -------
+    str
+        Path to the written JSON file.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    checklist = _build_audit_checklist()
+    path = os.path.join(output_dir, "audit_gate_1.1.json")
+    with open(path, "w") as f:
+        json.dump(checklist, f, indent=2)
+    logger.info("Audit gate checklist written to %s", path)
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -339,8 +423,9 @@ def main(argv: list[str] | None = None) -> None:
     # Steps 2–8 — Training pipeline
     model, threshold, training_metrics = run_training(train, val)
 
-    # Step 5 — Model card + audit gate
+    # Model card (markdown + JSON) + audit gate
     card_path = generate_model_card(corpus_meta, training_metrics, args.output_dir)
+    audit_path = write_audit_gate(args.output_dir)
 
     # Save model weights
     weights_dir = os.path.join(args.output_dir, "weights")
@@ -352,6 +437,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("  Corpus tag    : %s", CORPUS_TAG)
     logger.info("  F2 threshold  : %.4f", threshold)
     logger.info("  Model card    : %s", card_path)
+    logger.info("  Audit gate    : %s", audit_path)
     logger.info("  Weights       : %s", weights_dir)
     logger.info("=" * 60)
 

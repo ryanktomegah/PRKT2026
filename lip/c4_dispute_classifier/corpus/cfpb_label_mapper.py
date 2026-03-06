@@ -15,13 +15,24 @@ Records are filtered to those with a non-null ``consumer_complaint_narrative``
 in English, then labelled using the mapping below.
 
 Target: 50K records balanced across four classes.
+
+Usage:
+    python -m lip.c4_dispute_classifier.corpus.cfpb_label_mapper \\
+        --input /path/to/complaints.csv \\
+        --output /path/to/labelled_corpus.csv \\
+        --target-per-class 12500
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import io
+import json
 import logging
+import os
+import sys
+from collections import Counter
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -161,3 +172,137 @@ def load_cfpb_csv(path: str) -> List[Dict[str, str]]:
             records.append(dict(row))
     logger.info("Loaded %d CFPB records from %s", len(records), path)
     return records
+
+
+def save_corpus(
+    labelled: List[Dict[str, str]],
+    output_path: str,
+) -> str:
+    """Write the labelled corpus to a CSV file.
+
+    Parameters
+    ----------
+    labelled:
+        Labelled CFPB records (output of :func:`filter_and_label`).
+    output_path:
+        Destination CSV path.
+
+    Returns
+    -------
+    str
+        The path written to.
+    """
+    if not labelled:
+        logger.warning("save_corpus: no records to write")
+        return output_path
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+    fieldnames = list(labelled[0].keys())
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(labelled)
+
+    logger.info("Saved %d labelled records to %s", len(labelled), output_path)
+    return output_path
+
+
+def summary_stats(labelled: List[Dict[str, str]]) -> Dict[str, object]:
+    """Compute summary statistics for the labelled corpus.
+
+    Parameters
+    ----------
+    labelled:
+        Labelled CFPB records.
+
+    Returns
+    -------
+    Dict[str, object]
+        Summary including total count, per-class counts, and narrative
+        length statistics.
+    """
+    class_counter: Counter = Counter()
+    narrative_lengths: List[int] = []
+
+    for record in labelled:
+        cls = record.get("dispute_class", "UNKNOWN")
+        class_counter[cls] += 1
+        narrative = (record.get("consumer_complaint_narrative") or "").strip()
+        narrative_lengths.append(len(narrative))
+
+    stats: Dict[str, object] = {
+        "total_records": len(labelled),
+        "class_distribution": dict(class_counter),
+        "narrative_length_min": min(narrative_lengths) if narrative_lengths else 0,
+        "narrative_length_max": max(narrative_lengths) if narrative_lengths else 0,
+        "narrative_length_mean": (
+            sum(narrative_lengths) / len(narrative_lengths)
+            if narrative_lengths else 0.0
+        ),
+    }
+    return stats
+
+
+# ---------------------------------------------------------------------------
+# CLI entry-point
+# ---------------------------------------------------------------------------
+
+def main(argv: list[str] | None = None) -> None:
+    """Command-line entry point for CFPB label mapping.
+
+    Usage::
+
+        python -m lip.c4_dispute_classifier.corpus.cfpb_label_mapper \\
+            --input /path/to/complaints.csv \\
+            --output /path/to/labelled_corpus.csv \\
+            --target-per-class 12500
+    """
+    parser = argparse.ArgumentParser(
+        description="Map CFPB complaint sub-issues to C4 dispute classes",
+    )
+    parser.add_argument(
+        "--input", type=str, required=True,
+        help="Path to raw CFPB complaints CSV",
+    )
+    parser.add_argument(
+        "--output", type=str, required=True,
+        help="Path for output labelled CSV",
+    )
+    parser.add_argument(
+        "--target-per-class", type=int, default=TARGET_PER_CLASS,
+        help=f"Target records per class (default: {TARGET_PER_CLASS})",
+    )
+    parser.add_argument(
+        "--stats-output", type=str, default=None,
+        help="Optional path for summary statistics JSON",
+    )
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    # Load
+    records = load_cfpb_csv(args.input)
+
+    # Filter and label
+    labelled = filter_and_label(records, target_per_class=args.target_per_class)
+
+    # Save
+    save_corpus(labelled, args.output)
+
+    # Summary
+    stats = summary_stats(labelled)
+    logger.info("Summary: %s", json.dumps(stats, indent=2, default=str))
+
+    if args.stats_output:
+        os.makedirs(os.path.dirname(args.stats_output) or ".", exist_ok=True)
+        with open(args.stats_output, "w") as f:
+            json.dump(stats, f, indent=2, default=str)
+        logger.info("Summary stats written to %s", args.stats_output)
+
+
+if __name__ == "__main__":
+    main()
