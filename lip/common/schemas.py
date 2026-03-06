@@ -21,17 +21,17 @@ from pydantic import BaseModel, ConfigDict, Field
 # ---------------------------------------------------------------------------
 
 class DisputeClass(str, enum.Enum):
-    """Four-class taxonomy for payment disputes (Architecture Spec S4.4).
+    """Four-class taxonomy for C4 Dispute Classifier output (Architecture Spec S4.4).
 
-    FRAUD          — Unauthorised / fraudulent instruction.
-    COMPLIANCE     — AML / sanctions / regulatory hold.
-    OPERATIONAL    — Routing error, incorrect details, duplicate, etc.
-    COUNTERPARTY   — Receiving-institution refusal or delay.
+    NOT_DISPUTE        — Operational delay; no buyer-seller conflict. Bridge eligible.
+    DISPUTE_CONFIRMED  — Explicit commercial dispute. Hard block.
+    DISPUTE_POSSIBLE   — Ambiguous language. Hard block (conservative).
+    NEGOTIATION        — Partial payment / dispute resolution in progress. Hard block.
     """
-    FRAUD        = "FRAUD"
-    COMPLIANCE   = "COMPLIANCE"
-    OPERATIONAL  = "OPERATIONAL"
-    COUNTERPARTY = "COUNTERPARTY"
+    NOT_DISPUTE       = "NOT_DISPUTE"
+    DISPUTE_CONFIRMED = "DISPUTE_CONFIRMED"
+    DISPUTE_POSSIBLE  = "DISPUTE_POSSIBLE"
+    NEGOTIATION       = "NEGOTIATION"
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +244,10 @@ class DisputeResponse(BaseModel):
     uetr: UUID = Field(..., description="Echo of the request UETR.")
     dispute_class: DisputeClass = Field(
         ...,
-        description="Predicted dispute category from the four-class taxonomy.",
+        description=(
+            "C4 classifier output: NOT_DISPUTE | DISPUTE_CONFIRMED | "
+            "DISPUTE_POSSIBLE | NEGOTIATION."
+        ),
     )
     confidence: float = Field(
         ...,

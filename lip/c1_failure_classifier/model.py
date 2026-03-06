@@ -144,6 +144,82 @@ class MLPHead:
         self.W3 = np.asarray(weights["W3"], dtype=np.float64)
         self.b3 = np.asarray(weights["b3"], dtype=np.float64)
 
+    def backward(
+        self,
+        x_input: np.ndarray,
+        y_true: float,
+        prob: float,
+        alpha: float,
+        lr: float,
+    ) -> np.ndarray:
+        """Analytical backpropagation through the MLP head.
+
+        Computes gradients via chain rule through
+        ``Linear → ReLU → Linear → ReLU → Linear → Sigmoid`` and updates
+        all weight matrices and bias vectors in place.
+
+        Parameters
+        ----------
+        x_input:
+            The fused input vector of shape ``(input_dim,)`` that was fed into
+            :meth:`forward`.
+        y_true:
+            Ground-truth binary label (0 or 1).
+        prob:
+            Predicted probability from the matching :meth:`forward` call.
+        alpha:
+            Asymmetric BCE positive-class weight (same value as used in loss).
+        lr:
+            Learning rate for the gradient update.
+
+        Returns
+        -------
+        np.ndarray
+            Gradient of the loss w.r.t. ``x_input``, shape ``(input_dim,)``.
+            Consumed by upstream encoders (GraphSAGE / TabTransformer) to
+            continue the backpropagation chain.
+        """
+        x = np.asarray(x_input, dtype=np.float64).reshape(-1)
+
+        # Recompute forward intermediates needed for gradient computation
+        pre_h1 = x @ self.W1 + self.b1             # (hidden1,)
+        h1 = np.maximum(0.0, pre_h1)               # ReLU
+        pre_h2 = h1 @ self.W2 + self.b2            # (hidden2,)
+        h2 = np.maximum(0.0, pre_h2)               # ReLU
+
+        # dL/d_logit for asymmetric BCE + sigmoid, combined:
+        #   dL/d_logit = (1-alpha)*(1-y)*p  -  alpha*y*(1-p)
+        p = float(np.clip(prob, 1e-12, 1.0 - 1e-12))
+        y = float(y_true)
+        d_logit = (1.0 - alpha) * (1.0 - y) * p - alpha * y * (1.0 - p)
+
+        # --- Layer 3: logit = h2 @ W3 + b3 ---
+        dW3 = np.outer(h2, np.array([d_logit]))    # (hidden2, 1)
+        db3 = np.array([d_logit])                  # (1,)
+        d_h2 = self.W3[:, 0] * d_logit             # (hidden2,)
+
+        # --- Layer 2 ReLU ---
+        d_pre_h2 = d_h2 * (pre_h2 > 0)            # (hidden2,)
+        dW2 = np.outer(h1, d_pre_h2)              # (hidden1, hidden2)
+        db2 = d_pre_h2.copy()
+        d_h1 = self.W2 @ d_pre_h2                 # (hidden1,)
+
+        # --- Layer 1 ReLU ---
+        d_pre_h1 = d_h1 * (pre_h1 > 0)            # (hidden1,)
+        dW1 = np.outer(x, d_pre_h1)               # (input_dim, hidden1)
+        db1 = d_pre_h1.copy()
+        d_x = self.W1 @ d_pre_h1                  # (input_dim,)
+
+        # Update weights in place
+        self.W1 -= lr * dW1
+        self.b1 -= lr * db1
+        self.W2 -= lr * dW2
+        self.b2 -= lr * db2
+        self.W3 -= lr * dW3
+        self.b3 -= lr * db3
+
+        return d_x
+
 
 # ---------------------------------------------------------------------------
 # ClassifierModel

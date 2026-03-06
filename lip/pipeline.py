@@ -415,7 +415,11 @@ class LIPPipeline:
         beneficiary_id: str,
         tracker: LatencyTracker,
     ):
-        """Run C6 AML velocity check in a thread."""
+        """Run C6 AML combined gate (sanctions → velocity → anomaly) in a thread.
+
+        Accepts both AMLChecker (preferred) and legacy VelocityChecker instances.
+        The result must expose a ``passed`` attribute.
+        """
         with tracker.measure("c6"):
             return self._c6.check(entity_id, event.amount, beneficiary_id)
 

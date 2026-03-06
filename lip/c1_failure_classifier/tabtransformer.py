@@ -410,3 +410,126 @@ class TabTransformerModel:
             }
             layer.set_weights(layer_weights)
         logger.info("TabTransformerModel weights loaded from %s", path)
+
+    def get_weights_dict(self) -> dict:
+        """Return a shallow copy of all model weights as a plain dict."""
+        d = {
+            "W_in": self.W_in.copy(),
+            "b_in": self.b_in.copy(),
+            "W_out": self.W_out.copy(),
+            "b_out": self.b_out.copy(),
+        }
+        for i, layer in enumerate(self.layers):
+            for k, v in layer.get_weights().items():
+                d[f"layer{i}_{k}"] = v.copy()
+        return d
+
+    def set_weights_dict(self, d: dict) -> None:
+        """Restore weights from a dict previously returned by :meth:`get_weights_dict`."""
+        self.W_in = np.asarray(d["W_in"], dtype=np.float64)
+        self.b_in = np.asarray(d["b_in"], dtype=np.float64)
+        self.W_out = np.asarray(d["W_out"], dtype=np.float64)
+        self.b_out = np.asarray(d["b_out"], dtype=np.float64)
+        for i, layer in enumerate(self.layers):
+            layer_weights = {
+                k[len(f"layer{i}_"):]: np.asarray(v, dtype=np.float64)
+                for k, v in d.items()
+                if k.startswith(f"layer{i}_")
+            }
+            layer.set_weights(layer_weights)
+
+    def backward(
+        self,
+        x_input: np.ndarray,
+        d_tab_emb: np.ndarray,
+        lr: float,
+    ) -> None:
+        """Analytical backprop through W_out, FFN sub-layers, and W_in.
+
+        Attention weight matrices are not updated — their Jacobian is complex
+        and the signal through the residual path is sufficient for the reference
+        implementation.  LayerNorm and residual connections are approximated:
+        the residual is treated as a straight-through path and the LayerNorm
+        Jacobian is approximated as the identity.
+
+        Parameters
+        ----------
+        x_input:
+            The raw 88-dim tabular feature vector fed into :meth:`forward`.
+        d_tab_emb:
+            Gradient of the loss w.r.t. the 88-dim TabTransformer output,
+            propagated back from the MLP head.
+        lr:
+            Learning rate for in-place weight updates.
+        """
+        x = np.asarray(x_input, dtype=np.float64).reshape(-1)
+        d_out = np.asarray(d_tab_emb, dtype=np.float64)
+
+        # Recompute forward pass, caching layer inputs
+        h = (x @ self.W_in + self.b_in).reshape(1, self.model_dim)  # (1, model_dim)
+        h_cache: List[np.ndarray] = [h.copy()]
+        for layer in self.layers:
+            h = layer.forward(h)
+            h_cache.append(h.copy())
+        pooled = np.mean(h, axis=0)  # (model_dim,) — trivial for seq_len=1
+
+        # --- Backprop output projection ---
+        dW_out = np.outer(pooled, d_out)    # (model_dim, output_dim)
+        db_out = d_out.copy()
+        d_pooled = self.W_out @ d_out       # (model_dim,)
+
+        # seq_len=1 → mean-pool is identity
+        d_h = d_pooled.reshape(1, self.model_dim)
+
+        # --- Backprop through transformer FFN layers (reverse order) ---
+        for i in range(len(self.layers) - 1, -1, -1):
+            layer = self.layers[i]
+            h_in_0 = h_cache[i][0]   # (model_dim,) — input to this layer
+
+            # Recompute FFN intermediates (approximating attn+LN as identity)
+            ff_pre = h_in_0 @ layer.W_ff1 + layer.b_ff1    # (ff_dim,)
+            ff_act = _gelu(ff_pre)                           # (ff_dim,)
+
+            d_h_0 = d_h[0]  # (model_dim,)
+
+            # Gradient through FFN output layer: ff_out = ff_act @ W_ff2 + b_ff2
+            dW_ff2 = np.outer(ff_act, d_h_0)               # (ff_dim, model_dim)
+            db_ff2 = d_h_0.copy()
+            d_ff_act = layer.W_ff2 @ d_h_0                 # (ff_dim,)
+
+            # GELU gradient (exact formula)
+            _c = 0.044715
+            _scale = np.sqrt(2.0 / np.pi)
+            tanh_arg = _scale * (ff_pre + _c * ff_pre ** 3)
+            tanh_val = np.tanh(tanh_arg)
+            sech2 = 1.0 - tanh_val ** 2
+            d_gelu_dx = (
+                0.5 * (1.0 + tanh_val)
+                + 0.5 * ff_pre * sech2 * _scale * (1.0 + 3.0 * _c * ff_pre ** 2)
+            )
+            d_ff_pre = d_ff_act * d_gelu_dx                # (ff_dim,)
+
+            dW_ff1 = np.outer(h_in_0, d_ff_pre)            # (model_dim, ff_dim)
+            db_ff1 = d_ff_pre.copy()
+
+            # Residual path: d_h carries through unchanged (straight-through)
+            # FFN input gradient also flows back (approximate LN as identity)
+            d_h_prev_0 = d_h_0 + layer.W_ff1 @ d_ff_pre   # (model_dim,)
+            d_h = d_h_prev_0.reshape(1, self.model_dim)
+
+            # Update FFN weights in place
+            layer.W_ff2 -= lr * dW_ff2
+            layer.b_ff2 -= lr * db_ff2
+            layer.W_ff1 -= lr * dW_ff1
+            layer.b_ff1 -= lr * db_ff1
+
+        # --- Backprop input projection ---
+        d_h_0 = d_h[0]                          # (model_dim,)
+        dW_in = np.outer(x, d_h_0)             # (input_dim, model_dim)
+        db_in = d_h_0.copy()
+
+        # Update projection weights in place
+        self.W_in -= lr * dW_in
+        self.b_in -= lr * db_in
+        self.W_out -= lr * dW_out
+        self.b_out -= lr * db_out

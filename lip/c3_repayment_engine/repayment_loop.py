@@ -1,6 +1,12 @@
 """
 repayment_loop.py — Settlement monitoring and auto-repayment trigger logic
 Architecture Spec S2.3: Dual-signal repayment
+
+Idempotency (Architecture Spec S11.2):
+  Redis SETNX ensures exactly one RepaymentInstruction per UETR across
+  distributed Flink instances.  Key: ``lip:repaid:{uetr}``
+  TTL: maturity_days + 45 days.
+  Falls back to an in-memory set when Redis is unavailable.
 """
 import logging
 import threading
@@ -173,6 +179,10 @@ class SettlementMonitor:
 
 # ── Repayment loop ────────────────────────────────────────────────────────────
 
+_REDIS_REPAID_PREFIX = "lip:repaid:"
+_REDIS_REPAID_TTL_EXTRA_DAYS = 45  # TTL buffer beyond maturity_days
+
+
 class RepaymentLoop:
     """Orchestrates settlement monitoring and maturity-based repayment triggers.
 
@@ -183,19 +193,29 @@ class RepaymentLoop:
     Architecture Spec S2.3: Dual-signal repayment:
       Signal 1 — Settlement confirmed on the external rail (SWIFT/FedNow/RTP/SEPA).
       Signal 2 — Maturity timer elapsed → buffer settlement triggered.
+
+    Idempotency (Architecture Spec S11.2):
+      When ``redis_client`` is provided, a Redis SETNX claim is placed on
+      ``lip:repaid:{uetr}`` before any repayment is processed.  A second
+      signal for the same UETR will find the key already set and be dropped.
+      Without Redis, an in-memory set provides single-process idempotency.
     """
 
     def __init__(
         self,
         monitor: SettlementMonitor,
         repayment_callback: Callable[[dict], None],
+        redis_client=None,
     ) -> None:
         self._monitor = monitor
         self._callback = repayment_callback
+        self._redis = redis_client
         self._active_loans: Dict[str, ActiveLoan] = {}  # loan_id → ActiveLoan
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        # In-memory idempotency fallback (single-process only)
+        self._repaid_uetrs: set = set()
 
     # ── Loan lifecycle ────────────────────────────────────────────────────────
 
@@ -217,6 +237,47 @@ class RepaymentLoop:
 
     # ── Repayment dispatch ────────────────────────────────────────────────────
 
+    def _claim_repayment(self, uetr: str, maturity_days: int) -> bool:
+        """Attempt to claim exclusive repayment rights for a UETR.
+
+        Returns True if the claim succeeded (this instance should process the
+        repayment).  Returns False if another instance already claimed it.
+
+        Uses Redis SETNX when available; falls back to an in-memory set for
+        single-process deployments.
+
+        TTL = maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS (days).
+        """
+        if self._redis is not None:
+            try:
+                key = f"{_REDIS_REPAID_PREFIX}{uetr}"
+                ttl_seconds = (maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS) * 86_400
+                result = self._redis.set(key, "1", nx=True, ex=ttl_seconds)
+                if result is None:
+                    logger.info(
+                        "Idempotency: repayment already claimed in Redis for uetr=%s — skipping",
+                        uetr,
+                    )
+                    return False
+                logger.debug("Idempotency: Redis claim acquired for uetr=%s", uetr)
+                return True
+            except Exception as exc:
+                logger.warning(
+                    "Redis SETNX failed for uetr=%s (%s); falling back to in-memory idempotency",
+                    uetr, exc,
+                )
+
+        # In-memory fallback
+        with self._lock:
+            if uetr in self._repaid_uetrs:
+                logger.info(
+                    "Idempotency: repayment already processed (in-memory) for uetr=%s — skipping",
+                    uetr,
+                )
+                return False
+            self._repaid_uetrs.add(uetr)
+        return True
+
     def trigger_repayment(
         self,
         loan: ActiveLoan,
@@ -225,9 +286,30 @@ class RepaymentLoop:
     ) -> dict:
         """Build a repayment record, invoke the callback, and deregister the loan.
 
+        Before processing, acquires an idempotency claim via Redis SETNX (or
+        in-memory set) to prevent duplicate repayments when multiple Flink
+        instances process the same UETR concurrently.
+
         Returns:
-            A repayment record dict with standardised fields.
+            A repayment record dict with standardised fields, or an empty dict
+            if the repayment was already processed (idempotency skip).
         """
+        # Derive maturity_days from loan state for TTL calculation
+        maturity_days = 7  # default (Class B)
+        try:
+            from .rejection_taxonomy import RejectionClass
+            cls_map = {
+                RejectionClass.CLASS_A.value: 3,
+                RejectionClass.CLASS_B.value: 7,
+                RejectionClass.CLASS_C.value: 21,
+            }
+            maturity_days = cls_map.get(loan.rejection_class, 7)
+        except Exception:
+            pass
+
+        if not self._claim_repayment(loan.uetr, maturity_days):
+            return {}
+
         now = _utcnow()
         days_funded = max(1, (now - loan.funded_at.replace(tzinfo=timezone.utc)
                               if loan.funded_at.tzinfo is None
@@ -301,7 +383,8 @@ class RepaymentLoop:
                     RepaymentTrigger.MATURITY_REACHED,
                     loan.principal,  # repay full principal on maturity
                 )
-                triggered.append(record)
+                if record:  # empty dict means idempotency skip
+                    triggered.append(record)
 
         return triggered
 
