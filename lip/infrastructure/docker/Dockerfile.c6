@@ -1,0 +1,43 @@
+# Dockerfile.c6 — C6 AML Velocity + Sanctions Container
+# Runs AMLChecker: sanctions screening → velocity controls → anomaly detection
+
+FROM python:3.11-slim
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c6-aml-velocity"
+LABEL description="LIP C6 AML gate — OFAC/EU/UN sanctions, velocity controls, Isolation Forest anomaly"
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir \
+    numpy>=1.26.0 \
+    scikit-learn>=1.4.0 \
+    pydantic>=2.5.0 \
+    redis>=5.0.0 \
+    cryptography>=42.0.0 \
+    pyyaml>=6.0 \
+    fastapi>=0.110.0 \
+    uvicorn[standard]>=0.27.0
+
+# Copy LIP package (c6 + common)
+COPY lip/ ./lip/
+WORKDIR /app/lip
+RUN pip install --no-cache-dir -e .
+WORKDIR /app
+
+# Sanctions lists mounted at /data/sanctions/
+# AML anomaly model artifact mounted at /models/anomaly.pkl
+RUN mkdir -p /data/sanctions /models
+
+# Non-root user for security — AML service handles sensitive data
+RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app /data /models
+USER lipuser
+
+# AML velocity salt sourced from environment (never hard-coded)
+# Redis for velocity rolling windows and cross-licensee aggregation
+ENV REDIS_URL="redis://redis:6379/0" \
+    AML_SALT_SECRET_NAME="lip/aml/velocity_salt"
+
+EXPOSE 8082
+
+CMD ["uvicorn", "lip.c6_aml_velocity.api:app", "--host", "0.0.0.0", "--port", "8082", "--workers", "2"]

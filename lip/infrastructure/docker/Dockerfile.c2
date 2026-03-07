@@ -1,0 +1,37 @@
+# Dockerfile.c2 — C2 PD Model Inference Container
+# CPU-only LightGBM inference; no GPU required
+
+FROM python:3.11-slim
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c2-pd-model"
+LABEL description="LIP C2 LightGBM PD model — bridge loan pricing and fee computation"
+
+WORKDIR /app
+
+# Install system dependencies required by LightGBM
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt requirements-ml.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-ml.txt
+
+# Copy LIP package
+COPY lip/ ./lip/
+WORKDIR /app/lip
+RUN pip install --no-cache-dir -e .
+WORKDIR /app
+
+# Model artifacts mounted at /models (c2_model.json)
+RUN mkdir -p /models
+
+# Non-root user for security
+RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app /models
+USER lipuser
+
+# FastAPI inference server
+EXPOSE 8080
+
+CMD ["uvicorn", "lip.c2_pd_model.inference:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "4"]

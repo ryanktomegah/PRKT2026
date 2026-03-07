@@ -1,0 +1,86 @@
+name: LIP CI
+
+on:
+  push:
+    branches: ["main", "claude/*", "feature/*", "fix/*"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install core dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install ML + dev dependencies
+        run: pip install -r requirements-ml.txt
+
+      - name: Install LIP package (editable)
+        working-directory: lip
+        run: pip install -e .
+
+      - name: Run tests
+        run: |
+          PYTHONPATH=. python -m pytest lip/tests/ \
+            --tb=short \
+            -q \
+            --ignore=lip/tests/test_e2e_pipeline.py \
+            -x
+        # test_e2e_pipeline.py requires live Redis/Kafka — excluded from unit CI
+
+      - name: Run tests with coverage (3.11 only)
+        if: matrix.python-version == '3.11'
+        run: |
+          PYTHONPATH=. python -m pytest lip/tests/ \
+            --tb=short \
+            --cov=lip \
+            --cov-report=term-missing \
+            --cov-fail-under=60 \
+            --ignore=lip/tests/test_e2e_pipeline.py \
+            -q
+
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install ruff>=0.3.0
+      - name: Run ruff
+        run: ruff check lip/ --output-format=github
+
+  typecheck:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt -r requirements-ml.txt
+          pip install mypy>=1.8.0
+          cd lip && pip install -e .
+      - name: Run mypy
+        run: mypy lip/ --ignore-missing-imports --no-strict-optional
+        continue-on-error: true   # advisory for now; promote to required once stubs are complete
