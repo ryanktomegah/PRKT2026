@@ -381,7 +381,9 @@ def validate_c2_corpus(records: List[dict]) -> CorpusReport:
         records,
         corpus_type="C2",
         label_field="label",
-        target_positive_rate=0.055,   # ~5.5% overall default rate
+        # True expected rate from tier weights: 0.40*0.03 + 0.35*0.06 + 0.25*0.12 = 0.063
+        # Tier-3 corridor-risk bump adds ~0.5pp; tolerance=15% gives [0.054, 0.073]
+        target_positive_rate=0.063,
         ts_field="timestamp",
         min_temporal_span_days=365,   # SR 11-7: 12-month minimum
     )
