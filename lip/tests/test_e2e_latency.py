@@ -11,14 +11,6 @@ Verifies:
 from __future__ import annotations
 
 import time
-from decimal import Decimal
-
-import pytest
-
-from lip.instrumentation import LatencyTracker
-from lip.pipeline import LIPPipeline
-
-from .conftest import make_event, MockC1Engine, MockC2Engine, _HMAC_KEY, _SALT
 
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c6_aml_velocity.velocity import VelocityChecker
@@ -27,6 +19,10 @@ from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.instrumentation import LatencyTracker
+from lip.pipeline import LIPPipeline
+
+from .conftest import _HMAC_KEY, _SALT, MockC1Engine, MockC2Engine, make_event
 
 
 def _build_pipeline(failure_probability=0.80, global_tracker=None):

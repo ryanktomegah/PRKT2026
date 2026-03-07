@@ -2,10 +2,8 @@
 prompt.py — Structured prompt construction for LLM dispute classification
 C4 Spec Section 5.3
 """
-from typing import Optional
 
 from .taxonomy import DisputeClass
-
 
 # ---------------------------------------------------------------------------
 # System prompt — stable, version-controlled

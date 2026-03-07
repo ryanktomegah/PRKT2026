@@ -8,10 +8,9 @@ Three-entity role mapping:
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
 
-from enum import IntEnum
-from dataclasses import dataclass
-from typing import Optional
 import hashlib
+from dataclasses import dataclass
+from enum import IntEnum
 
 
 class Tier(IntEnum):

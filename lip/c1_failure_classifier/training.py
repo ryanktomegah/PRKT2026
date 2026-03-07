@@ -17,13 +17,12 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .graph_builder import BICGraphBuilder, PaymentEdge
-from .features import FeaturePipeline, TabularFeatureEngineer, TABULAR_FEATURE_DIM
-from .graphsage import GraphSAGEModel
-from .tabtransformer import TabTransformerModel
-from .model import ClassifierModel, MLPHead, create_default_model
 from .embeddings import CorridorEmbeddingPipeline
-
+from .features import FeaturePipeline
+from .graph_builder import BICGraphBuilder, PaymentEdge
+from .graphsage import GraphSAGEModel
+from .model import ClassifierModel, MLPHead
+from .tabtransformer import TabTransformerModel
 
 # ---------------------------------------------------------------------------
 # Utility

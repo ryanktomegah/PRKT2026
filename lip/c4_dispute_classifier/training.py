@@ -4,7 +4,7 @@ C4 Spec Section 12
 """
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,8 @@ class QLoRATrainer:
     def _check_peft_available(self) -> bool:
         """Return True if both ``transformers`` and ``peft`` are importable."""
         try:
+            import peft  # noqa: F401
             import transformers  # noqa: F401
-            import peft          # noqa: F401
             return True
         except ImportError:
             logger.warning(
@@ -83,8 +83,8 @@ class QLoRATrainer:
 
         Requires ``transformers``, ``peft``, and a CUDA-capable GPU.
         """
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
         import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
         logger.info("Loading base model: %s", self.config.base_model_name)
 
@@ -253,7 +253,7 @@ class QLoRATrainer:
             }
 
         # --- Real training path ---
-        from transformers import TrainingArguments, Trainer
+        from transformers import Trainer, TrainingArguments
 
         self._load_base_model()
         self._apply_lora()

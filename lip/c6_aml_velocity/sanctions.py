@@ -48,7 +48,8 @@ class SanctionsScreener:
             self._lists = {k: set(v) for k, v in MOCK_SANCTIONS_ENTRIES.items()}
 
     def _load_lists(self, path: str) -> None:
-        import json, os
+        import json
+        import os
         if not os.path.exists(path):
             logger.warning("Sanctions list file not found: %s; using mock data", path)
             self._lists = {k: set(v) for k, v in MOCK_SANCTIONS_ENTRIES.items()}

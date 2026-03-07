@@ -8,7 +8,6 @@ embeddings.py — Corridor embedding pipeline
 C1 Spec Section 8: 128-dim vectors in Redis, weekly rebuild, cold start
 """
 
-import hashlib
 import json
 import logging
 import time

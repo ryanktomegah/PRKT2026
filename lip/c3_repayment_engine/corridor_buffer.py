@@ -12,10 +12,10 @@ Tier 3: Pure P95 from data (> 100 observations)
 """
 import logging
 import time
-import numpy as np
 from dataclasses import dataclass, field
-from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 

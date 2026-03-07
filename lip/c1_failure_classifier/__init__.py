@@ -18,8 +18,8 @@ import logging
 from typing import Optional
 
 from .embeddings import CorridorEmbeddingPipeline
-from .model import ClassifierModel, create_default_model
 from .inference import InferenceEngine
+from .model import ClassifierModel, create_default_model
 
 __all__ = [
     "ClassifierModel",

@@ -13,17 +13,17 @@ from typing import Optional
 
 import pytest
 
+from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
+from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
+from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
+from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
-from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
-from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
-from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
-from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.instrumentation import LatencyTracker
 from lip.pipeline import LIPPipeline
 

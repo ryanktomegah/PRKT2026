@@ -3,7 +3,6 @@ test_synthetic_data.py — Tests for C1 Failure Classifier synthetic data genera
 """
 from __future__ import annotations
 
-import uuid
 from collections import Counter
 
 import numpy as np
@@ -13,13 +12,11 @@ from lip.c1_failure_classifier.synthetic_data import (
     BIC_REGISTRY,
     CLASS_DISTRIBUTION,
     CORRIDOR_DEFINITIONS,
-    FAILURE_RATE,
     SyntheticPaymentGenerator,
     apply_smote,
     train_val_test_split,
 )
 from lip.c3_repayment_engine.rejection_taxonomy import REJECTION_CODE_TAXONOMY, RejectionClass
-
 
 # ── Shared fixtures ────────────────────────────────────────────────────────────
 
@@ -547,7 +544,7 @@ class TestValidation:
         gen = SyntheticPaymentGenerator(seed=42)
         result = gen.validate_dataset(validated_txns)
         assert result["all_pass"], (
-            f"Valid dataset failed validation: "
+            "Valid dataset failed validation: "
             + "; ".join(
                 f"{k}={v}" for k, v in result.items()
                 if isinstance(v, dict) and not v.get("pass", True)

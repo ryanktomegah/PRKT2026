@@ -9,11 +9,11 @@ Three-entity role mapping:
 """
 
 import math
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 
-from .tier_assignment import Tier, hash_borrower_id
+from .tier_assignment import Tier
 
 # ---------------------------------------------------------------------------
 # Feature-name registries

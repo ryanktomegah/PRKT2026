@@ -8,15 +8,14 @@ Critical invariants:
   - floor applied before per-cycle fee computation
   - fee_bps is ANNUALIZED, not flat per-cycle
 """
-import pytest
 from decimal import Decimal
 
 from lip.c2_pd_model.fee import (
+    FEE_FLOOR_BPS,
+    FEE_FLOOR_PER_7DAY_CYCLE,
     compute_fee_bps_from_el,
     compute_loan_fee,
     verify_floor_applies,
-    FEE_FLOOR_BPS,
-    FEE_FLOOR_PER_7DAY_CYCLE,
 )
 
 

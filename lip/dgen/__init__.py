@@ -21,9 +21,9 @@ Or per-component:
     from lip.dgen.c4_generator import generate_dispute_corpus
     records = generate_dispute_corpus(n_samples=15_000, seed=42)
 """
-from .c4_generator import generate_dispute_corpus
 from .c2_generator import generate_pd_training_data_v2
-from .validator import validate_corpus, CorpusReport
+from .c4_generator import generate_dispute_corpus
+from .validator import CorpusReport, validate_corpus
 
 __all__ = [
     "generate_dispute_corpus",

@@ -28,9 +28,8 @@ All records tagged: corpus_tag = "SYNTHETIC_CORPUS_C4"
 from __future__ import annotations
 
 import hashlib
-import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import numpy as np

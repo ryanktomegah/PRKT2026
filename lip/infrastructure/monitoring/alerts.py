@@ -51,7 +51,8 @@ class PagerDutyAlerter:
             logger.warning("PagerDuty integration key not configured; alert dropped: %s", alert.event)
             return False
         # In production, use the PagerDuty Events v2 API
-        import urllib.request, json
+        import json
+        import urllib.request
         payload = {
             "routing_key": self._key,
             "event_action": "trigger",

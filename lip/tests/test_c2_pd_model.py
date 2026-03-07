@@ -1,16 +1,18 @@
 """
 test_c2_pd_model.py — Tests for C2 Unified PD Model
 """
-import pytest
-import numpy as np
 from decimal import Decimal
 
-from lip.c2_pd_model.tier_assignment import (
-    assign_tier, TierFeatures, Tier, tier_one_hot, hash_borrower_id
-)
+from lip.c2_pd_model.baseline import altman_pd, altman_z_score, financial_ratio_pd, merton_pd
+from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_fee_bps_from_el, compute_loan_fee
 from lip.c2_pd_model.lgd import estimate_lgd, lgd_for_corridor
-from lip.c2_pd_model.fee import compute_fee_bps_from_el, compute_loan_fee, FEE_FLOOR_BPS
-from lip.c2_pd_model.baseline import merton_pd, altman_z_score, altman_pd, financial_ratio_pd
+from lip.c2_pd_model.tier_assignment import (
+    Tier,
+    TierFeatures,
+    assign_tier,
+    hash_borrower_id,
+    tier_one_hot,
+)
 
 
 class TestTierAssignment:

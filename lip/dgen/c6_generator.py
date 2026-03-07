@@ -31,7 +31,6 @@ from typing import List
 
 import numpy as np
 
-
 _CORPUS_TAG = "SYNTHETIC_CORPUS_C6"
 
 # CTR/STR thresholds (CIPHER: structuring targets amounts just below these)

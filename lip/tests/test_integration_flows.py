@@ -7,28 +7,33 @@ Flow 3: AML velocity block → no bridge offered
 Flow 4: Kill switch active → all new offers halted
 Flow 5: High PD thin-file → fee floor applies → offer logged
 """
-import pytest
-from decimal import Decimal
+import time
 from datetime import datetime
+from decimal import Decimal
 
-from lip.common.state_machines import (
-    PaymentStateMachine, PaymentState,
-    LoanStateMachine, LoanState,
+from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_fee_bps_from_el, compute_loan_fee
+from lip.c2_pd_model.tier_assignment import Tier, TierFeatures, assign_tier
+from lip.c3_repayment_engine.corridor_buffer import _WINDOW_SECONDS, CorridorBuffer
+from lip.c3_repayment_engine.rejection_taxonomy import (
+    RejectionClass,
+    classify_rejection_code,
+    maturity_days,
 )
-from lip.c2_pd_model.fee import compute_fee_bps_from_el, compute_loan_fee, FEE_FLOOR_BPS
-from lip.c2_pd_model.tier_assignment import TierFeatures, assign_tier, Tier
-from lip.c3_repayment_engine.rejection_taxonomy import classify_rejection_code, RejectionClass, maturity_days
 from lip.c4_dispute_classifier.prefilter import apply_prefilter
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
-from lip.c6_aml_velocity.velocity import VelocityChecker, DOLLAR_CAP_USD
-from lip.c7_execution_agent.kill_switch import KillSwitch
-from lip.c7_execution_agent.decision_log import DecisionLogger, DecisionLogEntryData
-from lip.c7_execution_agent.human_override import HumanOverrideInterface
-from lip.c7_execution_agent.degraded_mode import DegradedModeManager
-from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c6_aml_velocity.aml_checker import AMLChecker
-from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer, _WINDOW_SECONDS
-import time
+from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD, VelocityChecker
+from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
+from lip.c7_execution_agent.decision_log import DecisionLogEntryData, DecisionLogger
+from lip.c7_execution_agent.degraded_mode import DegradedModeManager
+from lip.c7_execution_agent.human_override import HumanOverrideInterface
+from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.common.state_machines import (
+    LoanState,
+    LoanStateMachine,
+    PaymentState,
+    PaymentStateMachine,
+)
 
 _SALT = b"integration_test_salt_32bytes___"
 _HMAC_KEY = b"integration_test_hmac_32bytes___"

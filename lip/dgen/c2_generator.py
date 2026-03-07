@@ -24,11 +24,10 @@ REX: All records tagged SYNTHETIC_CORPUS_C2 with temporal structure
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import numpy as np
-
 
 _CORPUS_TAG = "SYNTHETIC_CORPUS_C2_V2"
 

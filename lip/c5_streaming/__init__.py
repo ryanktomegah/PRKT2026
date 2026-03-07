@@ -2,9 +2,9 @@
 C5 Streaming — Kafka/Redis/Flink infrastructure configuration
 Three-entity: MLO, MIPLO, ELO
 """
-from .kafka_config import KafkaConfig, TOPIC_DEFINITIONS
-from .redis_config import RedisConfig, KEY_SCHEMAS
 from .event_normalizer import EventNormalizer, normalize_event
+from .kafka_config import TOPIC_DEFINITIONS, KafkaConfig
+from .redis_config import KEY_SCHEMAS, RedisConfig
 
 __all__ = [
     "KafkaConfig",

@@ -12,15 +12,12 @@ Verifies that:
 from __future__ import annotations
 
 import numpy as np
-import pytest
-from decimal import Decimal
 
-from lip.c1_failure_classifier.model import MLPHead, ClassifierModel
 from lip.c1_failure_classifier.graphsage import GraphSAGEModel
+from lip.c1_failure_classifier.model import ClassifierModel, MLPHead
+from lip.c1_failure_classifier.synthetic_data import generate_synthetic_dataset
 from lip.c1_failure_classifier.tabtransformer import TabTransformerModel
 from lip.c1_failure_classifier.training import TrainingConfig, TrainingPipeline, _compute_auc
-from lip.c1_failure_classifier.synthetic_data import generate_synthetic_dataset
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -106,7 +103,7 @@ class TestGraphSAGEBackward:
         model = GraphSAGEModel()
         W1_before = model.layer1.W.copy()
         node_feat = np.ones(8)
-        sage_emb = model.forward(node_feat, [], [])
+        _sage_emb = model.forward(node_feat, [], [])
         d_sage = np.ones(model.output_dim) * 0.01
         model.backward_empty_neighbors(node_feat, d_sage, lr=0.01)
         assert not np.allclose(model.layer1.W, W1_before)
@@ -167,12 +164,12 @@ class TestTrainingPipelineConvergence:
         tabtransformer = TabTransformerModel()
 
         epoch_losses = []
-        mlp = pipeline.stage7_joint_training.__func__  # just verify it runs
+        _mlp = pipeline.stage7_joint_training.__func__  # just verify it runs
 
         # Run a reduced joint training loop and collect per-epoch losses
         from lip.c1_failure_classifier.model import MLPHead
         mlp_head = MLPHead()
-        model = ClassifierModel(graphsage=graphsage, tabtransformer=tabtransformer, mlp=mlp_head)
+        _model = ClassifierModel(graphsage=graphsage, tabtransformer=tabtransformer, mlp=mlp_head)
         rng = np.random.default_rng(7)
         lr = config.learning_rate
         alpha = config.alpha
@@ -207,7 +204,7 @@ class TestTrainingPipelineConvergence:
             val_split=0.3,
             random_seed=42,
         )
-        pipeline = TrainingPipeline(config)
+        _pipeline = TrainingPipeline(config)
 
         X, y = _make_separable_data(n=300, seed=42)
         n_val = int(len(y) * config.val_split)

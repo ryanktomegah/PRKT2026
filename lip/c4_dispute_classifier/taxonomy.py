@@ -3,7 +3,6 @@ taxonomy.py — C4 4-class dispute taxonomy
 C4 Spec: NOT_DISPUTE, DISPUTE_CONFIRMED, DISPUTE_POSSIBLE, NEGOTIATION
 """
 from enum import Enum
-from typing import Optional
 
 
 class DisputeClass(str, Enum):

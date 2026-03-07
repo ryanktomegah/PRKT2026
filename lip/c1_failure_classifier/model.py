@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List, Optional, Tuple
+from typing import List
 
 import numpy as np
 
-from .graphsage import GraphSAGEModel, GRAPHSAGE_OUTPUT_DIM
-from .tabtransformer import TabTransformerModel, TABTRANSFORMER_INPUT_DIM
+from .graphsage import GRAPHSAGE_OUTPUT_DIM, GraphSAGEModel
+from .tabtransformer import TABTRANSFORMER_INPUT_DIM, TabTransformerModel
 
 logger = logging.getLogger(__name__)
 

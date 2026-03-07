@@ -3,7 +3,6 @@ uetr_mapping.py — RTP EndToEndId → UETR Redis mapping
 Architecture Spec S11.2: TTL = maturity_days + 45 days
 """
 import hashlib
-import json
 import logging
 from typing import Optional
 

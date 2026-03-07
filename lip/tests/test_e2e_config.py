@@ -9,7 +9,6 @@ Verifies all YAML configs load correctly and values match Architecture Spec:
 
 from __future__ import annotations
 
-import os
 from decimal import Decimal
 from pathlib import Path
 
@@ -173,7 +172,7 @@ class TestCorridorDefaults:
 
     def test_corridor_buffer_loads_defaults(self):
         """CorridorBuffer should use defaults matching the YAML."""
-        from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer, CorridorBufferDefaults
+        from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
         cb = CorridorBuffer()
         # USD_EUR should have a positive default
         assert cb.estimate_p95("USD_EUR") > 0.0

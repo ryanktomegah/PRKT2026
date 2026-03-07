@@ -5,14 +5,13 @@ Architecture Spec: AES-256-GCM at rest, TLS 1.3 in transit, HMAC-SHA256 log sign
 All functions are stateless and accept explicit key / salt material.
 No keys are hardcoded.  Callers are responsible for secure key management (KMS).
 """
-import base64
 import hashlib
 import hmac
 import os
 import secrets
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes  # noqa: F401 — re-exported for callers
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 # ── Constants ─────────────────────────────────────────────────────────────────

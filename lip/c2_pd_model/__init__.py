@@ -19,8 +19,8 @@ import logging
 from decimal import Decimal
 from typing import Optional
 
-from .fee import compute_fee_bps_from_el, compute_loan_fee
 from .features import UnifiedFeatureEngineer
+from .fee import compute_fee_bps_from_el, compute_loan_fee
 from .inference import PDInferenceEngine, configure_inference_salt
 from .lgd import estimate_lgd, lgd_for_corridor
 from .model import PDModel
@@ -216,7 +216,7 @@ def compute_fee(
     fee_bps = compute_fee_bps_from_el(pd_d, lgd_d, ead_d)
     loan_fee = compute_loan_fee(loan_d, fee_bps, days_funded)
 
-    from .fee import FEE_FLOOR_BPS, verify_floor_applies  # noqa: PLC0415
+    from .fee import verify_floor_applies  # noqa: PLC0415
 
     return {
         "fee_bps": fee_bps,

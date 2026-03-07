@@ -3,23 +3,32 @@ test_c3_repayment.py — Tests for C3 Repayment Engine
 """
 import time
 import uuid
-import pytest
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock
 
+import pytest
+
+from lip.c3_repayment_engine.corridor_buffer import _WINDOW_SECONDS, CorridorBuffer
 from lip.c3_repayment_engine.rejection_taxonomy import (
-    RejectionClass, classify_rejection_code, maturity_days,
-    is_dispute_block, get_all_codes_for_class, REJECTION_CODE_TAXONOMY,
-)
-from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer, _WINDOW_SECONDS
-from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
-from lip.c3_repayment_engine.settlement_handlers import (
-    SettlementHandlerRegistry, SettlementRail,
+    REJECTION_CODE_TAXONOMY,
+    RejectionClass,
+    classify_rejection_code,
+    get_all_codes_for_class,
+    is_dispute_block,
+    maturity_days,
 )
 from lip.c3_repayment_engine.repayment_loop import (
-    ActiveLoan, RepaymentLoop, SettlementMonitor, RepaymentTrigger,
+    ActiveLoan,
+    RepaymentLoop,
+    RepaymentTrigger,
+    SettlementMonitor,
 )
+from lip.c3_repayment_engine.settlement_handlers import (
+    SettlementHandlerRegistry,
+    SettlementRail,
+)
+from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
 
 
 class TestRejectionTaxonomy:
@@ -311,7 +320,7 @@ class TestRepaymentLoopIdempotency:
         )
         loan = _make_loan(rejection_class="BLOCK", past_maturity=True)
         loop.register_loan(loan)
-        results = loop.check_maturities()
+        _results = loop.check_maturities()
         # BLOCK loans are skipped entirely — no repayment triggered
         assert repaid == []
 

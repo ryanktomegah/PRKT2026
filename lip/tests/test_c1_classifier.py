@@ -2,15 +2,14 @@
 test_c1_classifier.py — Tests for C1 Failure Classifier
 """
 import numpy as np
-import pytest
 
+from lip.c1_failure_classifier.calibration import IsotonicCalibrator, PlattCalibrator, compute_ece
+from lip.c1_failure_classifier.embeddings import EMBEDDING_DIM, CorridorEmbeddingPipeline
+from lip.c1_failure_classifier.features import TABULAR_FEATURE_DIM, TabularFeatureEngineer
 from lip.c1_failure_classifier.graph_builder import BICGraphBuilder, PaymentEdge
-from lip.c1_failure_classifier.features import TabularFeatureEngineer, TABULAR_FEATURE_DIM
-from lip.c1_failure_classifier.graphsage import GraphSAGEModel, GRAPHSAGE_OUTPUT_DIM
-from lip.c1_failure_classifier.tabtransformer import TabTransformerModel, TABTRANSFORMER_INPUT_DIM
-from lip.c1_failure_classifier.model import ClassifierModel, create_default_model
-from lip.c1_failure_classifier.embeddings import CorridorEmbeddingPipeline, EMBEDDING_DIM
-from lip.c1_failure_classifier.calibration import compute_ece, IsotonicCalibrator, PlattCalibrator
+from lip.c1_failure_classifier.graphsage import GRAPHSAGE_OUTPUT_DIM, GraphSAGEModel
+from lip.c1_failure_classifier.model import create_default_model
+from lip.c1_failure_classifier.tabtransformer import TABTRANSFORMER_INPUT_DIM, TabTransformerModel
 
 
 class TestGraphBuilder:

@@ -9,10 +9,10 @@ Three-entity role mapping:
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
 from .agent import ExecutionAgent
-from .kill_switch import KillSwitch
 from .decision_log import DecisionLogger
-from .human_override import HumanOverrideInterface
 from .degraded_mode import DegradedModeManager
+from .human_override import HumanOverrideInterface
+from .kill_switch import KillSwitch
 
 __all__ = [
     "ExecutionAgent", "KillSwitch", "DecisionLogger",

@@ -9,14 +9,14 @@ Three-entity role mapping:
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from .features import UnifiedFeatureEngineer
 from .model import PDModel
-from .tier_assignment import TierFeatures, assign_tier, Tier
+from .tier_assignment import Tier, TierFeatures, assign_tier
 
 logger = logging.getLogger(__name__)
 
@@ -270,8 +270,8 @@ class PDTrainingPipeline:
             optuna.logging.set_verbosity(optuna.logging.WARNING)
 
             def _objective(trial: "optuna.Trial") -> float:  # type: ignore[name-defined]
-                from sklearn.model_selection import cross_val_score  # noqa: PLC0415
                 from sklearn.ensemble import GradientBoostingClassifier  # noqa: PLC0415
+                from sklearn.model_selection import cross_val_score  # noqa: PLC0415
 
                 params = {
                     "n_estimators": trial.suggest_int("n_estimators", 50, 300),
@@ -474,7 +474,7 @@ class PDTrainingPipeline:
 
         # AUC
         try:
-            from sklearn.metrics import roc_auc_score, brier_score_loss  # noqa: PLC0415
+            from sklearn.metrics import brier_score_loss, roc_auc_score  # noqa: PLC0415
 
             metrics["auc"] = float(roc_auc_score(y_test, pds))
             metrics["brier"] = float(brier_score_loss(y_test, pds))

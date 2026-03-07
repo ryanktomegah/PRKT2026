@@ -13,14 +13,13 @@ Covers:
 import pytest
 
 from lip.common.state_machines import (
-    PaymentState,
-    PaymentStateMachine,
+    InvalidTransitionError,
     LoanState,
     LoanStateMachine,
-    InvalidTransitionError,
+    PaymentState,
+    PaymentStateMachine,
     maturity_days,
 )
-
 
 # ── maturity_days ────────────────────────────────────────────────────────────
 

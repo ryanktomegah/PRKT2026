@@ -9,7 +9,6 @@ T = f(rejection_code_class):
   BLOCK   → dispute/legal block, no bridge offered
 """
 from enum import Enum
-from typing import Optional
 
 
 class RejectionClass(str, Enum):

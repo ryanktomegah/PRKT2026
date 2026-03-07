@@ -11,14 +11,14 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import List
 
 import numpy as np
 
-from .model import ClassifierModel
 from .embeddings import CorridorEmbeddingPipeline
-from .features import TabularFeatureEngineer, FeaturePipeline
+from .features import TabularFeatureEngineer
 from .graph_builder import BICGraphBuilder
+from .model import ClassifierModel
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class InferenceEngine:
 
         # --- Node / graph features ---
         sending_bic: str = str(payment.get("sending_bic", ""))
-        receiving_bic: str = str(payment.get("receiving_bic", ""))
+        _receiving_bic: str = str(payment.get("receiving_bic", ""))
         node_features = self._graph.get_node_features(sending_bic)
         neighbors_l1_feats = [
             self._graph.get_node_features(nbr)

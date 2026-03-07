@@ -24,7 +24,6 @@ import csv
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Optional
 
 import numpy as np
 
@@ -633,7 +632,7 @@ class SyntheticPaymentGenerator:
 
         corridor_info = CORRIDOR_DEFINITIONS.get(currency_pair, {})
         region_type = corridor_info.get("region_type", "G7")
-        avg_lag = corridor_info.get("avg_settlement_hours", 4)
+        _avg_lag = corridor_info.get("avg_settlement_hours", 4)
 
         # Settlement lag: 0-5 days based on corridor type
         if region_type == "G7":
@@ -1085,7 +1084,6 @@ def generate_synthetic_dataset(n_samples: int = 1000, seed: int = 42) -> list:
         * ``timestamp`` — float Unix timestamp reconstructed from ``hour_of_day``
           and ``day_of_week`` relative to a fixed reference epoch
     """
-    import time as _time
 
     generator = SyntheticPaymentGenerator(seed=seed)
     raw = generator.generate_dataset(n_transactions=n_samples)

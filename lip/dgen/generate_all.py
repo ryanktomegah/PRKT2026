@@ -38,7 +38,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import sys
 import time
 from datetime import datetime
@@ -49,7 +48,7 @@ from typing import Any, Dict, List, Optional
 # Optional: try importing numpy early to give a clear error
 # ---------------------------------------------------------------------------
 try:
-    import numpy as np
+    import numpy as np  # noqa: F401
 except ImportError:
     print("ERROR: numpy is required. Run: pip install numpy", file=sys.stderr)
     sys.exit(1)
@@ -210,7 +209,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'='*60}")
-    print(f"  DGEN — LIP Synthetic Data Generation")
+    print("  DGEN — LIP Synthetic Data Generation")
     print(f"  Seed: {args.seed} | Mode: {'SMOKE-TEST' if args.smoke_test else 'FULL'}")
     print(f"  Output: {output_dir.resolve()}")
     print(f"{'='*60}\n")

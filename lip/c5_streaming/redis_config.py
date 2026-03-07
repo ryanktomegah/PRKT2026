@@ -5,7 +5,6 @@ C5 Spec: Corridor embeddings, UETR mappings, velocity counters
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-
 KEY_SCHEMAS: Dict[str, str] = {
     "corridor_embedding": "lip:embedding:{currency_pair}",
     "uetr_mapping": "lip:uetr_map:{end_to_end_id}",

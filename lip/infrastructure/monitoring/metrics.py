@@ -3,10 +3,9 @@ metrics.py — Prometheus metrics for LIP.
 Tracks: inference latency p50/p99, queue depth, AUC drift.
 """
 import logging
-import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, List, Optional
+from typing import Deque, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

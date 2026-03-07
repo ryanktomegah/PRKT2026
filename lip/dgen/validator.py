@@ -156,7 +156,7 @@ def _check_label_distribution(
     if not labels:
         return CheckResult("label_distribution", False, f"field '{label_field}' not found")
 
-    positives = sum(1 for l in labels if l == 1 or l == "1" or l is True)
+    positives = sum(1 for lbl in labels if lbl == 1 or lbl == "1" or lbl is True)
     actual_rate = positives / len(labels)
     lo = target_positive_rate * (1 - tolerance)
     hi = target_positive_rate * (1 + tolerance)

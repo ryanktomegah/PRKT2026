@@ -14,36 +14,28 @@ Scenarios:
 
 from __future__ import annotations
 
-import uuid
 from decimal import Decimal
-from datetime import datetime, timezone
 
-import pytest
-
+from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_loan_fee
 from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
 from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
 from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
 from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
-from lip.c6_aml_velocity.velocity import VelocityChecker, DOLLAR_CAP_USD
+from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD, VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager, DegradedReason
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
-from lip.c2_pd_model.fee import compute_loan_fee, FEE_FLOOR_BPS
 from lip.common.state_machines import (
-    PaymentState,
     LoanState,
-    InvalidTransitionError,
+    PaymentState,
 )
-from lip.instrumentation import LatencyTracker
-from lip.pipeline import LIPPipeline, FAILURE_PROBABILITY_THRESHOLD
-from lip.pipeline_result import PipelineResult
+from lip.pipeline import FAILURE_PROBABILITY_THRESHOLD, LIPPipeline
 
-from .conftest import make_event, MockC1Engine, MockC2Engine, _HMAC_KEY, _SALT
-
+from .conftest import _HMAC_KEY, _SALT, MockC1Engine, MockC2Engine, make_event
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -165,7 +157,7 @@ class TestScenario1HappyPath:
         um = UETRMappingTable()
         cb = CorridorBuffer()
         monitor = SettlementMonitor(handler_registry=registry, uetr_mapping=um, corridor_buffer=cb)
-        loop = RepaymentLoop(monitor=monitor, repayment_callback=lambda r: repaid_records.append(r))
+        _loop = RepaymentLoop(monitor=monitor, repayment_callback=lambda r: repaid_records.append(r))
 
         pipeline = _make_pipeline(failure_probability=0.80, c3_monitor=monitor)
         event = make_event(rejection_code="CURR")
@@ -309,7 +301,7 @@ class TestScenario4KillSwitchHalt:
 
     def test_funded_loans_not_affected_by_kill_switch(self):
         """Loans already funded before kill switch are preserved."""
-        repaid = []
+        _repaid = []
         registry = SettlementHandlerRegistry.create_default()
         um = UETRMappingTable()
         cb = CorridorBuffer()
@@ -448,7 +440,7 @@ class TestScenario7MultiRailSummary:
         um = UETRMappingTable()
         cb = CorridorBuffer()
         monitor = SettlementMonitor(registry, um, cb)
-        loop = RepaymentLoop(monitor=monitor, repayment_callback=lambda r: repaid.append(r))
+        _loop = RepaymentLoop(monitor=monitor, repayment_callback=lambda r: repaid.append(r))
 
         pipeline = _make_pipeline(failure_probability=0.80, c3_monitor=monitor)
         event = make_event(rejection_code="CURR")
