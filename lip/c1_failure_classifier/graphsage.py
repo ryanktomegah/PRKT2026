@@ -360,8 +360,9 @@ class GraphSAGEModel:
         dW1 = np.outer(h_concat1, d_pre1)                   # (2*input_dim, hidden_dim)
         db1 = d_pre1.copy()
 
-        # Update weights in place
-        self.layer1.W -= lr * dW1
-        self.layer1.b -= lr * db1
-        self.layer2.W -= lr * dW2
-        self.layer2.b -= lr * db2
+        # Update weights in place (gradient clipping: max element-wise ±1.0)
+        _gc = 1.0
+        self.layer1.W -= lr * np.clip(dW1, -_gc, _gc)
+        self.layer1.b -= lr * np.clip(db1, -_gc, _gc)
+        self.layer2.W -= lr * np.clip(dW2, -_gc, _gc)
+        self.layer2.b -= lr * np.clip(db2, -_gc, _gc)

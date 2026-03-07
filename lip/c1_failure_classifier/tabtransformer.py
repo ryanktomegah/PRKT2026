@@ -47,6 +47,7 @@ def _relu(x: np.ndarray) -> np.ndarray:
 
 def _gelu(x: np.ndarray) -> np.ndarray:
     """GELU activation (approximate version for the FFN sub-layer)."""
+    x = np.clip(x, -20.0, 20.0)  # prevent cubic-term overflow; tanh saturates well before ±20
     return 0.5 * x * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * x ** 3)))
 
 
@@ -497,15 +498,16 @@ class TabTransformerModel:
             db_ff2 = d_h_0.copy()
             d_ff_act = layer.W_ff2 @ d_h_0                 # (ff_dim,)
 
-            # GELU gradient (exact formula)
+            # GELU gradient (exact formula); clip ff_pre to match forward-pass clipping
             _c = 0.044715
             _scale = np.sqrt(2.0 / np.pi)
-            tanh_arg = _scale * (ff_pre + _c * ff_pre ** 3)
+            ff_pre_safe = np.clip(ff_pre, -20.0, 20.0)
+            tanh_arg = _scale * (ff_pre_safe + _c * ff_pre_safe ** 3)
             tanh_val = np.tanh(tanh_arg)
             sech2 = 1.0 - tanh_val ** 2
             d_gelu_dx = (
                 0.5 * (1.0 + tanh_val)
-                + 0.5 * ff_pre * sech2 * _scale * (1.0 + 3.0 * _c * ff_pre ** 2)
+                + 0.5 * ff_pre_safe * sech2 * _scale * (1.0 + 3.0 * _c * ff_pre_safe ** 2)
             )
             d_ff_pre = d_ff_act * d_gelu_dx                # (ff_dim,)
 
@@ -517,19 +519,21 @@ class TabTransformerModel:
             d_h_prev_0 = d_h_0 + layer.W_ff1 @ d_ff_pre   # (model_dim,)
             d_h = d_h_prev_0.reshape(1, self.model_dim)
 
-            # Update FFN weights in place
-            layer.W_ff2 -= lr * dW_ff2
-            layer.b_ff2 -= lr * db_ff2
-            layer.W_ff1 -= lr * dW_ff1
-            layer.b_ff1 -= lr * db_ff1
+            # Update FFN weights in place (gradient clipping: max element-wise ±1.0)
+            _gc = 1.0
+            layer.W_ff2 -= lr * np.clip(dW_ff2, -_gc, _gc)
+            layer.b_ff2 -= lr * np.clip(db_ff2, -_gc, _gc)
+            layer.W_ff1 -= lr * np.clip(dW_ff1, -_gc, _gc)
+            layer.b_ff1 -= lr * np.clip(db_ff1, -_gc, _gc)
 
         # --- Backprop input projection ---
         d_h_0 = d_h[0]                          # (model_dim,)
         dW_in = np.outer(x, d_h_0)             # (input_dim, model_dim)
         db_in = d_h_0.copy()
 
-        # Update projection weights in place
-        self.W_in -= lr * dW_in
-        self.b_in -= lr * db_in
-        self.W_out -= lr * dW_out
-        self.b_out -= lr * db_out
+        # Update projection weights in place (gradient clipping: max element-wise ±1.0)
+        _gc = 1.0
+        self.W_in  -= lr * np.clip(dW_in,  -_gc, _gc)
+        self.b_in  -= lr * np.clip(db_in,  -_gc, _gc)
+        self.W_out -= lr * np.clip(dW_out, -_gc, _gc)
+        self.b_out -= lr * np.clip(db_out, -_gc, _gc)
