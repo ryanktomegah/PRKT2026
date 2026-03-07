@@ -70,6 +70,11 @@ class AnomalyDetector:
         self._fitted = True
 
     def predict(self, transaction: dict) -> AnomalyResult:
+        if not self._fitted:
+            logger.warning(
+                "AnomalyDetector.predict() called before fit() — returning is_anomaly=False. "
+                "Call fit() with historical transactions before using the detector in production."
+            )
         features = self._extract_features(transaction)
         if self._model is not None:
             score = float(self._model.score_samples(features.reshape(1, -1))[0])

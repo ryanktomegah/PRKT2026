@@ -1,0 +1,23 @@
+# LIP — ML optional dependencies (C2 PD model, SHAP, Optuna, C4 LLM)
+# Install: pip install -r requirements-ml.txt
+# Requires: pip install -r requirements.txt first
+
+# ── C2 PD Model ──────────────────────────────────────────────────────────────
+lightgbm>=4.3.0
+shap>=0.44.0
+optuna>=3.5.0
+
+# ── C4 Dispute Classifier (LLM, GPU required) ────────────────────────────────
+# transformers>=4.38.0
+# peft>=0.9.0
+# accelerate>=0.27.0
+# bitsandbytes>=0.43.0
+
+# ── Monitoring ───────────────────────────────────────────────────────────────
+prometheus-client>=0.19.0
+
+# ── Dev / Test ───────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-cov>=4.0.0
+ruff>=0.3.0
+mypy>=1.8.0

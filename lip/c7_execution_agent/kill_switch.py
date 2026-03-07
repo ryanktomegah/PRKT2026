@@ -4,6 +4,16 @@ Architecture Spec S2.5:
   Kill switch activated → halt ALL new offers, preserve funded loans, buffer settlements.
   KMS unavailable → halt new offers, preserve funded loans, buffer settlements, auto-recover.
 
+Regulatory obligations covered by this module:
+  EU AI Act Art.14  — Human oversight: kill switch is the operator's mechanism to override
+    automated credit decisions at any time without software changes required.
+  EU AI Act Art.9   — Risk management: kill switch is the primary risk-management control
+    for halting automated decisions in response to an adverse event.
+  DORA Art.30       — ICT operational resilience: kill switch activations must be logged with
+    a reason string; KMS unavailability gap is tracked for incident reporting.
+  SR 11-7 (Fed/OCC) — Model risk management: human override capability is mandatory; this
+    module provides the hard stop that can be triggered by model validators or risk officers.
+
 Three-entity role mapping:
   MLO  — Money Lending Organisation
   MIPLO — Money In / Payment Lending Organisation

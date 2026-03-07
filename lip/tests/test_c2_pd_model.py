@@ -149,3 +149,82 @@ class TestBaseline:
             interest_coverage=3.0,
         )
         assert 0.0 <= pd <= 1.0
+
+
+class TestFeeFloor:
+    """300 bps annualized floor — C2 Spec Section 9 / Basel III capital floor."""
+
+    def test_floor_binds_when_el_below_300bps(self):
+        """PD × LGD × 10000 = 10 bps < 300 bps floor — floor must apply."""
+        fee = compute_fee_bps_from_el(
+            pd=Decimal("0.001"),
+            lgd=Decimal("0.10"),
+            ead=Decimal("1000000"),
+        )
+        assert fee == Decimal("300.0"), f"Expected 300.0 bps floor, got {fee}"
+
+    def test_floor_binds_at_zero_pd(self):
+        """PD=0 is an extreme but valid case — floor must still apply."""
+        fee = compute_fee_bps_from_el(
+            pd=Decimal("0"),
+            lgd=Decimal("0.45"),
+            ead=Decimal("500000"),
+        )
+        assert fee == Decimal("300.0")
+
+    def test_floor_binds_at_zero_lgd(self):
+        """LGD=0 produces EL=0 bps — floor must still apply."""
+        fee = compute_fee_bps_from_el(
+            pd=Decimal("0.50"),
+            lgd=Decimal("0"),
+            ead=Decimal("1000000"),
+        )
+        assert fee == Decimal("300.0")
+
+    def test_floor_not_binding_above_300bps(self):
+        """PD=0.05, LGD=0.40 → EL=200 bps ... wait, 0.05*0.40*10000=200 < 300, floor binds."""
+        # Use PD=0.10, LGD=0.40 → 400 bps > floor
+        fee = compute_fee_bps_from_el(
+            pd=Decimal("0.10"),
+            lgd=Decimal("0.40"),
+            ead=Decimal("1000000"),
+        )
+        assert fee == Decimal("400.0"), f"Expected 400.0 bps (no floor), got {fee}"
+        assert not (fee == FEE_FLOOR_BPS), "Floor should not be binding at 400 bps"
+
+    def test_verify_floor_applies_at_300(self):
+        """verify_floor_applies() returns True at exactly 300 bps."""
+        from lip.c2_pd_model.fee import verify_floor_applies
+        assert verify_floor_applies(Decimal("300")) is True
+        assert verify_floor_applies(Decimal("300.0")) is True
+
+    def test_verify_floor_not_at_301(self):
+        from lip.c2_pd_model.fee import verify_floor_applies
+        assert verify_floor_applies(Decimal("301")) is False
+
+    def test_compute_loan_fee_1m_300bps_7days(self):
+        """Canonical example from spec docstring: $1M × 300 bps × 7/365 = $575.34."""
+        fee = compute_loan_fee(
+            loan_amount=Decimal("1000000"),
+            fee_bps=Decimal("300"),
+            days_funded=7,
+        )
+        assert fee == Decimal("575.34"), f"Expected $575.34, got ${fee}"
+
+    def test_compute_loan_fee_scales_with_days(self):
+        """21-day loan should be exactly 3× the 7-day loan at same rate."""
+        fee_7d = compute_loan_fee(Decimal("1000000"), Decimal("300"), 7)
+        fee_21d = compute_loan_fee(Decimal("1000000"), Decimal("300"), 21)
+        ratio = fee_21d / fee_7d
+        # Allow 1 cent rounding tolerance
+        assert abs(ratio - Decimal("3")) < Decimal("0.01"), f"Ratio {ratio} != 3"
+
+    def test_fee_floor_from_el_boundary_exactly_300bps(self):
+        """PD × LGD = exactly 300 bps — floor is binding at boundary."""
+        # PD=0.03, LGD=1.0 → 300 bps exactly
+        fee = compute_fee_bps_from_el(
+            pd=Decimal("0.03"),
+            lgd=Decimal("1.00"),
+            ead=Decimal("100000"),
+        )
+        assert fee == Decimal("300.0")
