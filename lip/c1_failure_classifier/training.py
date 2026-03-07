@@ -50,7 +50,8 @@ def _compute_auc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
         return 0.5
     tpr_vals = np.cumsum(y_sorted) / n_pos
     fpr_vals = np.cumsum(1.0 - y_sorted) / n_neg
-    auc = float(np.trapz(tpr_vals, fpr_vals))
+    _trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")
+    auc = float(_trapz(tpr_vals, fpr_vals))
     return max(0.0, min(1.0, abs(auc)))
 
 logger = logging.getLogger(__name__)
@@ -330,7 +331,7 @@ class TrainingPipeline:
                 for i in batch_idx:
                     node_feat = X_train[i][:model.input_dim]
                     sage_emb = model.forward(node_feat, [], [])
-                    logit = float(sage_emb @ W_head + b_head)
+                    logit = float((sage_emb @ W_head + b_head).item())
                     p = _sigmoid(logit)
                     y = float(y_train[i])
                     loss = ClassifierModel.asymmetric_bce_loss(y, p, alpha)
@@ -404,7 +405,7 @@ class TrainingPipeline:
                 for i in batch_idx:
                     x_tab = X_train[i]
                     tab_emb = model.forward(x_tab)
-                    logit = float(tab_emb @ W_head + b_head)
+                    logit = float((tab_emb @ W_head + b_head).item())
                     p = _sigmoid(logit)
                     y = float(y_train[i])
                     loss = ClassifierModel.asymmetric_bce_loss(y, p, alpha)
