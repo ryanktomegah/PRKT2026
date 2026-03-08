@@ -397,8 +397,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--regenerate", action="store_true",
                         help="Re-run dgen before training (requires numpy)")
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING"],
+        default="INFO",
+        help="Logging verbosity. Use DEBUG to see per-epoch loss/AUC metrics.",
+    )
 
     args = parser.parse_args(argv)
+    logging.getLogger().setLevel(getattr(logging, args.log_level))
 
     corpus_dir = Path(args.corpus_dir)
     output_dir = Path(args.output_dir)
