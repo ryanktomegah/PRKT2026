@@ -1,0 +1,166 @@
+name: Train C6 (Full)
+
+# Manual trigger only — fits Isolation Forest on 50k AML transactions.
+# Run from: GitHub → Actions → "Train C6 (Full)" → Run workflow
+#
+# NOTE: c6_corpus_*.json is gitignored (CIPHER rule) — corpus always regenerated.
+on:
+  workflow_dispatch:
+    inputs:
+      contamination:
+        description: "IsolationForest contamination rate (0.01 = 1% expected anomalies)"
+        required: false
+        default: "0.01"
+      seed:
+        description: "Random seed"
+        required: false
+        default: "42"
+
+jobs:
+  train-c6:
+    name: C6 Full Training (contamination=${{ github.event.inputs.contamination }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip "setuptools>=68" wheel
+          pip install numpy scikit-learn
+          cd lip && pip install -e .
+
+      - name: Verify package is importable
+        run: |
+          PYTHONPATH=. python -c "from lip.c6_aml_velocity.anomaly import AnomalyDetector; print('C6 AnomalyDetector OK')"
+          PYTHONPATH=. python -c "import lip.train_all; print('lip.train_all importable')"
+
+      - name: Generate C6 corpus (always — c6_corpus_*.json is gitignored per CIPHER rule)
+        run: |
+          mkdir -p artifacts/synthetic
+          PYTHONPATH=. python -m lip.dgen.generate_all \
+            --output-dir artifacts/synthetic \
+            --components c6 \
+            --seed ${{ github.event.inputs.seed }}
+          ls -lh artifacts/synthetic/c6_corpus_*.json
+
+      - name: Run C6 full training
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python - <<'PYEOF'
+          import sys, json, pickle, time
+          import numpy as np
+          from pathlib import Path
+          from lip.c6_aml_velocity.anomaly import AnomalyDetector
+
+          contamination = float("${{ github.event.inputs.contamination }}")
+          seed          = int("${{ github.event.inputs.seed }}")
+          out_dir       = Path("artifacts/models")
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          # Locate corpus
+          import glob as _glob
+          matches = sorted(_glob.glob(f"artifacts/synthetic/c6_corpus_n*_seed{seed}.json"))
+          if not matches:
+              matches = sorted(_glob.glob("artifacts/synthetic/c6_corpus_n*_seed*.json"))
+          if not matches:
+              print("ERROR: no c6 corpus found", file=sys.stderr)
+              sys.exit(1)
+          corpus = matches[-1]
+
+          print(f"Loading corpus: {corpus}")
+          with open(corpus) as f:
+              records = json.load(f)
+          print(f"Loaded {len(records)} records  |  contamination={contamination}  seed={seed}")
+
+          # Map corpus fields to AnomalyDetector feature format
+          def _map(r):
+              amt = float(r.get("amount", 0))
+              return {
+                  "amount": amt,
+                  "hour_of_day": float(r.get("hour_of_day", 12)),
+                  "day_of_week": float(r.get("day_of_week", 3)),
+                  "velocity_ratio": float(r.get("velocity_ratio", 1.0)),
+                  "beneficiary_concentration": float(r.get("beneficiary_concentration", 0.5)),
+                  "amount_zscore": float(r.get("amount_zscore", 0.0)),
+              }
+
+          mapped  = [_map(r) for r in records]
+          clean   = [m for m, r in zip(mapped, records) if r.get("aml_flag", 0) == 0]
+          flagged = [m for m, r in zip(mapped, records) if r.get("aml_flag", 0) == 1]
+          print(f"Clean={len(clean)}  Flagged={len(flagged)}")
+
+          t0       = time.time()
+          detector = AnomalyDetector(contamination=contamination)
+          detector.fit(clean)
+          elapsed  = time.time() - t0
+
+          # Sanity: flagged should be more anomalous (lower IsolationForest score)
+          if flagged and clean:
+              clean_sample   = clean[:min(500, len(clean))]
+              flagged_sample = flagged[:min(500, len(flagged))]
+              clean_scores   = [detector.predict(r).anomaly_score for r in clean_sample]
+              flag_scores    = [detector.predict(r).anomaly_score for r in flagged_sample]
+              clean_mean     = float(np.mean(clean_scores))
+              flag_mean      = float(np.mean(flag_scores))
+              detection_rate = float(np.mean([detector.predict(r).is_anomaly for r in flagged_sample]))
+              separation_ok  = flag_mean < clean_mean
+          else:
+              clean_mean = flag_mean = float("nan")
+              separation_ok  = False
+              detection_rate = float("nan")
+
+          print(f"clean_score={clean_mean:.4f}  flagged_score={flag_mean:.4f}  "
+                f"detection_rate={detection_rate:.2%}  separation={'OK' if separation_ok else 'FAIL'}")
+
+          model_path = out_dir / "c6_anomaly_detector.pkl"
+          with open(model_path, "wb") as f:
+              pickle.dump(detector, f)
+
+          report = {
+              "component": "C6", "status": "ok",
+              "n_records": len(records),
+              "n_clean_fit": len(clean),
+              "n_flagged": len(flagged),
+              "contamination": contamination,
+              "sanity": {
+                  "clean_mean_score": round(clean_mean, 4) if clean_mean == clean_mean else None,
+                  "flagged_mean_score": round(flag_mean, 4) if flag_mean == flag_mean else None,
+                  "separation_correct": separation_ok,
+                  "flagged_detection_rate": round(detection_rate, 4) if detection_rate == detection_rate else None,
+              },
+              "training_seconds": round(elapsed, 2),
+          }
+          with open(out_dir / "c6_training_report.json", "w") as f:
+              json.dump(report, f, indent=2)
+
+          print(json.dumps(report, indent=2))
+
+          # Gate: separation must hold for AML validity
+          if not separation_ok:
+              print("FAIL: flagged transactions not more anomalous than clean — model may be inverted",
+                    file=sys.stderr)
+              sys.exit(1)
+          PYEOF
+
+      - name: Verify artifacts
+        run: |
+          echo "=== Artifacts produced ==="
+          ls -lh artifacts/models/c6_* 2>/dev/null || echo "WARNING: no C6 artifacts found"
+          cat artifacts/models/c6_training_report.json 2>/dev/null
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c6-model-contamination${{ github.event.inputs.contamination }}-seed${{ github.event.inputs.seed }}
+          path: |
+            artifacts/models/c6_anomaly_detector.pkl
+            artifacts/models/c6_training_report.json
+          retention-days: 30

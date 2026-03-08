@@ -4,7 +4,7 @@ C4 Spec Section 12
 """
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +56,8 @@ class QLoRATrainer:
                     :class:`QLoRAConfig` with stock values when ``None``.
         """
         self.config = config if config is not None else QLoRAConfig()
-        self._model = None
-        self._tokenizer = None
+        self._model: Optional[Any] = None
+        self._tokenizer: Optional[Any] = None
         self._peft_available = self._check_peft_available()
 
     # ------------------------------------------------------------------

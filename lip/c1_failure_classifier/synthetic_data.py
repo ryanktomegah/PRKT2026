@@ -437,7 +437,7 @@ class SyntheticPaymentGenerator:
             return {"all_pass": False, "error": "empty_dataset"}
 
         # Required fields check
-        missing_fields = set()
+        missing_fields: set[str] = set()
         for tx in transactions:
             missing_fields |= _REQUIRED_FIELDS - tx.keys()
         results["required_fields_check"] = {

@@ -10,7 +10,7 @@ Three-entity role mapping:
 import logging
 import math
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class AnomalyDetector:
 
     def __init__(self, contamination: float = 0.01):
         self.contamination = contamination
-        self._model = None
+        self._model: Optional[Any] = None
         self._fitted = False
         self._mean: Optional[np.ndarray] = None
         self._std: Optional[np.ndarray] = None

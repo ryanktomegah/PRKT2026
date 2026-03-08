@@ -1,0 +1,137 @@
+name: Train C2 (Full)
+
+# Manual trigger only — full training (n_trials=50, n_models=5) takes ~20-40 min.
+# Run from: GitHub → Actions → "Train C2 (Full)" → Run workflow
+#
+# NOTE: artifacts/ is gitignored — corpus is always regenerated fresh here.
+on:
+  workflow_dispatch:
+    inputs:
+      n_trials:
+        description: "Optuna hyperparameter trials (50 = full, 5 = fast)"
+        required: false
+        default: "50"
+      n_models:
+        description: "Ensemble size (5 = full, 2 = fast)"
+        required: false
+        default: "5"
+      seed:
+        description: "Random seed"
+        required: false
+        default: "42"
+
+jobs:
+  train-c2:
+    name: C2 Full Training (n_trials=${{ github.event.inputs.n_trials }}, n_models=${{ github.event.inputs.n_models }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip "setuptools>=68" wheel
+          pip install numpy scikit-learn
+          cd lip && pip install -e .
+
+      - name: Verify package is importable
+        run: |
+          PYTHONPATH=. python -c "from lip.c2_pd_model.training import PDTrainingPipeline; print('C2 PDTrainingPipeline OK')"
+          PYTHONPATH=. python -c "import lip.train_all; print('lip.train_all importable')"
+
+      - name: Generate C2 corpus (always — artifacts/ is gitignored)
+        run: |
+          mkdir -p artifacts/synthetic
+          PYTHONPATH=. python -m lip.dgen.generate_all \
+            --output-dir artifacts/synthetic \
+            --components c2 \
+            --seed ${{ github.event.inputs.seed }}
+          ls -lh artifacts/synthetic/c2_corpus_*.json
+
+      - name: Run C2 full training
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python - <<'PYEOF'
+          import sys, json, pickle, time
+          from pathlib import Path
+          from lip.c2_pd_model.training import PDTrainingPipeline, TrainingConfig
+
+          n_trials  = int("${{ github.event.inputs.n_trials }}")
+          n_models  = int("${{ github.event.inputs.n_models }}")
+          seed      = int("${{ github.event.inputs.seed }}")
+          corpus    = f"artifacts/synthetic/c2_corpus_n50000_seed{seed}.json"
+          out_dir   = Path("artifacts/models")
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          # Fallback to any matching corpus if exact name not found
+          if not Path(corpus).exists():
+              import glob as _glob
+              matches = sorted(_glob.glob("artifacts/synthetic/c2_corpus_n*_seed*.json"))
+              if not matches:
+                  print("ERROR: no c2 corpus found", file=sys.stderr)
+                  sys.exit(1)
+              corpus = matches[-1]
+
+          print(f"Loading corpus: {corpus}")
+          with open(corpus) as f:
+              records = json.load(f)
+          print(f"Loaded {len(records)} records  |  n_trials={n_trials}  n_models={n_models}  seed={seed}")
+
+          config = TrainingConfig(
+              n_trials=n_trials,
+              n_models=n_models,
+              test_split=0.2,
+              val_split=0.1,
+              random_seed=seed,
+          )
+          t0 = time.time()
+          pipeline = PDTrainingPipeline(config)
+          model, metrics = pipeline.run(records)
+          elapsed = time.time() - t0
+
+          model_path = out_dir / "c2_model.pkl"
+          with open(model_path, "wb") as f:
+              pickle.dump(model, f)
+
+          report = {
+              "component": "C2", "status": "ok",
+              "n_records": len(records),
+              "n_trials": n_trials, "n_models": n_models,
+              "metrics": {k: round(v, 4) for k, v in metrics.items()},
+              "training_seconds": round(elapsed, 2),
+          }
+          with open(out_dir / "c2_training_report.json", "w") as f:
+              json.dump(report, f, indent=2)
+
+          auc = metrics.get("auc", float("nan"))
+          ks  = metrics.get("ks", float("nan"))
+          print(f"\nDone — AUC={auc:.4f}  KS={ks:.4f}  elapsed={elapsed:.0f}s")
+          print(json.dumps(report, indent=2))
+
+          # Gate: AUC must be ≥ 0.70 for a full training run
+          if auc < 0.70:
+              print(f"FAIL: AUC={auc:.4f} below 0.70 threshold", file=sys.stderr)
+              sys.exit(1)
+          PYEOF
+
+      - name: Verify artifacts
+        run: |
+          echo "=== Artifacts produced ==="
+          ls -lh artifacts/models/c2_* 2>/dev/null || echo "WARNING: no C2 artifacts found"
+          cat artifacts/models/c2_training_report.json 2>/dev/null
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c2-model-trials${{ github.event.inputs.n_trials }}-seed${{ github.event.inputs.seed }}
+          path: |
+            artifacts/models/c2_model.pkl
+            artifacts/models/c2_training_report.json
+          retention-days: 30
