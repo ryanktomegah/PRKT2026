@@ -57,6 +57,57 @@ jobs:
             --ignore=lip/tests/test_e2e_pipeline.py \
             -q
 
+  train-smoke:
+    name: Training smoke-test (C1 + C2 + C6)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools>=68 wheel
+          pip install -r requirements.txt -r requirements-ml.txt
+          cd lip && pip install -e .
+      - name: Run DGEN smoke-test (C1 + C2 + C3 + C6)
+        run: |
+          PYTHONPATH=. python -m lip.dgen.generate_all \
+            --output-dir /tmp/lip_smoke_corpus \
+            --components c1 c2 c3 c6 \
+            --smoke-test
+      - name: Run train_all smoke-test (C1 + C2 + C6)
+        run: |
+          PYTHONPATH=. python -m lip.train_all \
+            --corpus-dir /tmp/lip_smoke_corpus \
+            --output-dir /tmp/lip_smoke_models \
+            --components c1 c2 c6 \
+            --smoke-test
+      - name: Verify all model artifacts saved
+        run: |
+          python - <<'EOF'
+          import json, sys
+          from pathlib import Path
+          model_dir = Path("/tmp/lip_smoke_models")
+          required = [
+              "c1_model.pkl", "c1_threshold.txt", "c1_embeddings.pkl",
+              "c1_training_report.json",
+              "c2_model.pkl", "c2_training_report.json",
+              "c6_anomaly_detector.pkl", "c6_training_report.json",
+              "training_summary.json", "model_card.json",
+          ]
+          missing = [f for f in required if not (model_dir / f).exists()]
+          if missing:
+              print(f"FAIL: missing artifacts: {missing}", file=sys.stderr)
+              sys.exit(1)
+          summary = json.loads((model_dir / "training_summary.json").read_text())
+          if summary["overall"] != "PASS":
+              print(f"FAIL: training_summary overall={summary['overall']}", file=sys.stderr)
+              sys.exit(1)
+          print(f"OK: all {len(required)} artifacts present, overall=PASS")
+          EOF
+
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest

@@ -61,6 +61,7 @@ except ImportError:
 _DEFAULT_VOLUMES = {
     "c1": 100_000,
     "c2":  30_000,
+    "c3":  25_000,
     "c4":  15_000,
     "c6":  20_000,
 }
@@ -68,6 +69,7 @@ _DEFAULT_VOLUMES = {
 _SMOKE_VOLUMES = {
     "c1": 500,
     "c2": 500,
+    "c3": 500,
     "c4": 500,
     "c6": 500,
 }
@@ -100,6 +102,12 @@ def _generate_c2(n: int, seed: int) -> List[dict]:
     return generate_pd_training_data_v2(n_samples=n, seed=seed)
 
 
+def _generate_c3(n: int, seed: int) -> List[dict]:
+    """C3: Bridge-loan repayment scenarios across all 5 settlement rails."""
+    from lip.dgen.c3_generator import generate_repayment_corpus
+    return generate_repayment_corpus(n_samples=n, seed=seed)
+
+
 def _generate_c4(n: int, seed: int) -> List[dict]:
     """C4: Dispute narrative text (template-based, no LLM dependency)."""
     from lip.dgen.c4_generator import generate_dispute_corpus
@@ -115,6 +123,7 @@ def _generate_c6(n: int, seed: int) -> List[dict]:
 _GENERATORS = {
     "c1": _generate_c1,
     "c2": _generate_c2,
+    "c3": _generate_c3,
     "c4": _generate_c4,
     "c6": _generate_c6,
 }
@@ -127,6 +136,9 @@ def _get_validator(component: str):
     elif component == "c2":
         from lip.dgen.validator import validate_c2_corpus
         return validate_c2_corpus
+    elif component == "c3":
+        from lip.dgen.validator import validate_c3_corpus
+        return validate_c3_corpus
     elif component == "c4":
         from lip.dgen.validator import validate_c4_corpus
         return validate_c4_corpus
@@ -191,6 +203,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--seed", type=int, default=_DEFAULT_SEED)
     parser.add_argument("--n-c1", type=int, default=None)
     parser.add_argument("--n-c2", type=int, default=None)
+    parser.add_argument("--n-c3", type=int, default=None)
     parser.add_argument("--n-c4", type=int, default=None)
     parser.add_argument("--n-c6", type=int, default=None)
     parser.add_argument("--fail-on-validation-error", action="store_true", default=True)
@@ -203,6 +216,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         volumes["c1"] = args.n_c1
     if args.n_c2 is not None:
         volumes["c2"] = args.n_c2
+    if args.n_c3 is not None:
+        volumes["c3"] = args.n_c3
     if args.n_c4 is not None:
         volumes["c4"] = args.n_c4
     if args.n_c6 is not None:

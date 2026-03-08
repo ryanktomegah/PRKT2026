@@ -210,6 +210,13 @@ _METADATA_FIELDS = frozenset({
     "generation_seed", "label", "label_int", "aml_flag",
     "large_amount_threshold", "tier",
     "is_failure",  # C1: boolean alias for label — excluded from correlation check
+    # C3: structural derived fields (not feature leakage)
+    "settlement_amount_usd",  # = principal + fee (deterministic from principal)
+    "maturity_at",            # = funded_at + maturity_days * 86400
+    "uetr_expiry_at",         # = maturity_at + UETR_TTL_BUFFER_DAYS * 86400
+    "shortfall_usd",          # = 0 for non-partial scenarios
+    "funded_at",              # alias for timestamp (same value, used by C3 engine)
+    "settlement_at",          # = funded_at + rail latency (time-derived, not a feature)
 })
 
 
@@ -422,6 +429,22 @@ def validate_c4_corpus(records: List[dict]) -> CorpusReport:
         },
         ts_field="__none__",   # C4 records have no transaction timestamp
         min_temporal_span_days=0,
+    )
+
+
+def validate_c3_corpus(records: List[dict]) -> CorpusReport:
+    """Validate C3 repayment scenario corpus (NOVA + QUANT parameters)."""
+    return validate_corpus(
+        records,
+        corpus_type="C3",
+        label_field="label",
+        # label=1 when timeout or partial shortfall > 20%
+        # Observed rate: ~17% (TIMEOUT 12% + high-shortfall PARTIAL ~5%)
+        target_positive_rate=0.17,
+        ts_field="timestamp",
+        # 18-month synthetic window (SR 11-7 OOT support)
+        min_temporal_span_days=365,
+        corpus_tag_prefix="SYNTHETIC_CORPUS_C3",
     )
 
 
