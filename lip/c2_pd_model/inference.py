@@ -10,15 +10,13 @@ Three-entity role mapping:
 import logging
 import time
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+from typing import List
 
-import numpy as np
-
-from .fee import compute_fee_bps_from_el
 from .features import UnifiedFeatureEngineer
-from .lgd import estimate_lgd, lgd_for_corridor
+from .fee import compute_fee_bps_from_el
+from .lgd import lgd_for_corridor
 from .model import PDModel
-from .tier_assignment import hash_borrower_id, TierFeatures, assign_tier, Tier
+from .tier_assignment import Tier, TierFeatures, assign_tier, hash_borrower_id
 
 logger = logging.getLogger(__name__)
 

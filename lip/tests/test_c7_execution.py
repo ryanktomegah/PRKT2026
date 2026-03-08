@@ -1,19 +1,15 @@
 """
 test_c7_execution.py — Tests for C7 Execution Agent
 """
+from datetime import datetime
+
 import pytest
-import os
-from datetime import datetime, timedelta
-from decimal import Decimal
 
-from lip.c7_execution_agent.kill_switch import KillSwitch, KillSwitchState, KMSState
-from lip.c7_execution_agent.decision_log import DecisionLogger, DecisionLogEntryData
-from lip.c7_execution_agent.human_override import (
-    HumanOverrideInterface, OverrideDecision
-)
-from lip.c7_execution_agent.degraded_mode import DegradedModeManager, DegradedReason
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
-
+from lip.c7_execution_agent.decision_log import DecisionLogEntryData, DecisionLogger
+from lip.c7_execution_agent.degraded_mode import DegradedModeManager, DegradedReason
+from lip.c7_execution_agent.human_override import HumanOverrideInterface, OverrideDecision
+from lip.c7_execution_agent.kill_switch import KillSwitch, KillSwitchState, KMSState
 
 _HMAC_KEY = b"test_hmac_key_for_unit_tests_32b"
 

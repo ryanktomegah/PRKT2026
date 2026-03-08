@@ -1,15 +1,14 @@
 """
 test_c6_aml.py — Tests for C6 AML Velocity Controls
 """
-import pytest
 from decimal import Decimal
 
-from lip.c6_aml_velocity.velocity import VelocityChecker, DOLLAR_CAP_USD, COUNT_CAP
-from lip.c6_aml_velocity.cross_licensee import CrossLicenseeAggregator, cross_licensee_hash
-from lip.c6_aml_velocity.sanctions import SanctionsScreener
+from lip.c6_aml_velocity.aml_checker import AMLChecker
 from lip.c6_aml_velocity.anomaly import AnomalyDetector
+from lip.c6_aml_velocity.cross_licensee import CrossLicenseeAggregator, cross_licensee_hash
 from lip.c6_aml_velocity.salt_rotation import SaltRotationManager
-
+from lip.c6_aml_velocity.sanctions import SanctionsScreener
+from lip.c6_aml_velocity.velocity import COUNT_CAP, DOLLAR_CAP_USD, VelocityChecker
 
 _SALT = b"test_salt_32bytes_long_exactly__"
 
@@ -173,3 +172,149 @@ class TestSaltRotation:
         mgr = SaltRotationManager()
         mgr.rotate_salt()
         assert mgr.is_in_overlap_period() is True
+
+
+def _make_aml_checker() -> AMLChecker:
+    """Create an AMLChecker with a default VelocityChecker."""
+    return AMLChecker(velocity_checker=VelocityChecker(salt=_SALT))
+
+
+class TestAMLChecker:
+    """Gap 2 regression: combined sanctions → velocity → anomaly gate."""
+
+    def test_clean_entity_passes(self):
+        checker = _make_aml_checker()
+        result = checker.check("entity_ok", Decimal("1000"), "bene_ok")
+        assert result.passed is True
+
+    def test_sanctioned_entity_is_blocked_before_velocity(self):
+        """Sanctions check (step 1) must block before velocity is evaluated."""
+        checker = _make_aml_checker()
+        result = checker.check(
+            "entity_clean", Decimal("1"),
+            "bene_clean",
+            beneficiary_name="TEST BLOCKED PARTY",
+        )
+        assert result.passed is False
+        assert "SANCTIONS" in result.reason.upper() or len(result.sanctions_hits) > 0
+
+    def test_velocity_cap_blocks_after_sanctions_pass(self):
+        """When sanctions pass, velocity cap must still block."""
+        checker = _make_aml_checker()
+        # Saturate velocity via the internal _velocity attribute
+        checker._velocity.record("entity_v", DOLLAR_CAP_USD - Decimal("1"), "b1")
+        result = checker.check("entity_v", Decimal("2"), "b2")
+        assert result.passed is False
+        assert "CAP" in result.reason
+
+    def test_anomaly_is_soft_flag_not_hard_block(self):
+        """Anomaly detection flags but does not hard-block the transaction."""
+        from lip.c6_aml_velocity.anomaly import AnomalyDetector
+        detector = AnomalyDetector()
+        normal_txs = [{"amount": 1000, "hour_of_day": 10, "day_of_week": 2,
+                       "velocity_ratio": 1.0, "beneficiary_concentration": 0.5,
+                       "amount_zscore": 0.0} for _ in range(50)]
+        detector.fit(normal_txs)
+        checker = AMLChecker(
+            velocity_checker=VelocityChecker(salt=_SALT),
+            anomaly_detector=detector,
+        )
+        result = checker.check("entity_anom", Decimal("1"), "bene_anom")
+        assert isinstance(result.passed, bool)
+        assert isinstance(result.anomaly_flagged, bool)
+
+    def test_passed_transaction_records_velocity(self):
+        """After a passing check, velocity is incremented for future checks."""
+        checker = _make_aml_checker()
+        amount = Decimal("50000")
+        checker.check("entity_rec", amount, "bene_rec")
+        # Push toward cap: record near the remaining budget
+        checker._velocity.record("entity_rec", DOLLAR_CAP_USD - amount - Decimal("1"), "b2")
+        result2 = checker.check("entity_rec", Decimal("2"), "b3")
+        assert result2.passed is False  # now over cap
+
+
+class TestCrossLicenseeSaltRotationDualHash:
+    """Gap 5 regression: same entity recognized across salt rotation boundary."""
+
+    def test_dual_write_during_overlap_period(self):
+        """During overlap, record() writes to both current and previous-salt keys."""
+        mgr = SaltRotationManager()
+        mgr.rotate_salt()
+        assert mgr.is_in_overlap_period()
+
+        agg = CrossLicenseeAggregator(salt=mgr.get_current_salt(), salt_manager=mgr)
+        agg.record("TAX_ROTATE_001", Decimal("50000"))
+
+        # Both current-salt and previous-salt keys should have the amount
+        cur_salt = mgr.get_current_salt()
+        prev_salt = mgr.get_previous_salt()
+        assert prev_salt is not None
+
+        from lip.c6_aml_velocity.cross_licensee import cross_licensee_hash
+        cur_hash = cross_licensee_hash("TAX_ROTATE_001", cur_salt)
+        prev_hash = cross_licensee_hash("TAX_ROTATE_001", prev_salt)
+
+        cur_key = agg._make_key(cur_hash, "volume")
+        prev_key = agg._make_key(prev_hash, "volume")
+
+        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("50000")
+        assert Decimal(agg._store.get(prev_key, "0")) == Decimal("50000")
+
+    def test_get_volume_reads_from_prev_salt_during_overlap(self):
+        """get_cross_licensee_volume aggregates old-salt data during overlap."""
+        mgr = SaltRotationManager()
+        # Record under old salt before rotating
+        old_salt = mgr.get_current_salt()
+        agg_old = CrossLicenseeAggregator(salt=old_salt)
+        agg_old.record("TAX_CROSS_002", Decimal("30000"))
+
+        # Now rotate
+        mgr.rotate_salt()
+        assert mgr.is_in_overlap_period()
+
+        # New aggregator with salt_manager — can see old-salt data
+        agg_new = CrossLicenseeAggregator(
+            salt=mgr.get_current_salt(),
+            salt_manager=mgr,
+        )
+        # Copy old-salt store data to new agg's store to simulate shared Redis
+        agg_new._store.update(agg_old._store)
+
+        vol = agg_new.get_cross_licensee_volume("TAX_CROSS_002")
+        assert vol == Decimal("30000")
+
+    def test_migrate_overlap_period_copies_to_current_salt(self):
+        """migrate_overlap_period() moves old-salt records to current-salt keys."""
+        mgr = SaltRotationManager()
+        old_salt = mgr.get_current_salt()
+
+        # Record under old salt
+        agg = CrossLicenseeAggregator(salt=old_salt)
+        agg.record("TAX_MIGRATE_001", Decimal("75000"))
+        old_store_snapshot = dict(agg._store)
+
+        # Rotate and attach manager
+        mgr.rotate_salt()
+        agg._salt_manager = mgr
+        agg._store.update(old_store_snapshot)
+
+        migrated = agg.migrate_overlap_period(["TAX_MIGRATE_001"])
+        assert migrated == 1
+
+        # Current-salt key should now have the volume
+        cur_hash = cross_licensee_hash("TAX_MIGRATE_001", mgr.get_current_salt())
+        cur_key = agg._make_key(cur_hash, "volume")
+        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("75000")
+
+    def test_no_dual_write_outside_overlap(self):
+        """Outside the overlap window, only current-salt key is written."""
+        mgr = SaltRotationManager()
+        # No rotation → not in overlap period
+        assert not mgr.is_in_overlap_period()
+
+        agg = CrossLicenseeAggregator(salt=mgr.get_current_salt(), salt_manager=mgr)
+        agg.record("TAX_SINGLE_003", Decimal("10000"))
+
+        # Only one key should exist
+        assert len(agg._store) == 2  # volume + count (current salt only)

@@ -30,3 +30,11 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Artifacts — model binaries and training outputs
+artifacts/
+
+# CIPHER: AML corpus must never be committed (contains typology patterns)
+# Generate fresh with: python -m lip.dgen.generate_all --output-dir artifacts/synthetic
+**/c6_corpus_*.json
+**/c6_corpus_*.json.sha256

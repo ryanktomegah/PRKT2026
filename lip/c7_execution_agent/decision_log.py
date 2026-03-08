@@ -2,6 +2,17 @@
 decision_log.py — Immutable HMAC-SHA256 signed decision log.
 Architecture Spec S4.8: 7-year retention.
 
+Regulatory obligations covered by this module:
+  EU AI Act Art.13(2)(b) — Transparency: every automated credit decision must be
+    logged with its inputs, outputs, and decision type.
+  EU AI Act Art.17     — Quality management: audit trail for model governance.
+  EU AI Act Art.61     — Post-market monitoring: decision logs feed monitoring pipeline.
+  SR 11-7 (Fed/OCC)    — Model risk management: model decisions must be auditable.
+  FINTRAC / FinCEN     — AML record retention: AML-blocked decisions (BLOCK type with
+    aml_passed=False) must be retained for ≥ 5 years (RETENTION_YEARS=7 exceeds this).
+  DORA Art.30          — ICT incident reporting: kill-switch activations and KMS
+    unavailability gaps are captured in kms_unavailable_gap field.
+
 Three-entity role mapping:
   MLO  — Money Lending Organisation
   MIPLO — Money In / Payment Lending Organisation
@@ -12,8 +23,7 @@ import hmac
 import json
 import logging
 import uuid
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -47,6 +57,13 @@ class DecisionLogger:
     """Immutable HMAC-SHA256 signed decision log with 7-year retention."""
 
     def __init__(self, hmac_key: bytes, storage_backend=None):
+        # Security invariant: HMAC key must be ≥ 32 bytes (256-bit minimum).
+        # Keys shorter than this weaken the MAC against brute-force attacks on the audit log.
+        if len(hmac_key) < 32:
+            raise ValueError(
+                f"HMAC key must be ≥ 32 bytes for HMAC-SHA256 integrity. "
+                f"Got {len(hmac_key)} bytes. Source key from a secrets manager."
+            )
         self._key = hmac_key
         self._store: Dict[str, DecisionLogEntryData] = {}
         self._backend = storage_backend

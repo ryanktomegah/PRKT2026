@@ -56,5 +56,18 @@ DECISION_LOG_RETENTION_YEARS = 7
 HPA_SCALE_OUT_QUEUE_DEPTH = 100
 HPA_SCALE_IN_QUEUE_DEPTH  = 20
 
+# ── Latency SLO ───────────────────────────────────────────────────────────────
+LATENCY_SLO_MS = 94                       # ≤ 94ms end-to-end SLO (Architecture Spec v1.2)
+
+# ── UETR TTL ──────────────────────────────────────────────────────────────────
+UETR_TTL_BUFFER_DAYS = 45                 # buffer beyond maturity for UETR deduplication window
+
+# ── Maturity — BLOCK class ────────────────────────────────────────────────────
+MATURITY_BLOCK_DAYS = 0                   # BLOCK rejection class: no bridge loan, immediate close
+
+# ── Corridor buffer window ─────────────────────────────────────────────────────
+CORRIDOR_BUFFER_WINDOW_DAYS = 90          # rolling window for corridor risk / embedding lookback
+
 # ── Salt rotation ─────────────────────────────────────────────────────────────
-SALT_ROTATION_OVERLAP_DAYS = 30
+SALT_ROTATION_DAYS = 365                  # full rotation cycle (CIPHER: cross-licensee salts)
+SALT_ROTATION_OVERLAP_DAYS = 30           # overlap window — old salt accepted during transition

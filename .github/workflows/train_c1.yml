@@ -1,0 +1,120 @@
+name: Train C1 (Full)
+
+# Manual trigger only — full training takes 2-5h, not suitable for every push.
+# Run from: GitHub → Actions → "Train C1 (Full)" → Run workflow
+#
+# NOTE: artifacts/ is gitignored — corpus is always regenerated fresh here.
+on:
+  workflow_dispatch:
+    inputs:
+      n_epochs:
+        description: "Joint training epochs (20 = ~2.5h safe, 50 = ~5.4h risky)"
+        required: false
+        default: "20"
+      seed:
+        description: "Random seed"
+        required: false
+        default: "42"
+
+jobs:
+  train-c1:
+    name: C1 Full Training (${{ github.event.inputs.n_epochs }} epochs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 340   # 5h40m — hard ceiling before GitHub's 6h kill
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip "setuptools>=68" wheel
+          pip install numpy scikit-learn
+          cd lip && pip install -e .
+
+      - name: Verify package is importable
+        run: |
+          PYTHONPATH=. python -c "from lip.c1_failure_classifier.training import TrainingPipeline; print('lip.train_all OK')"
+          PYTHONPATH=. python -c "import lip.train_all; print('lip.train_all importable')"
+
+      - name: Generate C1 corpus (always — artifacts/ is gitignored)
+        run: |
+          mkdir -p artifacts/synthetic
+          PYTHONPATH=. python -m lip.dgen.generate_all \
+            --output-dir artifacts/synthetic \
+            --components c1 \
+            --seed ${{ github.event.inputs.seed }}
+          ls -lh artifacts/synthetic/c1_corpus_*.json
+
+      - name: Run C1 full training
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python - <<'PYEOF'
+          import sys, os, json, pickle, time
+          from pathlib import Path
+          from lip.c1_failure_classifier.training import TrainingConfig, TrainingPipeline
+
+          n_epochs = int("${{ github.event.inputs.n_epochs }}")
+          seed     = int("${{ github.event.inputs.seed }}")
+          corpus   = f"artifacts/synthetic/c1_corpus_n100000_seed{seed}.json"
+          out_dir  = Path("artifacts/models")
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          print(f"Loading corpus: {corpus}")
+          with open(corpus) as f:
+              records = json.load(f)
+          print(f"Loaded {len(records)} records  |  epochs={n_epochs}  seed={seed}")
+
+          config = TrainingConfig(
+              n_epochs=n_epochs,
+              batch_size=256,
+              learning_rate=1e-3,
+              alpha=0.7,
+              val_split=0.2,
+              random_seed=seed,
+          )
+          t0 = time.time()
+          pipeline = TrainingPipeline(config)
+          model, threshold, emb_pipeline = pipeline.run(records)
+          elapsed = time.time() - t0
+
+          with open(out_dir / "c1_model.pkl", "wb") as f:
+              pickle.dump(model, f)
+          (out_dir / "c1_threshold.txt").write_text(f"{threshold:.6f}\n")
+          with open(out_dir / "c1_embeddings.pkl", "wb") as f:
+              pickle.dump(emb_pipeline, f)
+
+          report = {
+              "component": "C1", "status": "ok",
+              "n_records": len(records), "n_epochs": n_epochs,
+              "threshold": round(float(threshold), 6),
+              "training_seconds": round(elapsed, 2),
+          }
+          with open(out_dir / "c1_training_report.json", "w") as f:
+              json.dump(report, f, indent=2)
+
+          print(f"\nDone — threshold={threshold:.4f}  elapsed={elapsed:.0f}s ({elapsed/3600:.2f}h)")
+          print(json.dumps(report, indent=2))
+          PYEOF
+
+      - name: Verify artifacts
+        run: |
+          echo "=== Artifacts produced ==="
+          ls -lh artifacts/models/c1_* 2>/dev/null || echo "WARNING: no C1 artifacts found"
+          cat artifacts/models/c1_training_report.json 2>/dev/null
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        if: always()   # upload even if training timed out (partial artifacts useful)
+        with:
+          name: c1-model-${{ github.event.inputs.n_epochs }}epochs-seed${{ github.event.inputs.seed }}
+          path: |
+            artifacts/models/c1_model.pkl
+            artifacts/models/c1_threshold.txt
+            artifacts/models/c1_embeddings.pkl
+            artifacts/models/c1_training_report.json
+          retention-days: 30

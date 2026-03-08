@@ -12,7 +12,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 import numpy as np
 
@@ -187,7 +187,7 @@ class BICGraphBuilder:
         """
         now = time.time()
         out_edges = self._out_edges.get(bic, [])
-        in_edges = self._in_edges.get(bic, [])
+        _in_edges = self._in_edges.get(bic, [])
 
         out_degree = float(len(self._adjacency.get(bic, {})))
         in_degree = float(

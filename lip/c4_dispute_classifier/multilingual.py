@@ -5,7 +5,6 @@ C4 Spec Section 11: EN, DE, FR, ES support
 import re
 from typing import Optional, Tuple
 
-
 # ---------------------------------------------------------------------------
 # Supported languages
 # ---------------------------------------------------------------------------

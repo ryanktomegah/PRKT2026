@@ -14,21 +14,17 @@ Also verifies idempotency.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-import pytest
-
+from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
 from lip.c3_repayment_engine.repayment_loop import (
     ActiveLoan,
     RepaymentLoop,
     SettlementMonitor,
-    RepaymentTrigger,
 )
 from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
 from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
-from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
-from lip.pipeline import LIPPipeline
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
@@ -36,9 +32,9 @@ from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.pipeline import LIPPipeline
 
-from .conftest import make_event, MockC1Engine, MockC2Engine, _HMAC_KEY, _SALT
-
+from .conftest import _HMAC_KEY, _SALT, MockC1Engine, MockC2Engine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -280,7 +276,7 @@ class TestMultiRailParallel:
         """Fund 5 loans and settle each via a different rail."""
         monitor, um = _make_monitor()
         repaid = []
-        loop = RepaymentLoop(monitor=monitor, repayment_callback=lambda r: repaid.append(r))
+        _loop = RepaymentLoop(monitor=monitor, repayment_callback=lambda r: repaid.append(r))
 
         rails_and_msgs = []
         for i, rail in enumerate(["SWIFT", "FEDNOW", "SEPA", "BUFFER", "SWIFT"]):

@@ -8,7 +8,7 @@ Architecture Spec S2.3:
   5. Buffer (internal settlement)
 """
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum

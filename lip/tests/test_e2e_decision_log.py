@@ -11,23 +11,18 @@ Verifies:
 
 from __future__ import annotations
 
-import uuid
-from decimal import Decimal
 from datetime import datetime, timezone
-
-import pytest
 
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
-from lip.c7_execution_agent.decision_log import DecisionLogger, DecisionLogEntryData
+from lip.c7_execution_agent.decision_log import DecisionLogEntryData, DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager, DegradedReason
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
 from lip.pipeline import LIPPipeline
 
-from .conftest import make_event, MockC1Engine, MockC2Engine, _HMAC_KEY, _SALT
-
+from .conftest import _HMAC_KEY, _SALT, MockC1Engine, MockC2Engine, make_event
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -180,7 +175,7 @@ class TestHMACSignature:
     def test_get_by_uetr_returns_entries(self):
         pipeline, dl = _build_pipeline_with_logger(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
-        result = pipeline.process(event)
+        _result = pipeline.process(event)
         entries = dl.get_by_uetr(event.uetr)
         assert len(entries) >= 1
         assert entries[0].uetr == event.uetr

@@ -14,7 +14,7 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Deque, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

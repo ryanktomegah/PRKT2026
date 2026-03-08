@@ -1,13 +1,12 @@
 """
 test_c4_dispute.py — Tests for C4 Dispute Classifier
 """
-import pytest
 
-from lip.c4_dispute_classifier.taxonomy import DisputeClass, is_blocking, timeout_fallback
-from lip.c4_dispute_classifier.prefilter import PreFilter, apply_prefilter
 from lip.c4_dispute_classifier.model import DisputeClassifier, classify_dispute
-from lip.c4_dispute_classifier.multilingual import LanguageDetector, MultilingualNarrativeProcessor
+from lip.c4_dispute_classifier.multilingual import LanguageDetector
+from lip.c4_dispute_classifier.prefilter import apply_prefilter
 from lip.c4_dispute_classifier.prompt import DisputePromptBuilder
+from lip.c4_dispute_classifier.taxonomy import DisputeClass, is_blocking, timeout_fallback
 
 
 class TestTaxonomy:

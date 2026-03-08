@@ -7,25 +7,33 @@ Flow 3: AML velocity block → no bridge offered
 Flow 4: Kill switch active → all new offers halted
 Flow 5: High PD thin-file → fee floor applies → offer logged
 """
-import pytest
-from decimal import Decimal
+import time
 from datetime import datetime
+from decimal import Decimal
 
-from lip.common.state_machines import (
-    PaymentStateMachine, PaymentState,
-    LoanStateMachine, LoanState,
+from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_fee_bps_from_el, compute_loan_fee
+from lip.c2_pd_model.tier_assignment import Tier, TierFeatures, assign_tier
+from lip.c3_repayment_engine.corridor_buffer import _WINDOW_SECONDS, CorridorBuffer
+from lip.c3_repayment_engine.rejection_taxonomy import (
+    RejectionClass,
+    classify_rejection_code,
+    maturity_days,
 )
-from lip.c2_pd_model.fee import compute_fee_bps_from_el, compute_loan_fee, FEE_FLOOR_BPS
-from lip.c2_pd_model.tier_assignment import TierFeatures, assign_tier, Tier
-from lip.c3_repayment_engine.rejection_taxonomy import classify_rejection_code, RejectionClass, maturity_days
 from lip.c4_dispute_classifier.prefilter import apply_prefilter
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
-from lip.c6_aml_velocity.velocity import VelocityChecker, DOLLAR_CAP_USD
-from lip.c7_execution_agent.kill_switch import KillSwitch
-from lip.c7_execution_agent.decision_log import DecisionLogger, DecisionLogEntryData
-from lip.c7_execution_agent.human_override import HumanOverrideInterface
-from lip.c7_execution_agent.degraded_mode import DegradedModeManager
+from lip.c6_aml_velocity.aml_checker import AMLChecker
+from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD, VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
+from lip.c7_execution_agent.decision_log import DecisionLogEntryData, DecisionLogger
+from lip.c7_execution_agent.degraded_mode import DegradedModeManager
+from lip.c7_execution_agent.human_override import HumanOverrideInterface
+from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.common.state_machines import (
+    LoanState,
+    LoanStateMachine,
+    PaymentState,
+    PaymentStateMachine,
+)
 
 _SALT = b"integration_test_salt_32bytes___"
 _HMAC_KEY = b"integration_test_hmac_32bytes___"
@@ -265,3 +273,82 @@ class TestFlow5ThinFileFeeFloor:
         assert stored.degraded_mode is False
         assert stored.entry_signature != ""
         assert logger.verify(eid) is True
+
+
+# ===========================================================================
+# Gap 2 integration: combined AML gate (sanctions → velocity → anomaly)
+# ===========================================================================
+
+def _make_aml_checker() -> AMLChecker:
+    from lip.c6_aml_velocity.velocity import VelocityChecker
+    return AMLChecker(velocity_checker=VelocityChecker(salt=_SALT))
+
+
+class TestCombinedAMLGate:
+    """Gap 2: AMLChecker must enforce sanctions before velocity before anomaly."""
+
+    def test_clean_entity_passes_all_gates(self):
+        checker = _make_aml_checker()
+        result = checker.check("entity_clean", Decimal("1000"), "bene_clean")
+        assert result.passed is True
+
+    def test_sanctions_hit_blocks_before_velocity(self):
+        """If sanctions fires, velocity must not be recorded."""
+        checker = _make_aml_checker()
+        result = checker.check(
+            "entity_ok", Decimal("500"),
+            "bene_ok",
+            beneficiary_name="TEST BLOCKED PARTY",
+        )
+        assert result.passed is False
+        # Velocity check for entity_ok should return volume 0 (sanctions blocked before record())
+        vol_result = checker._velocity.check("entity_ok", Decimal("0"), "x")
+        assert vol_result.dollar_volume_24h == Decimal("0")
+
+    def test_velocity_block_does_not_increment_on_failure(self):
+        """A velocity-blocked transaction must not be recorded in the velocity store."""
+        checker = _make_aml_checker()
+        from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD
+        # Saturate velocity
+        checker._velocity.record("entity_sat", DOLLAR_CAP_USD - Decimal("1"), "b1")
+        result = checker.check("entity_sat", Decimal("2"), "b2")
+        assert result.passed is False
+        # Volume should still be DOLLAR_CAP_USD - 1, not incremented further
+        vol_result = checker._velocity.check("entity_sat", Decimal("0"), "x")
+        assert vol_result.dollar_volume_24h == DOLLAR_CAP_USD - Decimal("1")
+
+    def test_passing_transaction_is_recorded(self):
+        """A passing transaction must be recorded in the velocity store."""
+        checker = _make_aml_checker()
+        amount = Decimal("5000")
+        result = checker.check("entity_record", amount, "bene_rec")
+        assert result.passed is True
+        # After a passing check, velocity volume should equal the amount
+        vol_result = checker._velocity.check("entity_record", Decimal("0"), "x")
+        assert vol_result.dollar_volume_24h == amount
+
+
+# ===========================================================================
+# Gap 3 integration: corridor buffer 90-day rolling window
+# ===========================================================================
+
+class TestCorridorBuffer90DayIntegration:
+    """Gap 3: observations stamped >90 days ago must not count toward the tier."""
+
+    def test_expired_observations_not_counted(self):
+        buf = CorridorBuffer()
+        old_ts = time.time() - _WINDOW_SECONDS - 86_400
+        # Inject 200 "old" observations — they should all be pruned
+        buf._observations["USD_EUR"] = [(old_ts, float(i)) for i in range(200)]
+        assert buf.get_buffer_tier("USD_EUR") == 0
+
+    def test_mixed_window_only_fresh_contribute(self):
+        buf = CorridorBuffer()
+        old_ts = time.time() - _WINDOW_SECONDS - 86_400
+        fresh_ts = time.time()
+        # 50 old + 40 fresh → should be Tier 2 (30–100)
+        buf._observations["EUR_USD"] = (
+            [(old_ts, 1.0)] * 50 + [(fresh_ts, 2.0)] * 40
+        )
+        tier = buf.get_buffer_tier("EUR_USD")
+        assert tier == 2

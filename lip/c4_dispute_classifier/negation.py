@@ -2,12 +2,11 @@
 negation.py — Negation test suite: 500 cases across 5 categories
 C4 Spec Section 10
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Tuple
 
 from .taxonomy import DisputeClass
-
 
 # ---------------------------------------------------------------------------
 # NegationCategory

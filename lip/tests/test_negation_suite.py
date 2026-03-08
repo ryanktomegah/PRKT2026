@@ -2,12 +2,13 @@
 test_negation_suite.py — C4 negation test suite validation
 C4 Spec Section 10: 500 cases across 5 categories
 """
-import pytest
 
-from lip.c4_dispute_classifier.negation import (
-    generate_negation_test_suite, NegationTestRunner, NegationCategory, NegationTestCase,
-)
 from lip.c4_dispute_classifier.model import DisputeClassifier
+from lip.c4_dispute_classifier.negation import (
+    NegationCategory,
+    NegationTestRunner,
+    generate_negation_test_suite,
+)
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
 
 

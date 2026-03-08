@@ -1,19 +1,34 @@
 """
 test_c3_repayment.py — Tests for C3 Repayment Engine
 """
-import pytest
+import time
+import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from datetime import datetime
+from unittest.mock import MagicMock
 
+import pytest
+
+from lip.c3_repayment_engine.corridor_buffer import _WINDOW_SECONDS, CorridorBuffer
 from lip.c3_repayment_engine.rejection_taxonomy import (
-    RejectionClass, classify_rejection_code, maturity_days,
-    is_dispute_block, get_all_codes_for_class, REJECTION_CODE_TAXONOMY,
+    REJECTION_CODE_TAXONOMY,
+    RejectionClass,
+    classify_rejection_code,
+    get_all_codes_for_class,
+    is_dispute_block,
+    maturity_days,
 )
-from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
-from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
+from lip.c3_repayment_engine.repayment_loop import (
+    ActiveLoan,
+    RepaymentLoop,
+    RepaymentTrigger,
+    SettlementMonitor,
+)
 from lip.c3_repayment_engine.settlement_handlers import (
-    SettlementHandlerRegistry, SettlementRail,
+    SettlementHandlerRegistry,
+    SettlementRail,
 )
+from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
 
 
 class TestRejectionTaxonomy:
@@ -135,6 +150,179 @@ class TestUETRMapping:
         table = UETRMappingTable()
         ttl = table.get_ttl_seconds(7)
         assert ttl == (7 + 45) * 86400
+
+
+class TestCorridorBuffer90DayExpiry:
+    """Gap 3 regression: observations older than 90 days must be pruned."""
+
+    def test_fresh_observations_are_retained(self):
+        buf = CorridorBuffer()
+        buf.add_observation("USD_EUR", 3.0)
+        buf.add_observation("USD_EUR", 5.0)
+        assert buf.get_buffer_tier("USD_EUR") >= 1
+
+    def test_expired_observations_are_pruned(self, monkeypatch):
+        """Observations stamped 91 days ago must be pruned."""
+        buf = CorridorBuffer()
+        # Inject observations with a timestamp far in the past
+        old_ts = time.time() - _WINDOW_SECONDS - 86_400  # 91 days ago
+        buf._observations["USD_EUR"] = [(old_ts, 3.0), (old_ts, 5.0)]
+        # Tier check triggers pruning
+        tier = buf.get_buffer_tier("USD_EUR")
+        assert tier == 0  # all expired → no data
+
+    def test_mixed_fresh_and_expired(self, monkeypatch):
+        """Only in-window observations count toward the tier."""
+        buf = CorridorBuffer()
+        old_ts = time.time() - _WINDOW_SECONDS - 86_400
+        fresh_ts = time.time()
+        # 2 expired + 3 fresh
+        buf._observations["USD_EUR"] = [
+            (old_ts, 1.0), (old_ts, 2.0),
+            (fresh_ts, 3.0), (fresh_ts, 4.0), (fresh_ts, 5.0),
+        ]
+        tier = buf.get_buffer_tier("USD_EUR")
+        assert tier == 1  # 3 fresh observations → Tier 1 (< 30)
+
+    def test_purge_expired_removes_across_all_corridors(self):
+        buf = CorridorBuffer()
+        old_ts = time.time() - _WINDOW_SECONDS - 86_400
+        buf._observations["USD_EUR"] = [(old_ts, 1.0)]
+        buf._observations["USD_GBP"] = [(old_ts, 2.0)]
+        removed = buf.purge_expired()
+        assert removed == 2
+        assert buf.get_buffer_tier("USD_EUR") == 0
+        assert buf.get_buffer_tier("USD_GBP") == 0
+
+    def test_serialisation_preserves_timestamps(self):
+        buf = CorridorBuffer()
+        buf.add_observation("EUR_GBP", 2.5)
+        d = buf.to_dict()
+        buf2 = CorridorBuffer.from_dict(d)
+        # Timestamps are preserved, so tier is the same
+        assert buf2.get_buffer_tier("EUR_GBP") == buf.get_buffer_tier("EUR_GBP")
+
+
+def _make_monitor():
+    registry = SettlementHandlerRegistry.create_default()
+    um = UETRMappingTable()
+    cb = CorridorBuffer()
+    return SettlementMonitor(handler_registry=registry, uetr_mapping=um, corridor_buffer=cb)
+
+
+def _make_loan(rejection_class="CLASS_B", past_maturity=False) -> ActiveLoan:
+    funded_at = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    if past_maturity:
+        maturity = datetime.now(tz=timezone.utc) - timedelta(seconds=5)
+    else:
+        maturity = datetime.now(tz=timezone.utc) + timedelta(days=7)
+    return ActiveLoan(
+        loan_id=str(uuid.uuid4()),
+        uetr=str(uuid.uuid4()),
+        individual_payment_id=str(uuid.uuid4()),
+        principal=Decimal("50000"),
+        fee_bps=300,
+        maturity_date=maturity,
+        rejection_class=rejection_class,
+        corridor="USD_EUR",
+        funded_at=funded_at,
+    )
+
+
+class TestRepaymentLoopIdempotency:
+    """Gap 4 regression: duplicate settlement signals must trigger exactly one repayment."""
+
+    def test_in_memory_idempotency_second_call_skipped(self):
+        monitor = _make_monitor()
+        repaid = []
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=lambda r: repaid.append(r),
+        )
+        loan = _make_loan()
+        loop.register_loan(loan)
+
+        r1 = loop.trigger_repayment(loan, RepaymentTrigger.SETTLEMENT_CONFIRMED, loan.principal)
+        r2 = loop.trigger_repayment(loan, RepaymentTrigger.SETTLEMENT_CONFIRMED, loan.principal)
+
+        assert r1 != {}  # first repayment processed
+        assert r2 == {}  # second skipped — idempotency
+        assert len(repaid) == 1
+
+    def test_redis_setnx_idempotency_second_call_skipped(self):
+        """With a mock Redis that returns None on second SETNX, callback fires only once."""
+        mock_redis = MagicMock()
+        # First call: SETNX succeeds (returns "OK")
+        # Second call: SETNX fails (returns None — key already exists)
+        mock_redis.set.side_effect = ["OK", None]
+
+        monitor = _make_monitor()
+        repaid = []
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=lambda r: repaid.append(r),
+            redis_client=mock_redis,
+        )
+        loan = _make_loan()
+        loop.register_loan(loan)
+
+        r1 = loop.trigger_repayment(loan, RepaymentTrigger.SETTLEMENT_CONFIRMED, loan.principal)
+        # Re-register (was deregistered after first repayment) to test second call
+        loop.register_loan(loan)
+        r2 = loop.trigger_repayment(loan, RepaymentTrigger.SETTLEMENT_CONFIRMED, loan.principal)
+
+        assert r1 != {}
+        assert r2 == {}
+        assert len(repaid) == 1
+
+    def test_maturity_check_does_not_append_empty_records(self):
+        """check_maturities() must filter out idempotency-skipped (empty) records."""
+        monitor = _make_monitor()
+        repaid = []
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=lambda r: repaid.append(r),
+        )
+        loan = _make_loan(past_maturity=True)
+        loop.register_loan(loan)
+
+        # First check: triggers repayment
+        results1 = loop.check_maturities()
+        assert len([r for r in results1 if r]) == 1
+
+        # Re-register and check again — loan was already repaid (in-memory set)
+        loop.register_loan(loan)
+        results2 = loop.check_maturities()
+        # All records should be filtered out (idempotency skip returns {})
+        assert all(not r for r in results2)
+
+    def test_repayment_record_has_all_required_fields(self):
+        monitor = _make_monitor()
+        records = []
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=lambda r: records.append(r),
+        )
+        loan = _make_loan()
+        loop.register_loan(loan)
+        r = loop.trigger_repayment(loan, RepaymentTrigger.MATURITY_REACHED, loan.principal)
+
+        required = {"loan_id", "uetr", "principal", "fee", "settlement_amount",
+                    "trigger", "funded_at", "maturity_date", "repaid_at"}
+        assert required.issubset(r.keys())
+
+    def test_block_class_loan_skipped_in_maturity_check(self):
+        monitor = _make_monitor()
+        repaid = []
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=lambda r: repaid.append(r),
+        )
+        loan = _make_loan(rejection_class="BLOCK", past_maturity=True)
+        loop.register_loan(loan)
+        _results = loop.check_maturities()
+        # BLOCK loans are skipped entirely — no repayment triggered
+        assert repaid == []
 
 
 class TestSettlementHandlers:

@@ -26,24 +26,26 @@ from __future__ import annotations
 
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
 
-from lip.c5_streaming.event_normalizer import NormalizedEvent
-from lip.c4_dispute_classifier.taxonomy import DisputeClass
 from lip.c3_repayment_engine.rejection_taxonomy import (
-    classify_rejection_code,
-    maturity_days as get_maturity_days,
     RejectionClass,
+    classify_rejection_code,
+)
+from lip.c3_repayment_engine.rejection_taxonomy import (
+    maturity_days as get_maturity_days,
 )
 from lip.c3_repayment_engine.repayment_loop import ActiveLoan
+from lip.c4_dispute_classifier.taxonomy import DisputeClass
+from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.common.state_machines import (
-    PaymentStateMachine,
-    PaymentState,
-    LoanStateMachine,
     LoanState,
+    LoanStateMachine,
+    PaymentState,
+    PaymentStateMachine,
 )
 from lip.instrumentation import LatencyTracker
 from lip.pipeline_result import PipelineResult
@@ -415,7 +417,11 @@ class LIPPipeline:
         beneficiary_id: str,
         tracker: LatencyTracker,
     ):
-        """Run C6 AML velocity check in a thread."""
+        """Run C6 AML combined gate (sanctions → velocity → anomaly) in a thread.
+
+        Accepts both AMLChecker (preferred) and legacy VelocityChecker instances.
+        The result must expose a ``passed`` attribute.
+        """
         with tracker.measure("c6"):
             return self._c6.check(entity_id, event.amount, beneficiary_id)
 

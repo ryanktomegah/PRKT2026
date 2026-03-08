@@ -11,10 +11,7 @@ Tests the 4-tier bootstrap model in pipeline context:
 
 from __future__ import annotations
 
-import pytest
-
-from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer, CorridorBufferDefaults
-
+from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
 
 # ===========================================================================
 # Tier graduation

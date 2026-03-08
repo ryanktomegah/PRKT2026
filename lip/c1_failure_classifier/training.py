@@ -17,12 +17,41 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .graph_builder import BICGraphBuilder, PaymentEdge
-from .features import FeaturePipeline, TabularFeatureEngineer, TABULAR_FEATURE_DIM
-from .graphsage import GraphSAGEModel
-from .tabtransformer import TabTransformerModel
-from .model import ClassifierModel, MLPHead, create_default_model
 from .embeddings import CorridorEmbeddingPipeline
+from .features import FeaturePipeline
+from .graph_builder import BICGraphBuilder, PaymentEdge
+from .graphsage import GraphSAGEModel
+from .model import ClassifierModel, MLPHead
+from .tabtransformer import TabTransformerModel
+
+# ---------------------------------------------------------------------------
+# Utility
+# ---------------------------------------------------------------------------
+
+def _sigmoid(x: float) -> float:
+    if x >= 0:
+        return 1.0 / (1.0 + np.exp(-x))
+    e = np.exp(x)
+    return e / (1.0 + e)
+
+
+def _compute_auc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
+    """Compute ROC-AUC via the trapezoidal rule."""
+    y_true = np.asarray(y_true, dtype=np.float64)
+    y_scores = np.asarray(y_scores, dtype=np.float64)
+    if len(np.unique(y_true)) < 2:
+        return 0.5
+    order = np.argsort(-y_scores)
+    y_sorted = y_true[order]
+    n_pos = float(np.sum(y_true))
+    n_neg = float(len(y_true) - n_pos)
+    if n_pos == 0 or n_neg == 0:
+        return 0.5
+    tpr_vals = np.cumsum(y_sorted) / n_pos
+    fpr_vals = np.cumsum(1.0 - y_sorted) / n_neg
+    _trapz = getattr(np, "trapezoid", None) or getattr(np, "trapz")
+    auc = float(_trapz(tpr_vals, fpr_vals))
+    return max(0.0, min(1.0, abs(auc)))
 
 logger = logging.getLogger(__name__)
 
@@ -200,13 +229,18 @@ class TrainingPipeline:
             - ``X`` of shape ``(n, 88)`` — tabular feature matrix.
             - ``y`` of shape ``(n,)``    — binary labels.
         """
-        pipeline = FeaturePipeline(graph_builder=graph)
+        # Stage3 builds the tabular feature matrix only — node and edge graph
+        # features are NOT included in X (stage5+ slices them from X_train
+        # directly). Calling pipeline.extract_all() per record iterates the
+        # full edge list for every BIC lookup (O(n_edges) per record), which
+        # is O(n_records * n_edges) overall. Since X only uses the tabular
+        # sub-vector, we call the tabular extractor directly — O(n_records).
+        tab_eng = FeaturePipeline(graph_builder=graph)._tab_eng
         X_rows: List[np.ndarray] = []
         y_rows: List[int] = []
 
         for record in data:
-            features = pipeline.extract_all(record)
-            X_rows.append(features["tabular"])
+            X_rows.append(tab_eng.extract(record))
             y_rows.append(int(record["label"]))
 
         X = np.stack(X_rows, axis=0).astype(np.float64)
@@ -259,12 +293,13 @@ class TrainingPipeline:
         X_train: np.ndarray,
         y_train: np.ndarray,
     ) -> GraphSAGEModel:
-        """Pre-train the GraphSAGE model on node-level features.
+        """Pre-train the GraphSAGE model using a temporary linear classification head.
 
-        Uses a simple gradient-free initialisation strategy: weights are
-        set by Xavier uniform and no gradient descent is applied in this
-        reference implementation.  In production, replace with a proper
-        mini-batch SGD loop using :meth:`~ClassifierModel.asymmetric_bce_loss`.
+        Runs a mini-batch SGD loop with a temporary ``(384→1)`` linear head on
+        top of the GraphSAGE output.  Gradients for GraphSAGE layer weights are
+        computed analytically via :meth:`~GraphSAGEModel.backward_empty_neighbors`
+        (empty-neighbour approximation — no graph connectivity available in the
+        tabular batch setting).  The temporary head is discarded after pre-training.
 
         Parameters
         ----------
@@ -276,15 +311,53 @@ class TrainingPipeline:
         Returns
         -------
         GraphSAGEModel
-            Initialised (and in production: trained) GraphSAGE model.
+            Initialised and pre-trained GraphSAGE model.
         """
         model = GraphSAGEModel()
+        n = len(y_train)
+        # Temporary linear head: (output_dim → 1)
+        rng = np.random.default_rng(seed=self.config.random_seed)
+        limit = np.sqrt(6.0 / (model.output_dim + 1))
+        W_head = rng.uniform(-limit, limit, size=(model.output_dim, 1)).astype(np.float64)
+        b_head = np.zeros(1, dtype=np.float64)
+
+        pre_epochs = min(5, self.config.n_epochs)
+        lr = self.config.learning_rate
+        alpha = self.config.alpha
+        batch_size = self.config.batch_size
+
+        for epoch in range(pre_epochs):
+            total_loss = 0.0
+            indices = rng.permutation(n)
+            n_batches = max(1, n // batch_size)
+            for b in range(n_batches):
+                batch_idx = indices[b * batch_size: (b + 1) * batch_size]
+                for i in batch_idx:
+                    node_feat = X_train[i][:model.input_dim]
+                    sage_emb = model.forward(node_feat, [], [])
+                    logit = float((sage_emb @ W_head + b_head).item())
+                    p = _sigmoid(logit)
+                    y = float(y_train[i])
+                    loss = ClassifierModel.asymmetric_bce_loss(y, p, alpha)
+                    total_loss += loss
+
+                    # Gradient through temporary head
+                    d_logit = (1.0 - alpha) * (1.0 - y) * p - alpha * y * (1.0 - p)
+                    dW_head = sage_emb[:, None] * d_logit   # (384, 1)
+                    db_head = np.array([d_logit])
+                    d_sage_emb = W_head[:, 0] * d_logit     # (384,)
+
+                    # Update GraphSAGE weights
+                    model.backward_empty_neighbors(node_feat, d_sage_emb, lr)
+                    W_head -= lr * dW_head
+                    b_head -= lr * db_head
+
+            avg_loss = total_loss / max(1, n)
+            logger.debug("stage5 pre-train epoch %d — avg_loss=%.5f", epoch + 1, avg_loss)
+
         logger.info(
-            "stage5_graphsage_pretrain: initialised GraphSAGE "
-            "(production: run SGD for %d epochs)", self.config.n_epochs,
+            "stage5_graphsage_pretrain: %d pre-train epochs complete", pre_epochs
         )
-        # Production note: run mini-batch neighbour-sampled SGD here.
-        # For the reference implementation we return the Xavier-initialised model.
         return model
 
     # ------------------------------------------------------------------
@@ -298,10 +371,10 @@ class TrainingPipeline:
     ) -> TabTransformerModel:
         """Pre-train the TabTransformer on the tabular feature matrix.
 
-        Runs a lightweight supervised pre-training loop using the asymmetric
-        BCE loss and a simple gradient approximation (finite differences
-        on the MLP head only).  In production, swap for a full
-        backpropagation implementation.
+        Runs a lightweight supervised pre-training loop (5 epochs) with a
+        temporary ``(88→1)`` linear head.  Analytical backpropagation is used
+        for the output projection (``W_out``) and FFN sub-layers of each
+        transformer block via :meth:`~TabTransformerModel.backward`.
 
         Parameters
         ----------
@@ -313,12 +386,51 @@ class TrainingPipeline:
         Returns
         -------
         TabTransformerModel
-            Initialised (and in production: trained) TabTransformer model.
+            Initialised and pre-trained TabTransformer model.
         """
         model = TabTransformerModel()
+        n = len(y_train)
+        rng = np.random.default_rng(seed=self.config.random_seed + 1)
+        limit = np.sqrt(6.0 / (model.output_dim + 1))
+        W_head = rng.uniform(-limit, limit, size=(model.output_dim, 1)).astype(np.float64)
+        b_head = np.zeros(1, dtype=np.float64)
+
+        pre_epochs = min(5, self.config.n_epochs)
+        lr = self.config.learning_rate
+        alpha = self.config.alpha
+        batch_size = self.config.batch_size
+
+        for epoch in range(pre_epochs):
+            total_loss = 0.0
+            indices = rng.permutation(n)
+            n_batches = max(1, n // batch_size)
+            for b in range(n_batches):
+                batch_idx = indices[b * batch_size: (b + 1) * batch_size]
+                for i in batch_idx:
+                    x_tab = X_train[i]
+                    tab_emb = model.forward(x_tab)
+                    logit = float((tab_emb @ W_head + b_head).item())
+                    p = _sigmoid(logit)
+                    y = float(y_train[i])
+                    loss = ClassifierModel.asymmetric_bce_loss(y, p, alpha)
+                    total_loss += loss
+
+                    # Gradient through temporary head
+                    d_logit = (1.0 - alpha) * (1.0 - y) * p - alpha * y * (1.0 - p)
+                    dW_head = tab_emb[:, None] * d_logit    # (88, 1)
+                    db_head = np.array([d_logit])
+                    d_tab_emb = W_head[:, 0] * d_logit      # (88,)
+
+                    # Update TabTransformer weights
+                    model.backward(x_tab, d_tab_emb, lr)
+                    W_head -= lr * dW_head
+                    b_head -= lr * db_head
+
+            avg_loss = total_loss / max(1, n)
+            logger.debug("stage6 pre-train epoch %d — avg_loss=%.5f", epoch + 1, avg_loss)
+
         logger.info(
-            "stage6_tabtransformer_pretrain: initialised TabTransformer "
-            "(production: run SGD for %d epochs)", self.config.n_epochs,
+            "stage6_tabtransformer_pretrain: %d pre-train epochs complete", pre_epochs
         )
         return model
 
@@ -333,13 +445,16 @@ class TrainingPipeline:
         X_train: np.ndarray,
         y_train: np.ndarray,
     ) -> ClassifierModel:
-        """Joint fine-tuning of all components end-to-end.
+        """Joint end-to-end SGD training of GraphSAGE + TabTransformer + MLP.
 
         Assembles the :class:`ClassifierModel` from pre-trained sub-models
-        and runs a joint training loop using the asymmetric BCE loss.
-        In this reference implementation the loop is a forward-pass-only
-        simulation; in production, implement gradient updates for each
-        weight matrix.
+        and runs ``n_epochs`` of mini-batch SGD with the asymmetric BCE loss
+        (``alpha=0.7``).  Backpropagation is fully analytical for the MLP head
+        and analytically approximate for the encoder components (L2-normalisation
+        and attention Jacobians are treated as identity matrices).
+
+        Best-AUC checkpoint tracking is performed on the training set (no held-out
+        set is available at this stage — validation is done in stage 8).
 
         Parameters
         ----------
@@ -355,7 +470,7 @@ class TrainingPipeline:
         Returns
         -------
         ClassifierModel
-            Assembled and jointly-trained classifier.
+            Assembled and jointly-trained classifier (best-AUC checkpoint).
         """
         mlp = MLPHead()
         model = ClassifierModel(
@@ -364,31 +479,84 @@ class TrainingPipeline:
             mlp=mlp,
         )
 
-        n_batches = max(1, len(y_train) // self.config.batch_size)
+        n = len(y_train)
+        n_batches = max(1, n // self.config.batch_size)
+        lr = self.config.learning_rate
+        alpha = self.config.alpha
+        graphsage_input_dim = graphsage.input_dim
+
         logger.info(
             "stage7_joint_training: %d samples, %d batches/epoch, %d epochs",
-            len(y_train), n_batches, self.config.n_epochs,
+            n, n_batches, self.config.n_epochs,
         )
 
-        # Simulated training loop (forward pass only — no backprop in numpy ref impl)
-        for epoch in range(min(self.config.n_epochs, 3)):  # cap for speed in ref impl
+        # Best-AUC checkpoint (in memory)
+        best_auc: float = -1.0
+        best_mlp_w: Optional[dict] = None
+        best_sage_w: Optional[dict] = None
+        best_tab_w: Optional[dict] = None
+
+        for epoch in range(self.config.n_epochs):
             total_loss = 0.0
-            indices = self._rng.permutation(len(y_train))
+            indices = self._rng.permutation(n)
+
             for b in range(n_batches):
                 batch_idx = indices[b * self.config.batch_size: (b + 1) * self.config.batch_size]
                 for i in batch_idx:
                     x_tab = X_train[i]
                     tab_emb = tabtransformer.forward(x_tab)
-                    # Node features: use tabular slice (first 8 dims) as proxy
-                    node_feat = x_tab[:8]
+                    node_feat = x_tab[:graphsage_input_dim]
                     sage_emb = graphsage.forward(node_feat, [], [])
                     fused = np.concatenate([sage_emb, tab_emb])
                     prob = mlp.forward(fused)
-                    total_loss += ClassifierModel.asymmetric_bce_loss(
-                        y_train[i], prob, alpha=self.config.alpha
-                    )
-            avg_loss = total_loss / max(1, len(y_train))
-            logger.debug("Joint training epoch %d — avg_loss=%.5f", epoch + 1, avg_loss)
+                    y = float(y_train[i])
+
+                    total_loss += ClassifierModel.asymmetric_bce_loss(y, prob, alpha=alpha)
+
+                    # --- Backprop through MLP head ---
+                    d_fused = mlp.backward(fused, y, prob, alpha, lr)
+
+                    # --- Backprop into GraphSAGE (first 384 dims of d_fused) ---
+                    d_sage = d_fused[:graphsage.output_dim]
+                    graphsage.backward_empty_neighbors(node_feat, d_sage, lr)
+
+                    # --- Backprop into TabTransformer (last 88 dims of d_fused) ---
+                    d_tab = d_fused[graphsage.output_dim:]
+                    tabtransformer.backward(x_tab, d_tab, lr)
+
+            avg_loss = total_loss / max(1, n)
+
+            # Compute training-set AUC for checkpoint selection
+            scores: List[float] = []
+            for i in range(n):
+                x_tab = X_train[i]
+                tab_emb = tabtransformer.forward(x_tab)
+                node_feat = x_tab[:graphsage_input_dim]
+                sage_emb = graphsage.forward(node_feat, [], [])
+                fused = np.concatenate([sage_emb, tab_emb])
+                scores.append(mlp.forward(fused))
+            auc = _compute_auc(y_train, np.array(scores))
+
+            logger.debug(
+                "Joint training epoch %d — avg_loss=%.5f  train_auc=%.4f",
+                epoch + 1, avg_loss, auc,
+            )
+
+            # Save best checkpoint
+            if auc > best_auc:
+                best_auc = auc
+                best_mlp_w = mlp.get_weights()
+                best_sage_w = graphsage.get_weights_dict()
+                best_tab_w = tabtransformer.get_weights_dict()
+
+        # Restore best checkpoint
+        if best_mlp_w is not None:
+            mlp.set_weights(best_mlp_w)
+            graphsage.set_weights_dict(best_sage_w)  # type: ignore[arg-type]
+            tabtransformer.set_weights_dict(best_tab_w)  # type: ignore[arg-type]
+            logger.info(
+                "stage7_joint_training: restored best checkpoint (train_auc=%.4f)", best_auc
+            )
 
         logger.info("stage7_joint_training: complete")
         return model

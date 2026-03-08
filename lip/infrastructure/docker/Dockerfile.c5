@@ -1,0 +1,42 @@
+# Dockerfile.c5 — C5 Streaming Infrastructure Container
+# Kafka consumer + Flink job runner for pacs.002 event normalization
+
+FROM flink:1.18-scala_2.12-java11
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c5-streaming"
+LABEL description="LIP C5 Kafka/Flink streaming — pacs.002 normalization, exactly-once semantics"
+
+# Install Python 3.11 alongside Flink's JVM
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-dev python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN python3.11 -m pip install --no-cache-dir \
+    numpy>=1.26.0 \
+    pydantic>=2.5.0 \
+    redis>=5.0.0 \
+    cryptography>=42.0.0 \
+    pyyaml>=6.0
+
+# Copy LIP package (streaming module + event normalizer)
+COPY lip/ ./lip/
+WORKDIR /app/lip
+RUN python3.11 -m pip install --no-cache-dir -e .
+WORKDIR /app
+
+# Non-root user
+RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app
+USER lipuser
+
+# Kafka + Redis config via environment
+ENV KAFKA_BOOTSTRAP_SERVERS="kafka:9092" \
+    REDIS_URL="redis://redis:6379/0" \
+    FLINK_PARALLELISM="4"
+
+# Flink TaskManager port
+EXPOSE 6122
+
+CMD ["python3.11", "-m", "lip.c5_streaming.flink_jobs"]

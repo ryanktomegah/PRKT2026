@@ -24,7 +24,6 @@ import csv
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Optional
 
 import numpy as np
 
@@ -633,7 +632,7 @@ class SyntheticPaymentGenerator:
 
         corridor_info = CORRIDOR_DEFINITIONS.get(currency_pair, {})
         region_type = corridor_info.get("region_type", "G7")
-        avg_lag = corridor_info.get("avg_settlement_hours", 4)
+        _avg_lag = corridor_info.get("avg_settlement_hours", 4)
 
         # Settlement lag: 0-5 days based on corridor type
         if region_type == "G7":
@@ -1057,3 +1056,52 @@ def train_val_test_split(
     test = [transactions[i] for i in test_idx]
 
     return train, val, test
+
+
+# ---------------------------------------------------------------------------
+# Module-level convenience function (used by tests and scripts)
+# ---------------------------------------------------------------------------
+
+def generate_synthetic_dataset(n_samples: int = 1000, seed: int = 42) -> list:
+    """Generate a list of C1-format payment records ready for TrainingPipeline.run().
+
+    Thin wrapper around :class:`SWIFTPaymentDataGenerator` that adds the
+    ``label`` and ``timestamp`` fields required by
+    :meth:`TrainingPipeline.stage1_data_validation`.
+
+    Parameters
+    ----------
+    n_samples:
+        Number of synthetic payment records to generate.
+    seed:
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    list of dict
+        Each record contains all :class:`SWIFTPaymentDataGenerator` fields plus:
+        * ``label``     — int, same as ``is_failure``
+        * ``timestamp`` — float Unix timestamp reconstructed from ``hour_of_day``
+          and ``day_of_week`` relative to a fixed reference epoch
+    """
+
+    generator = SyntheticPaymentGenerator(seed=seed)
+    raw = generator.generate_dataset(n_transactions=n_samples)
+
+    # Reference epoch: Monday 00:00 UTC — synthetic timestamps are offsets from it.
+    _EPOCH_MONDAY = 1_700_000_000.0  # 2023-11-14 22:13:20 UTC, a Tuesday — close enough
+
+    records = []
+    for i, rec in enumerate(raw):
+        # Reconstruct a plausible Unix timestamp from temporal fields
+        ts = (
+            _EPOCH_MONDAY
+            + rec.get("day_of_week", 0) * 86400
+            + rec.get("hour_of_day", 0) * 3600
+            + i  # unique second offset so no two records share the same timestamp
+        )
+        rec["timestamp"] = ts
+        rec["label"] = int(rec["is_failure"])
+        records.append(rec)
+
+    return records

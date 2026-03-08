@@ -12,7 +12,7 @@ Output: 384-dimensional corridor embedding
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 
@@ -291,3 +291,78 @@ class GraphSAGEModel:
         self.layer1.set_weights({"W": data["layer1_W"], "b": data["layer1_b"]})
         self.layer2.set_weights({"W": data["layer2_W"], "b": data["layer2_b"]})
         logger.info("GraphSAGEModel weights loaded from %s", path)
+
+    def get_weights_dict(self) -> dict:
+        """Return a shallow copy of all layer weights as a plain dict."""
+        return {
+            "layer1_W": self.layer1.W.copy(),
+            "layer1_b": self.layer1.b.copy(),
+            "layer2_W": self.layer2.W.copy(),
+            "layer2_b": self.layer2.b.copy(),
+        }
+
+    def set_weights_dict(self, d: dict) -> None:
+        """Restore weights from a dict previously returned by :meth:`get_weights_dict`."""
+        self.layer1.W = np.asarray(d["layer1_W"], dtype=np.float64)
+        self.layer1.b = np.asarray(d["layer1_b"], dtype=np.float64)
+        self.layer2.W = np.asarray(d["layer2_W"], dtype=np.float64)
+        self.layer2.b = np.asarray(d["layer2_b"], dtype=np.float64)
+
+    def backward_empty_neighbors(
+        self,
+        node_features: np.ndarray,
+        d_sage_emb: np.ndarray,
+        lr: float,
+    ) -> None:
+        """Approximate analytical backprop for the empty-neighbour training case.
+
+        During batch training, neighbour lists are empty (no graph connectivity
+        in the tabular batch).  The aggregated neighbour vector is therefore the
+        zero vector, simplifying the forward pass to two linear + ReLU layers
+        that operate on ``[node_feat ‖ 0]`` concatenations.
+
+        The L2-normalisation Jacobian is approximated as the identity matrix to
+        keep computation tractable (the normalisation is close to identity for
+        unit-scale embeddings after a few warm-up steps).
+
+        Parameters
+        ----------
+        node_features:
+            Raw 8-dim node feature vector used in the matching forward call.
+        d_sage_emb:
+            Gradient of the loss w.r.t. the 384-dim GraphSAGE output,
+            propagated back from the MLP head.
+        lr:
+            Learning rate for in-place weight update.
+        """
+        node_feat = node_features.astype(np.float64)
+        zeros_in = np.zeros(self.input_dim, dtype=np.float64)
+        zeros_hid = np.zeros(self.hidden_dim, dtype=np.float64)
+
+        # --- Layer 1 forward (empty neighbours → zero agg) ---
+        h_concat1 = np.concatenate([node_feat, zeros_in])   # (2*input_dim,)
+        pre1 = h_concat1 @ self.layer1.W + self.layer1.b    # (hidden_dim,)
+        h1 = np.maximum(0.0, pre1)                          # ReLU (before L2_norm)
+
+        # --- Layer 2 forward (empty neighbours → zero agg) ---
+        h_concat2 = np.concatenate([h1, zeros_hid])         # (2*hidden_dim,)
+        pre2 = h_concat2 @ self.layer2.W + self.layer2.b    # (output_dim,)
+
+        # --- Layer 2 backward (L2_norm ≈ identity) ---
+        d_pre2 = d_sage_emb * (pre2 > 0)                    # (output_dim,)
+        dW2 = np.outer(h_concat2, d_pre2)                   # (2*hidden_dim, output_dim)
+        db2 = d_pre2.copy()
+        d_h_concat2 = self.layer2.W @ d_pre2                # (2*hidden_dim,)
+        d_h1 = d_h_concat2[:self.hidden_dim]                # (hidden_dim,)
+
+        # --- Layer 1 backward (L2_norm ≈ identity) ---
+        d_pre1 = d_h1 * (pre1 > 0)                          # (hidden_dim,)
+        dW1 = np.outer(h_concat1, d_pre1)                   # (2*input_dim, hidden_dim)
+        db1 = d_pre1.copy()
+
+        # Update weights in place (gradient clipping: max element-wise ±1.0)
+        _gc = 1.0
+        self.layer1.W -= lr * np.clip(dW1, -_gc, _gc)
+        self.layer1.b -= lr * np.clip(db1, -_gc, _gc)
+        self.layer2.W -= lr * np.clip(dW2, -_gc, _gc)
+        self.layer2.b -= lr * np.clip(db2, -_gc, _gc)
