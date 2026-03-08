@@ -224,7 +224,7 @@ def _train_c2(
         corridor = rec.get("payment", {}).get("corridor", "DEFAULT")
         parts = corridor.split("-", 1)
         lgd = lgd_for_corridor(parts[0], parts[1] if len(parts) > 1 else parts[0])
-        fee_bps = max(300.0, pd_val * lgd * 10000.0)
+        fee_bps = max(300.0, pd_val * float(lgd) * 10000.0)
         if fee_bps < 300.0:
             fee_violations += 1
 
