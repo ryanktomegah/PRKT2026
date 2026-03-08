@@ -209,6 +209,7 @@ def _check_multiclass_distribution(
 _METADATA_FIELDS = frozenset({
     "generation_seed", "label", "label_int", "aml_flag",
     "large_amount_threshold", "tier",
+    "is_failure",  # C1: boolean alias for label — excluded from correlation check
 })
 
 
@@ -234,7 +235,7 @@ def _check_feature_variance(records: List[dict], min_std: float = 1e-6) -> Check
 def _check_no_perfect_correlation(records: List[dict], threshold: float = 0.99) -> CheckResult:
     """Check for data leakage via perfect feature correlations."""
     numeric = _extract_numeric_fields(records)
-    keys = list(numeric.keys())
+    keys = [k for k in numeric if k not in _METADATA_FIELDS]
     leaks = []
 
     for i in range(len(keys)):
@@ -311,6 +312,7 @@ def validate_corpus(
     target_class_weights: Optional[Dict[str, float]] = None,
     ts_field: str = "timestamp",
     min_temporal_span_days: int = 180,
+    corpus_tag_prefix: str = "SYNTHETIC_CORPUS_",
 ) -> CorpusReport:
     """Run all QA checks on a synthetic corpus.
 
@@ -341,7 +343,7 @@ def validate_corpus(
     report.checks.append(_check_size(records))
 
     # 2. Corpus tag
-    report.checks.append(_check_corpus_tag(records))
+    report.checks.append(_check_corpus_tag(records, expected_prefix=corpus_tag_prefix))
 
     # 3. NaN / Inf
     report.checks.append(_check_nan_inf(records))
@@ -374,6 +376,23 @@ def validate_corpus(
 
 
 # Convenience wrappers per corpus type
+
+def validate_c1_corpus(records: List[dict]) -> CorpusReport:
+    """Validate C1 SWIFT payment failure corpus with ARIA-specified parameters."""
+    return validate_corpus(
+        records,
+        corpus_type="C1",
+        label_field="label",
+        # ~3.6% failure rate from generate_synthetic_dataset; tolerance=15%
+        target_positive_rate=0.036,
+        ts_field="timestamp",
+        # C1 synthetic data does not span 365 days — tabular payment records,
+        # not a time-series corpus, so SR 11-7 temporal check is not applicable.
+        min_temporal_span_days=0,
+        # C1 generator pre-dates the _C1 suffix convention; accepts bare tag.
+        corpus_tag_prefix="SYNTHETIC_CORPUS",
+    )
+
 
 def validate_c2_corpus(records: List[dict]) -> CorpusReport:
     """Validate C2 PD corpus with QUANT-specified parameters."""

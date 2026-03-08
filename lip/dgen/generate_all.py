@@ -121,7 +121,10 @@ _GENERATORS = {
 
 # Validator wrappers (returns None if no specific validator)
 def _get_validator(component: str):
-    if component == "c2":
+    if component == "c1":
+        from lip.dgen.validator import validate_c1_corpus
+        return validate_c1_corpus
+    elif component == "c2":
         from lip.dgen.validator import validate_c2_corpus
         return validate_c2_corpus
     elif component == "c4":
