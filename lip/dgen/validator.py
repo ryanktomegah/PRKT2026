@@ -4,7 +4,7 @@ validator.py — DGEN: Statistical Quality Assurance Layer
 Validates synthetic corpora before they are used for training.
 
 Checks performed:
-  1. Label distribution — actual rates must be within 10% of target rates
+  1. Label distribution — actual rates must fall within max(10% relative, 3σ binomial) band
   2. NaN / Inf sweep — any invalid values fail the corpus immediately
   3. KS test — each numeric feature must not be degenerate (std > threshold)
   4. Correlation leak check — no two features perfectly correlated (|r| < 0.99)
@@ -151,15 +151,35 @@ def _check_label_distribution(
     target_positive_rate: float,
     tolerance: float = 0.10,
 ) -> CheckResult:
-    """Check binary label distribution is within tolerance of target."""
+    """Check binary label distribution is within tolerance of target.
+
+    Uses the wider of two bands:
+    - Fixed relative: target ± tolerance*target  (dominates at large N)
+    - Adaptive 3σ binomial: target ± 3*sqrt(p*(1-p)/n)  (dominates at small N)
+
+    The adaptive band prevents false CI failures at smoke-test volumes (n=500)
+    where binomial variance alone easily swamps the ±10% relative band.
+    """
     labels = [rec.get(label_field) for rec in records if rec.get(label_field) is not None]
     if not labels:
         return CheckResult("label_distribution", False, f"field '{label_field}' not found")
 
     positives = sum(1 for lbl in labels if lbl == 1 or lbl == "1" or lbl is True)
     actual_rate = positives / len(labels)
-    lo = target_positive_rate * (1 - tolerance)
-    hi = target_positive_rate * (1 + tolerance)
+
+    # Fixed relative band
+    fixed_lo = target_positive_rate * (1 - tolerance)
+    fixed_hi = target_positive_rate * (1 + tolerance)
+
+    # Adaptive 3σ binomial band (protects against small-N false failures)
+    p = target_positive_rate
+    sigma = math.sqrt(p * (1.0 - p) / len(labels))
+    adaptive_lo = target_positive_rate - 3.0 * sigma
+    adaptive_hi = target_positive_rate + 3.0 * sigma
+
+    # Accept if actual_rate falls within either band (use the wider union)
+    lo = min(fixed_lo, adaptive_lo)
+    hi = max(fixed_hi, adaptive_hi)
     ok = lo <= actual_rate <= hi
 
     return CheckResult(
@@ -210,6 +230,7 @@ _METADATA_FIELDS = frozenset({
     "generation_seed", "label", "label_int", "aml_flag",
     "large_amount_threshold", "tier",
     "is_failure",  # C1: boolean alias for label — excluded from correlation check
+    "day_of_week",  # time-derived from timestamp (int(ts/86400)%7) — not independent
     # C3: structural derived fields (not feature leakage)
     "settlement_amount_usd",  # = principal + fee (deterministic from principal)
     "maturity_at",            # = funded_at + maturity_days * 86400
