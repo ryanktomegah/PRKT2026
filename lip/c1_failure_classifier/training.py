@@ -229,13 +229,18 @@ class TrainingPipeline:
             - ``X`` of shape ``(n, 88)`` — tabular feature matrix.
             - ``y`` of shape ``(n,)``    — binary labels.
         """
-        pipeline = FeaturePipeline(graph_builder=graph)
+        # Stage3 builds the tabular feature matrix only — node and edge graph
+        # features are NOT included in X (stage5+ slices them from X_train
+        # directly). Calling pipeline.extract_all() per record iterates the
+        # full edge list for every BIC lookup (O(n_edges) per record), which
+        # is O(n_records * n_edges) overall. Since X only uses the tabular
+        # sub-vector, we call the tabular extractor directly — O(n_records).
+        tab_eng = FeaturePipeline(graph_builder=graph)._tab_eng
         X_rows: List[np.ndarray] = []
         y_rows: List[int] = []
 
         for record in data:
-            features = pipeline.extract_all(record)
-            X_rows.append(features["tabular"])
+            X_rows.append(tab_eng.extract(record))
             y_rows.append(int(record["label"]))
 
         X = np.stack(X_rows, axis=0).astype(np.float64)
