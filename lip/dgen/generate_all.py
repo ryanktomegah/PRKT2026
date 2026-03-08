@@ -22,9 +22,9 @@ Output format
 -------------
     artifacts/synthetic/
     ├── c1_corpus_n100000_seed42.json
-    ├── c2_corpus_n30000_seed42.json
+    ├── c2_corpus_n50000_seed42.json
     ├── c4_corpus_n15000_seed42.json
-    ├── c6_corpus_n20000_seed42.json   ← generated but NOT committed to repo
+    ├── c6_corpus_n50000_seed42.json   ← generated but NOT committed to repo
     ├── validation_report.json
     └── data_card.json                 ← EU AI Act Art.10 data lineage
 
@@ -60,10 +60,10 @@ except ImportError:
 
 _DEFAULT_VOLUMES = {
     "c1": 100_000,
-    "c2":  30_000,
+    "c2":  50_000,
     "c3":  25_000,
     "c4":  15_000,
-    "c6":  20_000,
+    "c6":  50_000,
 }
 
 _SMOKE_VOLUMES = {

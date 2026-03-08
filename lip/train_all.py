@@ -443,8 +443,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # C1 corpus filename pattern
     c1_corpus = corpus_dir / f"c1_corpus_n{'500' if args.smoke_test else '100000'}_seed{args.seed}.json"
-    c2_corpus = corpus_dir / f"c2_corpus_n{'500' if args.smoke_test else '30000'}_seed{args.seed}.json"
-    c6_corpus = corpus_dir / f"c6_corpus_n{'500' if args.smoke_test else '20000'}_seed{args.seed}.json"
+    c2_corpus = corpus_dir / f"c2_corpus_n{'500' if args.smoke_test else '50000'}_seed{args.seed}.json"
+    c6_corpus = corpus_dir / f"c6_corpus_n{'500' if args.smoke_test else '50000'}_seed{args.seed}.json"
 
     # Fallback: find any matching corpus if exact name not found
     def _find_corpus(pattern: str) -> Optional[Path]:
