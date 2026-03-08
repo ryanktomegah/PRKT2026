@@ -195,8 +195,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--components",
         nargs="+",
-        choices=["c1", "c2", "c4", "c6"],
-        default=["c1", "c2", "c4", "c6"],
+        choices=["c1", "c2", "c3", "c4", "c6"],
+        default=["c1", "c2", "c3", "c4", "c6"],
         help="Which components to generate (default: all)",
     )
     parser.add_argument("--smoke-test", action="store_true", help="Small N for CI smoke test")
