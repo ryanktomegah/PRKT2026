@@ -1,0 +1,118 @@
+name: C4 Corpus Generation
+
+# Generates the C4 dispute-classifier training corpus (25k ISO 20022 dispute
+# narratives) and uploads it as a GitHub Actions artifact.
+#
+# NOTE: Actual LLM fine-tuning (Llama-3-8B GPTQ, C4 Spec §6) requires a GPU:
+#   - GPU: A100 / H100 (≥40 GB VRAM)
+#   - Estimated time: 4–8h at bf16, LoRA r=16
+#   - Submit to: Modal Labs, RunPod, or AWS p4d.24xlarge
+#   - Training script: PYTHONPATH=. python -m lip.c4_dispute_classifier.training \
+#       --corpus <path/to/c4_corpus.json> --output-dir artifacts/models/
+#
+# Once corpus is downloaded from the artifact, run the training script on your
+# GPU node and place the resulting model weights at:
+#   artifacts/models/c4_dispute_model/
+#
+on:
+  workflow_dispatch:
+    inputs:
+      n_records:
+        description: "Number of dispute narratives to generate"
+        required: false
+        default: "25000"
+      seed:
+        description: "Random seed"
+        required: false
+        default: "42"
+
+jobs:
+  generate-c4-corpus:
+    name: C4 Corpus Generation (${{ github.event.inputs.n_records }} records)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip "setuptools>=68" wheel
+          pip install numpy scikit-learn
+          cd lip && pip install -e .
+
+      - name: Verify package is importable
+        run: |
+          PYTHONPATH=. python -c "from lip.dgen.c4_generator import generate_c4_corpus; print('C4 generator OK')"
+
+      - name: Generate C4 corpus
+        run: |
+          mkdir -p artifacts/synthetic
+          PYTHONPATH=. python -m lip.dgen.generate_all \
+            --output-dir artifacts/synthetic \
+            --components c4 \
+            --n-c4 ${{ github.event.inputs.n_records }} \
+            --seed ${{ github.event.inputs.seed }}
+          ls -lh artifacts/synthetic/c4_corpus_*.json
+
+      - name: Validate corpus
+        run: |
+          PYTHONPATH=. python - <<'PYEOF'
+          import json, sys
+          from pathlib import Path
+
+          seed = "${{ github.event.inputs.seed }}"
+          n    = "${{ github.event.inputs.n_records }}"
+          path = Path(f"artifacts/synthetic/c4_corpus_n{n}_seed{seed}.json")
+
+          if not path.exists():
+            # Try without exact n in name (generator may round)
+            candidates = list(Path("artifacts/synthetic").glob("c4_corpus_*.json"))
+            if not candidates:
+              print("ERROR: no c4_corpus_*.json found", file=sys.stderr)
+              sys.exit(1)
+            path = candidates[0]
+
+          records = json.loads(path.read_text())
+          n_records = len(records)
+          labels = [r.get("label") for r in records]
+          unique_labels = set(labels)
+          print(f"Corpus: {path.name}")
+          print(f"Records: {n_records}")
+          print(f"Label set: {unique_labels}")
+
+          required_labels = {"NOT_DISPUTE", "DISPUTE_CONFIRMED", "DISPUTE_POSSIBLE", "NEGOTIATION"}
+          missing = required_labels - unique_labels
+          if missing:
+            print(f"WARNING: missing label classes: {missing}", file=sys.stderr)
+
+          for rec in records[:3]:
+            print(f"  Sample: {rec.get('label')} | {str(rec.get('narrative', ''))[:80]}")
+
+          print(f"\nValidation passed — {n_records} records, {len(unique_labels)} label classes")
+          PYEOF
+
+      - name: Upload corpus artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: c4-corpus-n${{ github.event.inputs.n_records }}-seed${{ github.event.inputs.seed }}
+          path: artifacts/synthetic/c4_corpus_*.json
+          retention-days: 30
+
+      - name: GPU training instructions
+        run: |
+          echo ""
+          echo "=== Next step: GPU fine-tuning ==="
+          echo "Download the corpus artifact above, then run on a GPU node:"
+          echo ""
+          echo "  PYTHONPATH=. python -m lip.c4_dispute_classifier.training \\"
+          echo "    --corpus <downloaded_corpus.json> \\"
+          echo "    --output-dir artifacts/models/c4_dispute_model/"
+          echo ""
+          echo "Requirements: A100/H100, ~40 GB VRAM, 4–8h training time"
+          echo "Providers: Modal Labs (modal run), RunPod, AWS p4d.24xlarge"
+          echo ""

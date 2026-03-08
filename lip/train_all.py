@@ -202,6 +202,7 @@ def _train_c2(
     rng = np.random.default_rng(0)
     sample_idx = rng.integers(0, len(records), size=min(100, len(records)))
     from lip.c2_pd_model.features import UnifiedFeatureEngineer
+    from lip.c2_pd_model.lgd import lgd_for_corridor
     from lip.c2_pd_model.tier_assignment import Tier, TierFeatures, assign_tier
 
     fee_violations = 0
@@ -220,7 +221,8 @@ def _train_c2(
         feat_vec, _ = engineer.extract(rec.get("payment", {}), borrower)
         import numpy as np
         pd_val = float(model.predict_proba(feat_vec.reshape(1, -1))[0])
-        lgd = 0.45  # Basel III standard LGD
+        corridor = rec.get("payment", {}).get("corridor", "DEFAULT")
+        lgd = lgd_for_corridor(corridor)
         fee_bps = max(300.0, pd_val * lgd * 10000.0)
         if fee_bps < 300.0:
             fee_violations += 1
