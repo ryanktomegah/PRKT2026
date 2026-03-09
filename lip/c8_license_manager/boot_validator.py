@@ -25,6 +25,8 @@ import logging
 import os
 from typing import Optional
 
+from lip.c7_execution_agent.kill_switch import KillSwitch
+
 from .license_token import LicenseeContext, LicenseToken, verify_token
 
 logger = logging.getLogger(__name__)
@@ -46,7 +48,7 @@ class LicenseBootValidator:
         fails hard if the token does not permit this component.
     """
 
-    def __init__(self, kill_switch: object, required_component: str = "C7") -> None:
+    def __init__(self, kill_switch: KillSwitch, required_component: str = "C7") -> None:
         self._ks = kill_switch
         self._required_component = required_component
         self._context: Optional[LicenseeContext] = None
