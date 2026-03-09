@@ -1,0 +1,96 @@
+# C6 AML Velocity — AML Checker Deployment
+# Sanctions screening + velocity checks + anomaly detection.
+# Stateful: rolling 24h velocity windows in Redis; salt rotation state.
+# CIPHER: zero cross-licensee data leakage via scoped salt hashing.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c6-aml
+  namespace: lip
+  labels:
+    app: lip-c6-aml
+    component: c6-aml-velocity
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lip-c6-aml
+  template:
+    metadata:
+      labels:
+        app: lip-c6-aml
+        component: c6-aml-velocity
+    spec:
+      containers:
+        - name: c6-aml
+          image: lip/c6-aml:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8082
+              name: metrics
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          env:
+            - name: LIP_COMPONENT
+              value: c6
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lip-redis-secret
+                  key: url
+            - name: LIP_AML_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: lip-aml-secret
+                  key: current_salt
+            - name: LIP_AML_PREV_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: lip-aml-secret
+                  key: previous_salt
+            - name: LIP_LICENSE_TOKEN_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: token_json
+            - name: LIP_LICENSE_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: key_hex
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lip-c6-aml-svc
+  namespace: lip
+spec:
+  selector:
+    app: lip-c6-aml
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 8082
+      targetPort: 8082
+  type: ClusterIP

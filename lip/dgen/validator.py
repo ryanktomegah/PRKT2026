@@ -100,7 +100,7 @@ def _extract_numeric_fields(records: List[dict]) -> Dict[str, List[float]]:
     """Extract all top-level numeric fields from records."""
     if not records:
         return {}
-    candidates = {}
+    candidates: Dict[str, List[float]] = {}
     for key, val in records[0].items():
         if isinstance(val, (int, float)) and not isinstance(val, bool):
             candidates[key] = []

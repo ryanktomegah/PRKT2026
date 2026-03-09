@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "description": "LIP C6 AML Sanctions snapshot — merged from public-domain government lists",
+    "sources": {
+      "OFAC": "US Treasury SDN list — https://sanctionslist.ofac.treas.gov/ (public domain)",
+      "UN": "UN Security Council Consolidated List — https://scsanctions.un.org/ (public domain)",
+      "EU": "EU CFSP Consolidated Sanctions List — https://data.europa.eu/ (CC0)"
+    },
+    "refresh_cadence": "Weekly via .github/workflows/update-sanctions.yml",
+    "note": "Populate this file by running: python -m lip.c6_aml_velocity.sanctions_loader --output lip/c6_aml_velocity/data/sanctions.json"
+  },
+  "OFAC": [],
+  "UN": [],
+  "EU": []
+}

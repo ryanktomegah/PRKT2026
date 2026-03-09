@@ -1,0 +1,100 @@
+# C4 Dispute Classifier — LLM Inference Deployment
+# Quantized Mistral-7B / QLoRA fine-tuned for dispute classification.
+# GPU required for model inference (T4 minimum); zero outbound per
+# network-policies.yaml (bank-side, air-gapped at inference time).
+#
+# Note: Model weights must be built via train_c4.yml workflow and placed
+# in the model store before this deployment is ready.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c4-dispute
+  namespace: lip
+  labels:
+    app: lip-c4-dispute
+    component: c4-dispute-classifier
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lip-c4-dispute
+  template:
+    metadata:
+      labels:
+        app: lip-c4-dispute
+        component: c4-dispute-classifier
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-t4
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: c4-dispute
+          image: lip/c4-dispute:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8082
+              name: metrics
+          resources:
+            requests:
+              cpu: "2"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4"
+              memory: "24Gi"
+              nvidia.com/gpu: "1"
+          env:
+            - name: LIP_COMPONENT
+              value: c4
+            - name: LIP_LICENSE_TOKEN_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: token_json
+            - name: LIP_LICENSE_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: key_hex
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 60   # LLM load takes longer
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 10
+      volumes:
+        - name: model-store
+          persistentVolumeClaim:
+            claimName: lip-model-store-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lip-c4-dispute-svc
+  namespace: lip
+spec:
+  selector:
+    app: lip-c4-dispute
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 8082
+      targetPort: 8082
+  type: ClusterIP

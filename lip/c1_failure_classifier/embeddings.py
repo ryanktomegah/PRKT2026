@@ -11,7 +11,7 @@ C1 Spec Section 8: 128-dim vectors in Redis, weekly rebuild, cold start
 import json
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -227,7 +227,7 @@ class CorridorEmbeddingPipeline:
     # Weekly rebuild
     # ------------------------------------------------------------------
 
-    def rebuild_all(self, payments: List[dict], model: object) -> int:
+    def rebuild_all(self, payments: List[dict], model: Any) -> int:
         """Rebuild all corridor embeddings from a payment batch.
 
         Iterates over every unique ``currency_pair`` found in *payments*,

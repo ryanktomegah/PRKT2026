@@ -61,3 +61,156 @@ spec:
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 600
+---
+# HPA for C2 PD Model (queue depth — LightGBM inference)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lip-c2-pd-model-hpa
+  namespace: lip
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lip-c2-pd-model
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c2-pd-model
+        target:
+          type: AverageValue
+          averageValue: "50"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+---
+# HPA for C3 Repayment Engine (queue depth — settlement monitoring)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lip-c3-repayment-hpa
+  namespace: lip
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lip-c3-repayment
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c3-repayment-engine
+        target:
+          type: AverageValue
+          averageValue: "30"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+---
+# HPA for C6 AML Velocity (queue depth — sanctions + velocity checks)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lip-c6-aml-hpa
+  namespace: lip
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lip-c6-aml
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c6-aml-velocity
+        target:
+          type: AverageValue
+          averageValue: "50"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+---
+# HPA for C7 Execution Agent (queue depth — loan offer decisions)
+# Conservative: kill-switch state must be consistent; limit scale-up speed.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lip-c7-execution-hpa
+  namespace: lip
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lip-c7-execution
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c7-execution-agent
+        target:
+          type: AverageValue
+          averageValue: "30"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180

@@ -48,7 +48,7 @@ def _make_lgbm_model(random_seed: int, **params) -> Any:
             n_jobs=-1,
         )
         defaults.update(params)
-        return lgb.LGBMClassifier(**defaults)
+        return lgb.LGBMClassifier(**defaults)  # type: ignore[arg-type]
     except ImportError:
         logger.info(
             "lightgbm not installed; falling back to sklearn GradientBoostingClassifier."
@@ -322,7 +322,7 @@ class PDModel:
         ]
 
         if single:
-            return float(pd_scores[0]), shap_values_list
+            return float(pd_scores[0]), shap_values_list  # type: ignore[return-value]
         return pd_scores, shap_values_list
 
     # ------------------------------------------------------------------

@@ -26,14 +26,18 @@ logger = logging.getLogger(__name__)
 # SLA constants
 # ---------------------------------------------------------------------------
 
-LATENCY_P50_TARGET_MS: float = 100.0
+LATENCY_P50_TARGET_MS: float = 45.0
 """50th-percentile inference latency target (milliseconds)."""
 
-LATENCY_P99_TARGET_MS: float = 200.0
-"""99th-percentile inference latency budget (milliseconds)."""
+LATENCY_P99_TARGET_MS: float = 94.0
+"""99th-percentile inference latency budget (milliseconds). Canonical SLO — do not change without QUANT sign-off."""
 
 _SHAP_TOP_N: int = 20
-_SHAP_STEPS: int = 50  # gradient approximation steps
+_SHAP_STEPS: int = 5   # integrated-gradient steps (5-point approximation)
+# NOTE: 50 steps gives higher attribution precision but exceeds the 94ms SLO
+# in a pure-NumPy reference implementation.  Production deployment with GPU /
+# PyTorch autograd should restore 50 steps.  5-point IG is sufficient for
+# directional top-20 feature ranking required by EU AI Act Art.13.
 
 
 # ---------------------------------------------------------------------------
@@ -185,35 +189,47 @@ class InferenceEngine:
             Top-20 feature attributions sorted by absolute value, each a dict
             ``{'feature': str, 'value': float}``.
         """
+        from .graphsage import GRAPHSAGE_OUTPUT_DIM
+
         x = tabular_features.astype(np.float64)
         b = baseline.astype(np.float64)
         delta = x - b
+        n_features = len(x)
+        n_steps = _SHAP_STEPS
+        eps = 1e-4
 
-        # Approximate integrated gradient via finite differences
-        grads = np.zeros_like(x)
-        for step in range(1, _SHAP_STEPS + 1):
-            alpha = step / _SHAP_STEPS
-            interpolated = b + alpha * delta
+        # --- Build all interpolated centre points: (n_steps, n_features) ---
+        alphas = np.arange(1, n_steps + 1, dtype=np.float64) / n_steps  # (S,)
+        centres = b + np.outer(alphas, delta)  # (S, N)
 
-            # Numerical gradient: perturb each feature by eps
-            eps = 1e-4
-            tab_emb_center = self.model.tabtransformer.forward(interpolated)
-            # Use a zero node-embedding for SHAP (isolate tabular contribution)
-            from .graphsage import GRAPHSAGE_OUTPUT_DIM
-            sage_emb_zero = np.zeros(GRAPHSAGE_OUTPUT_DIM, dtype=np.float64)
-            fused_center = np.concatenate([sage_emb_zero, tab_emb_center])
-            prob_center = self.model.mlp.forward(fused_center)
+        # --- Centre batch forward: (S, N) → probs (S,) ---
+        tab_centres = self.model.tabtransformer.forward_batch(centres)  # (S, 88)
+        sage_zeros_s = np.zeros((n_steps, GRAPHSAGE_OUTPUT_DIM), dtype=np.float64)
+        prob_centres = self.model.mlp.forward_batch(
+            np.concatenate([sage_zeros_s, tab_centres], axis=-1)
+        )  # (S,)
 
-            for i in range(len(x)):
-                x_plus = interpolated.copy()
-                x_plus[i] += eps
-                tab_emb_plus = self.model.tabtransformer.forward(x_plus)
-                fused_plus = np.concatenate([sage_emb_zero, tab_emb_plus])
-                prob_plus = self.model.mlp.forward(fused_plus)
-                grads[i] += (prob_plus - prob_center) / eps
+        # --- Perturbed batch: (S × N, N) — diagonal ε perturbation per step ---
+        # For each step s: row s*N+i = centres[s] + eps * e_i
+        eye_eps = np.eye(n_features, dtype=np.float64) * eps             # (N, N)
+        centres_tiled = np.repeat(centres, n_features, axis=0)           # (S×N, N)
+        eye_tiled = np.tile(eye_eps, (n_steps, 1))                       # (S×N, N)
+        x_perturbed_all = centres_tiled + eye_tiled                      # (S×N, N)
+
+        # --- Perturbed batch forward: (S×N, N) → probs (S×N,) ---
+        tab_perturbed = self.model.tabtransformer.forward_batch(x_perturbed_all)  # (S×N, 88)
+        sage_zeros_sn = np.zeros((n_steps * n_features, GRAPHSAGE_OUTPUT_DIM), dtype=np.float64)
+        prob_perturbed = self.model.mlp.forward_batch(
+            np.concatenate([sage_zeros_sn, tab_perturbed], axis=-1)
+        )  # (S×N,)
+
+        # --- Gradient accumulation: (S, N) then sum over S ---
+        prob_matrix = prob_perturbed.reshape(n_steps, n_features)  # (S, N)
+        grad_matrix = (prob_matrix - prob_centres[:, None]) / eps  # (S, N)
+        grads = grad_matrix.sum(axis=0) / n_steps                  # (N,)
 
         # Integrated gradient attribution
-        attributions = (grads / _SHAP_STEPS) * delta
+        attributions = grads * delta
 
         # Retrieve feature names
         feature_names = self._tab_eng.feature_names()

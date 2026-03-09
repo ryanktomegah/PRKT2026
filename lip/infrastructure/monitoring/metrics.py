@@ -73,7 +73,7 @@ class PrometheusMetricsCollector:
 
     def record_inference_latency(self, latency_ms: float, component: str = "c1") -> None:
         self._inference_latency.record(latency_ms)
-        if latency_ms > 200:
+        if latency_ms > 94:
             logger.warning("P99 latency threshold exceeded: %.1fms component=%s", latency_ms, component)
 
     def get_latency_p50(self) -> Optional[float]:

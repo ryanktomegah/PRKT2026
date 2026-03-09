@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
+    lip/environment: {{ .Release.Namespace | quote }}

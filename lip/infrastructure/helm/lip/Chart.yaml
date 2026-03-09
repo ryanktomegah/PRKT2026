@@ -1,0 +1,16 @@
+apiVersion: v2
+name: lip
+description: BPI Liquidity Intelligence Platform — 7-component bridge-loan engine
+type: application
+version: 0.1.0
+appVersion: "1.2.0"
+keywords:
+  - payments
+  - fintech
+  - ml
+  - aml
+maintainers:
+  - name: LIP Engineering
+    email: lip-eng@bpi.internal
+sources:
+  - https://github.com/ryanktomegah/PRKT2026

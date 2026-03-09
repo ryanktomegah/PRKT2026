@@ -1,0 +1,202 @@
+{{- if .Values.autoscaling.enabled }}
+{{/* C1 — GPU inference, scale on queue depth */}}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lip.fullname" . }}-c1-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lip.fullname" . }}-c1
+  minReplicas: {{ .Values.autoscaling.c1.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c1.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c1-failure-classifier
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.autoscaling.c1.queueDepthTarget | quote }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+{{/* C2 PD Model */}}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lip.fullname" . }}-c2-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lip.fullname" . }}-c2
+  minReplicas: {{ .Values.autoscaling.c2.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c2.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c2-pd-model
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.autoscaling.c2.queueDepthTarget | quote }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+{{/* C3 Repayment */}}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lip.fullname" . }}-c3-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lip.fullname" . }}-c3
+  minReplicas: {{ .Values.autoscaling.c3.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c3.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c3-repayment-engine
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.autoscaling.c3.queueDepthTarget | quote }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+{{/* C6 AML */}}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lip.fullname" . }}-c6-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lip.fullname" . }}-c6
+  minReplicas: {{ .Values.autoscaling.c6.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c6.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c6-aml-velocity
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.autoscaling.c6.queueDepthTarget | quote }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+{{/* C7 Execution Agent — conservative scale-up (kill-switch consistency) */}}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lip.fullname" . }}-c7-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lip.fullname" . }}-c7
+  minReplicas: {{ .Values.autoscaling.c7.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c7.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: lip_inference_queue_depth
+          selector:
+            matchLabels:
+              component: c7-execution-agent
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.autoscaling.c7.queueDepthTarget | quote }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
+{{- end }}

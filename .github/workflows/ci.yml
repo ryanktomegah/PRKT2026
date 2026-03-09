@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["main"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -53,7 +57,7 @@ jobs:
             --tb=short \
             --cov=lip \
             --cov-report=term-missing \
-            --cov-fail-under=60 \
+            --cov-fail-under=75 \
             --ignore=lip/tests/test_e2e_pipeline.py \
             -q
 
@@ -134,8 +138,7 @@ jobs:
         run: |
           pip install --upgrade pip setuptools>=68 wheel
           pip install -r requirements.txt -r requirements-ml.txt
-          pip install mypy>=1.8.0
+          pip install mypy>=1.8.0 types-PyYAML
           cd lip && pip install -e .
       - name: Run mypy
-        run: mypy lip/ --ignore-missing-imports --no-strict-optional
-        continue-on-error: true   # advisory for now; promote to required once stubs are complete
+        run: mypy lip/ --ignore-missing-imports --no-strict-optional --exclude lip/tests/test_e2e_pipeline.py

@@ -18,8 +18,8 @@ fee_parameters:
   warning: "DO NOT apply fee_bps as a flat per-cycle rate"
 
 latency_targets_ms:
-  p50: 100
-  p99: 200
+  p50: 45    # Architecture Spec v1.2 — inference.py LATENCY_P50_TARGET_MS
+  p99: 94    # Architecture Spec v1.2 — canonical SLO (QUANT sign-off required to change)
 
 ml_performance:
   baseline_auc: 0.739    # XGBoost baseline (prototype)
@@ -74,3 +74,15 @@ retention:
 hpa_thresholds:
   scale_out_queue_depth: 100
   scale_in_queue_depth: 20
+
+latency_slo_ms: 94                   # ≤ 94ms end-to-end SLO (Architecture Spec v1.2)
+
+uetr_ttl_buffer_days: 45             # buffer beyond maturity for UETR deduplication window
+
+maturity_block_days: 0               # BLOCK rejection class: no bridge loan, immediate close
+
+corridor_buffer_window_days: 90      # rolling window for corridor risk / embedding lookback
+
+platform_royalty:
+  rate: 0.15                         # 15% of fee_repaid_usd → BPI technology licensor
+  description: "BPI IP license fee extracted from licensee-collected loan fees. BPI does not deploy capital or operate infrastructure."

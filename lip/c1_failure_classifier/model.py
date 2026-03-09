@@ -129,6 +129,25 @@ class MLPHead:
         logit = float((h2 @ self.W3 + self.b3)[0])
         return _sigmoid(logit)
 
+    def forward_batch(self, x_batch: np.ndarray) -> np.ndarray:
+        """Batch forward for B fused vectors.
+
+        Parameters
+        ----------
+        x_batch:
+            Shape ``(B, input_dim)``.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(B,)`` — predicted failure probabilities in ``[0, 1]``.
+        """
+        x = np.asarray(x_batch, dtype=np.float64)   # (B, input_dim)
+        h1 = _relu(x @ self.W1 + self.b1)           # (B, hidden1)
+        h2 = _relu(h1 @ self.W2 + self.b2)          # (B, hidden2)
+        logits = (h2 @ self.W3 + self.b3).reshape(-1)  # (B,)
+        return _sigmoid_arr(logits)                  # (B,)
+
     def get_weights(self) -> dict:
         return {
             "W1": self.W1, "b1": self.b1,

@@ -7,7 +7,10 @@ Three-entity role mapping:
   MIPLO — Money In / Payment Lending Organisation
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
+import collections
 import logging
+import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -30,8 +33,47 @@ class ExecutionConfig:
     require_human_review_above_pd: float = 0.20
 
 
+class _TPSLimiter:
+    """Sliding-window TPS limiter (thread-safe).
+
+    Records call timestamps in a deque and rejects calls when the count
+    in the past 1-second window exceeds ``max_tps``.  0 means unlimited.
+    """
+
+    def __init__(self, max_tps: int = 0) -> None:
+        self.max_tps = max_tps
+        self._timestamps: collections.deque = collections.deque()
+        self._lock = threading.Lock()
+
+    def allow(self) -> bool:
+        """Return True if the call is within the TPS budget."""
+        if self.max_tps <= 0:
+            return True
+        now = time.monotonic()
+        cutoff = now - 1.0
+        with self._lock:
+            while self._timestamps and self._timestamps[0] < cutoff:
+                self._timestamps.popleft()
+            if len(self._timestamps) >= self.max_tps:
+                return False
+            self._timestamps.append(now)
+            return True
+
+
 class ExecutionAgent:
-    """Bank-side execution orchestrator (ELO)."""
+    """Bank-side execution orchestrator (ELO).
+
+    Parameters
+    ----------
+    licensee_id:
+        BPI licensee identifier (from C8 ``LicenseeContext``).  Stamped on
+        every ``DecisionLogEntry`` for multi-licensee audit traceability.
+    max_tps:
+        Maximum transactions per second permitted by the BPI license.
+        0 = unlimited (default, for unlicensed test environments).
+        When the limit is exceeded ``process_payment`` returns HALT with
+        reason ``"tps_limit_exceeded"``.
+    """
 
     def __init__(
         self,
@@ -40,12 +82,16 @@ class ExecutionAgent:
         human_override: HumanOverrideInterface,
         degraded_mode_manager: DegradedModeManager,
         config: Optional[ExecutionConfig] = None,
+        licensee_id: str = "",
+        max_tps: int = 0,
     ) -> None:
         self.kill_switch = kill_switch
         self.decision_logger = decision_logger
         self.human_override = human_override
         self.degraded_mode_manager = degraded_mode_manager
         self.config = config or ExecutionConfig()
+        self.licensee_id = licensee_id
+        self._tps_limiter = _TPSLimiter(max_tps=max_tps)
 
     # ── main processing entry point ──────────────────────────────────────────
 
@@ -61,6 +107,11 @@ class ExecutionAgent:
         """
         uetr = payment_context.get("uetr", str(uuid.uuid4()))
         individual_payment_id = payment_context.get("individual_payment_id", "")
+
+        # 0. License TPS cap guard (C8)
+        if not self._tps_limiter.allow():
+            logger.warning("TPS limit exceeded for licensee=%s uetr=%s", self.licensee_id, uetr)
+            return {"status": "HALT", "loan_offer": None, "decision_entry_id": None, "halt_reason": "tps_limit_exceeded"}
 
         # 1. Kill-switch / KMS guard
         if self.kill_switch.should_halt_new_offers() or self.degraded_mode_manager.should_halt_new_offers():
@@ -180,6 +231,7 @@ class ExecutionAgent:
             degraded_mode=state["degraded_mode"],
             gpu_fallback=state["gpu_fallback"],
             kms_unavailable_gap=state["kms_unavailable_gap"],
+            licensee_id=self.licensee_id,
         )
         return self.decision_logger.log(entry)
 

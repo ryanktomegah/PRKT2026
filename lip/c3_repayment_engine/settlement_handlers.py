@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -373,7 +373,7 @@ class SettlementHandlerRegistry:
     """Dispatches raw settlement messages to the appropriate rail handler."""
 
     def __init__(self) -> None:
-        self._handlers: dict[SettlementRail, object] = {}
+        self._handlers: dict[SettlementRail, Any] = {}
 
     def register(self, rail: SettlementRail, handler) -> None:
         """Register a handler for the given settlement rail."""

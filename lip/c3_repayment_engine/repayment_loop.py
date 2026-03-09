@@ -16,7 +16,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Callable, Dict, List, Optional
 
-from lip.c2_pd_model.fee import compute_loan_fee
+from lip.c2_pd_model.fee import compute_loan_fee, compute_platform_royalty
 
 from .rejection_taxonomy import RejectionClass
 from .settlement_handlers import SettlementHandlerRegistry, SettlementRail
@@ -316,12 +316,16 @@ class RepaymentLoop:
                               if loan.funded_at.tzinfo is None
                               else now - loan.funded_at).days)
         fee = compute_loan_fee(loan.principal, Decimal(str(loan.fee_bps)), days_funded)
+        platform_royalty = compute_platform_royalty(fee)
+        net_fee_to_entities = fee - platform_royalty
         repayment_record = {
             "loan_id": loan.loan_id,
             "uetr": loan.uetr,
             "individual_payment_id": loan.individual_payment_id,
             "principal": str(loan.principal),
             "fee": str(fee),
+            "platform_royalty": str(platform_royalty),
+            "net_fee_to_entities": str(net_fee_to_entities),
             "fee_bps": loan.fee_bps,
             "settlement_amount": str(settlement_amount),
             "corridor": loan.corridor,
