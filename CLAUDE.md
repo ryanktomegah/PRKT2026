@@ -45,5 +45,5 @@ After auth, Claude can:
 - NEVER commit `artifacts/` (model binaries, generated data)
 - NEVER commit `c6_corpus_*.json` (AML typology patterns — CIPHER rule)
 - Always run `ruff check lip/` before committing
-- Always run `python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py` before committing
-- test_e2e_pipeline.py requires live Redis/Kafka — excluded from local CI
+- Always run `python -m pytest lip/tests/` before committing
+- test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally
