@@ -244,3 +244,52 @@ class TestExecutionAgent:
         assert "kms" in status
         assert "degraded" in status
         assert "pending_overrides" in status
+
+    def test_licensee_id_stamped_on_decision_log(self):
+        """C8 integration: licensee_id must appear in every decision log entry."""
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        ks = KillSwitch()
+        dl = DecisionLogger(hmac_key=_HMAC_KEY)
+        agent = ExecutionAgent(
+            ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg,
+            licensee_id="HSBC_UK_001",
+        )
+        ctx = {"uetr": "u-lic-1", "individual_payment_id": "p-lic-1",
+               "failure_probability": 0.8, "pd_score": 0.05, "fee_bps": 300,
+               "loan_amount": "100000", "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+        result = agent.process_payment(ctx)
+        eid = result["decision_entry_id"]
+        assert eid is not None
+        entry = dl.get(eid)
+        assert entry.licensee_id == "HSBC_UK_001"
+
+    def test_tps_cap_halts_excess_calls(self):
+        """C8 integration: calls exceeding max_tps return HALT with tps_limit_exceeded."""
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        ks = KillSwitch()
+        dl = DecisionLogger(hmac_key=_HMAC_KEY)
+        agent = ExecutionAgent(
+            ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg,
+            licensee_id="TEST_BANK", max_tps=2,
+        )
+        ctx = {"uetr": "u-tps", "individual_payment_id": "p-tps",
+               "failure_probability": 0.8, "pd_score": 0.05, "fee_bps": 300,
+               "loan_amount": "100000", "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+        results = [agent.process_payment(ctx) for _ in range(5)]
+        halt_count = sum(1 for r in results if r.get("halt_reason") == "tps_limit_exceeded")
+        assert halt_count >= 1
+
+    def test_zero_max_tps_means_unlimited(self):
+        """max_tps=0 (default) imposes no TPS limit."""
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        agent = ExecutionAgent(
+            KillSwitch(), DecisionLogger(hmac_key=_HMAC_KEY),
+            HumanOverrideInterface(), DegradedModeManager(), cfg,
+            max_tps=0,
+        )
+        ctx = {"uetr": "u-unl", "individual_payment_id": "p-unl",
+               "failure_probability": 0.8, "pd_score": 0.05, "fee_bps": 300,
+               "loan_amount": "100000", "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+        results = [agent.process_payment(ctx) for _ in range(20)]
+        tps_halts = sum(1 for r in results if r.get("halt_reason") == "tps_limit_exceeded")
+        assert tps_halts == 0
