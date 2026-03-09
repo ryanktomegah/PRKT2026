@@ -499,7 +499,7 @@ class RepaymentConfirmation(BaseModel):
     platform_royalty_usd: Decimal = Field(
         default=Decimal("0"),
         ge=Decimal("0"),
-        description="BPI platform operator royalty (PLATFORM_ROYALTY_RATE × fee_repaid_usd).",
+        description="BPI technology licensor royalty (PLATFORM_ROYALTY_RATE × fee_repaid_usd).",
     )
     net_fee_to_entities_usd: Decimal = Field(
         default=Decimal("0"),

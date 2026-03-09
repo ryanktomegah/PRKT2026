@@ -137,10 +137,11 @@ def compute_platform_royalty(
     fee_amount_usd: Decimal,
     royalty_rate: Decimal = _ROYALTY_DEFAULT,
 ) -> Decimal:
-    """Compute the BPI platform operator's royalty from a collected loan fee.
+    """Compute the BPI technology licensor's royalty from a collected loan fee.
 
-    The platform royalty is extracted from the fee paid by the borrower before
-    the remainder is distributed to the lending entities (MLO / MIPLO / ELO).
+    The licensor royalty is BPI's IP license fee — extracted from the fee the
+    licensee (MLO / MIPLO / ELO) collects from its borrower.  BPI does not
+    deploy capital or operate the facility; it licenses the technology.
 
         royalty = fee_amount_usd × royalty_rate
         net_to_entities = fee_amount_usd − royalty
@@ -151,7 +152,7 @@ def compute_platform_royalty(
         Actual cash fee for the bridge-loan cycle (output of
         :func:`compute_loan_fee`).
     royalty_rate:
-        Fraction of *fee_amount_usd* that flows to the platform operator.
+        Fraction of *fee_amount_usd* that flows to BPI as a technology license fee.
         Defaults to 15% (``_ROYALTY_DEFAULT``).  Pass an explicit value to
         override for testing or future rate adjustments.
 
