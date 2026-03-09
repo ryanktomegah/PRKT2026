@@ -1,0 +1,76 @@
+name: Update Sanctions Lists
+
+# Refresh public-domain government sanctions data weekly.
+# Downloads OFAC SDN, UN Consolidated, and EU CFSP lists — all public domain.
+# Commits the merged JSON only if the content has changed.
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC (lists typically updated overnight)
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      force_commit:
+        description: "Commit even if no changes detected"
+        default: "false"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  update-sanctions:
+    name: Download and merge sanctions lists
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install LIP package (no extras needed for loader)
+        run: pip install -e lip/ --quiet
+
+      - name: Download and build sanctions.json
+        run: |
+          python -m lip.c6_aml_velocity.sanctions_loader \
+            --output lip/c6_aml_velocity/data/sanctions.json
+        env:
+          PYTHONPATH: .
+
+      - name: Validate snapshot
+        run: |
+          python -m lip.c6_aml_velocity.sanctions_loader \
+            --validate \
+            --output lip/c6_aml_velocity/data/sanctions.json
+        env:
+          PYTHONPATH: .
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet lip/c6_aml_velocity/data/sanctions.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit updated sanctions.json
+        if: steps.diff.outputs.changed == 'true' || inputs.force_commit == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lip/c6_aml_velocity/data/sanctions.json
+          git commit -m "chore(c6): refresh public-domain sanctions snapshot [skip ci]"
+          git push
+
+      - name: No changes
+        if: steps.diff.outputs.changed == 'false' && inputs.force_commit != 'true'
+        run: echo "Sanctions lists unchanged — no commit needed."

@@ -1,0 +1,129 @@
+# LIP Helm Chart — Default Values
+# Override per environment: helm upgrade lip ./lip -f values-prod.yaml
+
+image:
+  registry: gcr.io/lip-prod
+  pullPolicy: Always
+  # Override per component: image.c1.tag, image.c2.tag, etc.
+  tag: latest
+
+namespace: lip
+
+# ---------------------------------------------------------------------------
+# Component configuration
+# ---------------------------------------------------------------------------
+components:
+  c1:
+    enabled: true
+    replicas: 2
+    gpu: true
+    gpuType: nvidia-tesla-t4
+    resources:
+      requests: { cpu: "2", memory: "8Gi", "nvidia.com/gpu": "1" }
+      limits:   { cpu: "4", memory: "16Gi", "nvidia.com/gpu": "1" }
+    image: lip/c1-inference
+    port: 8000
+    metricsPort: 8002
+
+  c2:
+    enabled: true
+    replicas: 2
+    gpu: false
+    resources:
+      requests: { cpu: "1", memory: "2Gi" }
+      limits:   { cpu: "2", memory: "4Gi" }
+    image: lip/c2-pd-model
+    port: 8080
+    metricsPort: 8082
+
+  c3:
+    enabled: true
+    replicas: 2
+    gpu: false
+    resources:
+      requests: { cpu: "500m", memory: "1Gi" }
+      limits:   { cpu: "1", memory: "2Gi" }
+    image: lip/c3-repayment
+    port: 8080
+    metricsPort: 8082
+
+  c4:
+    enabled: true
+    replicas: 1
+    gpu: true
+    gpuType: nvidia-tesla-t4
+    resources:
+      requests: { cpu: "2", memory: "16Gi", "nvidia.com/gpu": "1" }
+      limits:   { cpu: "4", memory: "24Gi", "nvidia.com/gpu": "1" }
+    image: lip/c4-dispute
+    port: 8080
+    metricsPort: 8082
+    livenessDelay: 60
+    readinessDelay: 45
+
+  c6:
+    enabled: true
+    replicas: 2
+    gpu: false
+    resources:
+      requests: { cpu: "1", memory: "2Gi" }
+      limits:   { cpu: "2", memory: "4Gi" }
+    image: lip/c6-aml
+    port: 8080
+    metricsPort: 8082
+    sanctionsPath: /app/lip/c6_aml_velocity/data/sanctions.json
+
+  c7:
+    enabled: true
+    replicas: 2
+    gpu: false
+    resources:
+      requests: { cpu: "500m", memory: "1Gi" }
+      limits:   { cpu: "1", memory: "2Gi" }
+    image: lip/c7-execution
+    port: 8080
+    metricsPort: 8082
+
+# ---------------------------------------------------------------------------
+# Autoscaling
+# ---------------------------------------------------------------------------
+autoscaling:
+  enabled: true
+  c1:  { minReplicas: 2, maxReplicas: 20, queueDepthTarget: 100 }
+  c2:  { minReplicas: 2, maxReplicas: 8,  queueDepthTarget: 50 }
+  c3:  { minReplicas: 2, maxReplicas: 6,  queueDepthTarget: 30 }
+  c6:  { minReplicas: 2, maxReplicas: 8,  queueDepthTarget: 50 }
+  c7:  { minReplicas: 2, maxReplicas: 6,  queueDepthTarget: 30 }
+
+# ---------------------------------------------------------------------------
+# Secrets — resolved by External Secrets Operator
+# ---------------------------------------------------------------------------
+secrets:
+  # Cloud provider: aws | gcp | vault
+  provider: aws
+  # AWS Secrets Manager ARNs (or GCP Secret Manager resource IDs)
+  redisSecretArn: ""
+  licenseSecretArn: ""
+  amlSecretArn: ""
+  # For vault provider: Vault server URL and mount path
+  vaultServer: ""
+  vaultPath: "secret/lip"
+
+# ---------------------------------------------------------------------------
+# Network policies
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: true
+  # c4 and c7 always zero-outbound regardless of this flag
+  defaultDenyAll: true
+
+# ---------------------------------------------------------------------------
+# Monitoring
+# ---------------------------------------------------------------------------
+monitoring:
+  prometheus:
+    enabled: true
+    pushGateway: ""
+  pagerduty:
+    enabled: false
+    integrationKey: ""

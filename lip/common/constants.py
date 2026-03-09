@@ -14,8 +14,8 @@ FEE_FLOOR_BPS              = 300               # 300 bps annualized floor
 FEE_FLOOR_PER_7DAY_CYCLE   = Decimal("0.000575")  # 0.0575% per 7-day cycle
 
 # ── Latency targets ───────────────────────────────────────────────────────────
-LATENCY_P50_TARGET_MS = 100
-LATENCY_P99_TARGET_MS = 200
+LATENCY_P50_TARGET_MS = 45   # Architecture Spec v1.2 — p50 inference budget
+LATENCY_P99_TARGET_MS = 94   # Architecture Spec v1.2 — canonical end-to-end SLO
 
 # ── ML performance targets ────────────────────────────────────────────────────
 ML_BASELINE_AUC = Decimal("0.739")

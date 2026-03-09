@@ -363,6 +363,48 @@ def _build_model_card(
             "training_data_type": "FULLY_SYNTHETIC — lip.dgen generated corpora",
             "pii_present": False,
         },
+        "sr_117_validation": {
+            "framework": "SR 11-7 / OCC 2011-12 — Supervisory Guidance on Model Risk Management",
+            "model_purpose": (
+                "Bridge-loan decisioning for cross-border B2B payment failures. "
+                "C1 scores failure probability; C2 prices PD-based loan fee; "
+                "C6 performs AML screening. All models feed C7 ExecutionAgent."
+            ),
+            "key_assumptions": [
+                "Synthetic training data (lip.dgen) approximates live SWIFT/FedNow/RTP/SEPA failure distributions",
+                "GraphSAGE graph structure (BIC→BIC edges) reflects real correspondent banking topology",
+                "LGD estimates are Basel III corridor defaults; pending calibration on historical live data",
+                "C4 dispute classification relies on fine-tuned Mistral-7B; quality depends on corpus quality",
+            ],
+            "known_limitations": [
+                "C1 trained entirely on synthetic data — AUC may degrade under real distribution shift",
+                "C4 fine-tuning requires A100/H100 GPU; current CI uses MockLLMBackend (heuristic fallback)",
+                "C2 Merton/Altman challenger baselines are heuristic scaffolds, not calibrated to historical defaults",
+                "No backtesting on live SWIFT pacs.002 rejection corpus (data sourcing in progress)",
+            ],
+            "oot_validation": {
+                "method": "18-month temporal split via lip.dgen: train on t=0..12 months, validate on t=13..18",
+                "components_with_oot": ["C2", "C6"],
+                "components_without_oot": ["C1"],
+                "c1_note": "Synthetic data has no time axis; temporal split not yet implemented for C1",
+            },
+            "challenger_models": {
+                "c1_baseline": "XGBoost tabular-only — AUC=0.739 (prototype benchmark)",
+                "c2_baseline": "Merton structural model + Altman Z-score logistic regression",
+                "c6_baseline": "Rule-based velocity thresholds only (no ML)",
+            },
+            "monitoring_plan": {
+                "auc_drift_threshold": 0.05,
+                "alert_mechanism": "PagerDuty via infrastructure/monitoring/alerts.py AlertEvent.AUC_DRIFT",
+                "retraining_trigger": "AUC < 0.80 on 7-day rolling window OR manual workflow_dispatch",
+                "human_override_mechanism": "C7 ExecutionAgent KillSwitch — SR 11-7 §IV.C",
+                "decision_log_retention_years": 7,
+            },
+            "independent_review_status": (
+                "PENDING — independent model validation required per SR 11-7 §IV.A "
+                "before production go-live. Internal validation only completed to date."
+            ),
+        },
         "components": component_reports,
         "intended_use": (
             "Production inference for LIP bridge-loan decisioning. "

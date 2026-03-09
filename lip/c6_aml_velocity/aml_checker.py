@@ -15,6 +15,7 @@ Three-entity role mapping:
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import List, Optional
@@ -23,6 +24,13 @@ from .sanctions import SanctionsScreener
 from .velocity import VelocityChecker, VelocityResult
 
 logger = logging.getLogger(__name__)
+
+# Path to pre-built public-domain sanctions JSON baked into the container image.
+# Override via LIP_SANCTIONS_PATH env var (e.g. for local dev pointing at a
+# freshly downloaded snapshot).
+_DEFAULT_SANCTIONS_PATH = os.path.join(
+    os.path.dirname(__file__), "data", "sanctions.json"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +107,18 @@ class AMLChecker:
         entity_name_resolver=None,
     ) -> None:
         self._velocity = velocity_checker
-        self._sanctions = sanctions_screener or SanctionsScreener()
+        if sanctions_screener is not None:
+            self._sanctions = sanctions_screener
+        else:
+            # Load from LIP_SANCTIONS_PATH if explicitly set (production / staging).
+            # Falls back to mock data (MOCK_SANCTIONS_ENTRIES) when env var is absent
+            # so unit tests continue to work without a real sanctions snapshot.
+            lists_path = os.environ.get("LIP_SANCTIONS_PATH")
+            if lists_path and os.path.exists(lists_path):
+                self._sanctions = SanctionsScreener(lists_path=lists_path)
+                logger.info("AMLChecker: loaded sanctions from %s", lists_path)
+            else:
+                self._sanctions = SanctionsScreener()  # mock data
         self._anomaly = anomaly_detector
         self._resolve_name = entity_name_resolver
 

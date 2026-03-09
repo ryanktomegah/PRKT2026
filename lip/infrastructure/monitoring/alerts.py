@@ -119,7 +119,7 @@ class AlertManager:
             component="c1",
         ))
 
-    def alert_latency_p99(self, latency_ms: float, threshold_ms: float = 200) -> None:
+    def alert_latency_p99(self, latency_ms: float, threshold_ms: float = 94) -> None:
         self._alerter.send(Alert(
             event=AlertEvent.LATENCY_P99_EXCEEDED,
             severity=AlertSeverity.WARNING,

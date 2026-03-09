@@ -54,6 +54,11 @@ llm = [
     "accelerate>=0.27.0",
     "bitsandbytes>=0.43.0",
 ]
+c4-hosted = [
+    # C4 hosted backend (GitHub Models, Groq, or any OpenAI-compatible API)
+    # Use for dev/staging when GPU-quantized model is unavailable
+    "openai>=1.12.0",
+]
 monitoring = [
     "prometheus-client>=0.19.0",
 ]
@@ -62,6 +67,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",
+    "locust>=2.24.0",
 ]
 all = [
     "lip[ml,monitoring,dev]",

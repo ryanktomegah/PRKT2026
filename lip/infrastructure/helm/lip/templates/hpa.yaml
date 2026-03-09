@@ -1,17 +1,20 @@
-# HPA — Horizontal Pod Autoscaler on inference queue depth
-# Scale out when queue depth > 100, scale in when < 20
+{{- if .Values.autoscaling.enabled }}
+{{/* C1 — GPU inference, scale on queue depth */}}
+---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: lip-c1-classifier-hpa
-  namespace: lip
+  name: {{ include "lip.fullname" . }}-c1-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: lip-c1-classifier
-  minReplicas: 2
-  maxReplicas: 20
+    name: {{ include "lip.fullname" . }}-c1
+  minReplicas: {{ .Values.autoscaling.c1.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c1.maxReplicas }}
   metrics:
     - type: External
       external:
@@ -22,8 +25,7 @@ spec:
               component: c1-failure-classifier
         target:
           type: AverageValue
-          # Scale out when queue depth per replica > 100
-          averageValue: "100"
+          averageValue: {{ .Values.autoscaling.c1.queueDepthTarget | quote }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
@@ -37,44 +39,22 @@ spec:
         - type: Pods
           value: 1
           periodSeconds: 120
+{{/* C2 PD Model */}}
 ---
-# HPA for Flink TaskManagers (C5 Streaming)
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: lip-flink-taskmanager-hpa
-  namespace: lip
+  name: {{ include "lip.fullname" . }}-c2-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: lip-flink-taskmanager
-  minReplicas: 4
-  maxReplicas: 16
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 600
----
-# HPA for C2 PD Model (queue depth — LightGBM inference)
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: lip-c2-pd-model-hpa
-  namespace: lip
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: lip-c2-pd-model
-  minReplicas: 2
-  maxReplicas: 8
+    name: {{ include "lip.fullname" . }}-c2
+  minReplicas: {{ .Values.autoscaling.c2.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c2.maxReplicas }}
   metrics:
     - type: External
       external:
@@ -85,7 +65,7 @@ spec:
               component: c2-pd-model
         target:
           type: AverageValue
-          averageValue: "50"
+          averageValue: {{ .Values.autoscaling.c2.queueDepthTarget | quote }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
@@ -99,20 +79,22 @@ spec:
         - type: Pods
           value: 1
           periodSeconds: 120
+{{/* C3 Repayment */}}
 ---
-# HPA for C3 Repayment Engine (queue depth — settlement monitoring)
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: lip-c3-repayment-hpa
-  namespace: lip
+  name: {{ include "lip.fullname" . }}-c3-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: lip-c3-repayment
-  minReplicas: 2
-  maxReplicas: 6
+    name: {{ include "lip.fullname" . }}-c3
+  minReplicas: {{ .Values.autoscaling.c3.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c3.maxReplicas }}
   metrics:
     - type: External
       external:
@@ -123,7 +105,7 @@ spec:
               component: c3-repayment-engine
         target:
           type: AverageValue
-          averageValue: "30"
+          averageValue: {{ .Values.autoscaling.c3.queueDepthTarget | quote }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
@@ -137,20 +119,22 @@ spec:
         - type: Pods
           value: 1
           periodSeconds: 120
+{{/* C6 AML */}}
 ---
-# HPA for C6 AML Velocity (queue depth — sanctions + velocity checks)
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: lip-c6-aml-hpa
-  namespace: lip
+  name: {{ include "lip.fullname" . }}-c6-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: lip-c6-aml
-  minReplicas: 2
-  maxReplicas: 8
+    name: {{ include "lip.fullname" . }}-c6
+  minReplicas: {{ .Values.autoscaling.c6.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c6.maxReplicas }}
   metrics:
     - type: External
       external:
@@ -161,7 +145,7 @@ spec:
               component: c6-aml-velocity
         target:
           type: AverageValue
-          averageValue: "50"
+          averageValue: {{ .Values.autoscaling.c6.queueDepthTarget | quote }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
@@ -175,21 +159,22 @@ spec:
         - type: Pods
           value: 1
           periodSeconds: 120
+{{/* C7 Execution Agent — conservative scale-up (kill-switch consistency) */}}
 ---
-# HPA for C7 Execution Agent (queue depth — loan offer decisions)
-# Conservative: kill-switch state must be consistent; limit scale-up speed.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: lip-c7-execution-hpa
-  namespace: lip
+  name: {{ include "lip.fullname" . }}-c7-hpa
+  namespace: {{ include "lip.namespace" . }}
+  labels:
+    {{- include "lip.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: lip-c7-execution
-  minReplicas: 2
-  maxReplicas: 6
+    name: {{ include "lip.fullname" . }}-c7
+  minReplicas: {{ .Values.autoscaling.c7.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.c7.maxReplicas }}
   metrics:
     - type: External
       external:
@@ -200,7 +185,7 @@ spec:
               component: c7-execution-agent
         target:
           type: AverageValue
-          averageValue: "30"
+          averageValue: {{ .Values.autoscaling.c7.queueDepthTarget | quote }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60
@@ -214,3 +199,4 @@ spec:
         - type: Pods
           value: 1
           periodSeconds: 180
+{{- end }}

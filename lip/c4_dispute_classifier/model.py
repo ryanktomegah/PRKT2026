@@ -4,6 +4,7 @@ C4 Spec Sections 6-7: Logit-constrained 4-class output, timeout safety
 Architecture: GPTQ quantized model, bank-side container, zero outbound
 """
 import logging
+import os
 import time
 from typing import Optional
 
@@ -120,7 +121,13 @@ class DisputeClassifier:
         llm_backend=None,
         timeout_seconds: float = INFERENCE_TIMEOUT_SECONDS,
     ) -> None:
-        self._backend = llm_backend if llm_backend is not None else MockLLMBackend()
+        if llm_backend is not None:
+            self._backend = llm_backend
+        elif os.environ.get("LIP_C4_BACKEND", "mock") != "mock":
+            from .backends import create_backend
+            self._backend = create_backend()
+        else:
+            self._backend = MockLLMBackend()
         self._timeout = timeout_seconds
         self._prefilter = PreFilter()
         self._prompt_builder = DisputePromptBuilder()
