@@ -1,0 +1,88 @@
+# C2 PD Model — LightGBM Inference Deployment
+# CPU-only; 5× LightGBM ensemble + fee computation.
+# No GPU required — LightGBM inference is sub-millisecond on CPU.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c2-pd-model
+  namespace: lip
+  labels:
+    app: lip-c2-pd-model
+    component: c2-pd-model
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lip-c2-pd-model
+  template:
+    metadata:
+      labels:
+        app: lip-c2-pd-model
+        component: c2-pd-model
+    spec:
+      containers:
+        - name: c2-inference
+          image: lip/c2-pd-model:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8082
+              name: metrics
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          env:
+            - name: LIP_COMPONENT
+              value: c2
+            - name: LIP_LICENSE_TOKEN_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: token_json
+            - name: LIP_LICENSE_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: key_hex
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: model-store
+          persistentVolumeClaim:
+            claimName: lip-model-store-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lip-c2-pd-model-svc
+  namespace: lip
+spec:
+  selector:
+    app: lip-c2-pd-model
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 8082
+      targetPort: 8082
+  type: ClusterIP

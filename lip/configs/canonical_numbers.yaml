@@ -18,8 +18,8 @@ fee_parameters:
   warning: "DO NOT apply fee_bps as a flat per-cycle rate"
 
 latency_targets_ms:
-  p50: 100
-  p99: 200
+  p50: 45    # Architecture Spec v1.2 — inference.py LATENCY_P50_TARGET_MS
+  p99: 94    # Architecture Spec v1.2 — canonical SLO (QUANT sign-off required to change)
 
 ml_performance:
   baseline_auc: 0.739    # XGBoost baseline (prototype)

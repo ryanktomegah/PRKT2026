@@ -1,0 +1,85 @@
+# C3 Repayment Engine — Settlement Monitoring Deployment
+# 5-rail settlement monitor (SWIFT, FedNow, RTP, SEPA, Buffer).
+# Stateful: Redis SETNX for UETR idempotency; connects to C5 Redis cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c3-repayment
+  namespace: lip
+  labels:
+    app: lip-c3-repayment
+    component: c3-repayment-engine
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lip-c3-repayment
+  template:
+    metadata:
+      labels:
+        app: lip-c3-repayment
+        component: c3-repayment-engine
+    spec:
+      containers:
+        - name: c3-repayment
+          image: lip/c3-repayment:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8082
+              name: metrics
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+          env:
+            - name: LIP_COMPONENT
+              value: c3
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lip-redis-secret
+                  key: url
+            - name: LIP_LICENSE_TOKEN_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: token_json
+            - name: LIP_LICENSE_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: key_hex
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lip-c3-repayment-svc
+  namespace: lip
+spec:
+  selector:
+    app: lip-c3-repayment
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 8082
+      targetPort: 8082
+  type: ClusterIP
