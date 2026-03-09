@@ -366,6 +366,52 @@ class TabTransformerModel:
         out = pooled @ self.W_out + self.b_out  # (output_dim,)
         return out.astype(np.float64)
 
+    def forward_batch(self, x_batch: np.ndarray) -> np.ndarray:
+        """Batch forward pass for B inputs.
+
+        Since ``seq_len=1``, multi-head attention trivially reduces to the
+        value projection (softmax of a 1×1 score is always 1.0), making the
+        full transformer stack vectorisable over a batch dimension.
+
+        Parameters
+        ----------
+        x_batch:
+            Shape ``(B, input_dim)`` — B independent feature vectors.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(B, output_dim)``, dtype ``float64``.
+        """
+        x_batch = np.asarray(x_batch, dtype=np.float64)  # (B, input_dim)
+
+        # Input projection: (B, input_dim) → (B, model_dim)
+        h = x_batch @ self.W_in + self.b_in  # (B, model_dim)
+
+        for layer in self.layers:
+            attn = layer.attention
+            # seq_len=1: attention collapses to value projection per head
+            head_vs = np.concatenate(
+                [h @ attn.W_v[i] for i in range(attn.num_heads)], axis=-1
+            )  # (B, model_dim)
+            attn_out = head_vs @ attn.W_o + attn.b_o  # (B, model_dim)
+
+            # Residual + LayerNorm (over last axis, broadcast gamma/beta)
+            h_attn = h + attn_out
+            mean_a = np.mean(h_attn, axis=-1, keepdims=True)
+            var_a = np.var(h_attn, axis=-1, keepdims=True)
+            h = layer.ln1_gamma * (h_attn - mean_a) / np.sqrt(var_a + 1e-6) + layer.ln1_beta
+
+            # Feed-forward + residual + LayerNorm
+            ff = _gelu(h @ layer.W_ff1 + layer.b_ff1) @ layer.W_ff2 + layer.b_ff2
+            h_ff = h + ff
+            mean_f = np.mean(h_ff, axis=-1, keepdims=True)
+            var_f = np.var(h_ff, axis=-1, keepdims=True)
+            h = layer.ln2_gamma * (h_ff - mean_f) / np.sqrt(var_f + 1e-6) + layer.ln2_beta
+
+        # Output projection: (B, model_dim) → (B, output_dim)
+        return (h @ self.W_out + self.b_out).astype(np.float64)
+
     # ------------------------------------------------------------------
     # Persistence
     # ------------------------------------------------------------------
