@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 # SLA constants
 # ---------------------------------------------------------------------------
 
-LATENCY_P50_TARGET_MS: float = 100.0
+LATENCY_P50_TARGET_MS: float = 45.0
 """50th-percentile inference latency target (milliseconds)."""
 
-LATENCY_P99_TARGET_MS: float = 200.0
-"""99th-percentile inference latency budget (milliseconds)."""
+LATENCY_P99_TARGET_MS: float = 94.0
+"""99th-percentile inference latency budget (milliseconds). Canonical SLO — do not change without QUANT sign-off."""
 
 _SHAP_TOP_N: int = 20
 _SHAP_STEPS: int = 50  # gradient approximation steps
