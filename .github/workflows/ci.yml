@@ -46,9 +46,8 @@ jobs:
           PYTHONPATH=. python -m pytest lip/tests/ \
             --tb=short \
             -q \
-            --ignore=lip/tests/test_e2e_pipeline.py \
             -x
-        # test_e2e_pipeline.py requires live Redis/Kafka — excluded from unit CI
+        # test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required
 
       - name: Run tests with coverage (3.11 only)
         if: matrix.python-version == '3.11'
@@ -58,7 +57,6 @@ jobs:
             --cov=lip \
             --cov-report=term-missing \
             --cov-fail-under=75 \
-            --ignore=lip/tests/test_e2e_pipeline.py \
             -q
 
   train-smoke:
@@ -141,4 +139,4 @@ jobs:
           pip install mypy>=1.8.0 types-PyYAML
           cd lip && pip install -e .
       - name: Run mypy
-        run: mypy lip/ --ignore-missing-imports --no-strict-optional --exclude lip/tests/test_e2e_pipeline.py
+        run: mypy lip/ --ignore-missing-imports --no-strict-optional
