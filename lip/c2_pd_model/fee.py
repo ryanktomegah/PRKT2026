@@ -130,6 +130,42 @@ def compute_loan_fee(
     return fee.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+_ROYALTY_DEFAULT: Decimal = Decimal("0.15")
+
+
+def compute_platform_royalty(
+    fee_amount_usd: Decimal,
+    royalty_rate: Decimal = _ROYALTY_DEFAULT,
+) -> Decimal:
+    """Compute the BPI platform operator's royalty from a collected loan fee.
+
+    The platform royalty is extracted from the fee paid by the borrower before
+    the remainder is distributed to the lending entities (MLO / MIPLO / ELO).
+
+        royalty = fee_amount_usd × royalty_rate
+        net_to_entities = fee_amount_usd − royalty
+
+    Parameters
+    ----------
+    fee_amount_usd:
+        Actual cash fee for the bridge-loan cycle (output of
+        :func:`compute_loan_fee`).
+    royalty_rate:
+        Fraction of *fee_amount_usd* that flows to the platform operator.
+        Defaults to 15% (``_ROYALTY_DEFAULT``).  Pass an explicit value to
+        override for testing or future rate adjustments.
+
+    Returns
+    -------
+    Decimal
+        Platform royalty in USD, rounded to 2 decimal places (cents).
+    """
+    fee_amount_usd = Decimal(str(fee_amount_usd))
+    royalty_rate = Decimal(str(royalty_rate))
+    royalty = fee_amount_usd * royalty_rate
+    return royalty.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def verify_floor_applies(fee_bps: Decimal) -> bool:
     """Return ``True`` when *fee_bps* equals the regulatory floor of 300 bps.
 

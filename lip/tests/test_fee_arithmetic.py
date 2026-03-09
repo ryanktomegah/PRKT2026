@@ -15,6 +15,7 @@ from lip.c2_pd_model.fee import (
     FEE_FLOOR_PER_7DAY_CYCLE,
     compute_fee_bps_from_el,
     compute_loan_fee,
+    compute_platform_royalty,
     verify_floor_applies,
 )
 
@@ -158,3 +159,54 @@ class TestFeeEdgeCases:
                 pd=Decimal(pd), lgd=Decimal("0.10"), ead=Decimal("100000")
             )
             assert fee_bps == FEE_FLOOR_BPS, f"PD={pd}: expected floor, got {fee_bps}"
+
+
+class TestPlatformRoyalty:
+    """QUANT verification of platform royalty arithmetic (15% of fee collected)."""
+
+    def test_standard_floor_fee_7day(self):
+        """$1M, 7d, 300 bps → fee $575.34 → royalty $86.30, net $489.04."""
+        fee = compute_loan_fee(Decimal("1000000"), Decimal("300"), 7)
+        assert fee == Decimal("575.34")
+        royalty = compute_platform_royalty(fee)
+        assert royalty == Decimal("86.30")
+        net = fee - royalty
+        assert net == Decimal("489.04")
+
+    def test_standard_floor_fee_100k_7day(self):
+        """$100K, 7d, 300 bps → fee $57.53 → royalty $8.63, net $48.90."""
+        fee = compute_loan_fee(Decimal("100000"), Decimal("300"), 7)
+        assert fee == Decimal("57.53")
+        royalty = compute_platform_royalty(fee)
+        assert royalty == Decimal("8.63")
+        net = fee - royalty
+        assert net == Decimal("48.90")
+
+    def test_zero_fee_yields_zero_royalty(self):
+        """Zero fee (0-day loan) → zero royalty."""
+        fee = compute_loan_fee(Decimal("1000000"), Decimal("300"), 0)
+        assert fee == Decimal("0.00")
+        royalty = compute_platform_royalty(fee)
+        assert royalty == Decimal("0.00")
+
+    def test_custom_royalty_rate(self):
+        """Custom 20% rate overrides the default 15%."""
+        fee = compute_loan_fee(Decimal("1000000"), Decimal("300"), 7)
+        royalty = compute_platform_royalty(fee, royalty_rate=Decimal("0.20"))
+        assert royalty == Decimal("115.07")
+
+    def test_royalty_plus_net_equals_fee(self):
+        """Invariant: royalty + net == fee (within rounding tolerance ±$0.01)."""
+        for principal, bps, days in [
+            ("500000", "300", 3),
+            ("2000000", "450", 21),
+            ("750000", "600", 7),
+        ]:
+            fee = compute_loan_fee(Decimal(principal), Decimal(bps), int(days))
+            royalty = compute_platform_royalty(fee)
+            net = fee - royalty
+            # net_fee_to_entities computed as subtraction — no rounding gap possible
+            assert royalty + net == fee, (
+                f"principal={principal} bps={bps} days={days}: "
+                f"royalty({royalty}) + net({net}) != fee({fee})"
+            )

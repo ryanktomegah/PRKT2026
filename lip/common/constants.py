@@ -68,6 +68,9 @@ MATURITY_BLOCK_DAYS = 0                   # BLOCK rejection class: no bridge loa
 # ── Corridor buffer window ─────────────────────────────────────────────────────
 CORRIDOR_BUFFER_WINDOW_DAYS = 90          # rolling window for corridor risk / embedding lookback
 
+# ── Platform royalty (operator revenue split) ─────────────────────────────────
+PLATFORM_ROYALTY_RATE = Decimal("0.15")   # 15% of fee_repaid_usd → BPI platform operator
+
 # ── Salt rotation ─────────────────────────────────────────────────────────────
 SALT_ROTATION_DAYS = 365                  # full rotation cycle (CIPHER: cross-licensee salts)
 SALT_ROTATION_OVERLAP_DAYS = 30           # overlap window — old salt accepted during transition
