@@ -1,132 +1,132 @@
-# Automated Liquidity Bridging System (ALBS)
+# LIP — Liquidity Intelligence Platform
 
-Patent-backed three-component pipeline for real-time payment failure prediction, CVA pricing, and bridge loan execution — with a dark-themed Next.js dashboard.
+Patent-backed real-time payment failure detection and automated bridge lending system.
 
----
-
-## How to run it locally (preview in your browser)
-
-You need two terminals open at the same time: one for the Python API backend, one for the Next.js frontend.
-
-### Prerequisites
-
-| Tool | Minimum version | Check with |
-|------|----------------|------------|
-| Python | 3.9 | `python3 --version` |
-| pip | 21+ | `pip --version` |
-| Node.js | 18 | `node --version` |
-| npm | 9+ | `npm --version` |
-
-> **macOS:** install Python via [python.org](https://www.python.org/downloads/) or `brew install python`. Install Node via [nodejs.org](https://nodejs.org/) or `brew install node`.  
-> **Windows:** install Python from [python.org](https://www.python.org/downloads/) (tick "Add to PATH") and Node from [nodejs.org](https://nodejs.org/).
+**Technology licensor model**: Banks deploy LIP against their SWIFT payment streams. BPI earns 15% royalty on bridge loan fees collected.
 
 ---
-
-### Step 1 — Start the API backend
-
-Open a terminal and run:
-
-```bash
-# 1. Go into the backend folder
-cd "Project2026 copy"
-
-# 2. Install Python dependencies (only needed once)
-pip install -r requirements.txt
-
-# 3. Start the API server
-uvicorn api:app --host 0.0.0.0 --port 8000
-```
-
-Wait until you see a line like this (takes ~5 seconds while the ML model trains):
-
-```
-[STARTUP] Ready — model trained in 4.2s | threshold=0.152 | AUC=0.739 | Recall=0.810
-```
-
-The API is now running at **http://localhost:8000**.  
-You can explore the interactive API docs at **http://localhost:8000/docs**.
-
----
-
-### Step 2 — Start the Next.js frontend
-
-Open a **second** terminal (keep the first one running) and run:
-
-```bash
-# 1. Go into the frontend folder
-cd frontend
-
-# 2. Install Node dependencies (only needed once)
-npm install
-
-# 3. Copy the environment config (only needed once)
-cp .env.example .env.local
-
-# 4. Start the dev server
-npm run dev
-```
-
-Once you see `✓ Ready - started server on 0.0.0.0:3000`, open your browser and go to:
-
-> **http://localhost:3000**
-
----
-
-### What you'll see
-
-| Page | URL | Description |
-|------|-----|-------------|
-| Dashboard | http://localhost:3000 | Live model stats, pipeline diagram, system status |
-| Analysis | http://localhost:3000/analysis | Configure a payment → run Score → CVA Pricing → Bridge Loan cascade |
-| Portfolio | http://localhost:3000/portfolio | Session charts and loan results table |
-| Audit Trail | http://localhost:3000/audit | Claim 5(x) records with JSON/CSV export |
-
----
-
-### Stopping the servers
-
-Press **Ctrl + C** in each terminal to stop the API and the frontend dev server.
-
----
-
-## Repository layout
-
-```
-PRKT2026/
-├── Project2026 copy/       ← Python FastAPI backend + ML engines
-│   ├── api.py              ← FastAPI app (start with uvicorn)
-│   ├── failure_prediction_engine.py
-│   ├── cva_pricing_engine.py
-│   ├── bridge_loan_execution.py
-│   ├── dashboard.py        ← Optional Streamlit dashboard (port 8501)
-│   └── requirements.txt
-└── frontend/               ← Next.js 14 App Router dashboard
-    ├── app/                ← Pages (dashboard, analysis, portfolio, audit)
-    ├── components/         ← UI components
-    └── lib/                ← API client, Zustand store, utilities
-```
 
 ## Architecture
 
-| Component | File | Patent Claims |
-|-----------|------|---------------|
-| 1 — Failure Prediction | `failure_prediction_engine.py` | 1(a–d), D1, D3, D9 |
-| 2 — CVA Pricing | `cva_pricing_engine.py` | 1(e), D4, D5, D6, D7 |
-| 3 — Bridge Execution | `bridge_loan_execution.py` | 1(f–h), 3(m), 5(t–x), D11 |
-| 4 — API | `api.py` | D9 (latency enforcement) |
+Eight-component pipeline processing ISO 20022 pacs.002 payment events in ≤ 94ms:
 
-## Environment variables
+```
+pacs.002 stream
+     │
+     ▼
+┌─────────┐    ┌─────────┐    ┌─────────┐
+│ C5      │───▶│ C1      │───▶│ Decision │
+│ Streaming│    │ Failure  │    │ Engine   │
+│ (Kafka)  │    │ Classifier│   │          │
+└─────────┘    └─────────┘    └────┬─────┘
+                                   │ τ* > 0.152
+                          ┌────────┼────────┐
+                          ▼        ▼        ▼
+                     ┌────────┐ ┌──────┐ ┌──────┐
+                     │ C4     │ │ C6   │ │ C2   │
+                     │ Dispute│ │ AML  │ │ PD   │
+                     │ Check  │ │ Check│ │ Model│
+                     └────┬───┘ └──┬───┘ └──┬───┘
+                          │ hard   │ hard   │ fee_bps
+                          │ block  │ block  │
+                          ▼        ▼        ▼
+                     ┌─────────────────────────┐
+                     │ C7 Execution Agent      │
+                     │ (kill switch, KMS, logs) │
+                     └────────────┬────────────┘
+                                  │ FUNDED
+                                  ▼
+                     ┌─────────────────────────┐
+                     │ C3 Repayment Engine     │
+                     │ (UETR polling, auto-    │
+                     │  repay on settlement)   │
+                     └─────────────────────────┘
 
-The frontend reads one variable from `frontend/.env.local`:
+C8 License Manager — HMAC token enforcement (cross-cutting)
+```
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | URL of the FastAPI backend |
+## Components
 
-To point the frontend at a different backend host, edit `frontend/.env.local` before running `npm run dev`.
+| ID | Name | Purpose | Key Tech |
+|----|------|---------|----------|
+| C1 | Failure Classifier | Predict payment failure from pacs.002 features | GraphSAGE + TabTransformer + LightGBM |
+| C2 | PD Model | Tiered structural PD + LGD + fee pricing | Merton/KMV, Damodaran, Altman Z' |
+| C3 | Repayment Engine | Settlement monitoring + auto-repayment | UETR polling, corridor buffers |
+| C4 | Dispute Classifier | Detect disputed payments (hard block) | LLM-based, multilingual, negation |
+| C5 | Streaming | Real-time event ingestion + normalization | Kafka, Flink, Redis |
+| C6 | AML Velocity | Sanctions + velocity + anomaly detection | OFAC/EU lists, cross-licensee salts |
+| C7 | Execution Agent | Loan execution with safety controls | Kill switch, human override, degraded mode |
+| C8 | License Manager | Technology licensing enforcement | HMAC-SHA256 tokens, boot validation |
 
-The backend reads one optional variable:
+## Canonical Constants
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `ALBS_CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated list of allowed browser origins |
+| Parameter | Value | Reference |
+|-----------|-------|-----------|
+| Failure threshold (τ*) | 0.152 | Architecture Spec v1.2 §3 |
+| Fee floor | 300 bps annualized | Canonical Numbers |
+| Latency SLO | ≤ 94ms end-to-end | Architecture Spec v1.2 |
+| UETR TTL buffer | 45 days | Canonical Numbers |
+| Platform royalty | 15% of fee collected | Business Model |
+
+## Development
+
+```bash
+# Setup
+python -m venv .venv && source .venv/bin/activate
+pip install -e "lip/[all]"
+
+# Lint
+ruff check lip/
+
+# Type check
+mypy lip/
+
+# Test (unit + integration, excludes E2E requiring live Kafka/Redis)
+PYTHONPATH=. python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py -v
+
+# Generate synthetic training data
+PYTHONPATH=. python -m lip.dgen.generate_all --output-dir artifacts/synthetic
+
+# Train all models
+PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic
+```
+
+## Repository Layout
+
+```
+PRKT2026/
+├── lip/                        ← Production Python package
+│   ├── c1_failure_classifier/  ← Component 1: ML failure prediction
+│   ├── c2_pd_model/            ← Component 2: Structural PD + fee pricing
+│   ├── c3_repayment_engine/    ← Component 3: Settlement + auto-repay
+│   ├── c4_dispute_classifier/  ← Component 4: LLM dispute detection
+│   ├── c5_streaming/           ← Component 5: Kafka/Flink ingestion
+│   ├── c6_aml_velocity/        ← Component 6: AML + sanctions
+│   ├── c7_execution_agent/     ← Component 7: Loan execution
+│   ├── c8_license_manager/     ← Component 8: License enforcement
+│   ├── common/                 ← Shared schemas, state machines, crypto
+│   ├── configs/                ← YAML configs (canonical numbers, corridors)
+│   ├── dgen/                   ← Synthetic data generators
+│   ├── infrastructure/         ← Docker, Helm, K8s manifests
+│   ├── tests/                  ← Test suite (84% coverage)
+│   ├── pipeline.py             ← End-to-end pipeline orchestrator
+│   └── pyproject.toml          ← Package configuration
+├── consolidation files/        ← Patent specs, architecture docs, governance
+├── scripts/                    ← Training + monitoring CLI tools
+├── .github/workflows/          ← CI/CD + model training pipelines
+└── CLAUDE.md                   ← Claude Code project configuration
+```
+
+## Patent Coverage
+
+System and Method for Automated Liquidity Bridging Triggered by Real-Time Payment Network Failure Detection — Provisional Specification v5.2
+
+- **Claims 1(a–h)**: Full pipeline from detection to auto-repayment
+- **Claims 2(i–vi)**: System architecture components
+- **Claims 3(k–n)**: Bridge loan instrument structure
+- **Claims 5(t–x)**: Settlement-confirmation auto-repayment loop
+- **Dependent Claims D1–D11**: ISO 20022, F-beta threshold, tiered PD, LGD, UETR tracking
+
+## License
+
+Proprietary — BPI Technology
