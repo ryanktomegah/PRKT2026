@@ -10,7 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -30,6 +29,17 @@ from lip.c2_pd_model import (
 from lip.c2_pd_model.fee import FEE_FLOOR_BPS
 from lip.c2_pd_model.tier_assignment import Tier, TierFeatures
 
+# ── Pipeline imports ──────────────────────────────────────────────────────────
+from lip.c5_streaming.event_normalizer import NormalizedEvent
+
+# ── Kill switch imports ───────────────────────────────────────────────────────
+from lip.c7_execution_agent.kill_switch import (
+    KillSwitch,
+    KillSwitchState,
+    KillSwitchStatus,
+    KMSState,
+)
+
 # ── Encryption imports ────────────────────────────────────────────────────────
 from lip.common.encryption import (
     decrypt_aes_gcm,
@@ -40,19 +50,7 @@ from lip.common.encryption import (
     sign_hmac_sha256,
     verify_hmac_sha256,
 )
-
-# ── Kill switch imports ───────────────────────────────────────────────────────
-from lip.c7_execution_agent.kill_switch import (
-    KillSwitch,
-    KillSwitchState,
-    KillSwitchStatus,
-    KMSState,
-)
-
-# ── Pipeline imports ──────────────────────────────────────────────────────────
-from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.pipeline import FAILURE_PROBABILITY_THRESHOLD, LIPPipeline
-
 
 # ===========================================================================
 # Helpers

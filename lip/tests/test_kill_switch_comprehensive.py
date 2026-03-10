@@ -9,20 +9,15 @@ Targets uncovered lines in kill_switch.py (65% -> 90%+):
 
 All Redis and KMS interactions are mocked; no external services required.
 """
-import threading
 import time
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from lip.c7_execution_agent.kill_switch import (
     KillSwitch,
     KillSwitchState,
-    KMSState,
     KillSwitchStatus,
+    KMSState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

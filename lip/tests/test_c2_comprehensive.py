@@ -20,8 +20,6 @@ import pytest
 
 from lip.c2_pd_model.baseline import (
     BaselineEnsemble,
-    altman_pd,
-    altman_z_score,
     financial_ratio_pd,
     merton_pd,
 )
@@ -35,9 +33,8 @@ from lip.c2_pd_model.features import (
 from lip.c2_pd_model.inference import PDInferenceEngine, configure_inference_salt
 from lip.c2_pd_model.model import LightGBMSurrogate, PDModel
 from lip.c2_pd_model.synthetic_data import generate_pd_training_data
-from lip.c2_pd_model.tier_assignment import Tier, TierFeatures, assign_tier
+from lip.c2_pd_model.tier_assignment import Tier
 from lip.c2_pd_model.training import PDTrainingPipeline, TrainingConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers -- reusable fixtures for fast, small datasets
