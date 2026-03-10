@@ -37,7 +37,8 @@ POSSIBLE_CODES: frozenset = frozenset({
 # Phrase fragments that, when found in the free-text narrative, escalate to
 # DISPUTE_CONFIRMED regardless of rejection code.
 _CONFIRMED_KEYWORDS: tuple = (
-    "dispute",
+    # English — dispute variants (use stem "disput" to catch disputed/disputing)
+    "disput",
     "fraud",
     "unauthorized",
     "unauthorised",
@@ -51,6 +52,29 @@ _CONFIRMED_KEYWORDS: tuple = (
     "clawback",
     "legal action",
     "legal hold",
+    # German
+    "bestritten",       # disputed/contested
+    "betrug",           # fraud
+    "betrügerisch",     # fraudulent
+    "klage",            # lawsuit / legal claim
+    "rückbuchung",      # chargeback
+    "nicht genehmigt",  # not authorized
+    "widerspruch",      # objection / dispute
+    # French
+    "contesté",         # contested
+    "fraude",           # fraud
+    "frauduleux",       # fraudulent
+    "litige",           # dispute / litigation
+    "non autorisé",     # not authorized
+    "action en justice", # legal action
+    "rétrofacturation", # chargeback
+    # Spanish
+    "disputado",        # disputed
+    "fraude",           # fraud (also matches French — intentional)
+    "fraudulento",      # fraudulent
+    "no autorizado",    # not authorized
+    "acción legal",     # legal action
+    "contracargo",      # chargeback
 )
 
 # Phrase fragments that map to NEGOTIATION.
