@@ -364,9 +364,9 @@ class UnifiedFeatureEngineer:
         if isinstance(ts, datetime.datetime):
             dt = ts
         elif isinstance(ts, (int, float)):
-            dt = datetime.datetime.utcfromtimestamp(ts)
+            dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
         else:
-            dt = datetime.datetime.utcnow()
+            dt = datetime.datetime.now(tz=datetime.timezone.utc)
 
         vec[5] = float(dt.hour)
         vec[6] = float(dt.weekday())

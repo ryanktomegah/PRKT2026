@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 import numpy as np
@@ -308,7 +308,7 @@ def generate_dispute_corpus(
         Random seed for full reproducibility.
     """
     rng = np.random.default_rng(seed)
-    ts = datetime.utcnow().isoformat() + "Z"
+    ts = datetime.now(tz=timezone.utc).isoformat() + "Z"
 
     label_order = ["NOT_DISPUTE", "DISPUTE_CONFIRMED", "DISPUTE_POSSIBLE", "NEGOTIATION"]
     label_to_int = {lbl: i for i, lbl in enumerate(label_order)}

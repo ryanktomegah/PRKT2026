@@ -8,7 +8,7 @@ Flow 4: Kill switch active → all new offers halted
 Flow 5: High PD thin-file → fee floor applies → offer logged
 """
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_fee_bps_from_el, compute_loan_fee
@@ -255,7 +255,7 @@ class TestFlow5ThinFileFeeFloor:
             uetr="flow5-uetr-001",
             individual_payment_id="flow5-pid-001",
             decision_type="OFFER",
-            decision_timestamp=datetime.utcnow().isoformat(),
+            decision_timestamp=datetime.now(tz=timezone.utc).isoformat(),
             failure_probability=0.15,
             pd_score=0.15,
             fee_bps=300,

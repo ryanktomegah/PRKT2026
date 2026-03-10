@@ -215,7 +215,7 @@ class TabularFeatureEngineer:
         r_stats: dict = payment.get("receiver_stats", {})
         c_stats: dict = payment.get("corridor_stats", {})
 
-        dt = datetime.datetime.utcfromtimestamp(timestamp)
+        dt = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
         hour = dt.hour
         dow = dt.weekday()
         dom = dt.day

@@ -270,7 +270,7 @@ class BICGraphBuilder:
         latest = max(corridor_edges, key=lambda e: e.timestamp)
         import datetime
 
-        dt = datetime.datetime.utcfromtimestamp(latest.timestamp)
+        dt = datetime.datetime.fromtimestamp(latest.timestamp, tz=datetime.timezone.utc)
         hour_of_day = float(dt.hour)
         day_of_week = float(dt.weekday())
 

@@ -9,7 +9,7 @@ Three-entity role mapping:
 """
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
@@ -47,7 +47,7 @@ def _safe_datetime(value) -> datetime:
             return datetime.fromisoformat(str(value))
         except (ValueError, TypeError):
             pass
-    return datetime.utcnow()
+    return datetime.now(tz=timezone.utc)
 
 
 class EventNormalizer:

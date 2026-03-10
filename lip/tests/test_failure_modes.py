@@ -67,7 +67,7 @@ def _make_active_loan(uetr: str = "chaos-uetr-001") -> ActiveLoan:
 def _make_log_entry(**kwargs) -> DecisionLogEntryData:
     defaults = dict(
         entry_id="", uetr="uetr-chaos-001", individual_payment_id="pid-chaos-001",
-        decision_type="OFFER", decision_timestamp=datetime.utcnow().isoformat(),
+        decision_type="OFFER", decision_timestamp=datetime.now(tz=timezone.utc).isoformat(),
         failure_probability=0.75, pd_score=0.04, fee_bps=300,
         loan_amount="50000", dispute_class="NOT_DISPUTE", aml_passed=True,
     )

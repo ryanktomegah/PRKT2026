@@ -9,7 +9,7 @@ Three-entity role mapping:
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Dict, List, Optional
 
@@ -61,7 +61,7 @@ class HumanOverrideInterface:
         reason: str,
     ) -> HumanOverrideRequest:
         request_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
         req = HumanOverrideRequest(
             request_id=request_id,
             uetr=uetr,
@@ -93,7 +93,7 @@ class HumanOverrideInterface:
             decision=decision,
             operator_id=operator_id,
             justification=justification,
-            decided_at=datetime.utcnow(),
+            decided_at=datetime.now(tz=timezone.utc),
         )
         self._responses[request_id] = resp
         self._pending.pop(request_id, None)
@@ -107,8 +107,8 @@ class HumanOverrideInterface:
         req = self._pending.get(request_id)
         if req is None:
             return True
-        return datetime.utcnow() > req.expires_at
+        return datetime.now(tz=timezone.utc) > req.expires_at
 
     def get_pending_overrides(self) -> List[HumanOverrideRequest]:
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
         return [r for r in self._pending.values() if r.expires_at > now]

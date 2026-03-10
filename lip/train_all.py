@@ -49,7 +49,7 @@ import logging
 import pickle
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -353,7 +353,7 @@ def _build_model_card(
     return {
         "schema_version": "1.0",
         "model_card_type": "LIP_TRAINING_RUN",
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat() + "Z",
         "training_tool": "lip.train_all",
         "training_time_seconds": round(total_elapsed, 2),
         "regulatory_compliance": {
@@ -562,7 +562,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Write training summary
     summary_path = output_dir / "training_summary.json"
     summary = {
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat() + "Z",
         "training_seconds": round(total_elapsed, 2),
         "components": component_reports,
         "overall": "FAIL" if any_failed else "PASS",

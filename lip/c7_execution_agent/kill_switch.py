@@ -22,7 +22,7 @@ Three-entity role mapping:
 import logging
 import threading
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -64,7 +64,7 @@ class KillSwitch:
 
     def activate(self, reason: str = "") -> None:
         self._kill_switch_state = KillSwitchState.ACTIVE
-        self._activated_at = datetime.utcnow()
+        self._activated_at = datetime.now(tz=timezone.utc)
         self._reason = reason
         if self._redis:
             self._redis.set("lip:kill_switch", "ACTIVE")
@@ -95,7 +95,7 @@ class KillSwitch:
                 self._kms_unavailable_since = None
         except Exception as exc:
             if self._kms_state == KMSState.AVAILABLE:
-                self._kms_unavailable_since = datetime.utcnow()
+                self._kms_unavailable_since = datetime.now(tz=timezone.utc)
                 logger.error("KMS unavailable: %s", exc)
             self._kms_state = KMSState.UNAVAILABLE
         return self._kms_state
@@ -115,7 +115,7 @@ class KillSwitch:
     def kms_unavailable_gap_seconds(self) -> Optional[float]:
         if self._kms_unavailable_since is None:
             return None
-        return (datetime.utcnow() - self._kms_unavailable_since).total_seconds()
+        return (datetime.now(tz=timezone.utc) - self._kms_unavailable_since).total_seconds()
 
     def start_kms_monitor(self, interval: int = 30) -> None:
         self._stop_event.clear()

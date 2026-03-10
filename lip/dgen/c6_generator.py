@@ -26,7 +26,7 @@ NOTE: This file generates training patterns — NOT sanctions screening data.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 import numpy as np
@@ -260,7 +260,7 @@ def generate_aml_corpus(
     List of dicts with AML features + aml_flag (0=clean, 1=flagged).
     """
     rng = np.random.default_rng(seed)
-    ts_now = datetime.utcnow().isoformat() + "Z"
+    ts_now = datetime.now(tz=timezone.utc).isoformat() + "Z"
 
     # Pattern weights
     patterns = ["normal", "structuring", "velocity", "layering", "jurisdiction"]

@@ -11,7 +11,7 @@ import hashlib
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class SaltRotationManager:
         loaded = self._load_salt("current")
         if loaded is None:
             salt = os.urandom(32)
-            now = datetime.utcnow()
+            now = datetime.now(tz=timezone.utc)
             self._current = SaltRecord(
                 salt=salt,
                 created_at=now,
@@ -69,7 +69,7 @@ class SaltRotationManager:
         """Generates new salt, promotes current to previous. Returns (new, old)."""
         old_salt = self.get_current_salt()
         new_salt = os.urandom(32)
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
         self._previous = self._current
         self._previous.is_active = False  # type: ignore[union-attr]
         self._store_salt("previous", self._previous)
@@ -87,7 +87,7 @@ class SaltRotationManager:
         if self._previous is None:
             return False
         cutoff = self._current.created_at + timedelta(days=OVERLAP_DAYS)  # type: ignore[union-attr]
-        return datetime.utcnow() < cutoff
+        return datetime.now(tz=timezone.utc) < cutoff
 
     def hash_with_current(self, value: str) -> str:
         return hashlib.sha256(value.encode() + self.get_current_salt()).hexdigest()
@@ -101,7 +101,7 @@ class SaltRotationManager:
     def check_and_rotate_if_needed(self) -> bool:
         if self._current is None:
             self._init_salt()
-        if datetime.utcnow() >= self._current.expires_at:  # type: ignore[union-attr]
+        if datetime.now(tz=timezone.utc) >= self._current.expires_at:  # type: ignore[union-attr]
             self.rotate_salt()
             return True
         return False

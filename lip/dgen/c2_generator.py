@@ -24,7 +24,7 @@ REX: All records tagged SYNTHETIC_CORPUS_C2 with temporal structure
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 import numpy as np
@@ -322,7 +322,7 @@ def generate_pd_training_data_v2(
         Random seed for reproducibility.
     """
     rng = np.random.default_rng(seed)
-    ts = datetime.utcnow().isoformat() + "Z"
+    ts = datetime.now(tz=timezone.utc).isoformat() + "Z"
 
     tier_choices = rng.choice([1, 2, 3], size=n_samples, p=_TIER_WEIGHTS)
     default_rates = {1: _DEFAULT_RATE_TIER1, 2: _DEFAULT_RATE_TIER2, 3: _DEFAULT_RATE_TIER3}

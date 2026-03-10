@@ -13,7 +13,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -193,8 +193,8 @@ class ExecutionAgent:
             "fee_bps": fee_bps,
             "maturity_days": maturity_days,
             "pd_score": pd,
-            "offered_at": datetime.utcnow().isoformat(),
-            "expires_at": (datetime.utcnow() + timedelta(minutes=15)).isoformat(),
+            "offered_at": datetime.now(tz=timezone.utc).isoformat(),
+            "expires_at": (datetime.now(tz=timezone.utc) + timedelta(minutes=15)).isoformat(),
         }
 
     def _requires_human_review(self, payment_context: dict) -> bool:
@@ -220,7 +220,7 @@ class ExecutionAgent:
             uetr=uetr,
             individual_payment_id=individual_payment_id,
             decision_type=decision_type,
-            decision_timestamp=datetime.utcnow().isoformat(),
+            decision_timestamp=datetime.now(tz=timezone.utc).isoformat(),
             failure_probability=failure_probability,
             pd_score=pd_score,
             fee_bps=fee_bps,

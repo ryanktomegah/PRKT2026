@@ -1,7 +1,7 @@
 """
 test_c7_execution.py — Tests for C7 Execution Agent
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -25,7 +25,7 @@ def _make_agent(config=None):
 def _make_entry(**kwargs):
     defaults = dict(
         entry_id="", uetr="uetr-001", individual_payment_id="pid-001",
-        decision_type="OFFER", decision_timestamp=datetime.utcnow().isoformat(),
+        decision_type="OFFER", decision_timestamp=datetime.now(tz=timezone.utc).isoformat(),
         failure_probability=0.6, pd_score=0.05, fee_bps=300,
         loan_amount="100000", dispute_class="NOT_DISPUTE", aml_passed=True,
     )

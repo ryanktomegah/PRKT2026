@@ -40,7 +40,7 @@ import hashlib
 import json
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -160,7 +160,7 @@ def _build_data_card(
     return {
         "schema_version": "1.0",
         "data_card_type": "LIP_SYNTHETIC_CORPUS",
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat() + "Z",
         "generation_tool": "lip.dgen.generate_all",
         "generation_time_seconds": round(generation_time_s, 2),
         "regulatory_compliance": {

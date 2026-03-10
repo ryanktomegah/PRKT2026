@@ -10,7 +10,7 @@ Three-entity role mapping:
 """
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -43,7 +43,7 @@ class DegradedModeManager:
         self.current_state = DegradedState(
             is_degraded=True,
             reason=reason,
-            degraded_since=datetime.utcnow(),
+            degraded_since=datetime.now(tz=timezone.utc),
             gpu_fallback_to_cpu=gpu_fallback and reason == DegradedReason.GPU_FAILURE,
         )
         logger.error("Entered degraded mode: reason=%s gpu_fallback=%s", reason, gpu_fallback)
@@ -71,7 +71,7 @@ class DegradedModeManager:
             return None
         if self.current_state.degraded_since is None:
             return None
-        return (datetime.utcnow() - self.current_state.degraded_since).total_seconds()
+        return (datetime.now(tz=timezone.utc) - self.current_state.degraded_since).total_seconds()
 
     def get_state_dict(self) -> dict:
         """Returns fields suitable for inclusion in DecisionLogEntry."""
