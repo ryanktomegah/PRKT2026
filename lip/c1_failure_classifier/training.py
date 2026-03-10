@@ -435,6 +435,61 @@ class TrainingPipeline:
         return model
 
     # ------------------------------------------------------------------
+    # Stage 5b — LightGBM pre-training (third ensemble component)
+    # ------------------------------------------------------------------
+
+    def stage5b_lightgbm_pretrain(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+    ):
+        """Train a LightGBM classifier on raw tabular features.
+
+        This is the third component of the C1 Spec ensemble:
+        GraphSAGE + TabTransformer + LightGBM (C1 Spec Section 7).
+
+        LightGBM provides strong tabular inductive bias and handles class
+        imbalance natively via ``is_unbalance=True``, complementing the
+        neural components.
+
+        Parameters
+        ----------
+        X_train:
+            Training feature matrix ``(n_train, 88)``.
+        y_train:
+            Training labels ``(n_train,)``.
+
+        Returns
+        -------
+        lgb.LGBMClassifier
+            Trained LightGBM classifier.
+        """
+        import lightgbm as lgb
+
+        n_pos = int(y_train.sum())
+        n_neg = int(len(y_train) - n_pos)
+        logger.info(
+            "stage5b_lightgbm_pretrain: %d train samples (%d pos / %d neg)",
+            len(y_train), n_pos, n_neg,
+        )
+
+        lgbm = lgb.LGBMClassifier(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=6,
+            num_leaves=63,
+            min_child_samples=20,
+            colsample_bytree=0.8,
+            subsample=0.8,
+            is_unbalance=True,
+            random_state=self.config.random_seed,
+            verbose=-1,
+        )
+        lgbm.fit(X_train, y_train.astype(int))
+        logger.info("stage5b_lightgbm_pretrain: complete")
+        return lgbm
+
+    # ------------------------------------------------------------------
     # Stage 7 — Joint training
     # ------------------------------------------------------------------
 
@@ -444,17 +499,19 @@ class TrainingPipeline:
         tabtransformer: TabTransformerModel,
         X_train: np.ndarray,
         y_train: np.ndarray,
+        X_val: Optional[np.ndarray] = None,
+        y_val: Optional[np.ndarray] = None,
     ) -> ClassifierModel:
-        """Joint end-to-end SGD training of GraphSAGE + TabTransformer + MLP.
+        """Joint end-to-end training of GraphSAGE + TabTransformer + MLP with Adam.
 
         Assembles the :class:`ClassifierModel` from pre-trained sub-models
-        and runs ``n_epochs`` of mini-batch SGD with the asymmetric BCE loss
+        and runs ``n_epochs`` of mini-batch Adam with the asymmetric BCE loss
         (``alpha=0.7``).  Backpropagation is fully analytical for the MLP head
         and analytically approximate for the encoder components (L2-normalisation
         and attention Jacobians are treated as identity matrices).
 
-        Best-AUC checkpoint tracking is performed on the training set (no held-out
-        set is available at this stage — validation is done in stage 8).
+        Best-AUC checkpoint tracking uses the validation set when provided,
+        falling back to the training set otherwise.
 
         Parameters
         ----------
@@ -466,6 +523,10 @@ class TrainingPipeline:
             Training feature matrix ``(n_train, 88)``.
         y_train:
             Training labels ``(n_train,)``.
+        X_val:
+            Optional validation feature matrix for val-based checkpointing.
+        y_val:
+            Optional validation labels for val-based checkpointing.
 
         Returns
         -------
@@ -526,20 +587,25 @@ class TrainingPipeline:
 
             avg_loss = total_loss / max(1, n)
 
-            # Compute training-set AUC for checkpoint selection
+            # Compute AUC for checkpoint selection: use val set when available
+            if X_val is not None and y_val is not None:
+                ckpt_X, ckpt_y, ckpt_label = X_val, y_val, "val"
+            else:
+                ckpt_X, ckpt_y, ckpt_label = X_train, y_train, "train"
+
             scores: List[float] = []
-            for i in range(n):
-                x_tab = X_train[i]
+            for i in range(len(ckpt_X)):
+                x_tab = ckpt_X[i]
                 tab_emb = tabtransformer.forward(x_tab)
                 node_feat = x_tab[:graphsage_input_dim]
                 sage_emb = graphsage.forward(node_feat, [], [])
                 fused = np.concatenate([sage_emb, tab_emb])
                 scores.append(mlp.forward(fused))
-            auc = _compute_auc(y_train, np.array(scores))
+            auc = _compute_auc(ckpt_y, np.array(scores))
 
             logger.debug(
-                "Joint training epoch %d — avg_loss=%.5f  train_auc=%.4f",
-                epoch + 1, avg_loss, auc,
+                "Joint training epoch %d — avg_loss=%.5f  %s_auc=%.4f",
+                epoch + 1, avg_loss, ckpt_label, auc,
             )
 
             # Save best checkpoint
@@ -661,9 +727,11 @@ class TrainingPipeline:
         graph = _run_stage("stage2_graph_construction", self.stage2_graph_construction, validated)
         X, y = _run_stage("stage3_feature_extraction", self.stage3_feature_extraction, validated, graph)
         X_train, X_val, y_train, y_val = _run_stage("stage4_train_val_split", self.stage4_train_val_split, X, y)
+        lgbm_model = _run_stage("stage5b_lightgbm_pretrain", self.stage5b_lightgbm_pretrain, X_train, y_train)
         graphsage = _run_stage("stage5_graphsage_pretrain", self.stage5_graphsage_pretrain, X_train, y_train)
         tabtransformer = _run_stage("stage6_tabtransformer_pretrain", self.stage6_tabtransformer_pretrain, X_train, y_train)
-        model = _run_stage("stage7_joint_training", self.stage7_joint_training, graphsage, tabtransformer, X_train, y_train)
+        model = _run_stage("stage7_joint_training", self.stage7_joint_training, graphsage, tabtransformer, X_train, y_train, X_val, y_val)
+        model.lgbm_model = lgbm_model  # attach LightGBM to complete the 3-model ensemble
         threshold = _run_stage("stage8_threshold_calibration", self.stage8_threshold_calibration, model, X_val, y_val)
         emb_pipeline = _run_stage("stage9_embedding_generation", self.stage9_embedding_generation, model, validated)
 

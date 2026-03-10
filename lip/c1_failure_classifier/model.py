@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List
+from typing import Any, List, Optional
 
 import numpy as np
 
@@ -109,6 +109,24 @@ class MLPHead:
 
         self.W3: np.ndarray = _xavier_uniform(hidden2, output_dim, _RNG)
         self.b3: np.ndarray = np.zeros(output_dim, dtype=np.float64)
+
+        # Adam optimizer state (moment vectors for each parameter)
+        self._adam_t: int = 0
+        self._adam_b1: float = 0.9
+        self._adam_b2: float = 0.999
+        self._adam_eps: float = 1e-8
+        self._m_W1 = np.zeros_like(self.W1)
+        self._v_W1 = np.zeros_like(self.W1)
+        self._m_b1 = np.zeros_like(self.b1)
+        self._v_b1 = np.zeros_like(self.b1)
+        self._m_W2 = np.zeros_like(self.W2)
+        self._v_W2 = np.zeros_like(self.W2)
+        self._m_b2 = np.zeros_like(self.b2)
+        self._v_b2 = np.zeros_like(self.b2)
+        self._m_W3 = np.zeros_like(self.W3)
+        self._v_W3 = np.zeros_like(self.W3)
+        self._m_b3 = np.zeros_like(self.b3)
+        self._v_b3 = np.zeros_like(self.b3)
 
     def forward(self, x: np.ndarray) -> float:
         """Compute the failure probability for a fused feature vector.
@@ -229,13 +247,24 @@ class MLPHead:
         db1 = d_pre_h1.copy()
         d_x = self.W1 @ d_pre_h1                  # (input_dim,)
 
-        # Update weights in place
-        self.W1 -= lr * dW1
-        self.b1 -= lr * db1
-        self.W2 -= lr * dW2
-        self.b2 -= lr * db2
-        self.W3 -= lr * dW3
-        self.b3 -= lr * db3
+        # --- Adam update (replaces plain SGD) ---
+        self._adam_t += 1
+        t = self._adam_t
+        b1_a, b2_a, eps_a = self._adam_b1, self._adam_b2, self._adam_eps
+
+        def _adam(param: np.ndarray, grad: np.ndarray, m: np.ndarray, v: np.ndarray) -> None:
+            m[:] = b1_a * m + (1.0 - b1_a) * grad
+            v[:] = b2_a * v + (1.0 - b2_a) * grad ** 2
+            m_hat = m / (1.0 - b1_a ** t)
+            v_hat = v / (1.0 - b2_a ** t)
+            param -= lr * m_hat / (np.sqrt(v_hat) + eps_a)
+
+        _adam(self.W1, dW1, self._m_W1, self._v_W1)
+        _adam(self.b1, db1, self._m_b1, self._v_b1)
+        _adam(self.W2, dW2, self._m_W2, self._v_W2)
+        _adam(self.b2, db2, self._m_b2, self._v_b2)
+        _adam(self.W3, dW3, self._m_W3, self._v_W3)
+        _adam(self.b3, db3, self._m_b3, self._v_b3)
 
         return d_x
 
@@ -270,6 +299,7 @@ class ClassifierModel:
         self.graphsage = graphsage
         self.tabtransformer = tabtransformer
         self.mlp = mlp
+        self.lgbm_model: Optional[Any] = None  # attached after stage5b training
 
     # ------------------------------------------------------------------
     # Inference
@@ -304,7 +334,12 @@ class ClassifierModel:
         sage_emb = self.graphsage.forward(node_features, neighbors_l1, neighbors_l2)
         tab_emb = self.tabtransformer.forward(tabular_features)
         fused = np.concatenate([sage_emb, tab_emb])  # (472,)
-        return self.mlp.forward(fused)
+        neural_prob = self.mlp.forward(fused)
+        if self.lgbm_model is not None:
+            x_tab = np.asarray(tabular_features, dtype=np.float64).reshape(1, -1)
+            lgbm_prob = float(self.lgbm_model.predict_proba(x_tab)[0, 1])
+            return 0.5 * neural_prob + 0.5 * lgbm_prob
+        return neural_prob
 
     # ------------------------------------------------------------------
     # Loss
@@ -416,6 +451,10 @@ class ClassifierModel:
         self.graphsage.save_weights(os.path.join(path, "graphsage"))
         self.tabtransformer.save_weights(os.path.join(path, "tabtransformer"))
         np.savez(os.path.join(path, "mlp"), **self.mlp.get_weights())
+        if self.lgbm_model is not None:
+            import pickle
+            with open(os.path.join(path, "lgbm.pkl"), "wb") as f:
+                pickle.dump(self.lgbm_model, f)
         logger.info("ClassifierModel saved to %s", path)
 
     def load(self, path: str) -> None:
@@ -430,6 +469,11 @@ class ClassifierModel:
         self.tabtransformer.load_weights(os.path.join(path, "tabtransformer.npz"))
         mlp_data = np.load(os.path.join(path, "mlp.npz"))
         self.mlp.set_weights(dict(mlp_data))
+        lgbm_path = os.path.join(path, "lgbm.pkl")
+        if os.path.exists(lgbm_path):
+            import pickle
+            with open(lgbm_path, "rb") as f:
+                self.lgbm_model = pickle.load(f)
         logger.info("ClassifierModel loaded from %s", path)
 
 

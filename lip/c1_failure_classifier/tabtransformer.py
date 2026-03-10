@@ -329,6 +329,29 @@ class TabTransformerModel:
         self.W_out: np.ndarray = _xavier_uniform(self.model_dim, output_dim, _RNG)
         self.b_out: np.ndarray = np.zeros(output_dim, dtype=np.float64)
 
+        # Adam optimizer state for backward()
+        self._adam_t: int = 0
+        self._adam_b1: float = 0.9
+        self._adam_b2: float = 0.999
+        self._adam_eps: float = 1e-8
+        self._m_Win = np.zeros_like(self.W_in)
+        self._v_Win = np.zeros_like(self.W_in)
+        self._m_bin = np.zeros_like(self.b_in)
+        self._v_bin = np.zeros_like(self.b_in)
+        self._m_Wout = np.zeros_like(self.W_out)
+        self._v_Wout = np.zeros_like(self.W_out)
+        self._m_bout = np.zeros_like(self.b_out)
+        self._v_bout = np.zeros_like(self.b_out)
+        # Per-layer FFN Adam moment vectors (indexed by layer index)
+        self._m_ff1W: List[np.ndarray] = [np.zeros_like(la.W_ff1) for la in self.layers]
+        self._v_ff1W: List[np.ndarray] = [np.zeros_like(la.W_ff1) for la in self.layers]
+        self._m_ff1b: List[np.ndarray] = [np.zeros_like(la.b_ff1) for la in self.layers]
+        self._v_ff1b: List[np.ndarray] = [np.zeros_like(la.b_ff1) for la in self.layers]
+        self._m_ff2W: List[np.ndarray] = [np.zeros_like(la.W_ff2) for la in self.layers]
+        self._v_ff2W: List[np.ndarray] = [np.zeros_like(la.W_ff2) for la in self.layers]
+        self._m_ff2b: List[np.ndarray] = [np.zeros_like(la.b_ff2) for la in self.layers]
+        self._v_ff2b: List[np.ndarray] = [np.zeros_like(la.b_ff2) for la in self.layers]
+
         logger.debug(
             "TabTransformerModel: %d → %d → %d (%d layers, %d heads)",
             input_dim, self.model_dim, output_dim, num_layers, num_heads,
@@ -565,21 +588,41 @@ class TabTransformerModel:
             d_h_prev_0 = d_h_0 + layer.W_ff1 @ d_ff_pre   # (model_dim,)
             d_h = d_h_prev_0.reshape(1, self.model_dim)
 
-            # Update FFN weights in place (gradient clipping: max element-wise ±1.0)
-            _gc = 1.0
-            layer.W_ff2 -= lr * np.clip(dW_ff2, -_gc, _gc)
-            layer.b_ff2 -= lr * np.clip(db_ff2, -_gc, _gc)
-            layer.W_ff1 -= lr * np.clip(dW_ff1, -_gc, _gc)
-            layer.b_ff1 -= lr * np.clip(db_ff1, -_gc, _gc)
+            # --- Adam update for FFN weights (replaces clipped SGD) ---
+            self._adam_t += 1
+            t = self._adam_t
+            b1_a, b2_a, eps_a = self._adam_b1, self._adam_b2, self._adam_eps
+
+            def _adam(param: np.ndarray, grad: np.ndarray, m: np.ndarray, v: np.ndarray) -> None:
+                m[:] = b1_a * m + (1.0 - b1_a) * grad
+                v[:] = b2_a * v + (1.0 - b2_a) * grad ** 2
+                m_hat = m / (1.0 - b1_a ** t)
+                v_hat = v / (1.0 - b2_a ** t)
+                param -= lr * m_hat / (np.sqrt(v_hat) + eps_a)
+
+            _adam(layer.W_ff2, dW_ff2, self._m_ff2W[i], self._v_ff2W[i])
+            _adam(layer.b_ff2, db_ff2, self._m_ff2b[i], self._v_ff2b[i])
+            _adam(layer.W_ff1, dW_ff1, self._m_ff1W[i], self._v_ff1W[i])
+            _adam(layer.b_ff1, db_ff1, self._m_ff1b[i], self._v_ff1b[i])
 
         # --- Backprop input projection ---
         d_h_0 = d_h[0]                          # (model_dim,)
         dW_in = np.outer(x, d_h_0)             # (input_dim, model_dim)
         db_in = d_h_0.copy()
 
-        # Update projection weights in place (gradient clipping: max element-wise ±1.0)
-        _gc = 1.0
-        self.W_in  -= lr * np.clip(dW_in,  -_gc, _gc)
-        self.b_in  -= lr * np.clip(db_in,  -_gc, _gc)
-        self.W_out -= lr * np.clip(dW_out, -_gc, _gc)
-        self.b_out -= lr * np.clip(db_out, -_gc, _gc)
+        # Adam update for projection weights
+        self._adam_t += 1
+        t = self._adam_t
+        b1_a, b2_a, eps_a = self._adam_b1, self._adam_b2, self._adam_eps
+
+        def _adam_proj(param: np.ndarray, grad: np.ndarray, m: np.ndarray, v: np.ndarray) -> None:
+            m[:] = b1_a * m + (1.0 - b1_a) * grad
+            v[:] = b2_a * v + (1.0 - b2_a) * grad ** 2
+            m_hat = m / (1.0 - b1_a ** t)
+            v_hat = v / (1.0 - b2_a ** t)
+            param -= lr * m_hat / (np.sqrt(v_hat) + eps_a)
+
+        _adam_proj(self.W_in,  dW_in,  self._m_Win,  self._v_Win)
+        _adam_proj(self.b_in,  db_in,  self._m_bin,  self._v_bin)
+        _adam_proj(self.W_out, dW_out, self._m_Wout, self._v_Wout)
+        _adam_proj(self.b_out, db_out, self._m_bout, self._v_bout)

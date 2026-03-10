@@ -214,6 +214,20 @@ class GraphSAGEModel:
         self.layer1 = GraphSAGELayer(input_dim, hidden_dim, activation="relu")
         self.layer2 = GraphSAGELayer(hidden_dim, output_dim, activation="relu")
 
+        # Adam optimizer state for backward_empty_neighbors
+        self._adam_t: int = 0
+        self._adam_b1: float = 0.9
+        self._adam_b2: float = 0.999
+        self._adam_eps: float = 1e-8
+        self._m_l1W = np.zeros((2 * input_dim, hidden_dim), dtype=np.float64)
+        self._v_l1W = np.zeros((2 * input_dim, hidden_dim), dtype=np.float64)
+        self._m_l1b = np.zeros(hidden_dim, dtype=np.float64)
+        self._v_l1b = np.zeros(hidden_dim, dtype=np.float64)
+        self._m_l2W = np.zeros((2 * hidden_dim, output_dim), dtype=np.float64)
+        self._v_l2W = np.zeros((2 * hidden_dim, output_dim), dtype=np.float64)
+        self._m_l2b = np.zeros(output_dim, dtype=np.float64)
+        self._v_l2b = np.zeros(output_dim, dtype=np.float64)
+
         logger.debug(
             "GraphSAGEModel initialised: %d → %d → %d",
             input_dim, hidden_dim, output_dim,
@@ -360,9 +374,19 @@ class GraphSAGEModel:
         dW1 = np.outer(h_concat1, d_pre1)                   # (2*input_dim, hidden_dim)
         db1 = d_pre1.copy()
 
-        # Update weights in place (gradient clipping: max element-wise ±1.0)
-        _gc = 1.0
-        self.layer1.W -= lr * np.clip(dW1, -_gc, _gc)
-        self.layer1.b -= lr * np.clip(db1, -_gc, _gc)
-        self.layer2.W -= lr * np.clip(dW2, -_gc, _gc)
-        self.layer2.b -= lr * np.clip(db2, -_gc, _gc)
+        # --- Adam update (replaces clipped SGD) ---
+        self._adam_t += 1
+        t = self._adam_t
+        b1_a, b2_a, eps_a = self._adam_b1, self._adam_b2, self._adam_eps
+
+        def _adam(param: np.ndarray, grad: np.ndarray, m: np.ndarray, v: np.ndarray) -> None:
+            m[:] = b1_a * m + (1.0 - b1_a) * grad
+            v[:] = b2_a * v + (1.0 - b2_a) * grad ** 2
+            m_hat = m / (1.0 - b1_a ** t)
+            v_hat = v / (1.0 - b2_a ** t)
+            param -= lr * m_hat / (np.sqrt(v_hat) + eps_a)
+
+        _adam(self.layer1.W, dW1, self._m_l1W, self._v_l1W)
+        _adam(self.layer1.b, db1, self._m_l1b, self._v_l1b)
+        _adam(self.layer2.W, dW2, self._m_l2W, self._v_l2W)
+        _adam(self.layer2.b, db2, self._m_l2b, self._v_l2b)
