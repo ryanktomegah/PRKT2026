@@ -663,6 +663,9 @@ class _MockC1:
             "shap_top20": [{"feature": f"f{i}", "value": 0.01} for i in range(20)],
         }
 
+    def __call__(self, payment: dict) -> dict:
+        return self.predict(payment)
+
 
 class _MockC2:
     def __init__(self, pd_score: float = 0.05, fee_bps: int = 300, tier: int = 3):
@@ -677,6 +680,9 @@ class _MockC2:
             "tier": self._tier,
             "shap_values": [],
         }
+
+    def __call__(self, payment: dict, borrower: dict) -> dict:
+        return self.predict(payment, borrower)
 
 
 class _MockC4:

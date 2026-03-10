@@ -66,6 +66,9 @@ class MockC1Engine:
             "shap_top20": [{"feature": f"feat_{i}", "value": round(0.01 * (i + 1), 4)} for i in range(20)],
         }
 
+    def __call__(self, payment: dict) -> dict:
+        return self.predict(payment)
+
 
 # ---------------------------------------------------------------------------
 # Mock C2 engine
@@ -100,6 +103,9 @@ class MockC2Engine:
             "borrower_id_hash": "mock_borrower_hash",
             "inference_latency_ms": 1.0,
         }
+
+    def __call__(self, payment: dict, borrower: dict) -> dict:
+        return self.predict(payment, borrower)
 
 
 # ---------------------------------------------------------------------------
