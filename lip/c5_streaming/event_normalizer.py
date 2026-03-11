@@ -33,6 +33,15 @@ class NormalizedEvent:
 
 
 def _safe_decimal(value) -> Decimal:
+    """Coerce ``value`` to :class:`~decimal.Decimal`, returning ``Decimal('0')`` on failure.
+
+    Args:
+        value: Numeric value to convert (int, float, str, or Decimal).
+
+    Returns:
+        Parsed :class:`~decimal.Decimal`, or ``Decimal('0')`` when ``value``
+        is ``None``, non-numeric, or raises :class:`~decimal.InvalidOperation`.
+    """
     try:
         return Decimal(str(value))
     except (InvalidOperation, TypeError):
@@ -40,6 +49,19 @@ def _safe_decimal(value) -> Decimal:
 
 
 def _safe_datetime(value) -> datetime:
+    """Coerce ``value`` to a :class:`~datetime.datetime`, falling back to UTC now.
+
+    Accepts an existing :class:`~datetime.datetime` (returned as-is),
+    an ISO 8601 string, or any value that can be converted to a string
+    understood by :func:`~datetime.datetime.fromisoformat`.
+
+    Args:
+        value: Datetime value to parse (datetime, str, or None).
+
+    Returns:
+        Parsed :class:`~datetime.datetime`, or ``datetime.now(UTC)`` when
+        ``value`` is ``None``, empty, or cannot be parsed.
+    """
     if isinstance(value, datetime):
         return value
     if value:
@@ -201,4 +223,21 @@ class EventNormalizer:
 
 
 def normalize_event(rail: str, msg: dict) -> NormalizedEvent:
+    """Convenience wrapper — normalise a single payment event from ``rail``.
+
+    Creates a one-shot :class:`EventNormalizer` and delegates to
+    :meth:`~EventNormalizer.normalize`.  For high-throughput paths, prefer
+    reusing an :class:`EventNormalizer` instance directly.
+
+    Args:
+        rail: Payment rail identifier — one of ``'SWIFT'``, ``'FEDNOW'``,
+            ``'RTP'``, or ``'SEPA'`` (case-insensitive).
+        msg: Raw message dict from the payment network connector.
+
+    Returns:
+        :class:`NormalizedEvent` in the canonical LIP format.
+
+    Raises:
+        ValueError: If ``rail`` is not a recognised payment rail.
+    """
     return EventNormalizer().normalize(rail, msg)

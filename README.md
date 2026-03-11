@@ -1,8 +1,15 @@
 # LIP — Liquidity Intelligence Platform
 
+![Tests](https://img.shields.io/badge/tests-972%20passed-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-92%25-green)
+![Lint](https://img.shields.io/badge/ruff-0%20errors-brightgreen)
+![Python](https://img.shields.io/badge/python-3.13%2B-blue)
+
 Patent-backed real-time payment failure detection and automated bridge lending system.
 
 **Technology licensor model**: Banks deploy LIP against their SWIFT payment streams. BPI earns 15% royalty on bridge loan fees collected.
+
+**Patent moat**: JPMorgan US7089207B1 covers Tier 1 (listed counterparties) only. LIP's Tier 2+3 coverage of **private counterparties** (via Damodaran industry-beta and Altman Z' thin-file models) is the core patent contribution and primary competitive differentiator.
 
 ---
 
@@ -45,18 +52,29 @@ pacs.002 stream
 C8 License Manager — HMAC token enforcement (cross-cutting)
 ```
 
+## Documentation
+
+| File | Description |
+|------|-------------|
+| [`docs/architecture.md`](docs/architecture.md) | Algorithm 1 step-by-step, state machines, canonical constants, Redis/Kafka maps, patent claims |
+| [`docs/api-reference.md`](docs/api-reference.md) | All Pydantic schemas (C1–C8), fee formula warning, DecisionLogEntry retention |
+| [`docs/compliance.md`](docs/compliance.md) | SR 11-7, EU AI Act Art.9/13/14/17/61, DORA Art.30, AML controls, data privacy |
+| [`docs/developer-guide.md`](docs/developer-guide.md) | Setup, test commands, canonical constants table, never-commit list, mock injection |
+| [`docs/deployment.md`](docs/deployment.md) | Docker images, K8s manifests, HPA, network policies, secrets, env vars, health checks |
+| [`docs/data-pipeline.md`](docs/data-pipeline.md) | dgen generators, training commands, C1 AUC gap, C4 FN gap, artefact policy |
+
 ## Components
 
-| ID | Name | Purpose | Key Tech |
-|----|------|---------|----------|
-| C1 | Failure Classifier | Predict payment failure from pacs.002 features | GraphSAGE + TabTransformer + LightGBM |
-| C2 | PD Model | Tiered structural PD + LGD + fee pricing | Merton/KMV, Damodaran, Altman Z' |
-| C3 | Repayment Engine | Settlement monitoring + auto-repayment | UETR polling, corridor buffers |
-| C4 | Dispute Classifier | Detect disputed payments (hard block) | LLM-based, multilingual, negation |
-| C5 | Streaming | Real-time event ingestion + normalization | Kafka, Flink, Redis |
-| C6 | AML Velocity | Sanctions + velocity + anomaly detection | OFAC/EU lists, cross-licensee salts |
-| C7 | Execution Agent | Loan execution with safety controls | Kill switch, human override, degraded mode |
-| C8 | License Manager | Technology licensing enforcement | HMAC-SHA256 tokens, boot validation |
+| ID | Name | Algorithm 1 Step | Purpose | Key Tech | Spec | README |
+|----|------|-----------------|---------|----------|------|--------|
+| C1 | Failure Classifier | Step 1 | Predict payment failure from pacs.002 features | GraphSAGE + TabTransformer + LightGBM | §4.2 | [C1 README](lip/c1_failure_classifier/README.md) |
+| C2 | PD Model | Step 3 | Tiered structural PD + LGD + fee pricing | Merton/KMV, Damodaran, Altman Z' | §4.3 | [C2 README](lip/c2_pd_model/README.md) |
+| C3 | Repayment Engine | Post-fund | Settlement monitoring + auto-repayment | UETR polling, corridor buffers | §4.7 | [C3 README](lip/c3_repayment_engine/README.md) |
+| C4 | Dispute Classifier | Step 2 (∥C6) | Detect disputed payments (hard block) | LLM-based, multilingual, negation | §4.4 | [C4 README](lip/c4_dispute_classifier/README.md) |
+| C5 | Streaming | Pre-Step 1 | Real-time event ingestion + normalization | Kafka, Flink, Redis | §C5 | [C5 README](lip/c5_streaming/README.md) |
+| C6 | AML Velocity | Step 2 (∥C4) | Sanctions + velocity + anomaly detection | OFAC/EU lists, cross-licensee salts | §4.5 | [C6 README](lip/c6_aml_velocity/README.md) |
+| C7 | Execution Agent | Step 4 | Loan execution with safety controls | Kill switch, human override, degraded mode | §4.6 | [C7 README](lip/c7_execution_agent/README.md) |
+| C8 | License Manager | Cross-cutting | Technology licensing enforcement | HMAC-SHA256 tokens, boot validation | §S11 | [C8 README](lip/c8_license_manager/README.md) |
 
 ## Canonical Constants
 
@@ -95,6 +113,7 @@ PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic
 
 ```
 PRKT2026/
+├── docs/                       ← Architecture, API, compliance, deployment docs
 ├── lip/                        ← Production Python package
 │   ├── c1_failure_classifier/  ← Component 1: ML failure prediction
 │   ├── c2_pd_model/            ← Component 2: Structural PD + fee pricing

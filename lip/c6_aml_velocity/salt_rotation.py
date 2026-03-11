@@ -22,6 +22,19 @@ OVERLAP_DAYS = 30
 
 @dataclass
 class SaltRecord:
+    """Persistent record for a single salt generation cycle.
+
+    Attributes:
+        salt: 32 random bytes produced by :func:`os.urandom`.  Never logged
+            or transmitted; stored in Redis as a hex string with a TTL.
+        created_at: UTC datetime when this salt was generated.
+        expires_at: UTC datetime after which this salt should be rotated
+            (``created_at + ROTATION_INTERVAL_DAYS``).
+        is_active: ``True`` while this is the current active salt;
+            ``False`` after it has been promoted to ``previous`` by
+            :meth:`~SaltRotationManager.rotate_salt`.
+    """
+
     salt: bytes
     created_at: datetime
     expires_at: datetime
@@ -32,12 +45,29 @@ class SaltRotationManager:
     """Manages annual salt rotation with 30-day dual-salt overlap."""
 
     def __init__(self, redis_client=None):
+        """Initialise the manager and load or generate the current salt.
+
+        If a ``current`` salt record exists in Redis it is loaded; otherwise
+        a fresh 32-byte salt is generated and persisted.  The ``previous``
+        salt (if any) is also loaded for the overlap window.
+
+        Args:
+            redis_client: Optional Redis client for persistent salt storage.
+                When ``None`` the manager operates in-memory only (suitable
+                for testing; not recommended for production cross-licensee
+                deployments).
+        """
         self._redis = redis_client
         self._current: Optional[SaltRecord] = None
         self._previous: Optional[SaltRecord] = None
         self._init_salt()
 
     def _init_salt(self) -> None:
+        """Load the current salt from Redis or generate a new one.
+
+        Called automatically by :meth:`__init__`.  Safe to call again if the
+        salt record is ever cleared (e.g., Redis flush during tests).
+        """
         loaded = self._load_salt("current")
         if loaded is None:
             salt = os.urandom(32)
@@ -53,6 +83,14 @@ class SaltRotationManager:
         self._previous = self._load_salt("previous")
 
     def get_current_salt(self) -> bytes:
+        """Return the active 32-byte salt for hashing new entity identifiers.
+
+        Re-initialises the manager if the current salt record is missing
+        (defensive guard against in-memory resets).
+
+        Returns:
+            Active salt bytes.
+        """
         if self._current is None:
             self._init_salt()
         return self._current.salt  # type: ignore[union-attr]
@@ -90,15 +128,46 @@ class SaltRotationManager:
         return datetime.now(tz=timezone.utc) < cutoff
 
     def hash_with_current(self, value: str) -> str:
+        """Compute SHA-256(value + current_salt) hex digest.
+
+        Use for all new entity/beneficiary hashes in normal operation.
+
+        Args:
+            value: Raw string to hash (e.g., entity ID or BIC).
+
+        Returns:
+            Lowercase 64-character hex digest.
+        """
         return hashlib.sha256(value.encode() + self.get_current_salt()).hexdigest()
 
     def hash_with_previous(self, value: str) -> Optional[str]:
+        """Compute SHA-256(value + previous_salt) only within the overlap window.
+
+        Returns ``None`` outside the 30-day overlap window or when no previous
+        salt exists.  Used to re-hash legacy records during the transition
+        period before they expire from the rolling window.
+
+        Args:
+            value: Raw string to hash.
+
+        Returns:
+            Lowercase 64-character hex digest, or ``None`` outside the overlap
+            window.
+        """
         prev = self.get_previous_salt()
         if prev is None:
             return None
         return hashlib.sha256(value.encode() + prev).hexdigest()
 
     def check_and_rotate_if_needed(self) -> bool:
+        """Rotate the salt if the current record has passed its expiry date.
+
+        Intended to be called periodically (e.g., daily cron job) rather than
+        on every request.
+
+        Returns:
+            ``True`` if a rotation was performed, ``False`` otherwise.
+        """
         if self._current is None:
             self._init_salt()
         if datetime.now(tz=timezone.utc) >= self._current.expires_at:  # type: ignore[union-attr]
@@ -107,6 +176,16 @@ class SaltRotationManager:
         return False
 
     def _store_salt(self, key: str, record: SaltRecord) -> None:
+        """Persist a salt record to Redis with an appropriate TTL.
+
+        ``current`` records are stored with a ``ROTATION_INTERVAL_DAYS``
+        TTL; ``previous`` records with an ``OVERLAP_DAYS`` TTL so they
+        expire automatically after the overlap window closes.
+
+        Args:
+            key: Redis sub-key suffix — ``'current'`` or ``'previous'``.
+            record: :class:`SaltRecord` to serialise and store.
+        """
         if self._redis:
             import json
             data = {
@@ -119,6 +198,17 @@ class SaltRotationManager:
             self._redis.setex(f"lip:salt:{key}", ttl, json.dumps(data))
 
     def _load_salt(self, key: str) -> Optional[SaltRecord]:
+        """Load and deserialise a salt record from Redis.
+
+        Returns ``None`` when no Redis client is configured or when the key
+        does not exist (e.g., first boot or after TTL expiry).
+
+        Args:
+            key: Redis sub-key suffix — ``'current'`` or ``'previous'``.
+
+        Returns:
+            Deserialised :class:`SaltRecord`, or ``None`` if unavailable.
+        """
         if self._redis:
             import json
             raw = self._redis.get(f"lip:salt:{key}")

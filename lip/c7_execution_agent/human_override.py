@@ -17,6 +17,17 @@ logger = logging.getLogger(__name__)
 
 
 class OverrideDecision(str, Enum):
+    """Possible outcomes of a human override review.
+
+    Attributes:
+        APPROVE: Operator endorses the AI decision; loan offer proceeds.
+        REJECT: Operator countermands the AI decision; the offer is blocked.
+            A non-empty ``justification`` is required by
+            :meth:`~HumanOverrideInterface.submit_response`.
+        ESCALATE: Operator defers to a higher authority; the request
+            remains pending until re-assigned or expired.
+    """
+
     APPROVE = "APPROVE"
     REJECT = "REJECT"
     ESCALATE = "ESCALATE"
@@ -24,6 +35,25 @@ class OverrideDecision(str, Enum):
 
 @dataclass
 class HumanOverrideRequest:
+    """A pending request for human review of an AI-generated decision.
+
+    Attributes:
+        request_id: UUID4 string uniquely identifying this override request.
+        uetr: ISO 20022 Unique End-to-End Transaction Reference of the
+            payment under review.
+        original_decision: The AI-generated decision that triggered the
+            override request (e.g., ``'BRIDGE_OFFERED'``, ``'BLOCKED_AML'``).
+        ai_confidence: Model confidence score [0, 1] for ``original_decision``.
+            Lower values typically trigger override requests.
+        reason_for_override: Human-readable description of why the AI
+            decision requires human review.
+        requested_at: UTC datetime when the override was requested.
+        expires_at: UTC datetime after which the request is no longer
+            actionable (``requested_at + timeout_seconds``).
+        operator_id: Identifier of the operator assigned to review this
+            request, or ``None`` if unassigned.
+    """
+
     request_id: str
     uetr: str
     original_decision: str
@@ -36,6 +66,22 @@ class HumanOverrideRequest:
 
 @dataclass
 class HumanOverrideResponse:
+    """The recorded outcome of a human override review.
+
+    Attributes:
+        request_id: UUID4 string echoing the :class:`HumanOverrideRequest`
+            this response resolves.
+        decision: The operator's :class:`OverrideDecision`.
+        operator_id: Non-empty identifier of the operator who submitted
+            this response (required for EU AI Act Art.14 audit trail).
+        justification: Free-text explanation.  Required (non-empty) for
+            ``REJECT`` decisions.
+        decided_at: UTC datetime when the response was submitted.
+        is_valid: ``True`` if the response passed all validation rules;
+            always ``True`` for responses created by
+            :meth:`~HumanOverrideInterface.submit_response`.
+    """
+
     request_id: str
     decision: OverrideDecision
     operator_id: str
@@ -60,6 +106,22 @@ class HumanOverrideInterface:
         ai_confidence: float,
         reason: str,
     ) -> HumanOverrideRequest:
+        """Create and register a new human override request.
+
+        Generates a UUID4 ``request_id`` and sets ``expires_at`` to
+        ``now + timeout_seconds``.  The request is stored in
+        :attr:`_pending` until a response is submitted or it expires.
+
+        Args:
+            uetr: ISO 20022 UETR of the payment requiring review.
+            original_decision: AI decision string that triggered this
+                override (e.g., ``'BRIDGE_OFFERED'``).
+            ai_confidence: Confidence score [0, 1] of the AI decision.
+            reason: Human-readable reason for requesting operator review.
+
+        Returns:
+            The newly created :class:`HumanOverrideRequest`.
+        """
         request_id = str(uuid.uuid4())
         now = datetime.now(tz=timezone.utc)
         req = HumanOverrideRequest(
@@ -82,6 +144,29 @@ class HumanOverrideInterface:
         operator_id: str,
         justification: str,
     ) -> HumanOverrideResponse:
+        """Record a human operator's decision for a pending override request.
+
+        Validates that the request has not expired, that ``operator_id`` is
+        non-empty, and that ``justification`` is non-empty for ``REJECT``
+        decisions.  Moves the request from :attr:`_pending` to
+        :attr:`_responses` on success.
+
+        Args:
+            request_id: UUID4 string of the :class:`HumanOverrideRequest` to
+                resolve.
+            decision: The operator's :class:`OverrideDecision`.
+            operator_id: Non-empty operator identifier for the audit trail.
+            justification: Explanation for the decision; required non-empty
+                for ``REJECT`` decisions (EU AI Act Art.14).
+
+        Returns:
+            The recorded :class:`HumanOverrideResponse`.
+
+        Raises:
+            ValueError: If ``operator_id`` is empty, if ``justification`` is
+                empty for a ``REJECT`` decision, or if the request has
+                expired.
+        """
         if not operator_id:
             raise ValueError("operator_id is required for override responses")
         if decision == OverrideDecision.REJECT and not justification:
@@ -101,14 +186,43 @@ class HumanOverrideInterface:
         return resp
 
     def is_pending(self, request_id: str) -> bool:
+        """Return True when the request exists and has not yet expired.
+
+        Args:
+            request_id: UUID4 string of the override request.
+
+        Returns:
+            ``True`` if the request is in :attr:`_pending` and within its
+            timeout window; ``False`` otherwise.
+        """
         return request_id in self._pending and not self.is_expired(request_id)
 
     def is_expired(self, request_id: str) -> bool:
+        """Return True when the override request has passed its expiry time.
+
+        Returns ``True`` also for unknown ``request_id`` values (defensive).
+
+        Args:
+            request_id: UUID4 string of the override request.
+
+        Returns:
+            ``True`` if expired or unknown; ``False`` if still within the
+            timeout window.
+        """
         req = self._pending.get(request_id)
         if req is None:
             return True
         return datetime.now(tz=timezone.utc) > req.expires_at
 
     def get_pending_overrides(self) -> List[HumanOverrideRequest]:
+        """Return all non-expired pending override requests.
+
+        Filters out any requests whose ``expires_at`` has passed but have
+        not yet been explicitly resolved.
+
+        Returns:
+            List of active :class:`HumanOverrideRequest` objects ordered by
+            insertion time.
+        """
         now = datetime.now(tz=timezone.utc)
         return [r for r in self._pending.values() if r.expires_at > now]

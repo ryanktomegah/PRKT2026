@@ -11,6 +11,22 @@ logger = logging.getLogger(__name__)
 
 
 class FlinkJobType(str, Enum):
+    """Enumeration of Flink streaming jobs deployed in the LIP pipeline.
+
+    Attributes:
+        PAYMENT_SCORING: Routes inbound payment events from
+            ``lip.payment.events`` to the C1 failure classifier.
+            Parallelism 8 (highest throughput requirement).
+        SETTLEMENT_MONITORING: Routes settlement signals from
+            ``lip.settlement.signals`` to the C3 repayment engine.
+            Parallelism 4.
+        VELOCITY_AGGREGATION: Aggregates transaction volumes and counts
+            per entity for C6 AML velocity checks.  Parallelism 4.
+        EMBEDDING_REBUILD: Periodically rebuilds corridor embeddings in
+            Redis.  Lower parallelism (2) and 5-minute checkpoint interval
+            due to infrequent invocation.
+    """
+
     PAYMENT_SCORING = "PAYMENT_SCORING"
     SETTLEMENT_MONITORING = "SETTLEMENT_MONITORING"
     VELOCITY_AGGREGATION = "VELOCITY_AGGREGATION"
@@ -19,6 +35,22 @@ class FlinkJobType(str, Enum):
 
 @dataclass
 class FlinkJobConfig:
+    """Flink job execution parameters.
+
+    Attributes:
+        job_type: :class:`FlinkJobType` this config applies to.
+        parallelism: Number of parallel task slots (default 4).
+        checkpoint_interval_ms: Milliseconds between Flink checkpoints
+            for state recovery (default 60 000 = 1 minute).
+        state_backend: Flink state backend name (default ``'rocksdb'``
+            for large-state jobs).
+        watermark_strategy: Flink watermark strategy name; ``'bounded_out_of_orderness'``
+            handles late payment events up to ``max_lateness_seconds``.
+        max_lateness_seconds: Maximum tolerated event lateness in seconds
+            before the watermark advances past the event and it is dropped
+            (default 30).
+    """
+
     job_type: FlinkJobType
     parallelism: int = 4
     checkpoint_interval_ms: int = 60_000
@@ -28,6 +60,14 @@ class FlinkJobConfig:
 
 
 class FlinkJobRegistry:
+    """Registry mapping :class:`FlinkJobType` values to configs and handlers.
+
+    Provides a centralised lookup for all Flink jobs in the LIP pipeline.
+    Jobs must be registered (via :meth:`register`) before they can be
+    dispatched.  Use :meth:`create_default_registry` to obtain a
+    pre-configured instance with all production job registrations.
+    """
+
     def __init__(self) -> None:
         self._configs: Dict[FlinkJobType, FlinkJobConfig] = {}
         self._handlers: Dict[FlinkJobType, Callable] = {}
@@ -38,22 +78,59 @@ class FlinkJobRegistry:
         config: FlinkJobConfig,
         handler: Callable,
     ) -> None:
+        """Register a job type with its config and event-processing handler.
+
+        Args:
+            job_type: The :class:`FlinkJobType` to register.
+            config: :class:`FlinkJobConfig` with parallelism and checkpoint
+                settings for this job.
+            handler: Callable ``(event: dict) -> dict`` that processes a
+                single Kafka event and returns a routing/status dict.
+        """
         self._configs[job_type] = config
         self._handlers[job_type] = handler
         logger.info("Registered Flink job: %s", job_type)
 
     def get_config(self, job_type: FlinkJobType) -> FlinkJobConfig:
+        """Retrieve the :class:`FlinkJobConfig` for a registered job type.
+
+        Args:
+            job_type: The :class:`FlinkJobType` to look up.
+
+        Returns:
+            The associated :class:`FlinkJobConfig`.
+
+        Raises:
+            KeyError: If ``job_type`` has not been registered.
+        """
         if job_type not in self._configs:
             raise KeyError(f"Flink job not registered: {job_type}")
         return self._configs[job_type]
 
     def get_handler(self, job_type: FlinkJobType) -> Callable:
+        """Retrieve the event-processing handler for a registered job type.
+
+        Args:
+            job_type: The :class:`FlinkJobType` to look up.
+
+        Returns:
+            The registered ``(event: dict) -> dict`` callable.
+
+        Raises:
+            KeyError: If ``job_type`` has not been registered.
+        """
         if job_type not in self._handlers:
             raise KeyError(f"Flink job handler not registered: {job_type}")
         return self._handlers[job_type]
 
     @classmethod
     def create_default_registry(cls) -> "FlinkJobRegistry":
+        """Build and return a registry pre-loaded with all production jobs.
+
+        Returns:
+            :class:`FlinkJobRegistry` instance with all four
+            :class:`FlinkJobType` entries registered.
+        """
         registry = cls()
         registry.register(
             FlinkJobType.PAYMENT_SCORING,

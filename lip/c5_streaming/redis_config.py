@@ -27,6 +27,29 @@ TTL_STRATEGIES: Dict[str, int] = {
 
 @dataclass
 class RedisConfig:
+    """Redis cluster connection configuration for LIP.
+
+    All LIP Redis keys are namespaced under the ``lip:`` prefix (see
+    :data:`KEY_SCHEMAS`).  SSL is enabled by default; disable only in
+    isolated test environments.
+
+    Attributes:
+        host: Redis cluster hostname or IP address (default ``'redis'``
+            for Kubernetes service discovery).
+        port: Redis port (default 6379).
+        db: Redis logical database index (default 0).
+        password: Optional authentication password.  Should be injected
+            via environment variable rather than hardcoded.
+        ssl: Enables TLS for the Redis connection (default ``True``).
+        socket_timeout: Socket read/write timeout in seconds (default 1.0).
+            LIP's ≤ 94ms pipeline SLO requires this to be kept tight.
+        retry_on_timeout: Automatically retry timed-out operations once
+            (default ``True``).
+        cluster_mode: When ``True``, use a cluster-aware client (e.g.,
+            ``redis.cluster.RedisCluster``); set ``False`` for single-node
+            dev/test deployments.
+    """
+
     host: str = "redis"
     port: int = 6379
     db: int = 0
@@ -37,6 +60,16 @@ class RedisConfig:
     cluster_mode: bool = True
 
     def to_connection_kwargs(self) -> dict:
+        """Build a keyword-argument dict for ``redis.Redis()`` / ``RedisCluster()``.
+
+        Omits the ``password`` key when no password is configured to avoid
+        sending an empty-string auth token to Redis.
+
+        Returns:
+            Dict with ``host``, ``port``, ``db``, ``ssl``,
+            ``socket_timeout``, ``retry_on_timeout``, and optionally
+            ``password`` keys.
+        """
         kwargs: dict = {
             "host": self.host,
             "port": self.port,

@@ -400,7 +400,22 @@ class LIPPipeline:
     # ── Private helpers ────────────────────────────────────────────────────────
 
     def _run_c4(self, event: NormalizedEvent, tracker: LatencyTracker) -> dict:
-        """Run C4 dispute classification in a thread."""
+        """Run C4 dispute classification in a thread, wrapped in latency tracking.
+
+        Extracts the fields required by ``DisputeClassifier.classify`` from
+        the normalised event and records wall-clock time under the ``'c4'``
+        label.
+
+        Args:
+            event: :class:`~lip.c5_streaming.event_normalizer.NormalizedEvent`
+                for the current payment.
+            tracker: Per-call :class:`~lip.instrumentation.LatencyTracker` to
+                record the C4 wall-clock duration.
+
+        Returns:
+            Raw dict returned by ``DisputeClassifier.classify``, containing
+            at minimum a ``dispute_class`` key.
+        """
         with tracker.measure("c4"):
             return self._c4.classify(
                 rejection_code=event.rejection_code,
@@ -421,6 +436,21 @@ class LIPPipeline:
 
         Accepts both AMLChecker (preferred) and legacy VelocityChecker instances.
         The result must expose a ``passed`` attribute.
+
+        Args:
+            event: :class:`~lip.c5_streaming.event_normalizer.NormalizedEvent`
+                for the current payment.
+            entity_id: Raw entity identifier for the velocity check
+                (hashed internally by C6).
+            beneficiary_id: Raw beneficiary identifier for the velocity check
+                (hashed internally by C6).
+            tracker: Per-call :class:`~lip.instrumentation.LatencyTracker` to
+                record the C6 wall-clock duration.
+
+        Returns:
+            AML check result object exposing a ``passed: bool`` attribute.
+            Returns the raw result from ``c6_checker.check()``; ``None``
+            is treated as ``passed=True`` by the caller.
         """
         with tracker.measure("c6"):
             return self._c6.check(entity_id, event.amount, beneficiary_id)
@@ -431,7 +461,22 @@ class LIPPipeline:
         failure_probability: float,
         block_reason: str,
     ) -> Optional[str]:
-        """Ask C7 to log a BLOCK decision.  Returns the entry_id or None."""
+        """Ask C7 to write a BLOCK decision log entry for audit trail purposes.
+
+        Called when a payment is hard-blocked by C4 (dispute) or C6 (AML)
+        before C2 or C7 are invoked.  Failures are swallowed and logged
+        to avoid disrupting the pipeline result.
+
+        Args:
+            event: The normalised payment event being blocked.
+            failure_probability: C1 failure probability score for the event.
+            block_reason: Short string identifying the block cause —
+                ``'dispute_blocked'`` or ``'aml_blocked'``.
+
+        Returns:
+            The ``decision_entry_id`` string from C7, or ``None`` when C7
+            raises an exception.
+        """
         try:
             ctx = {
                 "uetr": event.uetr,
@@ -453,7 +498,20 @@ class LIPPipeline:
             return None
 
     def _derive_maturity_days(self, rejection_code: Optional[str]) -> int:
-        """Derive maturity_days from rejection code; defaults to 7 (Class B)."""
+        """Derive bridge-loan maturity days from the ISO 20022 rejection code.
+
+        Delegates to ``classify_rejection_code`` and then ``get_maturity_days``
+        from the C3 rejection taxonomy.  Defaults to 7 days (Class B) when the
+        rejection code is absent, unrecognised, or maps to a zero-day window.
+
+        Args:
+            rejection_code: ISO 20022 rejection / return reason code, or
+                ``None`` when the payment event carries no rejection code.
+
+        Returns:
+            Maturity window in calendar days: 3 (Class A), 7 (Class B),
+            or 21 (Class C).  Always ≥ 1.
+        """
         if not rejection_code:
             return 7
         try:
@@ -469,7 +527,20 @@ class LIPPipeline:
         loan_offer: dict,
         maturity_days: int,
     ) -> None:
-        """Register the funded loan with C3 settlement monitor."""
+        """Register the funded loan with C3 settlement monitor.
+
+        Creates an :class:`~lip.c3_repayment_engine.repayment_loop.ActiveLoan`
+        from the event and offer fields and calls
+        ``SettlementMonitor.register_loan``.  Exceptions are swallowed and
+        logged to avoid disrupting the ``FUNDED`` pipeline result.
+
+        Args:
+            event: The normalised payment event for the funded payment.
+            loan_offer: Dict returned by C7 containing at minimum
+                ``loan_id`` and ``fee_bps``.
+            maturity_days: Loan maturity window in calendar days derived
+                from the rejection code class.
+        """
         try:
             now_utc = datetime.now(tz=timezone.utc)
             maturity_date = now_utc + timedelta(days=maturity_days)
@@ -501,7 +572,22 @@ class LIPPipeline:
 
     @staticmethod
     def _event_to_payment_dict(event: NormalizedEvent) -> dict:
-        """Convert a NormalizedEvent to the payment dict expected by C1/C2."""
+        """Convert a NormalizedEvent to the payment dict expected by C1/C2.
+
+        The corridor failure rate is set to the canonical midpoint (3.5%)
+        from ``canonical_numbers.yaml`` when no richer corridor data is
+        available at pipeline time.
+
+        Args:
+            event: :class:`~lip.c5_streaming.event_normalizer.NormalizedEvent`
+                to convert.
+
+        Returns:
+            Dict with keys: ``amount_usd``, ``currency_pair``,
+            ``sending_bic``, ``receiving_bic``, ``timestamp``,
+            ``corridor_failure_rate``, ``uetr``, ``rejection_code``,
+            ``narrative``.
+        """
         return {
             "amount_usd": float(event.amount),
             "currency_pair": f"{event.currency}_USD",
@@ -515,7 +601,18 @@ class LIPPipeline:
         }
 
     def _record_global(self, tracker: LatencyTracker, total_ms: float) -> None:
-        """Forward the latest component latencies to the global tracker (if set)."""
+        """Forward the latest component latencies to the global tracker (if set).
+
+        Allows a shared :class:`~lip.instrumentation.LatencyTracker` to
+        accumulate cross-call P50/P99 statistics for the Prometheus metrics
+        collector.  No-op when ``global_latency_tracker`` was not provided
+        at construction time.
+
+        Args:
+            tracker: Per-call tracker holding this call's component latencies.
+            total_ms: End-to-end wall-clock time for this pipeline invocation
+                in milliseconds.
+        """
         if self._global_tracker is None:
             return
         for component, latency in tracker.get_latest_all().items():

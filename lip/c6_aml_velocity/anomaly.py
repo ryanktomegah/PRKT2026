@@ -24,6 +24,19 @@ FEATURE_NAMES = [
 
 @dataclass
 class AnomalyResult:
+    """Result of a single-transaction anomaly detection inference.
+
+    Attributes:
+        is_anomaly: ``True`` when the transaction is classified as anomalous.
+            With Isolation Forest, this corresponds to a predict label of
+            ``-1``; with z-score fallback, when ``max(|z|) > 3.0``.
+        anomaly_score: Raw model output score.  For Isolation Forest this is
+            the ``score_samples`` value (more negative = more anomalous);
+            for z-score fallback it is ``max(|z|)`` across all features.
+        features_used: List of feature names passed to the model, in order.
+            Always equal to :data:`FEATURE_NAMES`.
+    """
+
     is_anomaly: bool
     anomaly_score: float
     features_used: List[str]
@@ -40,6 +53,23 @@ class AnomalyDetector:
         self._std: Optional[np.ndarray] = None
 
     def _extract_features(self, transaction: dict) -> np.ndarray:
+        """Transform a transaction dict into the 8-dimensional feature vector.
+
+        Applies log1p to amount and sine/cosine cyclical encoding to hour
+        and day-of-week to prevent ordinal leakage across midnight/week
+        boundaries.
+
+        Args:
+            transaction: Dict with optional keys ``amount``,
+                ``hour_of_day`` [0, 23], ``day_of_week`` [0, 6],
+                ``velocity_ratio``, ``beneficiary_concentration``,
+                ``amount_zscore``.  Missing keys default to safe neutral
+                values.
+
+        Returns:
+            1-D float64 numpy array of shape ``(8,)`` matching
+            :data:`FEATURE_NAMES` order.
+        """
         amount = float(transaction.get("amount", 0))
         hour = float(transaction.get("hour_of_day", 12))
         day = float(transaction.get("day_of_week", 3))
@@ -57,6 +87,20 @@ class AnomalyDetector:
         ], dtype=float)
 
     def fit(self, transactions: List[dict]) -> None:
+        """Train the anomaly detector on historical transaction data.
+
+        Attempts to use ``sklearn.ensemble.IsolationForest``; falls back to
+        computing per-feature mean and std for z-score detection when sklearn
+        is unavailable.
+
+        After fitting, :attr:`_fitted` is set to ``True`` and
+        :meth:`predict` will return model-backed scores.
+
+        Args:
+            transactions: List of transaction dicts in the format expected by
+                :meth:`_extract_features`.  Should contain several hundred
+                or more samples for meaningful Isolation Forest calibration.
+        """
         X = np.array([self._extract_features(t) for t in transactions])
         try:
             from sklearn.ensemble import IsolationForest
@@ -70,6 +114,19 @@ class AnomalyDetector:
         self._fitted = True
 
     def predict(self, transaction: dict) -> AnomalyResult:
+        """Score a single transaction for anomalousness.
+
+        Returns a safe ``is_anomaly=False`` result if called before
+        :meth:`fit` (with a warning log); callers in the C6 pipeline must
+        call :meth:`fit` before production use.
+
+        Args:
+            transaction: Transaction dict in the format expected by
+                :meth:`_extract_features`.
+
+        Returns:
+            :class:`AnomalyResult` with the anomaly flag and raw score.
+        """
         if not self._fitted:
             logger.warning(
                 "AnomalyDetector.predict() called before fit() — returning is_anomaly=False. "
@@ -90,4 +147,15 @@ class AnomalyDetector:
         return AnomalyResult(is_anomaly=False, anomaly_score=0.0, features_used=FEATURE_NAMES)
 
     def predict_batch(self, transactions: List[dict]) -> List[AnomalyResult]:
+        """Score a batch of transactions for anomalousness.
+
+        Delegates to :meth:`predict` for each transaction.  For large batches
+        consider using the sklearn model's vectorised ``predict`` directly.
+
+        Args:
+            transactions: List of transaction dicts.
+
+        Returns:
+            List of :class:`AnomalyResult` objects in the same order as input.
+        """
         return [self.predict(t) for t in transactions]
