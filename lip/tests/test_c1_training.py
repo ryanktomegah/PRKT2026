@@ -12,12 +12,35 @@ Verifies that:
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from lip.c1_failure_classifier.graphsage import GraphSAGEModel
 from lip.c1_failure_classifier.model import ClassifierModel, MLPHead
 from lip.c1_failure_classifier.synthetic_data import generate_synthetic_dataset
 from lip.c1_failure_classifier.tabtransformer import TabTransformerModel
 from lip.c1_failure_classifier.training import TrainingConfig, TrainingPipeline, _compute_auc
+
+# ---------------------------------------------------------------------------
+# Module-level fixture: reset C1 module-level RNG singletons
+# ---------------------------------------------------------------------------
+#
+# graphsage._RNG, tabtransformer._RNG, and model._RNG are created once at
+# Python import time and shared across every model instantiation in the
+# session.  Earlier tests consume their state, so later tests get different
+# initial weights.  Reassigning the module attribute before each test
+# restores the original seeds without touching the source files.
+
+@pytest.fixture(autouse=True)
+def _reset_c1_rngs():
+    import lip.c1_failure_classifier.graphsage as _gs
+    import lip.c1_failure_classifier.model as _model
+    import lip.c1_failure_classifier.tabtransformer as _tt
+
+    _gs._RNG = np.random.default_rng(seed=42)
+    _tt._RNG = np.random.default_rng(seed=0)
+    _model._RNG = np.random.default_rng(seed=7)
+    yield
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -290,3 +313,62 @@ class TestTrainingPipelineConvergence:
         scores = rng.uniform(size=200)
         auc = _compute_auc(y, scores)
         assert 0.3 < auc < 0.7  # within noise of random
+
+    @pytest.mark.slow
+    def test_trained_model_auc_slow(self):
+        """50-epoch convergence on separable data.
+
+        AUC threshold was set by running this test and observing the actual
+        value, then subtracting a 0.03 safety margin.  Do not lower the
+        threshold without re-running and documenting the observed AUC.
+        """
+        config = TrainingConfig(
+            n_epochs=50,
+            batch_size=32,
+            learning_rate=0.01,
+            alpha=0.7,
+            val_split=0.3,
+            random_seed=42,
+        )
+
+        X, y = _make_separable_data(n=300, seed=42)
+        n_val = int(len(y) * config.val_split)
+        X_train, y_train = X[n_val:], y[n_val:]
+        X_val, y_val = X[:n_val], y[:n_val]
+
+        graphsage = GraphSAGEModel()
+        tabtransformer = TabTransformerModel()
+        mlp_head = MLPHead()
+
+        rng = np.random.default_rng(42)
+        lr = config.learning_rate
+        alpha = config.alpha
+
+        for _ in range(config.n_epochs):
+            indices = rng.permutation(len(y_train))
+            for i in indices:
+                x_tab = X_train[i]
+                tab_emb = tabtransformer.forward(x_tab)
+                node_feat = x_tab[:8]
+                sage_emb = graphsage.forward(node_feat, [], [])
+                fused = np.concatenate([sage_emb, tab_emb])
+                prob = mlp_head.forward(fused)
+                d_fused = mlp_head.backward(fused, y_train[i], prob, alpha, lr)
+                graphsage.backward_empty_neighbors(node_feat, d_fused[:graphsage.output_dim], lr)
+                tabtransformer.backward(x_tab, d_fused[graphsage.output_dim:], lr)
+
+        scores = []
+        for i in range(len(y_val)):
+            x_tab = X_val[i]
+            tab_emb = tabtransformer.forward(x_tab)
+            node_feat = x_tab[:8]
+            sage_emb = graphsage.forward(node_feat, [], [])
+            fused = np.concatenate([sage_emb, tab_emb])
+            scores.append(mlp_head.forward(fused))
+
+        auc = _compute_auc(y_val, np.array(scores))
+        print(f"\n[slow test] actual AUC after {config.n_epochs} epochs: {auc:.4f}")
+        # Threshold verified: observed AUC = 1.0000 on first run → threshold = 1.0000 - 0.03 = 0.97.
+        # Perfectly separable data (means ±2, scale 1, 88-dim) converges to near-perfect
+        # classification in 50 Adam epochs.  Lower only if architecture changes.
+        assert auc > 0.97, f"Slow-path AUC {auc:.4f} below verified threshold 0.97."
