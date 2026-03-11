@@ -19,17 +19,38 @@ import lightgbm as lgb
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
+from lip.c1_failure_classifier.graphsage import GRAPHSAGE_INPUT_DIM
 from lip.c1_failure_classifier.model import create_default_model
 from lip.c1_failure_classifier.synthetic_data import generate_synthetic_dataset
+from lip.c1_failure_classifier.tabtransformer import TABTRANSFORMER_INPUT_DIM
 from lip.c1_failure_classifier.training import TrainingConfig, TrainingPipeline
 
 # ---------------------------------------------------------------------------
-# Dimension constants — must match C1 Spec Section 7
+# Dimension aliases (canonical values live in the production modules)
 # ---------------------------------------------------------------------------
 
-_NODE_FEAT_DIM = 8     # GraphSAGE input_dim
-_TAB_FEAT_DIM = 88     # TabTransformer input_dim / output_dim
-_N_NEIGHBORS: list = []  # empty neighbor lists for inference
+_NODE_FEAT_DIM = GRAPHSAGE_INPUT_DIM      # 8
+_TAB_FEAT_DIM = TABTRANSFORMER_INPUT_DIM  # 88
+_N_NEIGHBORS: list[np.ndarray] = []      # empty neighbor lists for inference
+
+
+# ---------------------------------------------------------------------------
+# Shared LightGBM fixture factory
+# ---------------------------------------------------------------------------
+
+def _make_lgbm_classifier(
+    n_samples: int = 20,
+    n_estimators: int = 5,
+    random_seed: int = 1,
+) -> lgb.LGBMClassifier:
+    """Fit a minimal LightGBM with guaranteed both-class labels present."""
+    rng = np.random.default_rng(seed=random_seed)
+    X = rng.standard_normal((n_samples, _TAB_FEAT_DIM))
+    y = rng.integers(0, 2, size=n_samples)
+    y[0], y[1] = 0, 1  # ensure both classes present regardless of random draw
+    clf = lgb.LGBMClassifier(n_estimators=n_estimators, verbose=-1, random_state=random_seed)
+    clf.fit(X, y)
+    return clf
 
 
 # ---------------------------------------------------------------------------
@@ -60,16 +81,7 @@ class TestPredictProbaUsesEnsemble:
     """When lgbm_model is attached, predict_proba blends neural + LightGBM."""
 
     def _make_minimal_lgbm(self) -> lgb.LGBMClassifier:
-        """Fit a minimal LightGBM on 20 random rows for attaching to the model."""
-        rng = np.random.default_rng(seed=1)
-        X = rng.standard_normal((20, _TAB_FEAT_DIM))
-        y = rng.integers(0, 2, size=20)
-        # Ensure at least one positive and one negative label
-        y[0] = 0
-        y[1] = 1
-        clf = lgb.LGBMClassifier(n_estimators=5, verbose=-1, random_state=1)
-        clf.fit(X, y)
-        return clf
+        return _make_lgbm_classifier(n_samples=20, n_estimators=5, random_seed=1)
 
     def test_predict_proba_in_unit_interval(self):
         model = create_default_model()
@@ -151,12 +163,7 @@ class TestLGBMSaveLoadRoundtrip:
     """lgbm.pkl must be saved and loaded correctly, preserving predict_proba output."""
 
     def _fit_minimal_lgbm(self) -> lgb.LGBMClassifier:
-        rng = np.random.default_rng(seed=10)
-        X = rng.standard_normal((30, _TAB_FEAT_DIM))
-        y = np.array([0] * 15 + [1] * 15)
-        clf = lgb.LGBMClassifier(n_estimators=10, verbose=-1, random_state=10)
-        clf.fit(X, y)
-        return clf
+        return _make_lgbm_classifier(n_samples=30, n_estimators=10, random_seed=10)
 
     def test_lgbm_pkl_created_on_save(self, tmp_path):
         model = create_default_model()
