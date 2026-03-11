@@ -476,6 +476,41 @@ class ClassifierModel:
                 self.lgbm_model = pickle.load(f)
         logger.info("ClassifierModel loaded from %s", path)
 
+    def save_weights(self, npz_path: str) -> None:
+        """Save all neural-network weights to a single ``.npz`` file.
+
+        Collects weight matrices from GraphSAGEModel, TabTransformerModel, and
+        MLPHead, prefixes keys with ``sage__``, ``tab__``, and ``mlp__``, and
+        writes them to *npz_path* via :func:`numpy.savez`.
+
+        Parameters
+        ----------
+        npz_path:
+            Destination file path, e.g. ``/tmp/c1_weights.npz``.
+        """
+        sage_w = {"sage__" + k: v for k, v in self.graphsage.get_weights_dict().items()}
+        tab_w = {"tab__" + k: v for k, v in self.tabtransformer.get_weights_dict().items()}
+        mlp_w = {"mlp__" + k: v for k, v in self.mlp.get_weights().items()}
+        np.savez(npz_path, **sage_w, **tab_w, **mlp_w)
+        logger.info("ClassifierModel weights saved to %s", npz_path)
+
+    def load_weights(self, npz_path: str) -> None:
+        """Load neural-network weights from a single ``.npz`` file.
+
+        Parameters
+        ----------
+        npz_path:
+            File path previously written by :meth:`save_weights`.
+        """
+        data = dict(np.load(npz_path))
+        sage_w = {k[len("sage__"):]: v for k, v in data.items() if k.startswith("sage__")}
+        tab_w = {k[len("tab__"):]: v for k, v in data.items() if k.startswith("tab__")}
+        mlp_w = {k[len("mlp__"):]: v for k, v in data.items() if k.startswith("mlp__")}
+        self.graphsage.set_weights_dict(sage_w)
+        self.tabtransformer.set_weights_dict(tab_w)
+        self.mlp.set_weights(mlp_w)
+        logger.info("ClassifierModel weights loaded from %s", npz_path)
+
 
 # ---------------------------------------------------------------------------
 # Factory

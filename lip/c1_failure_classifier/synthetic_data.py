@@ -46,87 +46,89 @@ CLASS_DISTRIBUTION: dict[str, float] = {
 # ── BIC Registry — 35 institutions across tiers and geographies ──────────────
 BIC_REGISTRY: dict[str, dict] = {
     # Tier 1 — GSIBs
-    "DEUTDEFF": {"name": "Deutsche Bank",       "tier": 1, "country": "DE", "region": "EU"},
-    "BNPAFRPP": {"name": "BNP Paribas",         "tier": 1, "country": "FR", "region": "EU"},
-    "HSBCGB2L": {"name": "HSBC",                "tier": 1, "country": "GB", "region": "EU"},
-    "CHASUS33": {"name": "JPMorgan Chase",       "tier": 1, "country": "US", "region": "NA"},
-    "CITIUS33": {"name": "Citibank",             "tier": 1, "country": "US", "region": "NA"},
-    "BOFAUS3N": {"name": "Bank of America",      "tier": 1, "country": "US", "region": "NA"},
-    "SCBLSGSG": {"name": "Standard Chartered",   "tier": 1, "country": "SG", "region": "APAC"},
+    # failure_multiplier: individual BIC risk factor within tier (seed-derived, not random)
+    "DEUTDEFF": {"name": "Deutsche Bank",        "tier": 1, "country": "DE", "region": "EU",    "failure_multiplier": 0.85},
+    "BNPAFRPP": {"name": "BNP Paribas",          "tier": 1, "country": "FR", "region": "EU",    "failure_multiplier": 0.90},
+    "HSBCGB2L": {"name": "HSBC",                 "tier": 1, "country": "GB", "region": "EU",    "failure_multiplier": 0.80},
+    "CHASUS33": {"name": "JPMorgan Chase",        "tier": 1, "country": "US", "region": "NA",   "failure_multiplier": 0.75},
+    "CITIUS33": {"name": "Citibank",              "tier": 1, "country": "US", "region": "NA",   "failure_multiplier": 0.82},
+    "BOFAUS3N": {"name": "Bank of America",       "tier": 1, "country": "US", "region": "NA",   "failure_multiplier": 0.88},
+    "SCBLSGSG": {"name": "Standard Chartered",    "tier": 1, "country": "SG", "region": "APAC", "failure_multiplier": 1.05},
     # Tier 2 — Large regional banks
-    "SBINMUMU": {"name": "State Bank of India",  "tier": 2, "country": "IN", "region": "APAC"},
-    "BRADBRSP": {"name": "Bradesco",             "tier": 2, "country": "BR", "region": "LATAM"},
-    "LOYDGB2L": {"name": "Lloyds Bank",          "tier": 2, "country": "GB", "region": "EU"},
-    "COBADEFF": {"name": "Commerzbank",          "tier": 2, "country": "DE", "region": "EU"},
-    "ABKEKENA": {"name": "Absa Bank Kenya",      "tier": 2, "country": "KE", "region": "AFR"},
-    "ICBKCNBJ": {"name": "ICBC",                 "tier": 2, "country": "CN", "region": "APAC"},
-    "MABOROBU": {"name": "Raiffeisen Romania",   "tier": 2, "country": "RO", "region": "EU"},
-    "INGBNL2A": {"name": "ING Bank",             "tier": 2, "country": "NL", "region": "EU"},
+    "SBINMUMU": {"name": "State Bank of India",   "tier": 2, "country": "IN", "region": "APAC", "failure_multiplier": 1.20},
+    "BRADBRSP": {"name": "Bradesco",              "tier": 2, "country": "BR", "region": "LATAM","failure_multiplier": 1.35},
+    "LOYDGB2L": {"name": "Lloyds Bank",           "tier": 2, "country": "GB", "region": "EU",   "failure_multiplier": 0.95},
+    "COBADEFF": {"name": "Commerzbank",           "tier": 2, "country": "DE", "region": "EU",   "failure_multiplier": 0.92},
+    "ABKEKENA": {"name": "Absa Bank Kenya",       "tier": 2, "country": "KE", "region": "AFR",  "failure_multiplier": 1.45},
+    "ICBKCNBJ": {"name": "ICBC",                  "tier": 2, "country": "CN", "region": "APAC", "failure_multiplier": 1.30},
+    "MABOROBU": {"name": "Raiffeisen Romania",    "tier": 2, "country": "RO", "region": "EU",   "failure_multiplier": 1.15},
+    "INGBNL2A": {"name": "ING Bank",              "tier": 2, "country": "NL", "region": "EU",   "failure_multiplier": 0.88},
     # Tier 3 — Smaller / EM banks: AFR
-    "ECOCCIAB": {"name": "Ecobank Cote d'Ivoire","tier": 3, "country": "CI", "region": "AFR"},
-    "ZENITHNL": {"name": "Zenith Bank Nigeria",  "tier": 3, "country": "NG", "region": "AFR"},
-    "FBNBNGL1": {"name": "First Bank Nigeria",   "tier": 3, "country": "NG", "region": "AFR"},
-    "SBZAZAJJ": {"name": "Standard Bank S.Africa","tier": 3, "country": "ZA", "region": "AFR"},
-    "GTBINGLA": {"name": "Guaranty Trust Bank",  "tier": 3, "country": "NG", "region": "AFR"},
+    "ECOCCIAB": {"name": "Ecobank Cote d'Ivoire", "tier": 3, "country": "CI", "region": "AFR",  "failure_multiplier": 1.70},
+    "ZENITHNL": {"name": "Zenith Bank Nigeria",   "tier": 3, "country": "NG", "region": "AFR",  "failure_multiplier": 2.10},
+    "FBNBNGL1": {"name": "First Bank Nigeria",    "tier": 3, "country": "NG", "region": "AFR",  "failure_multiplier": 1.90},
+    "SBZAZAJJ": {"name": "Standard Bank S.Africa","tier": 3, "country": "ZA", "region": "AFR",  "failure_multiplier": 1.40},
+    "GTBINGLA": {"name": "Guaranty Trust Bank",   "tier": 3, "country": "NG", "region": "AFR",  "failure_multiplier": 1.80},
     # Tier 3 — MENA
-    "AIBKEGCX": {"name": "Arab Intl Bank Egypt", "tier": 3, "country": "EG", "region": "MENA"},
-    "NBADAEAA": {"name": "First Abu Dhabi Bank", "tier": 3, "country": "AE", "region": "MENA"},
-    "RIBLSARI": {"name": "Riyad Bank",           "tier": 3, "country": "SA", "region": "MENA"},
-    "QNBAQAQA": {"name": "Qatar National Bank",  "tier": 3, "country": "QA", "region": "MENA"},
-    "MASHAEAD": {"name": "Mashreq Bank UAE",      "tier": 3, "country": "AE", "region": "MENA"},
+    "AIBKEGCX": {"name": "Arab Intl Bank Egypt",  "tier": 3, "country": "EG", "region": "MENA", "failure_multiplier": 2.20},
+    "NBADAEAA": {"name": "First Abu Dhabi Bank",  "tier": 3, "country": "AE", "region": "MENA", "failure_multiplier": 1.10},
+    "RIBLSARI": {"name": "Riyad Bank",            "tier": 3, "country": "SA", "region": "MENA", "failure_multiplier": 1.25},
+    "QNBAQAQA": {"name": "Qatar National Bank",   "tier": 3, "country": "QA", "region": "MENA", "failure_multiplier": 1.15},
+    "MASHAEAD": {"name": "Mashreq Bank UAE",       "tier": 3, "country": "AE", "region": "MENA", "failure_multiplier": 1.30},
     # Tier 3 — LATAM
-    "BBVAMXMM": {"name": "BBVA Mexico",          "tier": 3, "country": "MX", "region": "LATAM"},
-    "BNORMXMM": {"name": "Banorte Mexico",        "tier": 3, "country": "MX", "region": "LATAM"},
-    "BCHICLRM": {"name": "Banco de Chile",        "tier": 3, "country": "CL", "region": "LATAM"},
-    "BCOLCOBM": {"name": "Bancolombia",           "tier": 3, "country": "CO", "region": "LATAM"},
+    "BBVAMXMM": {"name": "BBVA Mexico",           "tier": 3, "country": "MX", "region": "LATAM","failure_multiplier": 1.55},
+    "BNORMXMM": {"name": "Banorte Mexico",         "tier": 3, "country": "MX", "region": "LATAM","failure_multiplier": 1.60},
+    "BCHICLRM": {"name": "Banco de Chile",         "tier": 3, "country": "CL", "region": "LATAM","failure_multiplier": 1.35},
+    "BCOLCOBM": {"name": "Bancolombia",            "tier": 3, "country": "CO", "region": "LATAM","failure_multiplier": 1.50},
     # Tier 3 — APAC
-    "PNBPINBB": {"name": "Punjab National Bank",  "tier": 3, "country": "IN", "region": "APAC"},
-    "HDFCINBB": {"name": "HDFC Bank",             "tier": 3, "country": "IN", "region": "APAC"},
-    "KASITHBK": {"name": "Kasikorn Bank",         "tier": 3, "country": "TH", "region": "APAC"},
-    "MANDIDJJ": {"name": "Bank Mandiri",          "tier": 3, "country": "ID", "region": "APAC"},
-    "BKKBTHBK": {"name": "Bangkok Bank",          "tier": 3, "country": "TH", "region": "APAC"},
-    "AKBKTRIS": {"name": "Akbank Turkey",         "tier": 3, "country": "TR", "region": "MENA"},
+    "PNBPINBB": {"name": "Punjab National Bank",   "tier": 3, "country": "IN", "region": "APAC", "failure_multiplier": 1.75},
+    "HDFCINBB": {"name": "HDFC Bank",              "tier": 3, "country": "IN", "region": "APAC", "failure_multiplier": 1.20},
+    "KASITHBK": {"name": "Kasikorn Bank",          "tier": 3, "country": "TH", "region": "APAC", "failure_multiplier": 1.40},
+    "MANDIDJJ": {"name": "Bank Mandiri",           "tier": 3, "country": "ID", "region": "APAC", "failure_multiplier": 1.65},
+    "BKKBTHBK": {"name": "Bangkok Bank",           "tier": 3, "country": "TH", "region": "APAC", "failure_multiplier": 1.30},
+    "AKBKTRIS": {"name": "Akbank Turkey",          "tier": 3, "country": "TR", "region": "MENA", "failure_multiplier": 1.85},
 }
 
 # ── Currency Corridor Definitions ─────────────────────────────────────────────
 CORRIDOR_DEFINITIONS: dict[str, dict] = {
     # G7 high-volume corridors
-    "EUR/USD": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 800},
-    "GBP/USD": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 350},
-    "USD/JPY": {"region_type": "G7",           "avg_settlement_hours": 6,  "annual_volume_billions": 500},
-    "EUR/GBP": {"region_type": "G7",           "avg_settlement_hours": 3,  "annual_volume_billions": 200},
-    "EUR/JPY": {"region_type": "G7",           "avg_settlement_hours": 6,  "annual_volume_billions": 150},
-    "GBP/JPY": {"region_type": "G7",           "avg_settlement_hours": 6,  "annual_volume_billions": 80},
-    "USD/CHF": {"region_type": "G7",           "avg_settlement_hours": 5,  "annual_volume_billions": 70},
-    "EUR/CHF": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 80},
-    "GBP/CHF": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 60},
-    "USD/CAD": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 150},
-    "USD/AUD": {"region_type": "G7",           "avg_settlement_hours": 10, "annual_volume_billions": 60},
+    # failure_rate_multiplier: per-corridor risk factor (replaces 3-bucket region_type approach)
+    "EUR/USD": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 800,  "failure_rate_multiplier": 0.30},
+    "GBP/USD": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 350,  "failure_rate_multiplier": 0.35},
+    "USD/JPY": {"region_type": "G7",           "avg_settlement_hours": 6,  "annual_volume_billions": 500,  "failure_rate_multiplier": 0.38},
+    "EUR/GBP": {"region_type": "G7",           "avg_settlement_hours": 3,  "annual_volume_billions": 200,  "failure_rate_multiplier": 0.32},
+    "EUR/JPY": {"region_type": "G7",           "avg_settlement_hours": 6,  "annual_volume_billions": 150,  "failure_rate_multiplier": 0.42},
+    "GBP/JPY": {"region_type": "G7",           "avg_settlement_hours": 6,  "annual_volume_billions": 80,   "failure_rate_multiplier": 0.48},
+    "USD/CHF": {"region_type": "G7",           "avg_settlement_hours": 5,  "annual_volume_billions": 70,   "failure_rate_multiplier": 0.36},
+    "EUR/CHF": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 80,   "failure_rate_multiplier": 0.35},
+    "GBP/CHF": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 60,   "failure_rate_multiplier": 0.40},
+    "USD/CAD": {"region_type": "G7",           "avg_settlement_hours": 4,  "annual_volume_billions": 150,  "failure_rate_multiplier": 0.38},
+    "USD/AUD": {"region_type": "G7",           "avg_settlement_hours": 10, "annual_volume_billions": 60,   "failure_rate_multiplier": 0.52},
     # EM corridors
-    "USD/INR": {"region_type": "EM",           "avg_settlement_hours": 12, "annual_volume_billions": 80},
-    "EUR/INR": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 40},
-    "GBP/INR": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 20},
-    "USD/KES": {"region_type": "EM",           "avg_settlement_hours": 16, "annual_volume_billions": 5},
-    "USD/AED": {"region_type": "EM",           "avg_settlement_hours": 12, "annual_volume_billions": 30},
-    "USD/SAR": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 25},
-    "EUR/AED": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 15},
-    "USD/ZAR": {"region_type": "EM",           "avg_settlement_hours": 16, "annual_volume_billions": 10},
-    "USD/PHP": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 15},
-    "USD/THB": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 12},
+    "USD/INR": {"region_type": "EM",           "avg_settlement_hours": 12, "annual_volume_billions": 80,   "failure_rate_multiplier": 1.20},
+    "EUR/INR": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 40,   "failure_rate_multiplier": 1.25},
+    "GBP/INR": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 20,   "failure_rate_multiplier": 1.28},
+    "USD/KES": {"region_type": "EM",           "avg_settlement_hours": 16, "annual_volume_billions": 5,    "failure_rate_multiplier": 1.60},
+    "USD/AED": {"region_type": "EM",           "avg_settlement_hours": 12, "annual_volume_billions": 30,   "failure_rate_multiplier": 1.10},
+    "USD/SAR": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 25,   "failure_rate_multiplier": 1.15},
+    "EUR/AED": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 15,   "failure_rate_multiplier": 1.12},
+    "USD/ZAR": {"region_type": "EM",           "avg_settlement_hours": 16, "annual_volume_billions": 10,   "failure_rate_multiplier": 1.45},
+    "USD/PHP": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 15,   "failure_rate_multiplier": 1.30},
+    "USD/THB": {"region_type": "EM",           "avg_settlement_hours": 14, "annual_volume_billions": 12,   "failure_rate_multiplier": 1.22},
     # High-friction corridors
-    "USD/BRL": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 45},
-    "USD/CNY": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 120},
-    "EUR/BRL": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 20, "annual_volume_billions": 15},
-    "EUR/CNY": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 20, "annual_volume_billions": 60},
-    "USD/NGN": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 24, "annual_volume_billions": 8},
-    "USD/EGP": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 12},
-    "EUR/ZAR": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 22, "annual_volume_billions": 6},
-    "USD/MXN": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 16, "annual_volume_billions": 35},
-    "USD/CLP": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 10},
-    "EUR/MXN": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 8},
-    "GBP/BRL": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 22, "annual_volume_billions": 5},
-    "USD/IDR": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 16, "annual_volume_billions": 20},
-    "USD/VND": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 8},
+    "USD/BRL": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 45,  "failure_rate_multiplier": 1.70},
+    "USD/CNY": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 120, "failure_rate_multiplier": 2.50},
+    "EUR/BRL": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 20, "annual_volume_billions": 15,  "failure_rate_multiplier": 1.80},
+    "EUR/CNY": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 20, "annual_volume_billions": 60,  "failure_rate_multiplier": 2.50},
+    "USD/NGN": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 24, "annual_volume_billions": 8,   "failure_rate_multiplier": 2.80},
+    "USD/EGP": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 12,  "failure_rate_multiplier": 2.80},
+    "EUR/ZAR": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 22, "annual_volume_billions": 6,   "failure_rate_multiplier": 2.00},
+    "USD/MXN": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 16, "annual_volume_billions": 35,  "failure_rate_multiplier": 1.55},
+    "USD/CLP": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 10,  "failure_rate_multiplier": 1.65},
+    "EUR/MXN": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 8,   "failure_rate_multiplier": 1.65},
+    "GBP/BRL": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 22, "annual_volume_billions": 5,   "failure_rate_multiplier": 1.85},
+    "USD/IDR": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 16, "annual_volume_billions": 20,  "failure_rate_multiplier": 1.72},
+    "USD/VND": {"region_type": "HIGH_FRICTION", "avg_settlement_hours": 18, "annual_volume_billions": 8,   "failure_rate_multiplier": 1.80},
 }
 
 # ── Log-normal amount parameters per corridor region type ─────────────────────
@@ -776,16 +778,9 @@ class SyntheticPaymentGenerator:
         """
         score = 1.0
 
-        # Corridor type
-        corridor_type = CORRIDOR_DEFINITIONS.get(
-            record["currency_pair"], {}
-        ).get("region_type", "G7")
-        if corridor_type == "G7":
-            score *= 0.55
-        elif corridor_type == "EM":
-            score *= 1.40
-        else:  # HIGH_FRICTION
-            score *= 2.10
+        # Per-corridor failure rate multiplier (individual corridor risk, not just 3-bucket)
+        corridor_info = CORRIDOR_DEFINITIONS.get(record["currency_pair"], {})
+        score *= corridor_info.get("failure_rate_multiplier", 1.0)
 
         # Time of day
         hour = record["hour_of_day"]
@@ -805,12 +800,14 @@ class SyntheticPaymentGenerator:
         elif amount < 10_000:
             score *= 1.20
 
-        # Tier of counterparties (max tier = weakest link)
-        send_tier = BIC_REGISTRY[record["sending_bic"]]["tier"]
-        recv_tier = BIC_REGISTRY[record["receiving_bic"]]["tier"]
-        max_tier = max(send_tier, recv_tier)
+        # Tier of counterparties (max tier = weakest link), plus per-BIC multiplier
+        send_bic_info = BIC_REGISTRY[record["sending_bic"]]
+        recv_bic_info = BIC_REGISTRY[record["receiving_bic"]]
+        max_tier = max(send_bic_info["tier"], recv_bic_info["tier"])
         tier_multipliers = {1: 0.50, 2: 1.00, 3: 1.85}
-        score *= tier_multipliers[max_tier]
+        send_fm = send_bic_info.get("failure_multiplier", 1.0)
+        recv_fm = recv_bic_info.get("failure_multiplier", 1.0)
+        score *= tier_multipliers[max_tier] * max(send_fm, recv_fm)
 
         # Prior rejections history
         prior = record["prior_rejections_30d"]
@@ -1059,6 +1056,171 @@ def train_val_test_split(
 
 
 # ---------------------------------------------------------------------------
+# Stats enrichment helper (leave-one-out failure rates to prevent leakage)
+# ---------------------------------------------------------------------------
+
+def _compute_bic_corridor_stats(
+    records: list[dict],
+) -> tuple[dict[str, dict], dict[str, dict], dict[str, dict]]:
+    """Aggregate per-BIC sender/receiver stats and per-corridor stats.
+
+    Returns three baseline dicts keyed by BIC or corridor string.  Each dict
+    stores *global* aggregates plus internal keys ``_total_tx`` and
+    ``_total_fail`` used by the caller to apply leave-one-out (LOO) failure
+    rates per record (excluding each record's own label from the denominator).
+
+    LOO formula for record i (BIC/corridor key k):
+        loo_rate = (base[k]["_total_fail"] - records[i]["is_failure"])
+                   / (base[k]["_total_tx"] - 1)
+    """
+    LARGE_TX = 1_000_000.0
+
+    # ── Accumulate ─────────────────────────────────────────────────────────
+    s_tx: dict[str, list] = defaultdict(list)       # sender_bic -> list[amount]
+    s_fail: dict[str, int] = defaultdict(int)
+    s_receivers: dict[str, set] = defaultdict(set)
+    s_corridors: dict[str, set] = defaultdict(set)
+
+    r_tx: dict[str, list] = defaultdict(list)       # receiver_bic -> list[amount]
+    r_fail: dict[str, int] = defaultdict(int)
+    r_senders: dict[str, set] = defaultdict(set)
+    r_corridors: dict[str, set] = defaultdict(set)
+
+    c_tx: dict[str, list] = defaultdict(list)       # corridor -> list[amount]
+    c_fail: dict[str, int] = defaultdict(int)
+    c_vol: dict[str, float] = defaultdict(float)
+
+    # Track how often each BIC appears in either role (for in/out degree)
+    node_as_sender: dict[str, int] = defaultdict(int)
+    node_as_receiver: dict[str, int] = defaultdict(int)
+
+    for rec in records:
+        s = rec["sending_bic"]
+        r = rec["receiving_bic"]
+        cp = rec["currency_pair"]
+        amt = float(rec["amount_usd"])
+        fail = int(rec["is_failure"])
+
+        s_tx[s].append(amt)
+        s_fail[s] += fail
+        s_receivers[s].add(r)
+        s_corridors[s].add(cp)
+
+        r_tx[r].append(amt)
+        r_fail[r] += fail
+        r_senders[r].add(s)
+        r_corridors[r].add(cp)
+
+        c_tx[cp].append(amt)
+        c_fail[cp] += fail
+        c_vol[cp] += amt
+
+        node_as_sender[s] += 1
+        node_as_receiver[r] += 1
+
+    _SYNTHETIC_DAYS = 30.0  # treat dataset as 30-day window
+
+    def _bic_age(bic: str) -> float:
+        """Synthetic institution age: older tiers are more established."""
+        tier = BIC_REGISTRY.get(bic, {}).get("tier", 3)
+        return {1: 5000.0, 2: 2000.0, 3: 500.0}.get(tier, 500.0)
+
+    # ── Sender stats ────────────────────────────────────────────────────────
+    sender_base: dict[str, dict] = {}
+    for bic, amts_list in s_tx.items():
+        amts = np.array(amts_list, dtype=float)
+        tx_ct = len(amts_list)
+        fail_ct = s_fail[bic]
+        global_fr = fail_ct / tx_ct if tx_ct > 0 else 0.0
+        avg_amt = float(amts.mean())
+        std_amt = float(amts.std()) + 1e-9
+        pct_large = float((amts >= LARGE_TX).mean())
+        n_corridors = max(len(s_corridors[bic]), 1)
+        sender_base[bic] = {
+            "out_degree": len(s_receivers[bic]),
+            "in_degree": node_as_receiver.get(bic, 0),
+            "tx_count": tx_ct,
+            "avg_amount": avg_amt,
+            "std_amount": std_amt,
+            "pct_large_tx": pct_large,
+            "volume_24h": float(amts.sum()) / _SYNTHETIC_DAYS,
+            "age_days": _bic_age(bic),
+            "currency_concentration": 1.0 / n_corridors,
+            "unique_receivers": len(s_receivers[bic]),
+            # failure rates populated via LOO in caller
+            "failure_rate_30d": global_fr,
+            "failure_rate_7d": global_fr * 0.90,
+            "failure_rate_1d": global_fr * 0.80,
+            "consecutive_failures": min(fail_ct, 3),
+            "_total_tx": tx_ct,
+            "_total_fail": fail_ct,
+        }
+
+    # ── Receiver stats ──────────────────────────────────────────────────────
+    receiver_base: dict[str, dict] = {}
+    for bic, amts_list in r_tx.items():
+        amts = np.array(amts_list, dtype=float)
+        tx_ct = len(amts_list)
+        fail_ct = r_fail[bic]
+        global_fr = fail_ct / tx_ct if tx_ct > 0 else 0.0
+        avg_amt = float(amts.mean())
+        std_amt = float(amts.std()) + 1e-9
+        pct_large = float((amts >= LARGE_TX).mean())
+        n_corridors = max(len(r_corridors[bic]), 1)
+        receiver_base[bic] = {
+            "out_degree": node_as_sender.get(bic, 0),
+            "in_degree": len(r_senders[bic]),
+            "tx_count": tx_ct,
+            "avg_amount": avg_amt,
+            "std_amount": std_amt,
+            "pct_large_tx": pct_large,
+            "volume_24h": float(amts.sum()) / _SYNTHETIC_DAYS,
+            "age_days": _bic_age(bic),
+            "currency_concentration": 1.0 / n_corridors,
+            "unique_senders": len(r_senders[bic]),
+            "failure_rate_30d": global_fr,
+            "failure_rate_7d": global_fr * 0.90,
+            "failure_rate_1d": global_fr * 0.80,
+            "consecutive_failures": min(fail_ct, 3),
+            "_total_tx": tx_ct,
+            "_total_fail": fail_ct,
+        }
+
+    # ── Corridor stats ──────────────────────────────────────────────────────
+    corridor_base: dict[str, dict] = {}
+    for cp, amts_list in c_tx.items():
+        amts = np.array(amts_list, dtype=float)
+        tx_ct = len(amts_list)
+        fail_ct = c_fail[cp]
+        global_fr = fail_ct / tx_ct if tx_ct > 0 else 0.0
+        vol_30d = float(c_vol[cp])
+        tx_per_day = tx_ct / _SYNTHETIC_DAYS
+        corridor_base[cp] = {
+            "tx_count": tx_ct,
+            "avg_amount": float(amts.mean()),
+            "std_amount": float(amts.std()) + 1e-9,
+            "max_amount": float(amts.max()),
+            "min_amount": float(amts.min()),
+            "p50_amount": float(np.percentile(amts, 50)),
+            "p95_amount": float(np.percentile(amts, 95)),
+            "volume_30d": vol_30d,
+            "volume_7d": vol_30d / 4.0,
+            "tx_per_day": tx_per_day,
+            "velocity_24h": tx_per_day,
+            "velocity_1h": tx_per_day / 24.0,
+            "age_days": 5000.0,
+            "unique_currencies": 2,
+            "failure_rate_30d": global_fr,
+            "failure_rate_7d": global_fr * 0.90,
+            "consecutive_failures": min(fail_ct, 3),
+            "_total_tx": tx_ct,
+            "_total_fail": fail_ct,
+        }
+
+    return sender_base, receiver_base, corridor_base
+
+
+# ---------------------------------------------------------------------------
 # Module-level convenience function (used by tests and scripts)
 # ---------------------------------------------------------------------------
 
@@ -1087,6 +1249,55 @@ def generate_synthetic_dataset(n_samples: int = 1000, seed: int = 42) -> list:
 
     generator = SyntheticPaymentGenerator(seed=seed)
     raw = generator.generate_dataset(n_transactions=n_samples)
+
+    # ── Stats enrichment pass (Improvements 1-3) ──────────────────────────
+    # Populate sender_stats, receiver_stats, corridor_stats so that
+    # TabularFeatureEngineer.extract() can use all 55 previously-zero features.
+    # Leave-one-out failure rates: each record excludes its own label from the
+    # denominator to prevent label leakage into the training features.
+    sender_base, receiver_base, corridor_base = _compute_bic_corridor_stats(raw)
+
+    for rec in raw:
+        s = rec["sending_bic"]
+        r = rec["receiving_bic"]
+        cp = rec["currency_pair"]
+        fail = int(rec["is_failure"])
+
+        # LOO failure rate helper: (total_fail - this_fail) / (total_tx - 1)
+        def _loo(base: dict, key: str, own_fail: int) -> float:
+            b = base.get(key, {})
+            total_tx = b.get("_total_tx", 0)
+            if total_tx <= 1:
+                return 0.0
+            return (b.get("_total_fail", 0) - own_fail) / (total_tx - 1)
+
+        s_loo = _loo(sender_base, s, fail)
+        r_loo = _loo(receiver_base, r, fail)
+        c_loo = _loo(corridor_base, cp, fail)
+
+        # Build sender_stats (copy global baseline, override with LOO rates)
+        s_stats = {k: v for k, v in sender_base.get(s, {}).items()
+                   if not k.startswith("_")}
+        s_stats["failure_rate_30d"] = s_loo
+        s_stats["failure_rate_7d"] = s_loo * 0.90
+        s_stats["failure_rate_1d"] = s_loo * 0.80
+
+        # Build receiver_stats
+        r_stats = {k: v for k, v in receiver_base.get(r, {}).items()
+                   if not k.startswith("_")}
+        r_stats["failure_rate_30d"] = r_loo
+        r_stats["failure_rate_7d"] = r_loo * 0.90
+        r_stats["failure_rate_1d"] = r_loo * 0.80
+
+        # Build corridor_stats
+        c_stats = {k: v for k, v in corridor_base.get(cp, {}).items()
+                   if not k.startswith("_")}
+        c_stats["failure_rate_30d"] = c_loo
+        c_stats["failure_rate_7d"] = c_loo * 0.90
+
+        rec["sender_stats"] = s_stats
+        rec["receiver_stats"] = r_stats
+        rec["corridor_stats"] = c_stats
 
     # Reference epoch: Monday 00:00 UTC — synthetic timestamps are offsets from it.
     _EPOCH_MONDAY = 1_700_000_000.0  # 2023-11-14 22:13:20 UTC, a Tuesday — close enough
