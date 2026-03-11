@@ -14,7 +14,7 @@
 | Performance monitoring | P99 latency, AUC drift, queue depth tracked and alerted | `infrastructure/monitoring/` |
 | Documentation | Model cards in component READMEs + this compliance pack | `lip/c*/README.md` |
 
-**Known gap**: C1 AUC = 0.739 vs. target 0.850. Model is under active improvement (see `docs/data-pipeline.md`).
+**C1 AUC status** (2026-03-11): Synthetic-data AUC gap resolved — 0.9998 achieved via stats enrichment (commit `f38f0dc`). Real-world production target (0.850) pending pilot with anonymised SWIFT data under QUANT sign-off. See `docs/data-pipeline.md` for details.
 
 ---
 

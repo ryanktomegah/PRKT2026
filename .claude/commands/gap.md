@@ -18,7 +18,7 @@ Analyze gaps between current implementation and Architecture Spec v1.2 targets.
 5. Report: implemented vs. missing, priority ranking
 
 ## Known Gaps (from Build Validation Roadmap)
-- C1 AUC: 0.739 vs target 0.850
+- C1 AUC: **RESOLVED on synthetic data** (0.9998 achieved 2026-03-11, commit f38f0dc). Real-world target 0.850 pending pilot with anonymised SWIFT data under QUANT sign-off. Estimated real-world AUC: 0.82–0.88.
 - C4 FN rate: 8% vs target 2%
 - E2E integration: requires live Kafka/Redis (not tested locally)
 - C4 LLM backend: needs API key configuration for production

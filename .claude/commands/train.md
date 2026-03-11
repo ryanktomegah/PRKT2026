@@ -16,7 +16,7 @@ Train ML models for LIP components. Requires synthetic data to be generated firs
 ## Model Performance Targets
 | Component | Metric | Current | Target |
 |-----------|--------|---------|--------|
-| C1 Failure Classifier | AUC | 0.739 | 0.850 |
+| C1 Failure Classifier | AUC | 0.9998 (synthetic) / 0.739 (baseline) | 0.850 (real-world) |
 | C1 Failure Classifier | F2-score | — | ≥ 0.80 |
 | C2 PD Model | RMSE | — | ≤ 0.02 |
 | C4 Dispute | FN rate | 0.08 | 0.02 |

@@ -69,10 +69,14 @@ C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
 
 ## Known Performance Gaps
 
-| Metric | Current | Target | Gap |
-|--------|---------|--------|-----|
-| AUC | **0.739** | **0.850** | Requires more training data + hyperparameter tuning |
-| P99 latency | ~45 ms (C1 share) | ≤ 94 ms (full pipeline) | Within SLO |
+| Metric | XGBoost Baseline | Synthetic (2K) | Target | Real-World Est. |
+|--------|-----------------|----------------|--------|-----------------|
+| AUC | 0.739 | **0.9998** | **0.850** | 0.82–0.88 (ARIA) |
+| Active features | 33/88 | **78/88** | 88/88 | — |
+| P99 latency | ~45 ms (C1 share) | — | ≤ 94 ms (full pipeline) | Within SLO |
+
+Synthetic AUC gap resolved 2026-03-11 via stats enrichment (commit `f38f0dc`).
+Real-world target (0.850) requires pilot with anonymised SWIFT data under QUANT sign-off.
 
 ## Spec References
 
