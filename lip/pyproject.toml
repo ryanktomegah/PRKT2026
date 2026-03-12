@@ -109,8 +109,6 @@ omit = [
     "lip/train_all.py",
     # Data generation scripts — CLI tools, no unit tests by convention
     "lip/dgen/*",
-    # Integration test requiring live Redis/Kafka — excluded from unit CI
-    "lip/tests/test_e2e_pipeline.py",
     # Load test harness — not a unit test
     "lip/tests/load/*",
 ]
