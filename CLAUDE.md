@@ -49,6 +49,15 @@ After auth, Claude can:
 - Always run `python -m pytest lip/tests/` before committing
 - test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally
 
+## Test Suite Notes
+- Full suite (excl. e2e) takes ~12 min (722s, ~980 tests); exclude e2e for speed: `--ignore=lip/tests/test_e2e_pipeline.py`
+- `test_slo_p99_94ms` (test_c1_classifier.py) is a FLAKY TIMING test — fails under CPU load, passes in isolation; not a regression signal
+- Long pytest runs are auto-backgrounded by the Bash tool; wait with `TaskOutput(block=True, timeout=600000)` and kill competing runs with `TaskStop` before starting a new one
+
+## PyTorch / ML Dependencies
+- `torch==2.2.0` unavailable on CPU wheel index; minimum available is 2.6.0 — pin as `torch>=2.6.0`
+- LightGBM (OpenMP) + PyTorch BLAS deadlock on macOS in the same pytest process; any test file using both must include a session-scoped autouse fixture: `torch.set_num_threads(1); torch.set_num_interop_threads(1)`
+
 ## C4 Dispute Classifier Notes
 - `MockLLMBackend` (model.py:87-93) has no negation awareness — pure keyword match.
   After prefilter passes through, MockLLMBackend re-fires on "fraud"/"dispute" etc.
