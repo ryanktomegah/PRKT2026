@@ -1,3 +1,8 @@
+# macOS performance note: run with:
+# METAL_DEVICE_WRAPPER_TYPE=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+# Disabling Metal API Validation and capping OMP/MKL threads recovers
+# ~62% wall time on Apple Silicon (298s → 114s at n=10K).
+
 """eval_c1_auc_torch.py — Benchmark NumPy vs PyTorch C1 training.
 
 Trains on synthetic data at n=1000 for both NumPy and PyTorch pipelines,
