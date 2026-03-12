@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 from .embeddings import CorridorEmbeddingPipeline
 from .features import FeaturePipeline
@@ -247,6 +248,47 @@ class TrainingPipeline:
         y = np.array(y_rows, dtype=np.float64)
         logger.info("stage3_feature_extraction: X=%s, y=%s", X.shape, y.shape)
         return X, y
+
+    # ------------------------------------------------------------------
+    # Stage 3b — Feature scaling (StandardScaler, fit on train only)
+    # ------------------------------------------------------------------
+
+    def stage3b_standard_scale(
+        self,
+        X_train: np.ndarray,
+        X_val: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Fit a StandardScaler on *X_train* and transform both splits.
+
+        Scaling is fitted exclusively on the training set to prevent
+        data leakage from validation statistics into training features.
+        The fitted scaler is stored as ``self._feature_scaler`` for
+        use during inference.
+
+        Parameters
+        ----------
+        X_train:
+            Training feature matrix of shape ``(n_train, 88)``.
+        X_val:
+            Validation feature matrix of shape ``(n_val, 88)``.
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            ``(X_train_scaled, X_val_scaled)`` — float64 arrays.
+        """
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_val_scaled = scaler.transform(X_val)
+        self._feature_scaler: Optional[StandardScaler] = scaler
+        logger.info(
+            "stage3b_standard_scale: fitted on %d train rows, "
+            "mean_abs_mean=%.4f, mean_std=%.4f",
+            len(X_train),
+            float(np.mean(np.abs(scaler.mean_))),
+            float(np.mean(scaler.scale_)),
+        )
+        return X_train_scaled.astype(np.float64), X_val_scaled.astype(np.float64)
 
     # ------------------------------------------------------------------
     # Stage 4 — Train/validation split

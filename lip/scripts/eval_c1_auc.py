@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 
 import numpy as np
+import sklearn.preprocessing as _skl_pre
 
 from lip.c1_failure_classifier.features import TabularFeatureEngineer
 from lip.c1_failure_classifier.graphsage import GraphSAGEModel
@@ -36,6 +37,8 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--alpha", type=float, default=0.7)
     parser.add_argument("--weights_out", type=str, default="/tmp/c1_weights.npz")
+    parser.add_argument("--scale", action="store_true",
+                        help="Apply StandardScaler (fit on train, transform val)")
     args = parser.parse_args()
 
     # ── Generate data ────────────────────────────────────────────────────────
@@ -50,6 +53,17 @@ def main() -> None:
     n_val = max(1, int(len(data) * args.val_split))
     X_val, y_val = X[:n_val], y[:n_val]
     X_train, y_train = X[n_val:], y[n_val:]
+
+    # ── Optional StandardScaler (fit on train only — no val leakage) ─────────
+    scaler_desc = "no_scaling"
+    if args.scale:
+        scaler = _skl_pre.StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_val = scaler.transform(X_val)
+        scaler_desc = "standard_scaled"
+        print(f"  [scaling] StandardScaler applied — mean_abs_mean="
+              f"{abs(scaler.mean_).mean():.4f}  mean_scale={scaler.scale_.mean():.4f}",
+              flush=True)
 
     n_train = len(y_train)
     n_pos_train = int(y_train.sum())
@@ -158,7 +172,8 @@ def main() -> None:
         f"\nval_auc={val_auc:.4f}  threshold={best_threshold:.4f}  "
         f"n_train={len(X_train)}  n_val={n_val}  "
         f"n_pos_train={n_pos_train}  n_pos_val={n_pos_val}  "
-        f"n_epochs={args.n_epochs}  best_auc={best_auc:.4f}"
+        f"n_epochs={args.n_epochs}  best_auc={best_auc:.4f}  "
+        f"scaling={scaler_desc}"
     )
 
 
