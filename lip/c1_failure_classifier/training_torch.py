@@ -1,0 +1,368 @@
+"""
+Three-entity role mapping:
+  MLO  — Money Lending Organisation
+  MIPLO — Money In / Payment Lending Organisation
+  ELO  — Execution Lending Organisation (bank-side agent, C7)
+
+training_torch.py — PyTorch training pipeline for C1 neural components.
+Stages 1–4 are delegated to the existing NumPy TrainingPipeline.
+Stages 5–7 (GraphSAGE pre-train, TabTransformer pre-train, joint training)
+use DataLoader-based mini-batches for 100K+ sample scalability.
+LightGBM (stage 5b) is unchanged.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from typing import List, Optional
+
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+from .graphsage_torch import GraphSAGETorch
+from .model_torch import ClassifierModelTorch, MLPHeadTorch
+from .tabtransformer_torch import TabTransformerTorch
+from .training import TrainingConfig, TrainingPipeline, _compute_auc
+
+logger = logging.getLogger(__name__)
+
+# pos_weight for BCEWithLogitsLoss: α/(1-α) = 0.7/0.3 = 7/3 ≈ 2.3333
+# Equivalent gradient direction to the NumPy asymmetric BCE (α=0.7)
+_POS_WEIGHT = torch.tensor([7.0 / 3.0])
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _to_tensor(arr: np.ndarray, dtype=torch.float32) -> torch.Tensor:
+    return torch.tensor(arr, dtype=dtype)
+
+
+def _eval_auc_torch(
+    model: ClassifierModelTorch,
+    X: np.ndarray,
+    y: np.ndarray,
+) -> float:
+    """Compute AUC for a ClassifierModelTorch on numpy arrays."""
+    model.eval()
+    with torch.no_grad():
+        node_feat = _to_tensor(X[:, :8])
+        tab_feat = _to_tensor(X)
+        logits = model(node_feat, tab_feat).squeeze(1)
+        scores = torch.sigmoid(logits).cpu().numpy()
+    return _compute_auc(y, scores)
+
+
+# ---------------------------------------------------------------------------
+# TrainingPipelineTorch
+# ---------------------------------------------------------------------------
+
+
+class TrainingPipelineTorch:
+    """PyTorch training pipeline for C1 neural components (stages 5–7).
+
+    Stages 1–4 (data validation, graph construction, feature extraction,
+    train/val split) are delegated to the existing :class:`TrainingPipeline`.
+
+    Parameters
+    ----------
+    config:
+        :class:`TrainingConfig` instance (default production config).
+    """
+
+    def __init__(self, config: Optional[TrainingConfig] = None) -> None:
+        self.config = config or TrainingConfig()
+
+    # ------------------------------------------------------------------
+    # Stage 5 — GraphSAGE pre-training (PyTorch)
+    # ------------------------------------------------------------------
+
+    def stage5_graphsage_pretrain_torch(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+    ) -> GraphSAGETorch:
+        """Pre-train the GraphSAGE model for 5 epochs with a temporary linear head.
+
+        Uses a ``(384→1)`` temporary head and :class:`BCEWithLogitsLoss` with
+        ``pos_weight=7/3`` (equivalent to α=0.7 asymmetric BCE).
+
+        Parameters
+        ----------
+        X_train:
+            Training feature matrix ``(n_train, 88)``.
+        y_train:
+            Training labels ``(n_train,)``.
+
+        Returns
+        -------
+        GraphSAGETorch
+            Pre-trained GraphSAGE module.
+        """
+        graphsage = GraphSAGETorch()
+        temp_head = nn.Linear(graphsage.output_dim, 1)
+        nn.init.xavier_uniform_(temp_head.weight)
+
+        node_feats = _to_tensor(X_train[:, :graphsage.input_dim])
+        labels = _to_tensor(y_train).unsqueeze(1)
+
+        dataset = TensorDataset(node_feats, labels)
+        loader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
+
+        optimizer = torch.optim.Adam(
+            list(graphsage.parameters()) + list(temp_head.parameters()),
+            lr=self.config.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-8,
+        )
+        criterion = nn.BCEWithLogitsLoss(pos_weight=_POS_WEIGHT)
+
+        pre_epochs = min(5, self.config.n_epochs)
+        graphsage.train()
+        temp_head.train()
+
+        for epoch in range(pre_epochs):
+            total_loss = 0.0
+            for x_batch, y_batch in loader:
+                optimizer.zero_grad()
+                emb = graphsage(x_batch)               # (B, 384)
+                logits = temp_head(emb)                # (B, 1)
+                loss = criterion(logits, y_batch)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() * len(x_batch)
+            avg = total_loss / len(y_train)
+            logger.debug("stage5_torch pretrain epoch %d — avg_loss=%.5f", epoch + 1, avg)
+
+        logger.info("stage5_graphsage_pretrain_torch: %d epochs complete", pre_epochs)
+        graphsage.eval()
+        return graphsage
+
+    # ------------------------------------------------------------------
+    # Stage 6 — TabTransformer pre-training (PyTorch)
+    # ------------------------------------------------------------------
+
+    def stage6_tabtransformer_pretrain_torch(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+    ) -> TabTransformerTorch:
+        """Pre-train the TabTransformer for 5 epochs with a temporary linear head.
+
+        Uses a ``(88→1)`` temporary head and :class:`BCEWithLogitsLoss` with
+        ``pos_weight=7/3``.
+
+        Parameters
+        ----------
+        X_train:
+            Training feature matrix ``(n_train, 88)``.
+        y_train:
+            Training labels ``(n_train,)``.
+
+        Returns
+        -------
+        TabTransformerTorch
+            Pre-trained TabTransformer module.
+        """
+        tabtransformer = TabTransformerTorch()
+        temp_head = nn.Linear(tabtransformer.output_dim, 1)
+        nn.init.xavier_uniform_(temp_head.weight)
+
+        tab_feats = _to_tensor(X_train)
+        labels = _to_tensor(y_train).unsqueeze(1)
+
+        dataset = TensorDataset(tab_feats, labels)
+        loader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
+
+        optimizer = torch.optim.Adam(
+            list(tabtransformer.parameters()) + list(temp_head.parameters()),
+            lr=self.config.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-8,
+        )
+        criterion = nn.BCEWithLogitsLoss(pos_weight=_POS_WEIGHT)
+
+        pre_epochs = min(5, self.config.n_epochs)
+        tabtransformer.train()
+        temp_head.train()
+
+        for epoch in range(pre_epochs):
+            total_loss = 0.0
+            for x_batch, y_batch in loader:
+                optimizer.zero_grad()
+                emb = tabtransformer(x_batch)          # (B, 88)
+                logits = temp_head(emb)                # (B, 1)
+                loss = criterion(logits, y_batch)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() * len(x_batch)
+            avg = total_loss / len(y_train)
+            logger.debug("stage6_torch pretrain epoch %d — avg_loss=%.5f", epoch + 1, avg)
+
+        logger.info("stage6_tabtransformer_pretrain_torch: %d epochs complete", pre_epochs)
+        tabtransformer.eval()
+        return tabtransformer
+
+    # ------------------------------------------------------------------
+    # Stage 7 — Joint training (PyTorch)
+    # ------------------------------------------------------------------
+
+    def stage7_joint_training_torch(
+        self,
+        graphsage: GraphSAGETorch,
+        tabtransformer: TabTransformerTorch,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_val: Optional[np.ndarray] = None,
+        y_val: Optional[np.ndarray] = None,
+    ) -> ClassifierModelTorch:
+        """Joint end-to-end training with best-AUC checkpoint.
+
+        Assembles :class:`ClassifierModelTorch` from pre-trained sub-models
+        and trains for ``n_epochs`` using Adam with asymmetric BCE loss.
+        Best-AUC checkpoint on the validation set (or training set if val
+        is not provided) is restored before returning.
+
+        Parameters
+        ----------
+        graphsage:
+            Pre-trained :class:`GraphSAGETorch`.
+        tabtransformer:
+            Pre-trained :class:`TabTransformerTorch`.
+        X_train, y_train:
+            Training data ``(n_train, 88)`` and labels.
+        X_val, y_val:
+            Optional validation data for checkpoint selection.
+
+        Returns
+        -------
+        ClassifierModelTorch
+            Assembled and jointly-trained classifier (best-AUC checkpoint).
+        """
+        mlp_head = MLPHeadTorch()
+        model = ClassifierModelTorch(
+            graphsage=graphsage,
+            tabtransformer=tabtransformer,
+            mlp_head=mlp_head,
+        )
+
+        node_feats = _to_tensor(X_train[:, :8])
+        tab_feats = _to_tensor(X_train)
+        labels = _to_tensor(y_train).unsqueeze(1)
+
+        dataset = TensorDataset(node_feats, tab_feats, labels)
+        loader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
+
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=self.config.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-8,
+        )
+        criterion = nn.BCEWithLogitsLoss(pos_weight=_POS_WEIGHT)
+
+        # Checkpoint state
+        best_auc: float = -1.0
+        best_state: Optional[dict] = None
+
+        ckpt_X = X_val if X_val is not None else X_train
+        ckpt_y = y_val if y_val is not None else y_train
+        ckpt_label = "val" if X_val is not None else "train"
+
+        logger.info(
+            "stage7_joint_training_torch: %d samples, %d epochs",
+            len(y_train), self.config.n_epochs,
+        )
+
+        for epoch in range(self.config.n_epochs):
+            model.train()
+            total_loss = 0.0
+            for nf_batch, tf_batch, y_batch in loader:
+                optimizer.zero_grad()
+                logits = model(nf_batch, tf_batch)
+                loss = criterion(logits, y_batch)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() * len(y_batch)
+
+            avg_loss = total_loss / len(y_train)
+            auc = _eval_auc_torch(model, ckpt_X, ckpt_y)
+            logger.debug(
+                "Joint training epoch %d — avg_loss=%.5f  %s_auc=%.4f",
+                epoch + 1, avg_loss, ckpt_label, auc,
+            )
+
+            if auc > best_auc:
+                best_auc = auc
+                best_state = {k: v.clone() for k, v in model.state_dict().items()}
+
+        if best_state is not None:
+            model.load_state_dict(best_state)
+            logger.info(
+                "stage7_joint_training_torch: restored best checkpoint (%s_auc=%.4f)",
+                ckpt_label, best_auc,
+            )
+
+        model.eval()
+        return model
+
+    # ------------------------------------------------------------------
+    # train_torch — orchestrate full pipeline
+    # ------------------------------------------------------------------
+
+    def train_torch(
+        self,
+        records: List[dict],
+    ) -> ClassifierModelTorch:
+        """Train C1 with PyTorch stages 5–7, reusing NumPy stages 1–4.
+
+        Stages 1–4 (data validation, graph construction, feature extraction,
+        train/val split) are executed by :class:`TrainingPipeline`.  Stages
+        5–7 use PyTorch DataLoaders.  Stage 5b (LightGBM) is unchanged and
+        attached to the returned model for the 50/50 ensemble.
+
+        Parameters
+        ----------
+        records:
+            Raw payment records (same format as :meth:`TrainingPipeline.run`).
+
+        Returns
+        -------
+        ClassifierModelTorch
+            Fully trained classifier with optional LightGBM attached.
+        """
+        numpy_pipeline = TrainingPipeline(config=self.config)
+
+        t0 = time.perf_counter()
+        validated = numpy_pipeline.stage1_data_validation(records)
+        graph = numpy_pipeline.stage2_graph_construction(validated)
+        X, y = numpy_pipeline.stage3_feature_extraction(validated, graph)
+        X_train, X_val, y_train, y_val = numpy_pipeline.stage4_train_val_split(X, y)
+        logger.info("Stages 1–4 complete in %.3f s", time.perf_counter() - t0)
+
+        t0 = time.perf_counter()
+        lgbm_model = numpy_pipeline.stage5b_lightgbm_pretrain(X_train, y_train)
+        logger.info("Stage 5b (LightGBM) complete in %.3f s", time.perf_counter() - t0)
+
+        t0 = time.perf_counter()
+        graphsage = self.stage5_graphsage_pretrain_torch(X_train, y_train)
+        logger.info("Stage 5 (GraphSAGE torch pretrain) complete in %.3f s", time.perf_counter() - t0)
+
+        t0 = time.perf_counter()
+        tabtransformer = self.stage6_tabtransformer_pretrain_torch(X_train, y_train)
+        logger.info("Stage 6 (TabTransformer torch pretrain) complete in %.3f s", time.perf_counter() - t0)
+
+        t0 = time.perf_counter()
+        model = self.stage7_joint_training_torch(
+            graphsage, tabtransformer, X_train, y_train, X_val, y_val
+        )
+        logger.info("Stage 7 (joint training) complete in %.3f s", time.perf_counter() - t0)
+
+        model.lgbm_model = lgbm_model
+        logger.info("train_torch: complete")
+        return model

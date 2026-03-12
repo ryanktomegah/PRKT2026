@@ -2,6 +2,9 @@
 # Install: pip install -r requirements-ml.txt
 # Requires: pip install -r requirements.txt first
 
+# ── C1 Neural Components (PyTorch port for 100K+ sample training) ─────────────
+torch>=2.6.0
+
 # ── C2 PD Model ──────────────────────────────────────────────────────────────
 lightgbm>=4.3.0
 shap>=0.44.0
