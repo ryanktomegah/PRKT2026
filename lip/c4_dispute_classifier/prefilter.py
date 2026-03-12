@@ -89,6 +89,46 @@ _NEGOTIATION_KEYWORDS: tuple = (
     "offer accepted",
 )
 
+# ---------------------------------------------------------------------------
+# Negation detection helpers
+# ---------------------------------------------------------------------------
+
+_NEGATION_TOKENS: frozenset[str] = frozenset({
+    # English
+    "not", "no", "never", "neither", "nor", "without", "non",
+    # German
+    "kein", "keine", "nicht",
+    # French
+    "aucun", "aucune", "ne", "pas",
+    # Spanish
+    "sin", "ningún", "ninguna",
+})
+
+
+def _find_keyword_token_pos(tokens: list[str], kw: str) -> int | None:
+    """Return the index of the token containing the first word of *kw*.
+
+    Strips trailing punctuation before comparison so that "dispute." still
+    matches stem "disput".
+    """
+    first_kw_tok = kw.split()[0]
+    for i, tok in enumerate(tokens):
+        if first_kw_tok in tok.rstrip(".,!?;:\"'()"):
+            return i
+    return None
+
+
+def _is_negated(tokens: list[str], keyword_pos: int, window: int = 5) -> bool:
+    """Return True if any negation token appears in the *window* tokens
+    immediately before *keyword_pos*.
+
+    Covers: "not a dispute", "no fraud", "ohne Betrug", "pas de litige",
+            "sin fraude", and other patterns where a negation word precedes
+            the dispute keyword within 5 whitespace-delimited tokens.
+    """
+    start = max(0, keyword_pos - window)
+    return any(t in _NEGATION_TOKENS for t in tokens[start:keyword_pos])
+
 
 # ---------------------------------------------------------------------------
 # Result dataclass
@@ -201,9 +241,13 @@ class PreFilter:
             A :class:`DisputeClass` if a keyword matched, else ``None``.
         """
         lowered = narrative.lower()
+        tokens = lowered.split()
 
         for kw in _CONFIRMED_KEYWORDS:
             if kw in lowered:
+                kw_pos = _find_keyword_token_pos(tokens, kw)
+                if kw_pos is not None and _is_negated(tokens, kw_pos):
+                    continue          # negated → skip this keyword
                 return DisputeClass.DISPUTE_CONFIRMED
 
         for kw in _NEGOTIATION_KEYWORDS:
