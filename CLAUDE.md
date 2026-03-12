@@ -17,9 +17,10 @@ After auth, Claude can:
 
 ## Repository
 - Repo: `ryanktomegah/PRKT2026`
-- Active branch: `claude/consolidate-file-updates-CIPGP`
+- Active branch: `main`
 - Package root: `lip/` (pyproject.toml lives here)
 - Tests: `lip/tests/` — run with `python -m pytest lip/tests/`
+- Full suite ~3 min; use `-m "not slow"` for iteration
 - Lint: `ruff check lip/` — must be zero errors before commit
 - PYTHONPATH must be set to repo root for imports to resolve
 
@@ -47,3 +48,14 @@ After auth, Claude can:
 - Always run `ruff check lip/` before committing
 - Always run `python -m pytest lip/tests/` before committing
 - test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally
+
+## C4 Dispute Classifier Notes
+- `MockLLMBackend` (model.py:87-93) has no negation awareness — pure keyword match.
+  After prefilter passes through, MockLLMBackend re-fires on "fraud"/"dispute" etc.
+  Use **prefilter-only FP rate** (not full-pipeline accuracy) as the C4 Step 2x metric.
+- Negation test suite: `lip/c4_dispute_classifier/negation.py` — 500 cases, 5 categories,
+  20 templates per category cycled. Run via inline `PYTHONPATH=. python3` snippet.
+- Prefilter FP rate after Step 2a (commit 3808a74): 4% (was ~62%).
+  FN rate: 1% on negation suite; not yet validated on full synthetic corpus.
+- When updating measured values in `lip/common/constants.py`, cite commit hash +
+  dataset scope in the comment (see DISPUTE_FN_CURRENT for example).
