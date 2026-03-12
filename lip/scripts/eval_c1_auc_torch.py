@@ -139,7 +139,12 @@ def _run_torch(
 def _build_dataset(n: int, seed: int, val_split: float):
     data = generate_synthetic_dataset(n_samples=n, seed=seed)
     tab_eng = TabularFeatureEngineer()
-    X = np.stack([tab_eng.extract(r) for r in data], axis=0).astype(np.float64)
+    tab_feats = np.stack([tab_eng.extract(r) for r in data], axis=0).astype(np.float64)
+    # Prepend 8-dim zeros for graph node features: no BICGraphBuilder is
+    # available in this eval context so graph dims are zero-filled.
+    # X shape: (n, 96) = [node_8d ‖ tab_88d], matching the production pipeline.
+    node_zeros = np.zeros((len(data), 8), dtype=np.float64)
+    X = np.concatenate([node_zeros, tab_feats], axis=1)
     y = np.array([r["is_failure"] for r in data], dtype=np.float64)
     n_val = max(1, int(n * val_split))
     return X[:n_val], y[:n_val], X[n_val:], y[n_val:]

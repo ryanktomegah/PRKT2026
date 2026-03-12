@@ -19,9 +19,9 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 from .embeddings import CorridorEmbeddingPipeline
-from .features import FeaturePipeline
+from .features import TabularFeatureEngineer
 from .graph_builder import BICGraphBuilder, PaymentEdge
-from .graphsage import GraphSAGEModel
+from .graphsage import GRAPHSAGE_INPUT_DIM, GraphSAGEModel
 from .model import ClassifierModel, MLPHead
 from .tabtransformer import TabTransformerModel
 
@@ -214,8 +214,8 @@ class TrainingPipeline:
         self,
         data: List[dict],
         graph: BICGraphBuilder,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Extract tabular feature matrix and label vector.
+    ) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+        """Extract tabular feature matrix, label vector, and sending BIC list.
 
         Parameters
         ----------
@@ -226,28 +226,39 @@ class TrainingPipeline:
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray]
-            - ``X`` of shape ``(n, 88)`` — tabular feature matrix.
+        Tuple[np.ndarray, np.ndarray, List[str]]
+            - ``X`` of shape ``(n, 96)`` — graph node features [0:8] prepended
+              to tabular features [8:96].
             - ``y`` of shape ``(n,)``    — binary labels.
+            - ``bics``                   — sending BIC code for each record.
         """
-        # Stage3 builds the tabular feature matrix only — node and edge graph
-        # features are NOT included in X (stage5+ slices them from X_train
-        # directly). Calling pipeline.extract_all() per record iterates the
-        # full edge list for every BIC lookup (O(n_edges) per record), which
-        # is O(n_records * n_edges) overall. Since X only uses the tabular
-        # sub-vector, we call the tabular extractor directly — O(n_records).
-        tab_eng = FeaturePipeline(graph_builder=graph)._tab_eng
+        # Pre-compute node feature lookup for unique sending BICs.
+        # get_node_features() is O(n_nodes) per call (in_degree full scan).
+        # Caching over unique BICs costs O(n_unique_bics × n_nodes) total,
+        # avoiding O(n_records × n_nodes) if called naively per record.
+        unique_bics = {str(r.get("sending_bic", "")) for r in data}
+        node_feat_cache: Dict[str, np.ndarray] = {
+            bic: graph.get_node_features(bic) for bic in unique_bics
+        }
+        _zero_node = np.zeros(GRAPHSAGE_INPUT_DIM, dtype=np.float64)
+        tab_eng = TabularFeatureEngineer()
         X_rows: List[np.ndarray] = []
         y_rows: List[int] = []
+        bics: List[str] = []
 
         for record in data:
-            X_rows.append(tab_eng.extract(record))
+            node_feat = node_feat_cache.get(
+                str(record.get("sending_bic", "")), _zero_node
+            )
+            tab_feat = tab_eng.extract(record)
+            X_rows.append(np.concatenate([node_feat, tab_feat]))
             y_rows.append(int(record["label"]))
+            bics.append(str(record.get("sending_bic", "")))
 
         X = np.stack(X_rows, axis=0).astype(np.float64)
         y = np.array(y_rows, dtype=np.float64)
         logger.info("stage3_feature_extraction: X=%s, y=%s", X.shape, y.shape)
-        return X, y
+        return X, y, bics
 
     # ------------------------------------------------------------------
     # Stage 3b — Feature scaling (StandardScaler, fit on train only)
@@ -268,7 +279,7 @@ class TrainingPipeline:
         Parameters
         ----------
         X_train:
-            Training feature matrix of shape ``(n_train, 88)``.
+            Training feature matrix of shape ``(n_train, 96)``.
         X_val:
             Validation feature matrix of shape ``(n_val, 88)``.
 
@@ -295,22 +306,27 @@ class TrainingPipeline:
     # ------------------------------------------------------------------
 
     def stage4_train_val_split(
-        self, X: np.ndarray, y: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self, X: np.ndarray, y: np.ndarray, bics: Optional[List[str]] = None
+    ) -> Tuple:
         """Randomly split data into train and validation sets.
 
         Parameters
         ----------
         X:
-            Feature matrix of shape ``(n, 88)``.
+            Feature matrix of shape ``(n, 96)``.
         y:
             Label vector of shape ``(n,)``.
+        bics:
+            Optional list of sending BIC codes (parallel to X and y).
+            When provided, the return tuple includes ``bic_train`` and
+            ``bic_val`` as the 5th and 6th elements.
 
         Returns
         -------
         Tuple
-            ``(X_train, X_val, y_train, y_val)`` where val size is
-            ``config.val_split * n``.
+            ``(X_train, X_val, y_train, y_val)`` when ``bics`` is ``None``,
+            or ``(X_train, X_val, y_train, y_val, bic_train, bic_val)``
+            when ``bics`` is provided.  Val size is ``config.val_split * n``.
         """
         n = len(y)
         n_val = max(1, int(n * self.config.val_split))
@@ -324,6 +340,10 @@ class TrainingPipeline:
         logger.info(
             "stage4_train_val_split: train=%d, val=%d", len(train_idx), len(val_idx)
         )
+        if bics is not None:
+            bic_train = [bics[i] for i in train_idx]
+            bic_val = [bics[i] for i in val_idx]
+            return X_train, X_val, y_train, y_val, bic_train, bic_val
         return X_train, X_val, y_train, y_val
 
     # ------------------------------------------------------------------
@@ -346,7 +366,7 @@ class TrainingPipeline:
         Parameters
         ----------
         X_train:
-            Training feature matrix of shape ``(n_train, 88)``.
+            Training feature matrix of shape ``(n_train, 96)``.
         y_train:
             Training labels of shape ``(n_train,)``.
 
@@ -414,14 +434,14 @@ class TrainingPipeline:
         """Pre-train the TabTransformer on the tabular feature matrix.
 
         Runs a lightweight supervised pre-training loop (5 epochs) with a
-        temporary ``(88→1)`` linear head.  Analytical backpropagation is used
+        temporary ``(88→1)`` linear head on the 88-dim output.  Analytical backpropagation is used
         for the output projection (``W_out``) and FFN sub-layers of each
         transformer block via :meth:`~TabTransformerModel.backward`.
 
         Parameters
         ----------
         X_train:
-            Training feature matrix ``(n_train, 88)``.
+            Training feature matrix ``(n_train, 96)``.
         y_train:
             Training labels ``(n_train,)``.
 
@@ -430,7 +450,7 @@ class TrainingPipeline:
         TabTransformerModel
             Initialised and pre-trained TabTransformer model.
         """
-        model = TabTransformerModel()
+        model = TabTransformerModel(input_dim=96)
         n = len(y_train)
         rng = np.random.default_rng(seed=self.config.random_seed + 1)
         limit = np.sqrt(6.0 / (model.output_dim + 1))
@@ -497,7 +517,7 @@ class TrainingPipeline:
         Parameters
         ----------
         X_train:
-            Training feature matrix ``(n_train, 88)``.
+            Training feature matrix ``(n_train, 96)``.
         y_train:
             Training labels ``(n_train,)``.
 
@@ -562,7 +582,7 @@ class TrainingPipeline:
         tabtransformer:
             Pre-trained :class:`TabTransformerModel`.
         X_train:
-            Training feature matrix ``(n_train, 88)``.
+            Training feature matrix ``(n_train, 96)``.
         y_train:
             Training labels ``(n_train,)``.
         X_val:
@@ -686,7 +706,7 @@ class TrainingPipeline:
         model:
             Trained :class:`ClassifierModel`.
         X_val:
-            Validation feature matrix ``(n_val, 88)``.
+            Validation feature matrix ``(n_val, 96)``.
         y_val:
             Validation labels ``(n_val,)``.
 
@@ -767,8 +787,8 @@ class TrainingPipeline:
 
         validated = _run_stage("stage1_data_validation", self.stage1_data_validation, data)
         graph = _run_stage("stage2_graph_construction", self.stage2_graph_construction, validated)
-        X, y = _run_stage("stage3_feature_extraction", self.stage3_feature_extraction, validated, graph)
-        X_train, X_val, y_train, y_val = _run_stage("stage4_train_val_split", self.stage4_train_val_split, X, y)
+        X, y, bics = _run_stage("stage3_feature_extraction", self.stage3_feature_extraction, validated, graph)
+        X_train, X_val, y_train, y_val, _bic_train, _bic_val = _run_stage("stage4_train_val_split", self.stage4_train_val_split, X, y, bics)
         lgbm_model = _run_stage("stage5b_lightgbm_pretrain", self.stage5b_lightgbm_pretrain, X_train, y_train)
         graphsage = _run_stage("stage5_graphsage_pretrain", self.stage5_graphsage_pretrain, X_train, y_train)
         tabtransformer = _run_stage("stage6_tabtransformer_pretrain", self.stage6_tabtransformer_pretrain, X_train, y_train)

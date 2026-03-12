@@ -13,6 +13,12 @@ Outputs to stdout:
 
 Saves neural-network weights to /tmp/c1_weights.npz after training.
 """
+# WARNING: The NumPy training loop in this script has known limitations:
+# - TabTransformer attention weights (W_q/W_k/W_v/W_o) receive no gradient
+# - L2-norm Jacobian is approximated as identity (incorrect)
+# - seq_len=1 attention is degenerate (softmax always 1.0)
+# AUC from the numpy loop is NOT a valid performance benchmark.
+# Use eval_c1_auc_torch.py for meaningful AUC measurement.
 from __future__ import annotations
 
 import argparse
@@ -44,9 +50,13 @@ def main() -> None:
     # ── Generate data ────────────────────────────────────────────────────────
     data = generate_synthetic_dataset(n_samples=args.n_samples, seed=args.seed)
 
-    # ── Extract features (tabular 88-dim) ────────────────────────────────────
+    # ── Extract features (96-dim: 8-dim node zeros ‖ 88-dim tabular) ─────────
+    # No BICGraphBuilder is available in this eval context, so node dims are
+    # zero-filled. X shape: (n, 96), matching the production pipeline layout.
     tab_eng = TabularFeatureEngineer()
-    X = np.stack([tab_eng.extract(r) for r in data], axis=0).astype(np.float64)
+    tab_feats = np.stack([tab_eng.extract(r) for r in data], axis=0).astype(np.float64)
+    node_zeros = np.zeros((len(data), 8), dtype=np.float64)
+    X = np.concatenate([node_zeros, tab_feats], axis=1)
     y = np.array([r["label"] for r in data], dtype=np.float64)
 
     # ── Deterministic head/tail split (no pipeline-internal RNG dependency) ──
@@ -71,7 +81,7 @@ def main() -> None:
 
     # ── Initialise sub-models ─────────────────────────────────────────────────
     graphsage = GraphSAGEModel()
-    tabtransformer = TabTransformerModel()
+    tabtransformer = TabTransformerModel(input_dim=96)
     mlp = MLPHead()
 
     graphsage_input_dim = 8

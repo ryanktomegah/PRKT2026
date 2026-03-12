@@ -49,10 +49,14 @@ def _limit_torch_threads():
 
 
 def _make_separable_data(n: int = 200, seed: int = 42):
-    """Linearly separable 88-dim dataset (mirrors test_c1_training.py)."""
+    """Linearly separable 96-dim dataset matching the production pipeline layout.
+
+    X shape is (n, 96): first 8 dims are zero-filled graph node features,
+    dims 8-95 are the 88-dim tabular feature block.
+    """
     rng = np.random.default_rng(seed)
-    X_pos = rng.normal(loc=2.0, scale=1.0, size=(n // 2, 88))
-    X_neg = rng.normal(loc=-2.0, scale=1.0, size=(n // 2, 88))
+    X_pos = rng.normal(loc=2.0, scale=1.0, size=(n // 2, 96))
+    X_neg = rng.normal(loc=-2.0, scale=1.0, size=(n // 2, 96))
     X = np.vstack([X_pos, X_neg]).astype(np.float32)
     y = np.array([1.0] * (n // 2) + [0.0] * (n // 2), dtype=np.float32)
     idx = rng.permutation(n)
@@ -60,10 +64,10 @@ def _make_separable_data(n: int = 200, seed: int = 42):
 
 
 def _build_model() -> ClassifierModelTorch:
-    """Instantiate a fresh ClassifierModelTorch."""
+    """Instantiate a fresh ClassifierModelTorch with production-pipeline dims."""
     return ClassifierModelTorch(
         graphsage=GraphSAGETorch(),
-        tabtransformer=TabTransformerTorch(),
+        tabtransformer=TabTransformerTorch(input_dim=96),
         mlp_head=MLPHeadTorch(),
     )
 
@@ -112,7 +116,7 @@ def test_gradient_flow():
     model.train()
 
     node_feat = torch.rand(8, 8)
-    tab_feat = torch.rand(8, 88)
+    tab_feat = torch.rand(8, 96)
     labels = torch.randint(0, 2, (8, 1)).float()
 
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -183,7 +187,7 @@ def test_batch_consistency():
 
     torch.manual_seed(0)
     node_feat = torch.rand(4, 8)
-    tab_feat = torch.rand(4, 88)
+    tab_feat = torch.rand(4, 96)
 
     with torch.no_grad():
         batch_out = model(node_feat, tab_feat)                        # (4, 1)
@@ -205,7 +209,7 @@ def test_gpu_if_available():
     """Model must produce near-identical results on GPU vs CPU."""
     torch.manual_seed(99)
     node_feat = torch.rand(4, 8)
-    tab_feat = torch.rand(4, 88)
+    tab_feat = torch.rand(4, 96)
 
     model_cpu = _build_model()
     model_cpu.eval()

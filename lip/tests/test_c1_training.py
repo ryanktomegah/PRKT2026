@@ -47,10 +47,15 @@ def _reset_c1_rngs():
 # ---------------------------------------------------------------------------
 
 def _make_separable_data(n: int = 300, seed: int = 0):
-    """Generate a linearly separable synthetic dataset for convergence tests."""
+    """Generate a linearly separable synthetic dataset for convergence tests.
+
+    X shape is (n, 96): first 8 dims are zero-filled graph node features,
+    dims 8-95 are the 88-dim tabular feature block, matching the production
+    pipeline layout after the stage3 graph-signal fix.
+    """
     rng = np.random.default_rng(seed)
-    X_pos = rng.normal(loc=2.0, scale=1.0, size=(n // 2, 88))
-    X_neg = rng.normal(loc=-2.0, scale=1.0, size=(n // 2, 88))
+    X_pos = rng.normal(loc=2.0, scale=1.0, size=(n // 2, 96))
+    X_neg = rng.normal(loc=-2.0, scale=1.0, size=(n // 2, 96))
     X = np.vstack([X_pos, X_neg]).astype(np.float64)
     y = np.array([1.0] * (n // 2) + [0.0] * (n // 2), dtype=np.float64)
     idx = rng.permutation(n)
@@ -184,7 +189,7 @@ class TestTrainingPipelineConvergence:
         X, y = _make_separable_data(n=200)
         # Use smaller models for speed
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel()
+        tabtransformer = TabTransformerModel(input_dim=96)
 
         epoch_losses = []
         _mlp = pipeline.stage7_joint_training.__func__  # just verify it runs
@@ -235,7 +240,7 @@ class TestTrainingPipelineConvergence:
         X_val, y_val = X[:n_val], y[:n_val]
 
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel()
+        tabtransformer = TabTransformerModel(input_dim=96)
         mlp_head = MLPHead()
 
         rng = np.random.default_rng(42)
@@ -275,7 +280,7 @@ class TestTrainingPipelineConvergence:
 
         X, y = _make_separable_data(n=200)
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel()
+        tabtransformer = TabTransformerModel(input_dim=96)
         mlp_head = MLPHead()
         model = ClassifierModel(graphsage=graphsage, tabtransformer=tabtransformer, mlp=mlp_head)
 
@@ -337,7 +342,7 @@ class TestTrainingPipelineConvergence:
         X_val, y_val = X[:n_val], y[:n_val]
 
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel()
+        tabtransformer = TabTransformerModel(input_dim=96)
         mlp_head = MLPHead()
 
         rng = np.random.default_rng(42)
@@ -369,6 +374,6 @@ class TestTrainingPipelineConvergence:
         auc = _compute_auc(y_val, np.array(scores))
         print(f"\n[slow test] actual AUC after {config.n_epochs} epochs: {auc:.4f}")
         # Threshold verified: observed AUC = 1.0000 on first run → threshold = 1.0000 - 0.03 = 0.97.
-        # Perfectly separable data (means ±2, scale 1, 88-dim) converges to near-perfect
+        # Perfectly separable data (means ±2, scale 1, 96-dim) converges to near-perfect
         # classification in 50 Adam epochs.  Lower only if architecture changes.
         assert auc > 0.97, f"Slow-path AUC {auc:.4f} below verified threshold 0.97."

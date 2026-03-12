@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from .graph_builder import BICGraphBuilder
 from .graphsage_torch import GraphSAGETorch
 from .model_torch import ClassifierModelTorch, MLPHeadTorch
 from .tabtransformer_torch import TabTransformerTorch
@@ -47,15 +48,55 @@ def _eval_auc_torch(
     model: ClassifierModelTorch,
     X: np.ndarray,
     y: np.ndarray,
+    neighbor_feats: Optional[torch.Tensor] = None,
 ) -> float:
     """Compute AUC for a ClassifierModelTorch on numpy arrays."""
     model.eval()
     with torch.no_grad():
         node_feat = _to_tensor(X[:, :8])
         tab_feat = _to_tensor(X)
-        logits = model(node_feat, tab_feat).squeeze(1)
+        logits = model(node_feat, tab_feat, neighbor_feats).squeeze(1)
         scores = torch.sigmoid(logits).cpu().numpy()
     return _compute_auc(y, scores)
+
+
+def _build_neighbor_tensor(
+    bics: List[str],
+    graph: BICGraphBuilder,
+    k: int,
+    input_dim: int = 8,
+) -> torch.Tensor:
+    """Build a (N, k, input_dim) float32 tensor of neighbor node features.
+
+    For each BIC, retrieves up to ``k`` neighbors by outbound USD volume via
+    :meth:`BICGraphBuilder.get_neighbors`, then looks up their 8-dim node
+    feature vectors via :meth:`BICGraphBuilder.get_node_features`.  Pads
+    with zeros for any missing neighbors (cold-start safe — no exceptions).
+
+    Parameters
+    ----------
+    bics:
+        List of N sending BIC codes (one per training record).
+    graph:
+        Populated :class:`BICGraphBuilder`.
+    k:
+        Number of neighbors to sample per BIC.
+    input_dim:
+        Node feature dimensionality (default 8).
+
+    Returns
+    -------
+    torch.Tensor
+        Shape ``(N, k, input_dim)``, dtype ``float32``.
+    """
+    N = len(bics)
+    result = torch.zeros(N, k, input_dim, dtype=torch.float32)
+    for i, bic in enumerate(bics):
+        neighbors = graph.get_neighbors(bic, k)
+        for j, nbr in enumerate(neighbors):
+            nf = graph.get_node_features(nbr)
+            result[i, j] = torch.tensor(nf, dtype=torch.float32)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -86,18 +127,26 @@ class TrainingPipelineTorch:
         self,
         X_train: np.ndarray,
         y_train: np.ndarray,
+        graph: Optional[BICGraphBuilder] = None,
+        bic_train: Optional[List[str]] = None,
     ) -> GraphSAGETorch:
         """Pre-train the GraphSAGE model for 5 epochs with a temporary linear head.
 
         Uses a ``(384→1)`` temporary head and :class:`BCEWithLogitsLoss` with
-        ``pos_weight=7/3`` (equivalent to α=0.7 asymmetric BCE).
+        ``pos_weight=7/3`` (equivalent to α=0.7 asymmetric BCE).  When
+        ``graph`` and ``bic_train`` are provided, real BIC corridor neighbors
+        are used for aggregation; otherwise zero aggregation (legacy path).
 
         Parameters
         ----------
         X_train:
-            Training feature matrix ``(n_train, 88)``.
+            Training feature matrix ``(n_train, 96)``.
         y_train:
             Training labels ``(n_train,)``.
+        graph:
+            Optional populated :class:`BICGraphBuilder` for neighbor lookup.
+        bic_train:
+            Optional list of sending BIC codes (one per training record).
 
         Returns
         -------
@@ -111,7 +160,12 @@ class TrainingPipelineTorch:
         node_feats = _to_tensor(X_train[:, :graphsage.input_dim])
         labels = _to_tensor(y_train).unsqueeze(1)
 
-        dataset = TensorDataset(node_feats, labels)
+        use_graph = graph is not None and bic_train is not None
+        if use_graph:
+            nbr_tensor = _build_neighbor_tensor(bic_train, graph, self.config.k_neighbors_train)
+            dataset = TensorDataset(node_feats, labels, nbr_tensor)
+        else:
+            dataset = TensorDataset(node_feats, labels)
         loader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
 
         optimizer = torch.optim.Adam(
@@ -128,9 +182,11 @@ class TrainingPipelineTorch:
 
         for epoch in range(pre_epochs):
             total_loss = 0.0
-            for x_batch, y_batch in loader:
+            for batch in loader:
+                x_batch, y_batch = batch[0], batch[1]
+                nbr_batch = batch[2] if use_graph else None
                 optimizer.zero_grad()
-                emb = graphsage(x_batch)               # (B, 384)
+                emb = graphsage(x_batch, nbr_batch)    # (B, 384)
                 logits = temp_head(emb)                # (B, 1)
                 loss = criterion(logits, y_batch)
                 loss.backward()
@@ -154,13 +210,13 @@ class TrainingPipelineTorch:
     ) -> TabTransformerTorch:
         """Pre-train the TabTransformer for 5 epochs with a temporary linear head.
 
-        Uses a ``(88→1)`` temporary head and :class:`BCEWithLogitsLoss` with
-        ``pos_weight=7/3``.
+        Uses a ``(88→1)`` temporary head on the 88-dim output and
+        :class:`BCEWithLogitsLoss` with ``pos_weight=7/3``.
 
         Parameters
         ----------
         X_train:
-            Training feature matrix ``(n_train, 88)``.
+            Training feature matrix ``(n_train, 96)``.
         y_train:
             Training labels ``(n_train,)``.
 
@@ -169,7 +225,7 @@ class TrainingPipelineTorch:
         TabTransformerTorch
             Pre-trained TabTransformer module.
         """
-        tabtransformer = TabTransformerTorch()
+        tabtransformer = TabTransformerTorch(input_dim=96)
         temp_head = nn.Linear(tabtransformer.output_dim, 1)
         nn.init.xavier_uniform_(temp_head.weight)
 
@@ -220,13 +276,18 @@ class TrainingPipelineTorch:
         y_train: np.ndarray,
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
+        graph: Optional[BICGraphBuilder] = None,
+        bic_train: Optional[List[str]] = None,
+        bic_val: Optional[List[str]] = None,
     ) -> ClassifierModelTorch:
         """Joint end-to-end training with best-AUC checkpoint.
 
         Assembles :class:`ClassifierModelTorch` from pre-trained sub-models
         and trains for ``n_epochs`` using Adam with asymmetric BCE loss.
         Best-AUC checkpoint on the validation set (or training set if val
-        is not provided) is restored before returning.
+        is not provided) is restored before returning.  When ``graph`` and
+        ``bic_train`` are provided, real BIC corridor neighbors are wired
+        through the GraphSAGE aggregation path.
 
         Parameters
         ----------
@@ -235,9 +296,15 @@ class TrainingPipelineTorch:
         tabtransformer:
             Pre-trained :class:`TabTransformerTorch`.
         X_train, y_train:
-            Training data ``(n_train, 88)`` and labels.
+            Training data ``(n_train, 96)`` and labels.
         X_val, y_val:
             Optional validation data for checkpoint selection.
+        graph:
+            Optional populated :class:`BICGraphBuilder` for neighbor lookup.
+        bic_train:
+            Optional list of sending BIC codes for training records.
+        bic_val:
+            Optional list of sending BIC codes for validation records.
 
         Returns
         -------
@@ -255,7 +322,12 @@ class TrainingPipelineTorch:
         tab_feats = _to_tensor(X_train)
         labels = _to_tensor(y_train).unsqueeze(1)
 
-        dataset = TensorDataset(node_feats, tab_feats, labels)
+        use_graph = graph is not None and bic_train is not None
+        if use_graph:
+            nbr_train = _build_neighbor_tensor(bic_train, graph, self.config.k_neighbors_train)
+            dataset = TensorDataset(node_feats, tab_feats, labels, nbr_train)
+        else:
+            dataset = TensorDataset(node_feats, tab_feats, labels)
         loader = DataLoader(dataset, batch_size=self.config.batch_size, shuffle=True)
 
         optimizer = torch.optim.Adam(
@@ -274,6 +346,15 @@ class TrainingPipelineTorch:
         ckpt_y = y_val if y_val is not None else y_train
         ckpt_label = "val" if X_val is not None else "train"
 
+        # Pre-compute neighbor tensor for checkpoint eval set
+        if use_graph:
+            ckpt_bics = bic_val if (bic_val is not None and X_val is not None) else bic_train
+            ckpt_nbr: Optional[torch.Tensor] = _build_neighbor_tensor(
+                ckpt_bics, graph, self.config.k_neighbors_infer
+            )
+        else:
+            ckpt_nbr = None
+
         logger.info(
             "stage7_joint_training_torch: %d samples, %d epochs",
             len(y_train), self.config.n_epochs,
@@ -282,16 +363,18 @@ class TrainingPipelineTorch:
         for epoch in range(self.config.n_epochs):
             model.train()
             total_loss = 0.0
-            for nf_batch, tf_batch, y_batch in loader:
+            for batch in loader:
+                nf_batch, tf_batch, y_batch = batch[0], batch[1], batch[2]
+                nbr_batch = batch[3] if use_graph else None
                 optimizer.zero_grad()
-                logits = model(nf_batch, tf_batch)
+                logits = model(nf_batch, tf_batch, nbr_batch)
                 loss = criterion(logits, y_batch)
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item() * len(y_batch)
 
             avg_loss = total_loss / len(y_train)
-            auc = _eval_auc_torch(model, ckpt_X, ckpt_y)
+            auc = _eval_auc_torch(model, ckpt_X, ckpt_y, ckpt_nbr)
             logger.debug(
                 "Joint training epoch %d — avg_loss=%.5f  %s_auc=%.4f",
                 epoch + 1, avg_loss, ckpt_label, auc,
