@@ -2,6 +2,7 @@
 prefilter.py — Rejection code pre-filter
 C4 Spec Section 5.2: DISP/LEGL/FRAU/FRAD codes → immediate DISPUTE_CONFIRMED block
 """
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -103,6 +104,55 @@ _NEGATION_TOKENS: frozenset[str] = frozenset({
     # Spanish
     "sin", "ningún", "ninguna",
 })
+
+# ---------------------------------------------------------------------------
+# Contraction expansion (applied before whitespace tokenisation)
+# ---------------------------------------------------------------------------
+
+# French clitic contractions — maps each contracted form (both straight and
+# typographic apostrophe) to the expanded equivalent followed by a space so
+# that "n'est" → "ne est" and the existing negation guard catches "ne".
+_FRENCH_CONTRACTIONS: dict[str, str] = {
+    "n'": "ne ",        # standard apostrophe
+    "n\u2019": "ne ",   # typographic right single quotation mark (U+2019)
+    "j'": "je ",
+    "j\u2019": "je ",
+    "l'": "le ",
+    "l\u2019": "le ",
+    "d'": "de ",
+    "d\u2019": "de ",
+    "qu'": "que ",
+    "qu\u2019": "que ",
+    "c'": "ce ",
+    "c\u2019": "ce ",
+    "s'": "se ",
+    "s\u2019": "se ",
+    "m'": "me ",
+    "m\u2019": "me ",
+    "t'": "te ",
+    "t\u2019": "te ",
+}
+
+
+def _expand_contractions(text: str) -> str:
+    """Expand French and Spanish contractions before whitespace tokenisation.
+
+    French clitics (n', l', d', …) fuse with the following token and do not
+    split on whitespace, so "n'est disputé" tokenises as ["n'est", "disputé"]
+    and the negation token "ne" is never seen.  Expanding first produces
+    ["ne", "est", "disputé"] and the existing ``_is_negated`` guard fires.
+
+    Spanish ``del`` (de + el) and ``al`` (a + el) are grammatical contractions;
+    expanding them prevents false negation matches while keeping "fraude" etc.
+    detectable.
+    """
+    for contraction, expansion in _FRENCH_CONTRACTIONS.items():
+        text = text.replace(contraction, expansion)
+    # Spanish contracted prepositions — word-boundary guards against partial
+    # matches inside longer words (e.g. "admiral", "idal").
+    text = re.sub(r"\bdel\b", "de el", text)
+    text = re.sub(r"\bal\b", "a el", text)
+    return text
 
 
 def _find_keyword_token_pos(tokens: list[str], kw: str) -> int | None:
@@ -240,7 +290,7 @@ class PreFilter:
         Returns:
             A :class:`DisputeClass` if a keyword matched, else ``None``.
         """
-        lowered = narrative.lower()
+        lowered = _expand_contractions(narrative.lower())
         tokens = lowered.split()
 
         for kw in _CONFIRMED_KEYWORDS:
