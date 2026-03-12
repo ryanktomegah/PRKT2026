@@ -44,7 +44,7 @@ def main() -> None:
     # ── Extract features (tabular 88-dim) ────────────────────────────────────
     tab_eng = TabularFeatureEngineer()
     X = np.stack([tab_eng.extract(r) for r in data], axis=0).astype(np.float64)
-    y = np.array([r["is_failure"] for r in data], dtype=np.float64)
+    y = np.array([r["label"] for r in data], dtype=np.float64)
 
     # ── Deterministic head/tail split (no pipeline-internal RNG dependency) ──
     n_val = max(1, int(len(data) * args.val_split))
