@@ -424,8 +424,8 @@ class TrainingPipelineTorch:
         t0 = time.perf_counter()
         validated = numpy_pipeline.stage1_data_validation(records)
         graph = numpy_pipeline.stage2_graph_construction(validated)
-        X, y = numpy_pipeline.stage3_feature_extraction(validated, graph)
-        X_train, X_val, y_train, y_val = numpy_pipeline.stage4_train_val_split(X, y)
+        X, y, bics = numpy_pipeline.stage3_feature_extraction(validated, graph)
+        X_train, X_val, y_train, y_val, bic_train, bic_val = numpy_pipeline.stage4_train_val_split(X, y, bics)
         logger.info("Stages 1–4 complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()
@@ -433,7 +433,7 @@ class TrainingPipelineTorch:
         logger.info("Stage 5b (LightGBM) complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()
-        graphsage = self.stage5_graphsage_pretrain_torch(X_train, y_train)
+        graphsage = self.stage5_graphsage_pretrain_torch(X_train, y_train, graph, bic_train)
         logger.info("Stage 5 (GraphSAGE torch pretrain) complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()
@@ -442,7 +442,7 @@ class TrainingPipelineTorch:
 
         t0 = time.perf_counter()
         model = self.stage7_joint_training_torch(
-            graphsage, tabtransformer, X_train, y_train, X_val, y_val
+            graphsage, tabtransformer, X_train, y_train, X_val, y_val, graph, bic_train, bic_val
         )
         logger.info("Stage 7 (joint training) complete in %.3f s", time.perf_counter() - t0)
 

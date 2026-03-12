@@ -12,6 +12,8 @@ Output: 384-dimensional corridor embedding.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -76,13 +78,22 @@ class GraphSAGETorch(nn.Module):
         nn.init.xavier_uniform_(self.layer2.weight)
         nn.init.zeros_(self.layer2.bias)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        neighbor_feats: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """Compute the 384-dim GraphSAGE embedding for a batch of nodes.
 
         Parameters
         ----------
         x:
             Node feature tensor of shape ``(B, 8)``.
+        neighbor_feats:
+            Optional neighbor feature tensor of shape ``(B, k, 8)``.
+            When ``None``, zero aggregation (empty-neighbour path) is used —
+            identical to the legacy single-argument call, preserving checkpoint
+            compatibility (weight shapes are unchanged).
 
         Returns
         -------
@@ -92,14 +103,28 @@ class GraphSAGETorch(nn.Module):
         B = x.shape[0]
         device = x.device
 
-        # Layer 1: empty-neighbour aggregation → zeros
-        zeros1 = torch.zeros(B, self.input_dim, device=device, dtype=x.dtype)
-        h1 = F.relu(self.layer1(torch.cat([x, zeros1], dim=1)))  # (B, 256)
+        # Layer 1 aggregation: mean-pool raw neighbor features
+        if neighbor_feats is None:
+            agg1 = torch.zeros(B, self.input_dim, device=device, dtype=x.dtype)
+        else:
+            agg1 = neighbor_feats.mean(dim=1)  # (B, 8)
+
+        h1 = F.relu(self.layer1(torch.cat([x, agg1], dim=1)))  # (B, 256)
         h1 = F.normalize(h1, p=2, dim=1)
 
-        # Layer 2: empty-neighbour aggregation → zeros
-        zeros2 = torch.zeros(B, self.hidden_dim, device=device, dtype=x.dtype)
-        h2 = F.relu(self.layer2(torch.cat([h1, zeros2], dim=1)))  # (B, 384)
+        # Layer 2 aggregation: apply layer1 to each neighbor's raw features,
+        # then mean-pool the resulting hidden representations
+        if neighbor_feats is None:
+            agg2 = torch.zeros(B, self.hidden_dim, device=device, dtype=x.dtype)
+        else:
+            k = neighbor_feats.shape[1]
+            nbr_flat = neighbor_feats.reshape(B * k, self.input_dim)  # (B*k, 8)
+            zeros_nbr = torch.zeros(B * k, self.input_dim, device=device, dtype=x.dtype)
+            h1_nbr = F.relu(self.layer1(torch.cat([nbr_flat, zeros_nbr], dim=1)))  # (B*k, 256)
+            h1_nbr = F.normalize(h1_nbr, p=2, dim=1)
+            agg2 = h1_nbr.reshape(B, k, self.hidden_dim).mean(dim=1)  # (B, 256)
+
+        h2 = F.relu(self.layer2(torch.cat([h1, agg2], dim=1)))  # (B, 384)
         h2 = F.normalize(h2, p=2, dim=1)
 
         return h2

@@ -129,6 +129,7 @@ class ClassifierModelTorch(nn.Module):
         self,
         node_feat: torch.Tensor,
         tab_feat: torch.Tensor,
+        neighbor_feats: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Forward pass returning logits.
 
@@ -138,21 +139,25 @@ class ClassifierModelTorch(nn.Module):
             Shape ``(B, 8)`` — node features.
         tab_feat:
             Shape ``(B, 88)`` — tabular features.
+        neighbor_feats:
+            Optional shape ``(B, k, 8)`` — BIC graph neighbor features.
+            When ``None``, GraphSAGE uses zero aggregation (legacy path).
 
         Returns
         -------
         torch.Tensor
             Shape ``(B, 1)`` — raw logits.
         """
-        sage_emb = self.graphsage(node_feat)          # (B, 384)
-        tab_emb = self.tabtransformer(tab_feat)        # (B, 88)
-        fused = torch.cat([sage_emb, tab_emb], dim=1)  # (B, 472)
-        return self.mlp_head(fused)                    # (B, 1)
+        sage_emb = self.graphsage(node_feat, neighbor_feats)  # (B, 384)
+        tab_emb = self.tabtransformer(tab_feat)                # (B, 88)
+        fused = torch.cat([sage_emb, tab_emb], dim=1)          # (B, 472)
+        return self.mlp_head(fused)                            # (B, 1)
 
     def predict_proba(
         self,
         node_features: np.ndarray,
         tabular_features: np.ndarray,
+        neighbor_features: Optional[np.ndarray] = None,
     ) -> float:
         """Return the predicted failure probability for a single payment.
 
@@ -161,7 +166,10 @@ class ClassifierModelTorch(nn.Module):
         node_features:
             8-dim numpy array for the sending BIC node.
         tabular_features:
-            88-dim numpy array of tabular features.
+            Full feature vector (96-dim, node features prepended to tabular).
+        neighbor_features:
+            Optional ``(k, 8)`` numpy array of neighbor node features.
+            When ``None``, GraphSAGE uses zero aggregation.
 
         Returns
         -------
@@ -172,7 +180,11 @@ class ClassifierModelTorch(nn.Module):
         with torch.no_grad():
             nf = torch.tensor(node_features, dtype=torch.float32).unsqueeze(0)
             tf = torch.tensor(tabular_features, dtype=torch.float32).unsqueeze(0)
-            logit = self(nf, tf)
+            if neighbor_features is not None:
+                nbr = torch.tensor(neighbor_features, dtype=torch.float32).unsqueeze(0)
+            else:
+                nbr = None
+            logit = self(nf, tf, nbr)
             neural_prob = float(torch.sigmoid(logit).item())
 
         if self.lgbm_model is not None:
