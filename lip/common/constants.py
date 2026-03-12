@@ -22,7 +22,9 @@ ML_BASELINE_AUC = Decimal("0.739")
 ML_TARGET_AUC   = Decimal("0.850")
 
 # ── Dispute classifier targets ────────────────────────────────────────────────
-DISPUTE_FN_CURRENT = Decimal("0.08")   # current false-negative rate
+# Measured on 500-case negation suite after negation-aware prefilter
+# (commit 3808a74). Not yet validated on full synthetic corpus.
+DISPUTE_FN_CURRENT = Decimal("0.01")   # current false-negative rate
 DISPUTE_FN_TARGET  = Decimal("0.02")   # target false-negative rate
 
 # ── Corridor embedding dimensions ────────────────────────────────────────────
