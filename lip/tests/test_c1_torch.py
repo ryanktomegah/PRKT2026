@@ -40,7 +40,10 @@ def _limit_torch_threads():
     (``nn.MultiheadAttention`` forward) and do not affect NumPy inference.
     """
     torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass  # already set by an earlier session fixture (e.g. test_c1_graphsage_neighbors.py)
 
 
 # ---------------------------------------------------------------------------

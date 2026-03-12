@@ -27,7 +27,10 @@ from lip.c1_failure_classifier.training_torch import (
 @pytest.fixture(scope="session", autouse=True)
 def _torch_single_thread():
     torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass  # already set by another session fixture or parallel work has started
 
 
 # ---------------------------------------------------------------------------
