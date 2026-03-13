@@ -21,6 +21,7 @@ from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
 from .human_override import HumanOverrideInterface
 from .kill_switch import KillSwitch
+from .offer_delivery import OfferDeliveryService
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,7 @@ class ExecutionAgent:
         config: Optional[ExecutionConfig] = None,
         licensee_id: str = "",
         max_tps: int = 0,
+        offer_delivery: Optional[OfferDeliveryService] = None,
     ) -> None:
         self.kill_switch = kill_switch
         self.decision_logger = decision_logger
@@ -92,6 +94,7 @@ class ExecutionAgent:
         self.config = config or ExecutionConfig()
         self.licensee_id = licensee_id
         self._tps_limiter = _TPSLimiter(max_tps=max_tps)
+        self.offer_delivery = offer_delivery
 
     # ── main processing entry point ──────────────────────────────────────────
 
@@ -171,14 +174,29 @@ class ExecutionAgent:
             )
             return {"status": "DECLINE", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": None}
 
-        # 5. Build offer
+        # 5. Build offer and deliver to ELO treasury if delivery service is wired
         offer = self._build_loan_offer(payment_context, pd_score, fee_bps)
+        delivery_id: Optional[str] = None
+        if self.offer_delivery is not None:
+            delivery = self.offer_delivery.deliver(offer)
+            delivery_id = str(delivery.delivery_id)
+            logger.info(
+                "Offer delivery registered: offer_id=%s delivery_id=%s",
+                offer["loan_id"],
+                delivery_id,
+            )
         entry_id = self._log_decision(
             uetr, individual_payment_id, "OFFER",
             failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
             human_override=human_override_applied,
         )
-        return {"status": "OFFER", "loan_offer": offer, "decision_entry_id": entry_id, "halt_reason": None}
+        return {
+            "status": "OFFER",
+            "loan_offer": offer,
+            "decision_entry_id": entry_id,
+            "halt_reason": None,
+            "delivery_id": delivery_id,
+        }
 
     # ── helpers ──────────────────────────────────────────────────────────────
 

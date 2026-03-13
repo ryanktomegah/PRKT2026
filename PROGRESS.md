@@ -83,7 +83,12 @@
 
 ## Immediate Next Engineering Tasks (ordered)
 
-1. **GAP-01**: `LoanOfferDelivery` webhook + acceptance API — this unblocks all pipeline validation
+1. **GAP-01**: `LoanOfferDelivery` webhook + acceptance API — ✅ **COMPLETE (2026-03-13)**
+   - New: `lip/c7_execution_agent/offer_delivery.py` — `OfferDeliveryService` with thread-safe PENDING/ACCEPTED/REJECTED/EXPIRED lifecycle
+   - New: 3 schemas in `lip/common/schemas.py` — `LoanOfferDelivery`, `LoanOfferAcceptance`, `LoanOfferRejection`
+   - Updated: `lip/c7_execution_agent/agent.py` — wires `offer_delivery` param; OFFER response now includes `delivery_id`
+   - Updated: `lip/c7_execution_agent/__init__.py` — exports new symbols
+   - New: `lip/tests/test_c7_offer_delivery.py` — 62 tests, all passing
 2. **GAP-02**: Licensee-configurable AML caps via license token
 3. **GAP-03**: `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state
 4. **GAP-05**: `BPIRoyaltySettlement` monthly batch mechanism
@@ -165,4 +170,4 @@ least one client. This is correct behavior. Banks must understand this before go
 
 ---
 
-*Last updated: 2026-03-13 — Session: CI fix + Client Perspective Analysis complete*
+*Last updated: 2026-03-13 — Session: GAP-01 complete (offer delivery protocol, 62 tests)*

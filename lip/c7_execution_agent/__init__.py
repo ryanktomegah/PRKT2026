@@ -13,8 +13,17 @@ from .decision_log import DecisionLogger
 from .degraded_mode import DegradedModeManager
 from .human_override import HumanOverrideInterface
 from .kill_switch import KillSwitch
+from .offer_delivery import (
+    OfferAlreadyResolvedException,
+    OfferDeliveryOutcome,
+    OfferDeliveryService,
+    OfferExpiredException,
+    OfferNotFoundException,
+)
 
 __all__ = [
     "ExecutionAgent", "KillSwitch", "DecisionLogger",
     "HumanOverrideInterface", "DegradedModeManager",
+    "OfferDeliveryService", "OfferDeliveryOutcome",
+    "OfferNotFoundException", "OfferExpiredException", "OfferAlreadyResolvedException",
 ]
