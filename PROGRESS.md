@@ -8,25 +8,35 @@
 ## Current Status: 2026-03-13
 
 ### Last Session Work
-- **CI Fix**: Fixed `RuntimeError: cannot set number of interop threads after parallel work
-  has started` — both `test_c1_torch.py` and `test_c1_graphsage_neighbors.py` now wrap
-  `torch.set_num_interop_threads(1)` in `try/except RuntimeError`. Committed `cee2a44`,
-  pushed to main. CI run `23024495328` triggered — monitor for green.
+- **GAP-01 COMPLETE**: Implemented loan offer delivery and acceptance protocol.
+  - New: `lip/c7_execution_agent/offer_delivery.py` — `OfferDeliveryService` with thread-safe
+    PENDING/ACCEPTED/REJECTED/EXPIRED lifecycle; `on_accept`/`on_reject`/`on_expire` callbacks
+    for downstream C3 wiring; `expire_stale_offers()` for background sweep.
+  - New schemas in `lip/common/schemas.py`: `LoanOfferDelivery`, `LoanOfferAcceptance`,
+    `LoanOfferRejection` (S4.9).
+  - Updated `lip/c7_execution_agent/agent.py`: `offer_delivery` parameter wired into constructor;
+    OFFER response now includes `delivery_id`.
+  - Updated `lip/c7_execution_agent/__init__.py`: exports `OfferDeliveryService`,
+    `OfferDeliveryOutcome`, `OfferNotFoundException`, `OfferExpiredException`,
+    `OfferAlreadyResolvedException`.
+  - New: `lip/tests/test_c7_offer_delivery.py` — **62 tests, all passing**.
+  - Committed `0e7c69a`, pushed to `feat/e2e-simulation-harness`.
 
-- **Client Perspective Analysis**: Completed `CLIENT_PERSPECTIVE_ANALYSIS.md` (842 lines).
-  Examines LIP's architecture from the perspective of every external stakeholder type.
-  Identified **5 Tier-1 pre-launch blockers** and **16 total gaps**.
+- **Previous sessions** (for reference):
+  - `cee2a44` — CI fix for torch interop threads
+  - Prior — `CLIENT_PERSPECTIVE_ANALYSIS.md` (842 lines), 5 Tier-1 blockers, 16 total gaps
 
 ---
 
-## Test Suite Status (as of `cee2a44`)
+## Test Suite Status (as of `0e7c69a`)
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,010 |
+| Tests passing (local) | 1,072 (was 1,010 + 62 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
-| Last CI result | Failure (`f8df467`) — fixed in `cee2a44`, CI in progress |
+| Active branch | `feat/e2e-simulation-harness` |
+| Last CI result | `cee2a44` fixed prior failure — new CI not yet triggered for GAP-01 |
 
 ---
 
@@ -40,61 +50,65 @@
 | C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. LLM backend = mock (needs production backend) |
 | C5 Streaming | ✅ Complete | Kafka worker, Flink jobs, event normalizer |
 | C6 AML Velocity | ✅ Complete | Sanctions, velocity caps, salt rotation |
-| C7 Execution Agent | ✅ Complete | Kill switch, human override, degraded mode, decision log |
+| C7 Execution Agent | ✅ Complete | Kill switch, human override, degraded mode, decision log, **offer delivery (GAP-01)** |
 | C8 License Manager | ✅ Complete | HMAC token, boot validation |
 
 ---
 
-## Critical Gaps Identified (from CLIENT_PERSPECTIVE_ANALYSIS.md)
+## Critical Gaps — Implementation Status
 
-### TIER 1 — Pre-Launch Blockers (fix before any pilot bank discussion)
+### TIER 1 — Pre-Launch Blockers
 
-| Gap | Description | Next Engineering Action |
-|-----|-------------|------------------------|
-| GAP-01 | **No loan acceptance protocol** — LoanOffer generated with no delivery/acceptance mechanism | Design `LoanOfferDelivery` webhook + `LoanOfferAcceptance` callback schema |
-| GAP-02 | **AML velocity caps unscalable** — $1M/entity/24h blocks institutional SWIFT flow | Add `aml_dollar_cap_usd`, `aml_count_cap` to license token; read from LicenseeContext in C6 |
-| GAP-03 | **No enrolled borrower registry** — loans made to BICs with no signed framework agreement | Build `BorrowerRegistry`, wire as C7 first-gate check, add `BORROWER_NOT_ENROLLED` terminal state |
-| GAP-04 | **No retry detection** — manual payment retries cause double-funding | Build Redis-backed `RetryDetector` with 30-min tuple window in C5 |
-| GAP-05 | **No BPI royalty collection** — royalty calculated but never transferred to BPI | Monthly batch `BPIRoyaltySettlement` schema + trigger |
-| GAP-06 | **No SWIFT message spec for bridge disbursement** — beneficiary cannot reconcile incoming funds | Define pacs.008 template with original UETR in remittance info |
-| GAP-17 | **Disbursement amount not anchored to original payment** — `agent.py:125` reads `payment_context.get("loan_amount", "0")` with no validation against original payment amount. Default is `"0"`. Silent failure risk. | Add `original_payment_amount_usd` to NormalizedEvent; validate in `_build_loan_offer` that `loan_amount == original_payment_amount_usd ± $0.01` |
+| Gap | Description | Status |
+|-----|-------------|--------|
+| GAP-01 | **No loan acceptance protocol** | ✅ **DONE** — `OfferDeliveryService`, 3 schemas, 62 tests (`0e7c69a`) |
+| GAP-02 | **AML velocity caps unscalable** — $1M/entity/24h blocks institutional SWIFT flow | ⏳ Next |
+| GAP-03 | **No enrolled borrower registry** — loans made to BICs with no signed framework agreement | ⏳ Pending |
+| GAP-04 | **No retry detection** — manual retries cause double-funding | ⏳ Pending |
+| GAP-05 | **No BPI royalty collection** — royalty calculated but never transferred | ⏳ Pending |
+| GAP-06 | **No SWIFT message spec for bridge disbursement** — beneficiary cannot reconcile | ⏳ Pending |
+| GAP-17 | **Disbursement amount not anchored** — `loan_amount` read from context with no validation | ⏳ Pending |
 
-### TIER 2 — First-Month Operational (fix before first live payment)
+### TIER 2 — First-Month Operational
 
-| Gap | Description |
-|-----|-------------|
-| GAP-07 | No portfolio reporting API for MLO |
-| GAP-08 | Human override timeout outcome undefined |
-| GAP-09 | Calendar-day maturities misfire on non-business days |
-| GAP-10 | No governing law / jurisdiction field on LoanOffer |
-| GAP-11 | Thin-file Tier 3 for creditworthy established banks |
-| GAP-12 | FX risk undefined for cross-currency corridors |
+| Gap | Description | Status |
+|-----|-------------|--------|
+| GAP-07 | No portfolio reporting API for MLO | ⏳ Pending |
+| GAP-08 | Human override timeout outcome undefined | ⏳ Pending |
+| GAP-09 | Calendar-day maturities misfire on non-business days | ⏳ Pending |
+| GAP-10 | No governing law / jurisdiction field on LoanOffer | ⏳ Pending |
+| GAP-11 | Thin-file Tier 3 for creditworthy established banks | ⏳ Pending |
+| GAP-12 | FX risk undefined for cross-currency corridors | ⏳ Pending |
 
 ### TIER 3 — Full Commercial Readiness
 
-| Gap | Description |
-|-----|-------------|
-| GAP-13 | No customer-facing notification framework |
-| GAP-14 | No regulatory reporting format (DORA, SR 11-7) |
-| GAP-15 | No BPI admin / multi-tenant monitoring |
-| GAP-16 | Partial settlement handling undefined |
+| Gap | Description | Status |
+|-----|-------------|--------|
+| GAP-13 | No customer-facing notification framework | ⏳ Pending |
+| GAP-14 | No regulatory reporting format (DORA, SR 11-7) | ⏳ Pending |
+| GAP-15 | No BPI admin / multi-tenant monitoring | ⏳ Pending |
+| GAP-16 | Partial settlement handling undefined | ⏳ Pending |
 
 ---
 
 ## Immediate Next Engineering Tasks (ordered)
 
-1. **GAP-01**: `LoanOfferDelivery` webhook + acceptance API — ✅ **COMPLETE (2026-03-13)**
-   - New: `lip/c7_execution_agent/offer_delivery.py` — `OfferDeliveryService` with thread-safe PENDING/ACCEPTED/REJECTED/EXPIRED lifecycle
-   - New: 3 schemas in `lip/common/schemas.py` — `LoanOfferDelivery`, `LoanOfferAcceptance`, `LoanOfferRejection`
-   - Updated: `lip/c7_execution_agent/agent.py` — wires `offer_delivery` param; OFFER response now includes `delivery_id`
-   - Updated: `lip/c7_execution_agent/__init__.py` — exports new symbols
-   - New: `lip/tests/test_c7_offer_delivery.py` — 62 tests, all passing
-2. **GAP-02**: Licensee-configurable AML caps via license token
-3. **GAP-03**: `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state
-4. **GAP-05**: `BPIRoyaltySettlement` monthly batch mechanism
-5. **GAP-17**: `original_payment_amount_usd` in NormalizedEvent + validation in `_build_loan_offer`
-6. **Stress Regime Detector**: `StressRegimeDetector` in C5 (corridor_failure_rate_1h > 3× baseline triggers conservative mode)
-7. **GAP-04**: Redis-backed `RetryDetector` (30-min tuple window)
+1. ✅ **GAP-01** — Offer delivery and acceptance protocol (`0e7c69a`)
+2. **GAP-02** — Licensee-configurable AML caps via license token
+   - Add `aml_dollar_cap_usd` and `aml_count_cap` fields to `LicenseToken` / `LicenseeContext`
+   - Update `VelocityChecker.check()` to accept per-call cap overrides
+   - Update C7 `process_payment` to pass licensee caps from `LicenseeContext` to C6
+   - Files: `lip/c8_license_manager/license_token.py`, `lip/c6_aml_velocity/velocity.py`,
+     `lip/c7_execution_agent/agent.py`
+3. **GAP-03** — `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state
+   - New `lip/common/borrower_registry.py`; C7 checks registry BEFORE all other logic
+4. **GAP-05** — `BPIRoyaltySettlement` monthly batch mechanism
+   - New `lip/common/royalty_settlement.py`; triggered from C3 repayment callback
+5. **GAP-17** — `original_payment_amount_usd` in NormalizedEvent + validation in `_build_loan_offer`
+6. **Stress Regime Detector** — `StressRegimeDetector` in C5 (corridor_failure_rate_1h > 3× baseline)
+   - New `lip/c5_streaming/stress_regime_detector.py`
+7. **GAP-04** — Redis-backed `RetryDetector` (30-min tuple window)
+   - New `lip/c5_streaming/retry_detector.py`
 
 ---
 
@@ -128,7 +142,7 @@ Receiver always receives 100% of original payment amount (GAP-17 validation enfo
 
 1. Bank signs BPI License Agreement → C8 loads and validates token at boot
 2. Bank obtains signed MRFA from each corporate client → authorizes automatic fee debit
-3. Bank registers each client's BIC in Enrolled Borrower Registry → C7 permits offers
+3. Bank registers each client's BIC in Enrolled Borrower Registry → C7 permits offers (GAP-03)
 
 LIP returns `BORROWER_NOT_ENROLLED` for every offer until Step 3 is complete for at
 least one client. This is correct behavior. Banks must understand this before go-live.
@@ -170,4 +184,4 @@ least one client. This is correct behavior. Banks must understand this before go
 
 ---
 
-*Last updated: 2026-03-13 — Session: GAP-01 complete (offer delivery protocol, 62 tests)*
+*Last updated: 2026-03-13 — Session: GAP-01 complete (offer delivery protocol, 62 tests, commit `0e7c69a`). Next: GAP-02 (AML caps).*
