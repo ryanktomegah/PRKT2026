@@ -589,6 +589,7 @@ class LIPPipeline:
                 rejection_class=rej_class,
                 corridor=f"{event.currency}_USD",
                 funded_at=now_utc,
+                licensee_id=getattr(self._c7, "licensee_id", ""),
             )
             self._c3.register_loan(loan)
             logger.info(

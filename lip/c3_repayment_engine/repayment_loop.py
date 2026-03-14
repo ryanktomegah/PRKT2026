@@ -56,6 +56,7 @@ class ActiveLoan:
     rejection_class: str
     corridor: str
     funded_at: datetime
+    licensee_id: str = ""
 
 
 class RepaymentTrigger(str, Enum):
@@ -326,6 +327,7 @@ class RepaymentLoop:
             "fee": str(fee),
             "platform_royalty": str(platform_royalty),
             "net_fee_to_entities": str(net_fee_to_entities),
+            "licensee_id": loan.licensee_id,
             "fee_bps": loan.fee_bps,
             "settlement_amount": str(settlement_amount),
             "corridor": loan.corridor,

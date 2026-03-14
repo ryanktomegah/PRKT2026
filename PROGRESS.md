@@ -5,20 +5,20 @@
 
 ---
 
-- **GAP-04 COMPLETE**: Retry detection (idempotency).
-  - New: `lip/common/uetr_tracker.py` — `UETRTracker` for thread-safe duplicate detection.
-  - Updated `PipelineResult` (C7) to include `RETRY_BLOCKED` outcome.
-  - Updated `LIPPipeline` to inject `uetr_tracker` and block duplicate UETRs.
-  - Updated `lip/tests/test_e2e_latency.py` to use unique UETRs.
-  - New: `lip/tests/test_gap04_retry_detection.py` — **4 integration tests, all passing**.
+- **GAP-05 COMPLETE**: BPI royalty collection (monthly settlement).
+  - New: `lip/common/royalty_settlement.py` — `BPIRoyaltySettlement` for monthly aggregation.
+  - Updated `ActiveLoan` (C3) and `SettlementMonitor` to propagate `licensee_id`.
+  - Updated `LIPPipeline` to pass `licensee_id` to the repayment registry.
+  - Updated `trigger_repayment` (C3) to include `licensee_id` in repayment records.
+  - New: `lip/tests/test_gap05_royalty_collection.py` — **4 integration tests, all passing**.
 
 ---
 
-## Test Suite Status (as of GAP-04 complete)
+## Test Suite Status (as of GAP-05 complete)
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,082 (was 1,078 + 4 new) |
+| Tests passing (local) | 1,086 (was 1,082 + 4 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
 | Active branch | `feat/e2e-simulation-harness` |
@@ -31,11 +31,11 @@
 |-----------|--------|-------|
 | C1 Failure Classifier | ✅ Complete | val_AUC=0.9998 on synthetic. |
 | C2 PD Model | ✅ Complete | Tier 1/2/3 routing, 300 bps floor |
-| C3 Repayment Engine | ✅ Complete | UETR TTL, 5 rails |
+| C3 Repayment Engine | ✅ Complete | UETR TTL, 5 rails, **royalty tracking (GAP-05)** |
 | C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. |
 | C5 Streaming | ✅ Complete | Kafka worker, Flink jobs |
 | C6 AML Velocity | ✅ Complete | Sanctions, configurable velocity caps |
-| C7 Execution Agent | ✅ Complete | offer delivery, borrower registry, **retry detection (GAP-04)** |
+| C7 Execution Agent | ✅ Complete | offer delivery, borrower registry, retry detection |
 | C8 License Manager | ✅ Complete | caps in license token |
 
 ---
@@ -50,8 +50,8 @@
 | GAP-02 | **AML velocity caps unscalable** | ✅ **DONE** |
 | GAP-03 | **No enrolled borrower registry** | ✅ **DONE** |
 | GAP-04 | **No retry detection** | ✅ **DONE** |
-| GAP-05 | **No BPI royalty collection** | ⏳ Next |
-| GAP-06 | **No SWIFT message spec for bridge disbursement** | ⏳ Pending |
+| GAP-05 | **No BPI royalty collection** | ✅ **DONE** |
+| GAP-06 | **No SWIFT message spec for bridge disbursement** | ⏳ Next |
 | GAP-17 | **Disbursement amount not anchored** | ⏳ Pending |
 
 ### TIER 2 — First-Month Operational
