@@ -288,14 +288,15 @@ class LIPPipeline:
         # Determine maturity_days from rejection code
         maturity = self._derive_maturity_days(event.rejection_code)
 
-        # --- Step 4: C7 execution ------------------------------------------
+        # --- Step 5: C7 Execution decision (OFFER / DECLINE / BLOCK) -------
         payment_context = {
             "uetr": event.uetr,
             "individual_payment_id": event.individual_payment_id,
+            "sending_bic": event.sending_bic,
             "failure_probability": failure_probability,
             "pd_score": pd_estimate,
             "fee_bps": fee_bps,
-            "loan_amount": str(event.amount),
+            "loan_amount": event.amount,
             "dispute_class": dispute_class_str,
             "aml_passed": aml_passed,
             "maturity_days": maturity,

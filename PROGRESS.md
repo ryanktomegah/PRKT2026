@@ -5,25 +5,19 @@
 
 ---
 
-## Current Status: 2026-03-13
-
-### Last Session Work
-- **GAP-01 COMPLETE**: Implemented loan offer delivery and acceptance protocol.
-- **GAP-02 COMPLETE**: Licensee-configurable AML caps via license token.
-  - New: `aml_dollar_cap_usd` and `aml_count_cap` added to `LicenseToken` and `LicenseeContext` (C8).
-  - Updated `VelocityChecker.check()` (C6) and `AMLChecker.check()` to accept cap overrides.
-  - Updated `ExecutionAgent` (C7) to store licensee-specific AML caps.
-  - Updated `LIPPipeline` to pass licensee caps from C7 to C6 during the AML check.
-  - New: `lip/tests/test_gap02_aml_caps.py` — **3 integration tests, all passing**.
-  - Updated `lip/tests/test_c8_license.py` to cover new fields.
+- **GAP-03 COMPLETE**: Enrolled borrower registry (BIC whitelist).
+  - Added `enrolled_borrowers` set to `ExecutionConfig` (C7).
+  - Implemented enrollment check in `ExecutionAgent.process_payment`.
+  - Updated `LIPPipeline` to pass `sending_bic` into C7 context.
+  - New: `lip/tests/test_gap03_borrower_registry.py` — **3 integration tests, all passing**.
 
 ---
 
-## Test Suite Status (as of GAP-02 complete)
+## Test Suite Status (as of GAP-03 complete)
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,075 (was 1,072 + 3 new) |
+| Tests passing (local) | 1,078 (was 1,075 + 3 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
 | Active branch | `feat/e2e-simulation-harness` |
@@ -39,9 +33,9 @@
 | C3 Repayment Engine | ✅ Complete | UETR TTL, 5 rails |
 | C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. |
 | C5 Streaming | ✅ Complete | Kafka worker, Flink jobs |
-| C6 AML Velocity | ✅ Complete | Sanctions, **configurable velocity caps (GAP-02)** |
-| C7 Execution Agent | ✅ Complete | **offer delivery (GAP-01)**, **stores licensee caps (GAP-02)** |
-| C8 License Manager | ✅ Complete | **caps in license token (GAP-02)** |
+| C6 AML Velocity | ✅ Complete | Sanctions, configurable velocity caps |
+| C7 Execution Agent | ✅ Complete | offer delivery, stores licensee caps, **borrower registry (GAP-03)** |
+| C8 License Manager | ✅ Complete | caps in license token |
 
 ---
 
@@ -53,8 +47,8 @@
 |-----|-------------|--------|
 | GAP-01 | **No loan acceptance protocol** | ✅ **DONE** |
 | GAP-02 | **AML velocity caps unscalable** | ✅ **DONE** |
-| GAP-03 | **No enrolled borrower registry** | ⏳ Next |
-| GAP-04 | **No retry detection** | ⏳ Pending |
+| GAP-03 | **No enrolled borrower registry** | ✅ **DONE** |
+| GAP-04 | **No retry detection** | ⏳ Next |
 | GAP-05 | **No BPI royalty collection** | ⏳ Pending |
 | GAP-06 | **No SWIFT message spec for bridge disbursement** | ⏳ Pending |
 | GAP-17 | **Disbursement amount not anchored** | ⏳ Pending |

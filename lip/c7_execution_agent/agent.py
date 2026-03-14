@@ -32,6 +32,7 @@ class ExecutionConfig:
     max_loan_amount: Decimal = field(default_factory=lambda: Decimal("10000000"))
     auto_approve_threshold: float = 0.95
     require_human_review_above_pd: float = 0.20
+    enrolled_borrowers: set[str] = field(default_factory=set)
 
 
 class _TPSLimiter:
@@ -125,6 +126,29 @@ class ExecutionAgent:
             reason = "kill_switch_active" if self.kill_switch.is_active() else "kms_unavailable"
             logger.warning("Halting new offer for uetr=%s reason=%s", uetr, reason)
             return {"status": "HALT", "loan_offer": None, "decision_entry_id": None, "halt_reason": reason}
+
+        # 1b. Borrower enrollment guard (GAP-03)
+        sending_bic = payment_context.get("sending_bic", "")
+        if self.config.enrolled_borrowers and sending_bic not in self.config.enrolled_borrowers:
+            logger.warning("Borrower not enrolled: bic=%s uetr=%s", sending_bic, uetr)
+            # Use BLOCK status for unenrolled borrowers as it's a policy-based hard gate
+            failure_prob = float(payment_context.get("failure_probability", 0.0))
+            pd_score = float(payment_context.get("pd_score", 0.0))
+            fee_bps = int(payment_context.get("fee_bps", 300))
+            loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
+            dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
+            aml_passed = bool(payment_context.get("aml_passed", True))
+
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "BLOCK",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+            )
+            return {
+                "status": "BLOCK",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "borrower_not_enrolled"
+            }
 
         failure_prob = float(payment_context.get("failure_probability", 0.0))
         pd_score = float(payment_context.get("pd_score", 0.0))
