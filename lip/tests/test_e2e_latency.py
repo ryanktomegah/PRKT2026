@@ -11,6 +11,7 @@ Verifies:
 from __future__ import annotations
 
 import time
+import uuid
 
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c6_aml_velocity.velocity import VelocityChecker
@@ -144,14 +145,13 @@ class TestPipelineLatency:
         assert "c4" not in result.component_latencies
         assert "c2" not in result.component_latencies
 
-    def test_p50_under_100ms_in_process(self):
-        """p50 for the full in-process pipeline must be < 100ms (no network)."""
+    def test_p50_latency_target(self):
         global_tracker = LatencyTracker()
         pipeline = _build_pipeline(global_tracker=global_tracker)
-        event = make_event(rejection_code="CURR")
 
         # Run 10 times to get stable p50
         for _ in range(10):
+            event = make_event(rejection_code="CURR", uetr=str(uuid.uuid4()))
             pipeline.process(event)
 
         p50 = global_tracker.p50("total")
@@ -161,9 +161,9 @@ class TestPipelineLatency:
     def test_global_tracker_accumulates_across_calls(self):
         global_tracker = LatencyTracker()
         pipeline = _build_pipeline(global_tracker=global_tracker)
-        event = make_event(rejection_code="CURR")
 
         for _ in range(5):
+            event = make_event(rejection_code="CURR", uetr=str(uuid.uuid4()))
             pipeline.process(event)
 
         assert global_tracker.sample_count("total") == 5

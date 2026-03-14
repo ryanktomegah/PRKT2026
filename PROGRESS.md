@@ -5,19 +5,20 @@
 
 ---
 
-- **GAP-03 COMPLETE**: Enrolled borrower registry (BIC whitelist).
-  - Added `enrolled_borrowers` set to `ExecutionConfig` (C7).
-  - Implemented enrollment check in `ExecutionAgent.process_payment`.
-  - Updated `LIPPipeline` to pass `sending_bic` into C7 context.
-  - New: `lip/tests/test_gap03_borrower_registry.py` — **3 integration tests, all passing**.
+- **GAP-04 COMPLETE**: Retry detection (idempotency).
+  - New: `lip/common/uetr_tracker.py` — `UETRTracker` for thread-safe duplicate detection.
+  - Updated `PipelineResult` (C7) to include `RETRY_BLOCKED` outcome.
+  - Updated `LIPPipeline` to inject `uetr_tracker` and block duplicate UETRs.
+  - Updated `lip/tests/test_e2e_latency.py` to use unique UETRs.
+  - New: `lip/tests/test_gap04_retry_detection.py` — **4 integration tests, all passing**.
 
 ---
 
-## Test Suite Status (as of GAP-03 complete)
+## Test Suite Status (as of GAP-04 complete)
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,078 (was 1,075 + 3 new) |
+| Tests passing (local) | 1,082 (was 1,078 + 4 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
 | Active branch | `feat/e2e-simulation-harness` |
@@ -34,7 +35,7 @@
 | C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. |
 | C5 Streaming | ✅ Complete | Kafka worker, Flink jobs |
 | C6 AML Velocity | ✅ Complete | Sanctions, configurable velocity caps |
-| C7 Execution Agent | ✅ Complete | offer delivery, stores licensee caps, **borrower registry (GAP-03)** |
+| C7 Execution Agent | ✅ Complete | offer delivery, borrower registry, **retry detection (GAP-04)** |
 | C8 License Manager | ✅ Complete | caps in license token |
 
 ---
@@ -48,8 +49,8 @@
 | GAP-01 | **No loan acceptance protocol** | ✅ **DONE** |
 | GAP-02 | **AML velocity caps unscalable** | ✅ **DONE** |
 | GAP-03 | **No enrolled borrower registry** | ✅ **DONE** |
-| GAP-04 | **No retry detection** | ⏳ Next |
-| GAP-05 | **No BPI royalty collection** | ⏳ Pending |
+| GAP-04 | **No retry detection** | ✅ **DONE** |
+| GAP-05 | **No BPI royalty collection** | ⏳ Next |
 | GAP-06 | **No SWIFT message spec for bridge disbursement** | ⏳ Pending |
 | GAP-17 | **Disbursement amount not anchored** | ⏳ Pending |
 

@@ -23,7 +23,8 @@ class PipelineResult:
     outcome:
         Final pipeline outcome. One of:
         ``"FUNDED"`` | ``"DISPUTE_BLOCKED"`` | ``"AML_BLOCKED"`` |
-        ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"``
+        ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"`` |
+        ``"RETRY_BLOCKED"``
     uetr:
         Unique end-to-end transaction reference from the input event.
     failure_probability:

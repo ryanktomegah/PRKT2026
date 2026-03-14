@@ -47,6 +47,7 @@ from lip.common.state_machines import (
     PaymentState,
     PaymentStateMachine,
 )
+from lip.common.uetr_tracker import UETRTracker
 from lip.instrumentation import LatencyTracker
 from lip.pipeline_result import PipelineResult
 
@@ -96,6 +97,9 @@ class LIPPipeline:
     c3_monitor:
         Optional ``SettlementMonitor`` instance.  When provided, funded loans
         are registered for settlement monitoring.
+    uetr_tracker:
+        Optional ``UETRTracker`` instance for retry detection (GAP-04).
+        If ``None``, a new local tracker is created.
     threshold:
         Decision threshold (default: ``FAILURE_PROBABILITY_THRESHOLD``).
     global_latency_tracker:
@@ -111,6 +115,7 @@ class LIPPipeline:
         c6_checker: Any,
         c7_agent: Any,
         c3_monitor: Optional[Any] = None,
+        uetr_tracker: Optional[UETRTracker] = None,
         threshold: float = FAILURE_PROBABILITY_THRESHOLD,
         global_latency_tracker: Optional[LatencyTracker] = None,
     ) -> None:
@@ -120,6 +125,7 @@ class LIPPipeline:
         self._c6 = c6_checker
         self._c7 = c7_agent
         self._c3 = c3_monitor
+        self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
 
@@ -156,6 +162,19 @@ class LIPPipeline:
         """
         t_start = time.perf_counter()
         tracker = LatencyTracker()
+
+        # --- GAP-04: Retry Detection ---------------------------------------
+        if self._uetr_tracker.is_retry(event.uetr):
+            logger.warning("Retry detected: uetr=%s - blocking to prevent double-funding", event.uetr)
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            return PipelineResult(
+                outcome="RETRY_BLOCKED",
+                uetr=event.uetr,
+                failure_probability=0.0,
+                above_threshold=False,
+                total_latency_ms=total_ms,
+            )
+
         borrower = borrower or {}
         entity_id = entity_id or event.sending_bic
         beneficiary_id = beneficiary_id or event.receiving_bic
@@ -168,6 +187,11 @@ class LIPPipeline:
         def _record_payment_transition(new_state: PaymentState) -> None:
             payment_sm.transition(new_state)
             state_history.append(payment_sm.current_state.value)
+
+        def _record_and_return(res: PipelineResult) -> PipelineResult:
+            self._uetr_tracker.record(res.uetr, res.outcome)
+            self._record_global(tracker, res.total_latency_ms)
+            return res
 
         # --- Step 1: C1 inference -------------------------------------------
         payment_dict = self._event_to_payment_dict(event)
@@ -192,8 +216,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # Transition: MONITORING → FAILURE_DETECTED
         _record_payment_transition(PaymentState.FAILURE_DETECTED)
@@ -244,8 +267,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- C6 hard block check -------------------------------------------
         if aml_hard_block:
@@ -269,8 +291,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- Step 3: C2 PD inference ---------------------------------------
         with tracker.measure("c2"):
@@ -330,8 +351,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- Handle C7 DECLINE ---------------------------------------------
         if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW"):
@@ -356,8 +376,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- OFFER accepted → FUNDED --------------------------------------
         # Transition: FAILURE_DETECTED → BRIDGE_OFFERED → FUNDED
@@ -395,8 +414,7 @@ class LIPPipeline:
             component_latencies=tracker.get_latest_all(),
             total_latency_ms=total_ms,
         )
-        self._record_global(tracker, total_ms)
-        return result
+        return _record_and_return(result)
 
     # ── Private helpers ────────────────────────────────────────────────────────
 
