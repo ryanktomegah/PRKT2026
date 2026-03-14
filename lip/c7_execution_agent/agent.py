@@ -85,6 +85,8 @@ class ExecutionAgent:
         config: Optional[ExecutionConfig] = None,
         licensee_id: str = "",
         max_tps: int = 0,
+        aml_dollar_cap_usd: int = 1000000,
+        aml_count_cap: int = 100,
         offer_delivery: Optional[OfferDeliveryService] = None,
     ) -> None:
         self.kill_switch = kill_switch
@@ -94,6 +96,8 @@ class ExecutionAgent:
         self.config = config or ExecutionConfig()
         self.licensee_id = licensee_id
         self._tps_limiter = _TPSLimiter(max_tps=max_tps)
+        self.aml_dollar_cap_usd = aml_dollar_cap_usd
+        self.aml_count_cap = aml_count_cap
         self.offer_delivery = offer_delivery
 
     # ── main processing entry point ──────────────────────────────────────────

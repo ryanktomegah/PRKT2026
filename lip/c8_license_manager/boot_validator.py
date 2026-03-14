@@ -85,6 +85,8 @@ class LicenseBootValidator:
         ctx = LicenseeContext(
             licensee_id=token.licensee_id,
             max_tps=token.max_tps,
+            aml_dollar_cap_usd=token.aml_dollar_cap_usd,
+            aml_count_cap=token.aml_count_cap,
             permitted_components=token.permitted_components,
             token_expiry=token.expiry_date,
         )

@@ -66,6 +66,8 @@ class LicenseToken:
     issue_date: str
     expiry_date: str
     max_tps: int
+    aml_dollar_cap_usd: int = 1000000
+    aml_count_cap: int = 100
     permitted_components: List[str] = field(default_factory=lambda: list(ALL_COMPONENTS))
     hmac_signature: str = ""
 
@@ -81,6 +83,8 @@ class LicenseToken:
             "issue_date": self.issue_date,
             "expiry_date": self.expiry_date,
             "max_tps": self.max_tps,
+            "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
+            "aml_count_cap": self.aml_count_cap,
             "permitted_components": sorted(self.permitted_components),
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -97,6 +101,8 @@ class LicenseToken:
             "issue_date": self.issue_date,
             "expiry_date": self.expiry_date,
             "max_tps": self.max_tps,
+            "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
+            "aml_count_cap": self.aml_count_cap,
             "permitted_components": self.permitted_components,
             "hmac_signature": self.hmac_signature,
         }
@@ -108,6 +114,8 @@ class LicenseToken:
             issue_date=data["issue_date"],
             expiry_date=data["expiry_date"],
             max_tps=int(data["max_tps"]),
+            aml_dollar_cap_usd=int(data.get("aml_dollar_cap_usd", 1000000)),
+            aml_count_cap=int(data.get("aml_count_cap", 100)),
             permitted_components=list(data.get("permitted_components", ALL_COMPONENTS)),
             hmac_signature=data.get("hmac_signature", ""),
         )
@@ -125,6 +133,10 @@ class LicenseeContext:
         Same as ``LicenseToken.licensee_id``.
     max_tps:
         TPS ceiling enforced by C7.
+    aml_dollar_cap_usd:
+        24h aggregate bridge loan volume permitted per BIC.
+    aml_count_cap:
+        24h aggregate bridge loan count permitted per BIC.
     permitted_components:
         Components this instance is authorised to run.
     token_expiry:
@@ -133,6 +145,8 @@ class LicenseeContext:
 
     licensee_id: str
     max_tps: int
+    aml_dollar_cap_usd: int
+    aml_count_cap: int
     permitted_components: List[str]
     token_expiry: str
 
@@ -169,6 +183,8 @@ def sign_token(token: LicenseToken, signing_key: bytes) -> LicenseToken:
         issue_date=token.issue_date,
         expiry_date=token.expiry_date,
         max_tps=token.max_tps,
+        aml_dollar_cap_usd=token.aml_dollar_cap_usd,
+        aml_count_cap=token.aml_count_cap,
         permitted_components=list(token.permitted_components),
         hmac_signature=sig,
     )

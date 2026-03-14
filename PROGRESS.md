@@ -9,34 +9,24 @@
 
 ### Last Session Work
 - **GAP-01 COMPLETE**: Implemented loan offer delivery and acceptance protocol.
-  - New: `lip/c7_execution_agent/offer_delivery.py` — `OfferDeliveryService` with thread-safe
-    PENDING/ACCEPTED/REJECTED/EXPIRED lifecycle; `on_accept`/`on_reject`/`on_expire` callbacks
-    for downstream C3 wiring; `expire_stale_offers()` for background sweep.
-  - New schemas in `lip/common/schemas.py`: `LoanOfferDelivery`, `LoanOfferAcceptance`,
-    `LoanOfferRejection` (S4.9).
-  - Updated `lip/c7_execution_agent/agent.py`: `offer_delivery` parameter wired into constructor;
-    OFFER response now includes `delivery_id`.
-  - Updated `lip/c7_execution_agent/__init__.py`: exports `OfferDeliveryService`,
-    `OfferDeliveryOutcome`, `OfferNotFoundException`, `OfferExpiredException`,
-    `OfferAlreadyResolvedException`.
-  - New: `lip/tests/test_c7_offer_delivery.py` — **62 tests, all passing**.
-  - Committed `0e7c69a`, pushed to `feat/e2e-simulation-harness`.
-
-- **Previous sessions** (for reference):
-  - `cee2a44` — CI fix for torch interop threads
-  - Prior — `CLIENT_PERSPECTIVE_ANALYSIS.md` (842 lines), 5 Tier-1 blockers, 16 total gaps
+- **GAP-02 COMPLETE**: Licensee-configurable AML caps via license token.
+  - New: `aml_dollar_cap_usd` and `aml_count_cap` added to `LicenseToken` and `LicenseeContext` (C8).
+  - Updated `VelocityChecker.check()` (C6) and `AMLChecker.check()` to accept cap overrides.
+  - Updated `ExecutionAgent` (C7) to store licensee-specific AML caps.
+  - Updated `LIPPipeline` to pass licensee caps from C7 to C6 during the AML check.
+  - New: `lip/tests/test_gap02_aml_caps.py` — **3 integration tests, all passing**.
+  - Updated `lip/tests/test_c8_license.py` to cover new fields.
 
 ---
 
-## Test Suite Status (as of `0e7c69a`)
+## Test Suite Status (as of GAP-02 complete)
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,072 (was 1,010 + 62 new) |
+| Tests passing (local) | 1,075 (was 1,072 + 3 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
 | Active branch | `feat/e2e-simulation-harness` |
-| Last CI result | `cee2a44` fixed prior failure — new CI not yet triggered for GAP-01 |
 
 ---
 
@@ -44,14 +34,14 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| C1 Failure Classifier | ✅ Complete | val_AUC=0.9998 on synthetic. Real-world target 0.85 needs pilot SWIFT data (QUANT sign-off) |
-| C2 PD Model | ✅ Complete | Tier 1/2/3 routing, 300 bps floor, LGD corridors |
-| C3 Repayment Engine | ✅ Complete | UETR TTL, 5 rails, buffer P95 tiers, idempotent SETNX |
-| C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. LLM backend = mock (needs production backend) |
-| C5 Streaming | ✅ Complete | Kafka worker, Flink jobs, event normalizer |
-| C6 AML Velocity | ✅ Complete | Sanctions, velocity caps, salt rotation |
-| C7 Execution Agent | ✅ Complete | Kill switch, human override, degraded mode, decision log, **offer delivery (GAP-01)** |
-| C8 License Manager | ✅ Complete | HMAC token, boot validation |
+| C1 Failure Classifier | ✅ Complete | val_AUC=0.9998 on synthetic. |
+| C2 PD Model | ✅ Complete | Tier 1/2/3 routing, 300 bps floor |
+| C3 Repayment Engine | ✅ Complete | UETR TTL, 5 rails |
+| C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. |
+| C5 Streaming | ✅ Complete | Kafka worker, Flink jobs |
+| C6 AML Velocity | ✅ Complete | Sanctions, **configurable velocity caps (GAP-02)** |
+| C7 Execution Agent | ✅ Complete | **offer delivery (GAP-01)**, **stores licensee caps (GAP-02)** |
+| C8 License Manager | ✅ Complete | **caps in license token (GAP-02)** |
 
 ---
 
@@ -61,13 +51,13 @@
 
 | Gap | Description | Status |
 |-----|-------------|--------|
-| GAP-01 | **No loan acceptance protocol** | ✅ **DONE** — `OfferDeliveryService`, 3 schemas, 62 tests (`0e7c69a`) |
-| GAP-02 | **AML velocity caps unscalable** — $1M/entity/24h blocks institutional SWIFT flow | ⏳ Next |
-| GAP-03 | **No enrolled borrower registry** — loans made to BICs with no signed framework agreement | ⏳ Pending |
-| GAP-04 | **No retry detection** — manual retries cause double-funding | ⏳ Pending |
-| GAP-05 | **No BPI royalty collection** — royalty calculated but never transferred | ⏳ Pending |
-| GAP-06 | **No SWIFT message spec for bridge disbursement** — beneficiary cannot reconcile | ⏳ Pending |
-| GAP-17 | **Disbursement amount not anchored** — `loan_amount` read from context with no validation | ⏳ Pending |
+| GAP-01 | **No loan acceptance protocol** | ✅ **DONE** |
+| GAP-02 | **AML velocity caps unscalable** | ✅ **DONE** |
+| GAP-03 | **No enrolled borrower registry** | ⏳ Next |
+| GAP-04 | **No retry detection** | ⏳ Pending |
+| GAP-05 | **No BPI royalty collection** | ⏳ Pending |
+| GAP-06 | **No SWIFT message spec for bridge disbursement** | ⏳ Pending |
+| GAP-17 | **Disbursement amount not anchored** | ⏳ Pending |
 
 ### TIER 2 — First-Month Operational
 

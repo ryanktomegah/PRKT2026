@@ -166,12 +166,19 @@ class VelocityChecker:
         """
         return hashlib.sha256(beneficiary_id.encode() + self.salt).hexdigest()
 
-    def check(self, entity_id: str, amount: Decimal, beneficiary_id: str) -> VelocityResult:
+    def check(
+        self,
+        entity_id: str,
+        amount: Decimal,
+        beneficiary_id: str,
+        dollar_cap_override: Optional[Decimal] = None,
+        count_cap_override: Optional[int] = None,
+    ) -> VelocityResult:
         """Check whether this transaction would violate AML velocity limits.
 
         Evaluates three rules in order:
-          1. Dollar-cap: rolling 24-hour volume + ``amount`` ≤ $1,000,000.
-          2. Count-cap: rolling 24-hour count + 1 ≤ 100 transactions.
+          1. Dollar-cap: rolling 24-hour volume + ``amount`` ≤ cap.
+          2. Count-cap: rolling 24-hour count + 1 ≤ cap.
           3. Beneficiary concentration: single beneficiary share ≤ 80%
              (only enforced when ≥ 2 distinct beneficiaries and ≥ 2 prior
              transactions exist in the window).
@@ -183,6 +190,10 @@ class VelocityChecker:
             entity_id: Raw entity identifier (hashed internally).
             amount: Candidate transaction amount in USD.
             beneficiary_id: Raw beneficiary identifier (hashed internally).
+            dollar_cap_override: Optional USD cap to use instead of the
+                default $1M limit.
+            count_cap_override: Optional count cap to use instead of the
+                default 100 limit.
 
         Returns:
             :class:`VelocityResult` with ``passed=True`` when all rules pass,
@@ -194,13 +205,16 @@ class VelocityChecker:
         cnt = self._window.get_count(entity_hash)
         conc = self._window.get_beneficiary_concentration(entity_hash)
 
-        if vol + amount > DOLLAR_CAP_USD:
+        dollar_cap = dollar_cap_override if dollar_cap_override is not None else DOLLAR_CAP_USD
+        count_cap = count_cap_override if count_cap_override is not None else COUNT_CAP
+
+        if vol + amount > dollar_cap:
             return VelocityResult(
                 passed=False, reason="DOLLAR_CAP_EXCEEDED",
                 entity_id_hash=entity_hash, dollar_volume_24h=vol,
                 count_24h=cnt, beneficiary_concentration=conc,
             )
-        if cnt + 1 > COUNT_CAP:
+        if cnt + 1 > count_cap:
             return VelocityResult(
                 passed=False, reason="COUNT_CAP_EXCEEDED",
                 entity_id_hash=entity_hash, dollar_volume_24h=vol,

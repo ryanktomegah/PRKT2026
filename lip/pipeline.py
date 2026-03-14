@@ -452,8 +452,19 @@ class LIPPipeline:
             Returns the raw result from ``c6_checker.check()``; ``None``
             is treated as ``passed=True`` by the caller.
         """
+        dollar_cap = None
+        count_cap = None
+        if hasattr(self._c7, "aml_dollar_cap_usd"):
+            dollar_cap = Decimal(str(self._c7.aml_dollar_cap_usd))
+        if hasattr(self._c7, "aml_count_cap"):
+            count_cap = self._c7.aml_count_cap
+
         with tracker.measure("c6"):
-            return self._c6.check(entity_id, event.amount, beneficiary_id)
+            return self._c6.check(
+                entity_id, event.amount, beneficiary_id,
+                dollar_cap_override=dollar_cap,
+                count_cap_override=count_cap,
+            )
 
     def _log_block(
         self,
