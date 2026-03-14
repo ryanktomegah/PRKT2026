@@ -318,6 +318,13 @@ class LIPPipeline:
             "pd_score": pd_estimate,
             "fee_bps": fee_bps,
             "loan_amount": event.amount,
+            # GAP-17: propagate the authoritative settlement amount so C7 can
+            # validate the loan offer equals what the receiver is owed.
+            # Falls back to event.amount when not present (same-currency rails).
+            "original_payment_amount_usd": str(
+                event.original_payment_amount_usd if event.original_payment_amount_usd is not None
+                else event.amount
+            ),
             "dispute_class": dispute_class_str,
             "aml_passed": aml_passed,
             "maturity_days": maturity,

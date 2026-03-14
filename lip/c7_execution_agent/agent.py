@@ -202,8 +202,20 @@ class ExecutionAgent:
             )
             return {"status": "DECLINE", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": None}
 
-        # 5. Build offer and deliver to ELO treasury if delivery service is wired
+        # 5. Build offer — returns None if GAP-17 amount mismatch detected
         offer = self._build_loan_offer(payment_context, pd_score, fee_bps)
+        if offer is None:
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "LOAN_AMOUNT_MISMATCH",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+            )
+            return {
+                "status": "LOAN_AMOUNT_MISMATCH",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "loan_amount_mismatch",
+            }
+
         delivery_id: Optional[str] = None
         if self.offer_delivery is not None:
             delivery = self.offer_delivery.deliver(offer)
@@ -228,19 +240,42 @@ class ExecutionAgent:
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
-    def _build_loan_offer(self, payment_context: dict, pd: float, fee_bps: int) -> dict:
+    def _build_loan_offer(self, payment_context: dict, pd: float, fee_bps: int) -> Optional[dict]:
         loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
+
+        # GAP-17: Validate that the loan amount equals the original payment
+        # amount the receiver is owed. ±$0.01 tolerance covers FX rounding.
+        original_amt = Decimal(str(payment_context.get("original_payment_amount_usd", loan_amount)))
+        if abs(loan_amount - original_amt) > Decimal("0.01"):
+            logger.error(
+                "LOAN_AMOUNT_MISMATCH: loan_amount=%s original_payment_amount_usd=%s uetr=%s",
+                loan_amount,
+                original_amt,
+                payment_context.get("uetr"),
+            )
+            return None
+
         capped = min(loan_amount, self.config.max_loan_amount)
         maturity_days = int(payment_context.get("maturity_days", 7))
+        loan_id = str(uuid.uuid4())
+        uetr = str(payment_context.get("uetr", ""))
+
+        # GAP-06: Build SWIFT pacs.008 disbursement message so ELO can populate
+        # EndToEndId and RmtInf/Ustrd on the outbound bridge credit transfer.
+        from lip.common.swift_disbursement import build_disbursement_message
+        swift_msg = build_disbursement_message(uetr, loan_id, capped)
+
         return {
-            "loan_id": str(uuid.uuid4()),
-            "uetr": payment_context.get("uetr"),
+            "loan_id": loan_id,
+            "uetr": uetr,
             "loan_amount": str(capped),
             "fee_bps": fee_bps,
             "maturity_days": maturity_days,
             "pd_score": pd,
             "offered_at": datetime.now(tz=timezone.utc).isoformat(),
             "expires_at": (datetime.now(tz=timezone.utc) + timedelta(minutes=15)).isoformat(),
+            "swift_disbursement_ref": swift_msg.end_to_end_id,
+            "swift_remittance_info": swift_msg.remittance_info,
         }
 
     def _requires_human_review(self, payment_context: dict) -> bool:

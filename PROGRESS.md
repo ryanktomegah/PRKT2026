@@ -5,6 +5,20 @@
 
 ---
 
+- **GAP-06 COMPLETE**: SWIFT pacs.008 message spec for bridge disbursements.
+  - New: `lip/common/swift_disbursement.py` — `BridgeDisbursementMessage` + `build_disbursement_message`.
+  - Updated `_build_loan_offer` (C7) to attach `swift_disbursement_ref` and `swift_remittance_info`.
+  - Format: `EndToEndId = LIP-BRIDGE-{original_uetr}`, `RmtInf/Ustrd` references both UETR and loan ID.
+  - New: `lip/tests/test_gap06_swift_disbursement.py` — **5 integration tests, all passing**.
+
+- **GAP-17 COMPLETE**: Disbursement amount anchored to original payment amount.
+  - Updated `NormalizedEvent` (C5) with `original_payment_amount_usd: Optional[Decimal]` field.
+  - All 4 rail normalizers (SWIFT/FedNow/RTP/SEPA) populate field from interbank settlement amount.
+  - Updated `LIPPipeline.payment_context` to propagate field (fallback to `event.amount` for same-currency).
+  - Updated `_build_loan_offer` (C7): validates `abs(loan_amount - original_payment_amount_usd) ≤ $0.01`.
+  - Returns `LOAN_AMOUNT_MISMATCH` terminal state + decision log entry on mismatch.
+  - New: `lip/tests/test_gap17_amount_validation.py` — **6 integration tests, all passing**.
+
 - **GAP-05 COMPLETE**: BPI royalty collection (monthly settlement).
   - New: `lip/common/royalty_settlement.py` — `BPIRoyaltySettlement` for monthly aggregation.
   - Updated `ActiveLoan` (C3) and `SettlementMonitor` to propagate `licensee_id`.
@@ -18,7 +32,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,086 (was 1,082 + 4 new) |
+| Tests passing (local) | 1,097 (was 1,086 + 11 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
 | Active branch | `feat/e2e-simulation-harness` |
@@ -51,8 +65,8 @@
 | GAP-03 | **No enrolled borrower registry** | ✅ **DONE** |
 | GAP-04 | **No retry detection** | ✅ **DONE** |
 | GAP-05 | **No BPI royalty collection** | ✅ **DONE** |
-| GAP-06 | **No SWIFT message spec for bridge disbursement** | ⏳ Next |
-| GAP-17 | **Disbursement amount not anchored** | ⏳ Pending |
+| GAP-06 | **No SWIFT message spec for bridge disbursement** | ✅ **DONE** |
+| GAP-17 | **Disbursement amount not anchored** | ✅ **DONE** |
 
 ### TIER 2 — First-Month Operational
 
@@ -169,4 +183,4 @@ least one client. This is correct behavior. Banks must understand this before go
 
 ---
 
-*Last updated: 2026-03-13 — Session: GAP-01 complete (offer delivery protocol, 62 tests, commit `0e7c69a`). Next: GAP-02 (AML caps).*
+*Last updated: 2026-03-14 — Session: GAP-06 + GAP-17 complete. All 7 Tier-1 blockers done. Next: Tier 2 — GAP-08 (human override timeout outcome), GAP-09 (calendar-day maturities), GAP-07 (MLO portfolio API).*
