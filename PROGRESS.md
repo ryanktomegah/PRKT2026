@@ -5,6 +5,25 @@
 
 ---
 
+- **GAP-09 COMPLETE**: Business-day maturity calculations.
+  - New: `lip/common/business_calendar.py` — TARGET2/FEDWIRE/CHAPS holiday tables 2026–2027.
+  - `add_business_days(start, n, jurisdiction)` + `currency_to_jurisdiction(currency)`.
+  - Updated `_register_with_c3` (pipeline.py) to use business days: `timedelta(days=n)` → `add_business_days`.
+  - New: `lip/tests/test_gap09_business_calendar.py` — **17 tests, all passing**.
+
+- **GAP-08 COMPLETE**: Human override timeout outcome.
+  - Updated `HumanOverrideInterface` with `timeout_action: str = "DECLINE"` parameter.
+  - New `resolve_expired(request_id)` method returns `timeout_action` for expired requests.
+  - Raises `ValueError` if request not yet expired or unknown.
+  - New: `lip/tests/test_gap08_override_timeout.py` — **8 tests, all passing**.
+
+- **GAP-07 COMPLETE**: MLO portfolio reporting API.
+  - New: `lip/api/__init__.py` and `lip/api/portfolio_router.py`.
+  - `PortfolioReporter` class: `get_loans()`, `get_exposure()`, `get_yield()` methods.
+  - FastAPI `make_portfolio_router()` wraps reporter for HTTP serving.
+  - Reads live state from `RepaymentLoop.get_active_loans()` + optional `BPIRoyaltySettlement`.
+  - New: `lip/tests/test_gap07_portfolio_api.py` — **16 tests, all passing**.
+
 - **GAP-06 COMPLETE**: SWIFT pacs.008 message spec for bridge disbursements.
   - New: `lip/common/swift_disbursement.py` — `BridgeDisbursementMessage` + `build_disbursement_message`.
   - Updated `_build_loan_offer` (C7) to attach `swift_disbursement_ref` and `swift_remittance_info`.
@@ -32,7 +51,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Tests passing (local) | 1,097 (was 1,086 + 11 new) |
+| Tests passing (local) | 1,138 (was 1,097 + 41 new) |
 | Coverage | 92%+ |
 | Ruff errors | 0 |
 | Active branch | `feat/e2e-simulation-harness` |
@@ -72,9 +91,9 @@
 
 | Gap | Description | Status |
 |-----|-------------|--------|
-| GAP-07 | No portfolio reporting API for MLO | ⏳ Pending |
-| GAP-08 | Human override timeout outcome undefined | ⏳ Pending |
-| GAP-09 | Calendar-day maturities misfire on non-business days | ⏳ Pending |
+| GAP-07 | No portfolio reporting API for MLO | ✅ **DONE** |
+| GAP-08 | Human override timeout outcome undefined | ✅ **DONE** |
+| GAP-09 | Calendar-day maturities misfire on non-business days | ✅ **DONE** |
 | GAP-10 | No governing law / jurisdiction field on LoanOffer | ⏳ Pending |
 | GAP-11 | Thin-file Tier 3 for creditworthy established banks | ⏳ Pending |
 | GAP-12 | FX risk undefined for cross-currency corridors | ⏳ Pending |
@@ -183,4 +202,4 @@ least one client. This is correct behavior. Banks must understand this before go
 
 ---
 
-*Last updated: 2026-03-14 — Session: GAP-06 + GAP-17 complete. All 7 Tier-1 blockers done. Next: Tier 2 — GAP-08 (human override timeout outcome), GAP-09 (calendar-day maturities), GAP-07 (MLO portfolio API).*
+*Last updated: 2026-03-14 — Session: GAP-07 + GAP-08 + GAP-09 complete. 10 of 17 gaps done. Next: Tier 2 — GAP-10 (governing law field), GAP-11 (thin-file tier for known banks), GAP-12 (FX risk policy).*

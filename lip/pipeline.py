@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable, List, Optional
 
@@ -41,6 +41,7 @@ from lip.c3_repayment_engine.rejection_taxonomy import (
 from lip.c3_repayment_engine.repayment_loop import ActiveLoan
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
 from lip.c5_streaming.event_normalizer import NormalizedEvent
+from lip.common.business_calendar import add_business_days, currency_to_jurisdiction
 from lip.common.state_machines import (
     LoanState,
     LoanStateMachine,
@@ -580,7 +581,14 @@ class LIPPipeline:
         """
         try:
             now_utc = datetime.now(tz=timezone.utc)
-            maturity_date = now_utc + timedelta(days=maturity_days)
+            # GAP-09: Use business days for maturity so weekend failures
+            # don't expire before SWIFT settlement can be attempted.
+            jurisdiction = currency_to_jurisdiction(event.currency)
+            maturity_date = datetime.combine(
+                add_business_days(now_utc.date(), maturity_days, jurisdiction),
+                now_utc.time(),
+                tzinfo=timezone.utc,
+            )
             # Derive rejection class from the event's rejection code
             try:
                 rej_class = classify_rejection_code(event.rejection_code).value if event.rejection_code else RejectionClass.CLASS_B.value
