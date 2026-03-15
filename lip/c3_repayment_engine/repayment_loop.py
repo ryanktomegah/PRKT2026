@@ -17,6 +17,7 @@ from enum import Enum
 from typing import Callable, Dict, List, Optional
 
 from lip.c2_pd_model.fee import compute_loan_fee, compute_platform_royalty
+from lip.common.partial_settlement import PartialSettlementPolicy
 
 from .rejection_taxonomy import RejectionClass
 from .settlement_handlers import SettlementHandlerRegistry, SettlementRail
@@ -208,10 +209,12 @@ class RepaymentLoop:
         monitor: SettlementMonitor,
         repayment_callback: Callable[[dict], None],
         redis_client=None,
+        partial_settlement_policy: Optional[PartialSettlementPolicy] = None,
     ) -> None:
         self._monitor = monitor
         self._callback = repayment_callback
         self._redis = redis_client
+        self._partial_settlement_policy = partial_settlement_policy
         self._active_loans: Dict[str, ActiveLoan] = {}  # loan_id → ActiveLoan
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -236,6 +239,11 @@ class RepaymentLoop:
         if loan:
             self._monitor.deregister_loan(loan.uetr)
         return loan
+
+    def get_active_loans(self) -> List[ActiveLoan]:
+        """Return a snapshot of all currently active loans (keyed by loan_id)."""
+        with self._lock:
+            return list(self._active_loans.values())
 
     # ── Repayment dispatch ────────────────────────────────────────────────────
 
@@ -309,6 +317,30 @@ class RepaymentLoop:
         except Exception:
             pass
 
+        # GAP-16: Partial settlement handling (checked BEFORE idempotency claim
+        # so REQUIRE_FULL does not consume the Redis SETNX token)
+        _is_partial = settlement_amount < loan.principal
+        _shortfall = loan.principal - settlement_amount if _is_partial else Decimal("0")
+        _shortfall_pct = (
+            float(_shortfall / loan.principal) if _is_partial and loan.principal > 0 else 0.0
+        )
+        if _is_partial and self._partial_settlement_policy is not None:
+            if self._partial_settlement_policy == PartialSettlementPolicy.REQUIRE_FULL:
+                logger.info(
+                    "Partial settlement (REQUIRE_FULL): loan_id=%s shortfall=%s (%.1f%%) — loan kept active",
+                    loan.loan_id, _shortfall, _shortfall_pct * 100,
+                )
+                return {
+                    "status": "PARTIAL_PENDING",
+                    "loan_id": loan.loan_id,
+                    "uetr": loan.uetr,
+                    "settlement_amount": str(settlement_amount),
+                    "shortfall_amount": str(_shortfall),
+                    "shortfall_pct": _shortfall_pct,
+                    "is_partial": True,
+                }
+            # ACCEPT_PARTIAL: fall through — fee computed on settlement_amount below
+
         if not self._claim_repayment(loan.uetr, maturity_days):
             return {}
 
@@ -316,7 +348,13 @@ class RepaymentLoop:
         days_funded = max(1, (now - loan.funded_at.replace(tzinfo=timezone.utc)
                               if loan.funded_at.tzinfo is None
                               else now - loan.funded_at).days)
-        fee = compute_loan_fee(loan.principal, Decimal(str(loan.fee_bps)), days_funded)
+        # GAP-16: under ACCEPT_PARTIAL compute fee on actual settled amount
+        effective_principal = (
+            settlement_amount
+            if _is_partial and self._partial_settlement_policy == PartialSettlementPolicy.ACCEPT_PARTIAL
+            else loan.principal
+        )
+        fee = compute_loan_fee(effective_principal, Decimal(str(loan.fee_bps)), days_funded)
         platform_royalty = compute_platform_royalty(fee)
         net_fee_to_entities = fee - platform_royalty
         repayment_record = {
@@ -336,6 +374,9 @@ class RepaymentLoop:
             "funded_at": loan.funded_at.isoformat(),
             "maturity_date": loan.maturity_date.isoformat(),
             "repaid_at": _utcnow().isoformat(),
+            "is_partial": _is_partial,
+            "shortfall_amount": str(_shortfall),
+            "shortfall_pct": _shortfall_pct,
         }
         logger.info(
             "Repayment triggered: loan_id=%s trigger=%s amount=%s",

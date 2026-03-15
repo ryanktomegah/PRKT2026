@@ -5,6 +5,25 @@
 
 ---
 
+- **GAP-16 COMPLETE**: Partial settlement handling.
+  - New: `lip/common/partial_settlement.py` — `PartialSettlementPolicy` enum (REQUIRE_FULL / ACCEPT_PARTIAL) + `PartialSettlementConfig`.
+  - `RepaymentLoop.__init__()`: optional `partial_settlement_policy` param.
+  - `RepaymentLoop.trigger_repayment()`: partial check BEFORE idempotency claim (REQUIRE_FULL doesn't consume Redis token); ACCEPT_PARTIAL computes fee on `settlement_amount`; all records carry `is_partial`, `shortfall_amount`, `shortfall_pct`.
+  - New: `lip/tests/test_gap16_partial_settlement.py` — **11 tests, all passing**.
+
+- **GAP-15 COMPLETE**: BPI admin / multi-tenant monitoring API.
+  - New: `lip/api/admin_router.py` — `LicenseeStats` dataclass + `BPIAdminService` (`list_licensees`, `get_licensee_stats`, `get_platform_summary`) + optional FastAPI `make_admin_router()`.
+  - Added `RepaymentLoop.get_active_loans()` method (was missing; portfolio_router already called it on mocks).
+  - New: `lip/tests/test_gap15_admin_monitoring.py` — **17 tests, all passing**.
+
+- **GAP-14 COMPLETE**: Regulatory reporting formats (DORA Art.19 + Fed SR 11-7).
+  - New: `lip/common/regulatory_reporter.py` — `DORASeverity` enum, `DORAAuditEvent` (4h/24h thresholds, `within_threshold` property), `SR117ModelValidationReport` (AUC ≥ 0.75 validation gate), `RegulatoryReporter` class.
+  - New: `lip/tests/test_gap14_regulatory_reporting.py` — **16 tests, all passing**.
+
+- **GAP-13 COMPLETE**: Customer-facing notification framework.
+  - New: `lip/common/notification_service.py` — `NotificationEventType` enum (6 events), `NotificationRecord` dataclass, `NotificationService` with `notify()`, `get_notifications()`, delivery callback, `mark_delivered()`, `register_webhook()`.
+  - New: `lip/tests/test_gap13_notifications.py` — **17 tests, all passing**.
+
 - **GAP-12 COMPLETE**: FX risk policy for cross-currency corridors.
   - New: `lip/common/fx_risk_policy.py` — `FXRiskPolicy` enum + `FXRiskConfig` dataclass.
   - `SAME_CURRENCY_ONLY` (Phase 1 pilot default) + `BANK_NATIVE_CURRENCY` policies.
@@ -100,7 +119,16 @@
 
 ---
 
-## Test Suite Status (as of GAP-12 complete)
+## Test Suite Status (as of GAP-16 complete)
+
+| Metric | Value |
+|--------|-------|
+| Passing | **1,247** (was 1,187) |
+| New tests added | 60 (GAP-13: 17, GAP-14: 16, GAP-15: 17, GAP-16: 11) |
+| Pre-existing failures | 2 (C1 LGBM training flakiness — unrelated to this work) |
+| Ruff errors | 0 |
+
+## Test Suite Status (as of GAP-12 complete — HISTORICAL)
 
 | Metric | Value |
 |--------|-------|
@@ -156,18 +184,18 @@
 | GAP-07 | No portfolio reporting API for MLO | ✅ **DONE** |
 | GAP-08 | Human override timeout outcome undefined | ✅ **DONE** |
 | GAP-09 | Calendar-day maturities misfire on non-business days | ✅ **DONE** |
-| GAP-10 | No governing law / jurisdiction field on LoanOffer | ⏳ Pending |
-| GAP-11 | Thin-file Tier 3 for creditworthy established banks | ⏳ Pending |
-| GAP-12 | FX risk undefined for cross-currency corridors | ⏳ Pending |
+| GAP-10 | No governing law / jurisdiction field on LoanOffer | ✅ **DONE** |
+| GAP-11 | Thin-file Tier 3 for creditworthy established banks | ✅ **DONE** |
+| GAP-12 | FX risk undefined for cross-currency corridors | ✅ **DONE** |
 
 ### TIER 3 — Full Commercial Readiness
 
 | Gap | Description | Status |
 |-----|-------------|--------|
-| GAP-13 | No customer-facing notification framework | ⏳ Pending |
-| GAP-14 | No regulatory reporting format (DORA, SR 11-7) | ⏳ Pending |
-| GAP-15 | No BPI admin / multi-tenant monitoring | ⏳ Pending |
-| GAP-16 | Partial settlement handling undefined | ⏳ Pending |
+| GAP-13 | No customer-facing notification framework | ✅ **DONE** |
+| GAP-14 | No regulatory reporting format (DORA, SR 11-7) | ✅ **DONE** |
+| GAP-15 | No BPI admin / multi-tenant monitoring | ✅ **DONE** |
+| GAP-16 | Partial settlement handling undefined | ✅ **DONE** |
 
 ---
 
@@ -264,4 +292,4 @@ least one client. This is correct behavior. Banks must understand this before go
 
 ---
 
-*Last updated: 2026-03-14 — Session: GAP-07 + GAP-08 + GAP-09 complete. 10 of 17 gaps done. Next: Tier 2 — GAP-10 (governing law field), GAP-11 (thin-file tier for known banks), GAP-12 (FX risk policy).*
+*Last updated: 2026-03-14 — Session: GAP-13 + GAP-14 + GAP-15 + GAP-16 complete. ALL 17 gaps done. Platform is Full Commercial Readiness. Test suite: 1,247 passing, 0 ruff errors.*
