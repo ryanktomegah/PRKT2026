@@ -66,10 +66,34 @@ Net gain this session: +21 stress regime tests, +7 from untracked test files.
   - C6: ✅ AML flag rate=7.85% (target 8%), precision=1.0, recall=0.244 (Isolation Forest unsupervised)
 - **Tests**: 1284 passing, 1 skipped, 0 failures. 0 ruff errors.
 
-### What is NEXT (from plan fizzy-jumping-rain.md)
-- **P6**: C4 LLM integration test (needs Groq API key from user).
-- **P7**: `docs/federated-learning-architecture.md` — FedAvg vs Secure Aggregation, DP budget.
-- **P8**: `docs/cbdc-protocol-research.md` — BIS mBridge, ECB DLT, P9 patent.
+### P7 COMPLETE — Federated Learning Architecture Document
+- `docs/federated-learning-architecture.md`: Full ADR for P12 patent portfolio.
+  - Protocol decision: FedProx (FedAvg + proximal term) for non-IID bank data.
+  - DP budget: ε=1.0, δ=1e-5 via DP-SGD + Rényi DP accounting (50 rounds pilot).
+  - Layer partitioning: first 2 GraphSAGE layers LOCAL (BIC topology), final + TabTransformer SHARED.
+  - Communication: ~500 MB/bank over 6-month pilot (trivially within SWIFTNet capacity).
+  - Threat model: semi-honest adversary (Phase 2); SecAgg + Byzantine-robustness for Phase 3.
+  - Framework selected: Flower (Apache 2.0) + Opacus for DP-SGD.
+  - 4 patent claims documented supporting P12.
+
+### P8 COMPLETE — CBDC Protocol Research Document
+- `docs/cbdc-protocol-research.md`: Research + architecture stubs for P9 patent portfolio.
+  - BIS mBridge (MVP 2024): 1-3 second finality, ISO 20022 native, 4-participant CBDC settlement.
+  - ECB DLT Pilot (2024): EUR zone wCBDC interoperability trials, intraday finality.
+  - FedNow (2023): domestic only — scoped as `SettlementRail.FEDNOW` stub, not cross-border.
+  - Digital Pound: 3-5 year horizon, BoE research phase.
+  - CBDC-specific failure codes mapped to ISO 20022 taxonomy (CBDC-SC01→AC01, etc.).
+  - `normalize_cbdc()` handler shape documented for `event_normalizer.py`.
+  - `SettlementRail.CBDC` + `SettlementRail.FEDNOW` stub shapes documented for C3.
+  - Settlement timing: CBDC 4h buffer vs SWIFT 45-day UETR TTL.
+  - 4 patent claims + novelty over JPMorgan US7089207B1 documented.
+  - Competitive moat: 36-60 month lead on DLT bridge lending (no known prior art).
+
+### What is NEXT
+- **P6**: C4 LLM integration test (needs Groq API key from user — free at console.groq.com).
+  Without Groq key: all other plan items are COMPLETE.
+- Tests: 1284 passing, 1 skipped, 0 ruff errors.
+- Commits: `ff8c875` (P4), current session adding P7+P8.
 
 ---
 
