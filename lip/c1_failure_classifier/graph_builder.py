@@ -12,11 +12,19 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# ── P5 Bayesian smoothing constants ───────────────────────────────────────────
+# QUANT sign-off required to change these values.
+# k=5 mirrors the standard Laplace pseudo-count for Beta-Binomial inference.
+# Prior default = 10% average corridor dependency (conservative; update after
+# accumulating 30 days of pilot data under QUANT review).
+_SMOOTHING_K: int = 5          # pseudo-count; higher = more prior weight
+_DEPENDENCY_PRIOR_DEFAULT: float = 0.10  # prior when no history exists
 
 
 @dataclass
@@ -47,7 +55,13 @@ class PaymentEdge:
     amount_usd: float
     currency_pair: str
     timestamp: float
-    dependency_score: float = 0.0  # R&D Upgrade (P5): Ratio of payment to receiver's total incoming volume
+    # P5 Bayesian smoothing: smoothed concentration score (see BICGraphBuilder.add_payment).
+    # Raw formula: amount / cumulative_incoming_volume (=1.0 on first payment — inflated).
+    # Smoothed: (n × raw + k × prior) / (n + k), k=5. Reduces first-payment bias.
+    dependency_score: float = 0.0
+    # Number of prior payments to the same receiving BIC when this edge was added.
+    # Low observation_count signals low confidence in dependency_score.
+    observation_count: int = 0
     features: dict = field(default_factory=dict)
 
 
@@ -69,6 +83,32 @@ class CorridorGraph:
     nodes: List[str] = field(default_factory=list)
     edges: List[PaymentEdge] = field(default_factory=list)
     adjacency: Dict[str, Dict[str, List[PaymentEdge]]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class CascadeConfidence:
+    """Confidence metadata attached to a :meth:`BICGraphBuilder.get_cascade_risk` result.
+
+    Attributes
+    ----------
+    mean_observation_count:
+        Mean number of prior payments per at-risk corridor. Higher values
+        indicate well-observed corridors where ``dependency_score`` is reliable.
+    min_observation_count:
+        Minimum observation count across all at-risk corridors. A value below
+        ``_SMOOTHING_K`` (=5) means at least one corridor's score is still
+        pulled significantly toward the prior.
+    is_high_confidence:
+        ``True`` when all at-risk corridors have at least ``_SMOOTHING_K``
+        prior observations — at that point smoothing contribution is < 50%.
+    at_risk_count:
+        Number of BICs flagged as at risk (length of the returned list).
+    """
+
+    mean_observation_count: float
+    min_observation_count: int
+    is_high_confidence: bool
+    at_risk_count: int
 
 
 class BICGraphBuilder:
@@ -101,6 +141,9 @@ class BICGraphBuilder:
         # {bic -> total incoming USD volume} for dependency calculation (P5)
         self._in_volumes: Dict[str, float] = {}
         self._all_edges: List[PaymentEdge] = []
+        # Running totals for global prior (used in Bayesian smoothing)
+        self._dep_score_sum: float = 0.0
+        self._dep_score_count: int = 0
         logger.debug("BICGraphBuilder initialised")
 
     # ------------------------------------------------------------------
@@ -125,15 +168,42 @@ class BICGraphBuilder:
                 self._bic_first_seen[bic] = min(self._bic_first_seen[bic], edge.timestamp)
 
         self._out_edges.setdefault(s, []).append(edge)
+
+        # Capture observation count BEFORE appending to incoming edges
+        n = len(self._in_edges.get(r, []))
         self._in_edges.setdefault(r, []).append(edge)
         self._adjacency.setdefault(s, {}).setdefault(r, []).append(edge)
 
-        # Update incoming volume and dependency score (P5)
+        # Update incoming volume
         self._in_volumes[r] = self._in_volumes.get(r, 0.0) + edge.amount_usd
-        # score = payment_amount / total_receivables_to_date
-        edge.dependency_score = edge.amount_usd / self._in_volumes[r]
+
+        # ── P5 Bayesian smoothing ────────────────────────────────────────────
+        # Raw dependency = fraction of total receivables this payment represents.
+        # Without smoothing: first payment → score = 1.0 (trivially inflated).
+        # With smoothing (Laplace / Beta-Binomial): pull toward the global prior
+        # until the corridor is well-observed (n ≥ k).
+        raw = edge.amount_usd / self._in_volumes[r]
+        prior = self._compute_corridor_prior_dependency()
+        smoothed = (n * raw + _SMOOTHING_K * prior) / (n + _SMOOTHING_K)
+
+        edge.dependency_score = smoothed
+        edge.observation_count = n
+
+        # Update running totals for future prior calculations
+        self._dep_score_sum += smoothed
+        self._dep_score_count += 1
 
         self._all_edges.append(edge)
+
+    def _compute_corridor_prior_dependency(self) -> float:
+        """Return the global mean dependency score across all observed edges.
+
+        Used as the Bayesian prior in :meth:`add_payment`. Returns
+        ``_DEPENDENCY_PRIOR_DEFAULT`` (0.10) when no history exists yet.
+        """
+        if self._dep_score_count == 0:
+            return _DEPENDENCY_PRIOR_DEFAULT
+        return self._dep_score_sum / self._dep_score_count
 
     # ------------------------------------------------------------------
     # Neighbourhood queries
@@ -166,7 +236,9 @@ class BICGraphBuilder:
         )
         return [nbr for nbr, _ in sorted_neighbors[:k]]
 
-    def get_cascade_risk(self, bic: str, dependency_threshold: float = 0.2) -> List[str]:
+    def get_cascade_risk(
+        self, bic: str, dependency_threshold: float = 0.2
+    ) -> Tuple[List[str], CascadeConfidence]:
         """Identify downstream BICs highly dependent on payments from this BIC.
 
         Implements core logic for Supply Chain Cascade Detection (P5).
@@ -183,26 +255,51 @@ class BICGraphBuilder:
         List[str]
             BICs at risk of cascade failure.
 
-        Known limitation: The first payment to any receiver node always produces
-        dependency_score = 1.0 because the volume accumulator includes the current
-        payment before the ratio is computed. New corridors will be incorrectly
-        flagged as maximum cascade risk on first payment. This is a point-in-time
-        artefact, not a true risk signal. Filter results where node edge count < 5
-        before using cascade risk scores in production decisions.
+        Returns a ``(at_risk_bics, confidence)`` tuple. Low
+        :attr:`CascadeConfidence.min_observation_count` values (< ``_SMOOTHING_K``
+        = 5) indicate that at least one corridor score is still pulled toward the
+        prior and should be treated with caution. The known first-payment
+        over-inflation bug is resolved by Bayesian smoothing in
+        :meth:`add_payment`.
         """
         if bic not in self._adjacency:
-            return []
+            _empty_conf = CascadeConfidence(
+                mean_observation_count=0.0,
+                min_observation_count=0,
+                is_high_confidence=False,
+                at_risk_count=0,
+            )
+            return [], _empty_conf
 
         at_risk = []
+        obs_counts: List[int] = []
+
         for receiving_bic, edges in self._adjacency[bic].items():
-            # Check latest payment dependency
             if not edges:
                 continue
             latest = max(edges, key=lambda e: e.timestamp)
             if latest.dependency_score >= dependency_threshold:
                 at_risk.append(receiving_bic)
+                obs_counts.append(latest.observation_count)
 
-        return at_risk
+        if not at_risk:
+            conf = CascadeConfidence(
+                mean_observation_count=0.0,
+                min_observation_count=0,
+                is_high_confidence=True,   # no risk corridors = no concern
+                at_risk_count=0,
+            )
+            return [], conf
+
+        mean_obs = sum(obs_counts) / len(obs_counts)
+        min_obs = min(obs_counts)
+        conf = CascadeConfidence(
+            mean_observation_count=mean_obs,
+            min_observation_count=min_obs,
+            is_high_confidence=(min_obs >= _SMOOTHING_K),
+            at_risk_count=len(at_risk),
+        )
+        return at_risk, conf
 
     # ------------------------------------------------------------------
     # Feature computation
