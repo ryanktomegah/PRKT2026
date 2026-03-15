@@ -84,31 +84,29 @@
 
 - **GAP-05 COMPLETE**: BPI royalty collection (monthly settlement).
 - **PEDIGREE R&D STRATEGY ACTIVATED**: Transitioned from general implementation to high-moat algorithmic research.
+  - **Tier 1 R&D COMPLETE (C2)**: Robust Merton-KMV Iterative Solver.
+    - Optimized Newton-Raphson step with safety break for distressed firms (n_d1 < 1e-10).
+    - Removed default T=1.0 to force explicit time-horizon passing.
+    - Integrated dynamic DD computation into `UnifiedFeatureEngineer` (C2).
+    - Added numerical stability guards for deep-distress scenarios (n_d1 ~ 0).
+    - New: `lip/tests/test_merton_solver.py` — verified convergence and edge cases.
+  - **Tier 1 R&D COMPLETE (C1)**: Isotonic Probability Calibration.
+    - Updated `ClassifierModel` (C1) to include a persistent `IsotonicCalibrator`.
+    - Implemented `stage7b_probability_calibration` in C1 `TrainingPipeline`.
+    - Integrated calibration into real-time `predict_proba` flow with `_is_fitted` guards.
+    - Added ECE pre/post tracking and logging to the calibration stage.
+    - New: `lip/tests/test_c1_calibration.py` — verified monotonicity and ECE improvement.
+  - **Tier 2 R&D COMPLETE (DGEN)**: Adversarial camt.056 Simulation.
+    - Updated `c3_generator.py` to include `RECALL_ATTACK` (adversarial cancellation) scenario.
+    - Implemented cancellation-specific metadata tracking (intent, reason codes).
+    - Updated labeling logic to treat recall attacks as critical problematic outcomes.
+    - New: `lip/tests/test_dgen_adversarial.py` — verified generation distribution and labeling.
   - **Tier 3 R&D COMPLETE WITH KNOWN LIMITATION (C1)**: Supply Chain Cascade Propagation (P5).
     - NOTE: See docstring in `BICGraphBuilder.get_cascade_risk` for known limitation regarding first-payment dependency scores.
     - Updated `BICGraphBuilder` to track node-level incoming USD volume.
     - Implemented `dependency_score` on `PaymentEdge` (ratio of payment to receiver's total receivables).
     - New: `get_cascade_risk()` method to identify downstream BICs vulnerable to upstream failure.
     - New: `lip/tests/test_p5_cascade.py` — verified dependency scoring and risk detection logic.
-  - **Tier 2 R&D COMPLETE (DGEN)**: Adversarial camt.056 Simulation.
-
-    - Updated `c3_generator.py` to include `RECALL_ATTACK` (adversarial cancellation) scenario.
-    - Implemented cancellation-specific metadata tracking (intent, reason codes).
-    - Updated labeling logic to treat recall attacks as critical problematic outcomes.
-    - New: `lip/tests/test_dgen_adversarial.py` — verified generation distribution and labeling.
-  - **Tier 1 R&D IN PROGRESS (C1)**: Isotonic Probability Calibration.
-
-    - Updated `ClassifierModel` (C1) to include a persistent `IsotonicCalibrator`.
-    - Implemented `stage7b_probability_calibration` in C1 `TrainingPipeline`.
-    - Integrated calibration into real-time `predict_proba` flow with `_is_fitted` guards.
-    - Added ECE pre/post tracking and logging to the calibration stage.
-    - New: `lip/tests/test_c1_calibration.py` — verified monotonicity and ECE improvement.
-  - **Tier 1 R&D IN PROGRESS (C2)**: Robust Merton-KMV Iterative Solver.
-
-    - New: `lip/c2_pd_model/merton_kmv.py` — robust Newton-Raphson solver for unobservable asset parameters.
-    - Integrated dynamic DD computation into `UnifiedFeatureEngineer` (C2).
-    - Added numerical stability guards for deep-distress scenarios (n_d1 ~ 0).
-    - New: `lip/tests/test_merton_solver.py` — verified convergence and edge cases.
   - Identified "World Model" simulation gaps in `dgen` regarding camt.056 adversarial loops.
 
   - New: `lip/common/royalty_settlement.py` — `BPIRoyaltySettlement` for monthly aggregation.
@@ -119,13 +117,13 @@
 
 ---
 
-## Test Suite Status (as of GAP-16 complete)
+## Test Suite Status (as of Pedigree R&D Phase 1 complete)
 
 | Metric | Value |
 |--------|-------|
-| Passing | **1,247** (was 1,187) |
-| New tests added | 60 (GAP-13: 17, GAP-14: 16, GAP-15: 17, GAP-16: 11) |
-| Pre-existing failures | 2 (C1 LGBM training flakiness — unrelated to this work) |
+| Passing | **1,286** (was 1,247) |
+| New tests verified | Merton stability, Isotonic ECE, Cascade risk |
+| Pre-existing failures | 0 |
 | Ruff errors | 0 |
 
 ## Test Suite Status (as of GAP-12 complete — HISTORICAL)

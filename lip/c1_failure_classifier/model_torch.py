@@ -179,7 +179,7 @@ class ClassifierModelTorch(nn.Module):
         self.eval()
         with torch.no_grad():
             nf = torch.tensor(node_features, dtype=torch.float32).unsqueeze(0)
-            tf = torch.tensor(tabular_features, dtype=torch.float32).unsqueeze(0)
+            tf = torch.tensor(tabular_features[8:], dtype=torch.float32).unsqueeze(0)
             if neighbor_features is not None:
                 nbr = torch.tensor(neighbor_features, dtype=torch.float32).unsqueeze(0)
             else:
@@ -188,7 +188,7 @@ class ClassifierModelTorch(nn.Module):
             neural_prob = float(torch.sigmoid(logit).item())
 
         if self.lgbm_model is not None:
-            x_tab = np.asarray(tabular_features, dtype=np.float64).reshape(1, -1)
+            x_tab = np.asarray(tabular_features[8:], dtype=np.float64).reshape(1, -1)
             lgbm_prob = float(self.lgbm_model.predict_proba(x_tab)[0, 1])
             return 0.5 * neural_prob + 0.5 * lgbm_prob
         return neural_prob

@@ -54,7 +54,7 @@ def _eval_auc_torch(
     model.eval()
     with torch.no_grad():
         node_feat = _to_tensor(X[:, :8])
-        tab_feat = _to_tensor(X)
+        tab_feat = _to_tensor(X[:, 8:])
         logits = model(node_feat, tab_feat, neighbor_feats).squeeze(1)
         scores = torch.sigmoid(logits).cpu().numpy()
     return _compute_auc(y, scores)
@@ -225,11 +225,11 @@ class TrainingPipelineTorch:
         TabTransformerTorch
             Pre-trained TabTransformer module.
         """
-        tabtransformer = TabTransformerTorch(input_dim=96)
+        tabtransformer = TabTransformerTorch(input_dim=88)
         temp_head = nn.Linear(tabtransformer.output_dim, 1)
         nn.init.xavier_uniform_(temp_head.weight)
 
-        tab_feats = _to_tensor(X_train)
+        tab_feats = _to_tensor(X_train[:, 8:])
         labels = _to_tensor(y_train).unsqueeze(1)
 
         dataset = TensorDataset(tab_feats, labels)
@@ -319,7 +319,7 @@ class TrainingPipelineTorch:
         )
 
         node_feats = _to_tensor(X_train[:, :8])
-        tab_feats = _to_tensor(X_train)
+        tab_feats = _to_tensor(X_train[:, 8:])
         labels = _to_tensor(y_train).unsqueeze(1)
 
         use_graph = graph is not None and bic_train is not None
@@ -429,7 +429,7 @@ class TrainingPipelineTorch:
         logger.info("Stages 1–4 complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()
-        lgbm_model = numpy_pipeline.stage5b_lightgbm_pretrain(X_train, y_train)
+        lgbm_model = numpy_pipeline.stage5b_lightgbm_pretrain(X_train[:, 8:], y_train)
         logger.info("Stage 5b (LightGBM) complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()

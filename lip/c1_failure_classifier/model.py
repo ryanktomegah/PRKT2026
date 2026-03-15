@@ -344,7 +344,8 @@ class ClassifierModel:
         neural_prob = self.mlp.forward(fused)
 
         if self.lgbm_model is not None:
-            x_tab = np.asarray(tabular_features, dtype=np.float64).reshape(1, -1)
+            # Slicing to last 88 dims ensures compatibility if a 96-dim fused vector was passed
+            x_tab = np.asarray(tabular_features[-88:], dtype=np.float64).reshape(1, -1)
             lgbm_prob = float(self.lgbm_model.predict_proba(x_tab)[0, 1])
             raw_score = 0.5 * neural_prob + 0.5 * lgbm_prob
         else:
