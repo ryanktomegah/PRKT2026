@@ -82,3 +82,10 @@ FX_G10_CURRENCIES: frozenset[str] = frozenset(
     {"USD", "EUR", "GBP", "JPY", "CAD", "CHF", "AUD", "NZD", "SEK", "NOK"}
 )
 FX_RISK_POLICY_DEFAULT = "SAME_CURRENCY_ONLY"  # conservative pilot default
+
+# ── Stress regime detection ────────────────────────────────────────────────────
+# QUANT sign-off required to change STRESS_REGIME_MULTIPLIER.
+# Rationale: 3× baseline is consistent with BIS CPMI alert thresholds for
+# corridor-level settlement failure spikes. See P3 design in plan file.
+STRESS_REGIME_MULTIPLIER = 3.0   # 1h failure rate must exceed 24h baseline by this factor
+STRESS_REGIME_MIN_TXNS   = 20    # minimum 1h transaction count for a valid stress signal

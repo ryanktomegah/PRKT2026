@@ -700,6 +700,9 @@ class _MockC6:
     def check(self, entity_id, amount, beneficiary_id, **kwargs):
         return SimpleNamespace(passed=self._passed)
 
+    def record(self, entity_id, amount, beneficiary_id, **kwargs):
+        """No-op: velocity recording is a side effect; tests don't assert on it."""
+
 
 class _MockC7:
     def __init__(self, status: str = "OFFER", halt: bool = False):

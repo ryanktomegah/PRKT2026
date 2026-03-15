@@ -17,6 +17,9 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
+from lip.c5_streaming.stress_regime_detector import StressRegimeDetector
+from lip.c8_license_manager.license_token import LicenseeContext
+from lip.common.borrower_registry import BorrowerRegistry
 from lip.common.business_calendar import currency_to_jurisdiction
 from lip.common.fx_risk_policy import FXRiskConfig
 from lip.common.governing_law import law_for_jurisdiction
@@ -37,7 +40,7 @@ class ExecutionConfig:
     max_loan_amount: Decimal = field(default_factory=lambda: Decimal("10000000"))
     auto_approve_threshold: float = 0.95
     require_human_review_above_pd: float = 0.20
-    enrolled_borrowers: set[str] = field(default_factory=set)
+    borrower_registry: BorrowerRegistry = field(default_factory=BorrowerRegistry)
 
 
 class _TPSLimiter:
@@ -93,6 +96,8 @@ class ExecutionAgent:
         max_tps: int = 0,
         aml_dollar_cap_usd: int = 1000000,
         aml_count_cap: int = 100,
+        licensee_context: Optional[LicenseeContext] = None,
+        stress_detector: Optional[StressRegimeDetector] = None,
         offer_delivery: Optional[OfferDeliveryService] = None,
         known_entity_registry: Optional[KnownEntityRegistry] = None,
         fx_risk_config: Optional[FXRiskConfig] = None,
@@ -102,10 +107,20 @@ class ExecutionAgent:
         self.human_override = human_override
         self.degraded_mode_manager = degraded_mode_manager
         self.config = config or ExecutionConfig()
-        self.licensee_id = licensee_id
-        self._tps_limiter = _TPSLimiter(max_tps=max_tps)
-        self.aml_dollar_cap_usd = aml_dollar_cap_usd
-        self.aml_count_cap = aml_count_cap
+
+        if licensee_context:
+            self.licensee_id = licensee_context.licensee_id
+            self.max_tps = licensee_context.max_tps
+            self.aml_dollar_cap_usd = licensee_context.aml_dollar_cap_usd
+            self.aml_count_cap = licensee_context.aml_count_cap
+        else:
+            self.licensee_id = licensee_id
+            self.max_tps = max_tps
+            self.aml_dollar_cap_usd = aml_dollar_cap_usd
+            self.aml_count_cap = aml_count_cap
+
+        self._tps_limiter = _TPSLimiter(max_tps=self.max_tps)
+        self.stress_detector = stress_detector
         self.offer_delivery = offer_delivery
         self._known_entity_registry = known_entity_registry
         self._fx_risk_config = fx_risk_config
@@ -137,8 +152,11 @@ class ExecutionAgent:
             return {"status": "HALT", "loan_offer": None, "decision_entry_id": None, "halt_reason": reason}
 
         # 1b. Borrower enrollment guard (GAP-03)
+        # Semantics: empty registry = allow-all (dev/test default).
+        # Populated registry = strict enrollment enforcement (production).
         sending_bic = payment_context.get("sending_bic", "")
-        if self.config.enrolled_borrowers and sending_bic not in self.config.enrolled_borrowers:
+        registry = self.config.borrower_registry
+        if registry.list_enrolled() and not registry.is_enrolled(sending_bic):
             logger.warning("Borrower not enrolled: bic=%s uetr=%s", sending_bic, uetr)
             # Use BLOCK status for unenrolled borrowers as it's a policy-based hard gate
             failure_prob = float(payment_context.get("failure_probability", 0.0))
@@ -153,7 +171,7 @@ class ExecutionAgent:
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
             )
             return {
-                "status": "BLOCK",
+                "status": "BORROWER_NOT_ENROLLED",
                 "loan_offer": None,
                 "decision_entry_id": entry_id,
                 "halt_reason": "borrower_not_enrolled"
@@ -186,13 +204,21 @@ class ExecutionAgent:
         # 3. Human review gate
         human_override_applied = False
         if self._requires_human_review(payment_context):
+            pd_limit = self.config.require_human_review_above_pd
+            corridor = payment_context.get("corridor", "UNKNOWN")
+            is_stressed = self.stress_detector.is_stressed(corridor) if self.stress_detector else False
+
+            review_reason = f"PD {pd_score:.3f} exceeds review threshold {pd_limit}"
+            if is_stressed:
+                review_reason = f"STRESS_REGIME detected in corridor {corridor}. Manual review mandatory."
+
             req = self.human_override.request_override(
                 uetr=uetr,
                 original_decision="OFFER",
                 ai_confidence=failure_prob,
-                reason=f"PD {pd_score:.3f} exceeds review threshold {self.config.require_human_review_above_pd}",
+                reason=review_reason,
             )
-            logger.info("Human review requested: %s", req.request_id)
+            logger.info("Human review requested: %s - reason: %s", req.request_id, review_reason)
             # In production, this would block until a response arrives.
             # Here we return a PENDING status and let the caller poll.
             return {
@@ -316,7 +342,14 @@ class ExecutionAgent:
 
     def _requires_human_review(self, payment_context: dict) -> bool:
         pd = float(payment_context.get("pd_score", 0.0))
-        return pd > self.config.require_human_review_above_pd
+        if pd > self.config.require_human_review_above_pd:
+            return True
+
+        corridor = payment_context.get("corridor", "UNKNOWN")
+        if self.stress_detector and self.stress_detector.is_stressed(corridor):
+            return True
+
+        return False
 
     def _log_decision(
         self,

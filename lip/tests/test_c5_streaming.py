@@ -299,8 +299,8 @@ class TestNormalizeDispatch(unittest.TestCase):
 
 class TestKafkaConfig(unittest.TestCase):
 
-    def test_all_nine_topics_defined(self):
-        self.assertEqual(len(TOPIC_DEFINITIONS), 9)
+    def test_all_ten_topics_defined(self):
+        self.assertEqual(len(TOPIC_DEFINITIONS), 10)
 
     def test_payment_events_partitions(self):
         cfg = TOPIC_DEFINITIONS[KafkaTopic.PAYMENT_EVENTS]

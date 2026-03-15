@@ -1,0 +1,115 @@
+# docker-compose.yml — LIP Local Prototype Infrastructure Stack
+#
+# Starts Redpanda (Kafka-compatible) + Redis Standalone for local development.
+# All existing `confluent_kafka` and `redis` client code connects unchanged —
+# only the bootstrap address and TLS flags differ from production.
+#
+# Usage:
+#   docker compose up -d            # start in background
+#   docker compose logs -f          # follow logs
+#   docker compose down             # stop and remove containers
+#
+# PHASE-2-STUB: In production, replace Redpanda with a bank-managed Kafka
+# cluster (change LIP_KAFKA_BOOTSTRAP_SERVERS env var). Replace Redis
+# Standalone with Redis Cluster (set LIP_REDIS_CLUSTER_MODE=true). No code
+# changes required — only env var updates.
+
+services:
+  # ── Redpanda: Kafka-compatible message broker ─────────────────────────────
+  # 100% Kafka API-compatible; zero ZooKeeper; single binary.
+  # confluent_kafka Producer/Consumer connect with zero code changes.
+  redpanda:
+    image: redpandadata/redpanda:v24.1.1
+    container_name: lip-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned                  # disables CPU pinning for laptop use
+      - --smp=1                            # single core — prototype only
+      - --memory=512M                      # memory cap for local dev
+      - --reserve-memory=0M
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,PLAINTEXT_HOST://localhost:9092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=localhost:8082
+      - --schema-registry-addr=0.0.0.0:8081
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+    ports:
+      - "9092:9092"    # Kafka API (external clients)
+      - "29092:29092"  # Kafka API (internal container-to-container)
+      - "8081:8081"    # Schema Registry
+      - "8082:8082"    # Pandaproxy (REST)
+      - "9644:9644"    # Admin API
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - lip-net
+
+  # ── Topic initialisation ───────────────────────────────────────────────────
+  # Creates all 10 LIP Kafka topics after Redpanda is healthy.
+  # Runs once then exits (restart: on-failure handles the wait-for-healthy race).
+  redpanda-init:
+    image: redpandadata/redpanda:v24.1.1
+    container_name: lip-redpanda-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: on-failure
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        echo "Creating LIP Kafka topics..."
+
+        # Retention helpers
+        SEVEN_YEARS_MS=$(( 7 * 365 * 24 * 3600 * 1000 ))
+        SEVEN_DAYS_MS=$(( 7 * 24 * 3600 * 1000 ))
+
+        rpk topic create lip.payment.events      -p 24 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.failure.predictions -p 12 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.settlement.signals  -p 24 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.dispute.results     -p  6 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.velocity.alerts     -p  6 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.loan.offers         -p  6 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.repayment.events    -p  6 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.dead.letter         -p  6 -r 1 --brokers redpanda:29092 || true
+        rpk topic create lip.stress.regime       -p  6 -r 1 --brokers redpanda:29092 || true
+
+        # Decision log: 7-year retention (SR 11-7 + EU AI Act Art.17)
+        rpk topic create lip.decision.log \
+          -p 12 -r 1 \
+          --brokers redpanda:29092 \
+          -c retention.ms="${SEVEN_YEARS_MS}" || true
+
+        echo "All topics created."
+        rpk topic list --brokers redpanda:29092
+    networks:
+      - lip-net
+
+  # ── Redis Standalone ───────────────────────────────────────────────────────
+  # Single-node Redis 7 (Alpine). cluster_mode=False in RedisConfig — correct
+  # for standalone. RedisConfig.to_connection_kwargs() omits cluster kwargs.
+  # PHASE-2-STUB: Switch to Redis Cluster by setting LIP_REDIS_CLUSTER_MODE=true.
+  redis:
+    image: redis:7-alpine
+    container_name: lip-redis
+    command: redis-server --save "" --appendonly no --loglevel warning
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - lip-net
+
+networks:
+  lip-net:
+    driver: bridge

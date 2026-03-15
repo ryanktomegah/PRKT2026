@@ -244,7 +244,14 @@ class VelocityChecker:
             count_24h=cnt, beneficiary_concentration=conc,
         )
 
-    def record(self, entity_id: str, amount: Decimal, beneficiary_id: str) -> None:
+    def record(
+        self,
+        entity_id: str,
+        amount: Decimal,
+        beneficiary_id: str,
+        dollar_cap_override: Optional[Decimal] = None,
+        count_cap_override: Optional[int] = None,
+    ) -> None:
         """Record a transaction in the rolling window after it has been accepted.
 
         Must be called *after* a successful :meth:`check` to update the window
@@ -255,6 +262,8 @@ class VelocityChecker:
             entity_id: Raw entity identifier (hashed internally).
             amount: Transaction amount in USD.
             beneficiary_id: Raw beneficiary identifier (hashed internally).
+            dollar_cap_override: Optional USD cap (ignored, for signature symmetry with check).
+            count_cap_override: Optional count cap (ignored, for signature symmetry with check).
         """
         entity_hash = self._hash_entity(entity_id)
         bene_hash = self._hash_beneficiary(beneficiary_id)

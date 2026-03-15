@@ -41,6 +41,7 @@ class KafkaTopic(str, Enum):
     REPAYMENT_EVENTS = "lip.repayment.events"
     DECISION_LOG = "lip.decision.log"
     DEAD_LETTER = "lip.dead.letter"
+    STRESS_REGIME = "lip.stress.regime"
 
 
 @dataclass
@@ -109,6 +110,12 @@ TOPIC_DEFINITIONS: Dict[KafkaTopic, TopicConfig] = {
     KafkaTopic.DEAD_LETTER: TopicConfig(
         topic=KafkaTopic.DEAD_LETTER,
         partitions=6,
+    ),
+    KafkaTopic.STRESS_REGIME: TopicConfig(
+        topic=KafkaTopic.STRESS_REGIME,
+        partitions=6,
+        retention_ms=7 * 24 * 3600 * 1000,  # 7 days — risk alert signals
+        exactly_once=False,  # fire-and-forget; at-least-once acceptable for alerts
     ),
 }
 

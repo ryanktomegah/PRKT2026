@@ -5,6 +5,7 @@ Three-entity: MLO, MIPLO, ELO
 from .event_normalizer import EventNormalizer, normalize_event
 from .kafka_config import TOPIC_DEFINITIONS, KafkaConfig
 from .redis_config import KEY_SCHEMAS, RedisConfig
+from .stress_regime_detector import StressRegimeDetector, StressRegimeEvent
 
 __all__ = [
     "KafkaConfig",
@@ -13,4 +14,6 @@ __all__ = [
     "KEY_SCHEMAS",
     "EventNormalizer",
     "normalize_event",
+    "StressRegimeDetector",
+    "StressRegimeEvent",
 ]

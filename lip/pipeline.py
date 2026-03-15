@@ -98,6 +98,9 @@ class LIPPipeline:
     c3_monitor:
         Optional ``SettlementMonitor`` instance.  When provided, funded loans
         are registered for settlement monitoring.
+    stress_detector:
+        Optional ``StressRegimeDetector`` instance for detecting corridor
+        failure rate spikes.
     uetr_tracker:
         Optional ``UETRTracker`` instance for retry detection (GAP-04).
         If ``None``, a new local tracker is created.
@@ -116,6 +119,7 @@ class LIPPipeline:
         c6_checker: Any,
         c7_agent: Any,
         c3_monitor: Optional[Any] = None,
+        stress_detector: Optional[Any] = None,
         uetr_tracker: Optional[UETRTracker] = None,
         threshold: float = FAILURE_PROBABILITY_THRESHOLD,
         global_latency_tracker: Optional[LatencyTracker] = None,
@@ -126,6 +130,7 @@ class LIPPipeline:
         self._c6 = c6_checker
         self._c7 = c7_agent
         self._c3 = c3_monitor
+        self._stress_detector = stress_detector
         self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
@@ -192,6 +197,19 @@ class LIPPipeline:
         def _record_and_return(res: PipelineResult) -> PipelineResult:
             self._uetr_tracker.record(res.uetr, res.outcome)
             self._record_global(tracker, res.total_latency_ms)
+
+            # Record outcome in stress detector if present
+            if self._stress_detector:
+                corridor = f"{event.currency}_USD"
+                # In the BPI model, if we reach the pipeline, the original payment
+                # has already 'failed' (been rejected).
+                # FUNDED means a bridge loan was given to cover a failure.
+                # BELOW_THRESHOLD means we didn't give a loan, but the failure still happened.
+                # So we consider EVERY call to the pipeline as a failure for the corridor,
+                # unless it's a retry of a previous event.
+                is_failure = (res.outcome != "RETRY_BLOCKED")
+                self._stress_detector.record_event(corridor, is_failure)
+
             return res
 
         # --- Step 1: C1 inference -------------------------------------------
@@ -329,6 +347,7 @@ class LIPPipeline:
             "dispute_class": dispute_class_str,
             "aml_passed": aml_passed,
             "maturity_days": maturity,
+            "corridor": f"{event.currency}_USD",
             # GAP-10/GAP-12: propagate currency so C7 can derive governing law
             # and apply FX risk policy checks.
             "currency": event.currency,
@@ -365,7 +384,7 @@ class LIPPipeline:
             return _record_and_return(result)
 
         # --- Handle C7 DECLINE / CURRENCY_NOT_SUPPORTED --------------------
-        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW", "CURRENCY_NOT_SUPPORTED"):
+        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW", "CURRENCY_NOT_SUPPORTED", "BORROWER_NOT_ENROLLED"):
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             result = PipelineResult(
                 outcome="DECLINED",
@@ -396,6 +415,21 @@ class LIPPipeline:
 
         # Transition loan state machine: OFFER_PENDING → ACTIVE
         loan_sm.transition(LoanState.ACTIVE)
+
+        # GAP-02: Record the transaction in C6 after funding confirmed
+        with tracker.measure("c6_record"):
+            dollar_cap = None
+            count_cap = None
+            if hasattr(self._c7, "aml_dollar_cap_usd"):
+                dollar_cap = Decimal(str(self._c7.aml_dollar_cap_usd))
+            if hasattr(self._c7, "aml_count_cap"):
+                count_cap = self._c7.aml_count_cap
+
+            self._c6.record(
+                entity_id, event.amount, beneficiary_id,
+                dollar_cap_override=dollar_cap,
+                count_cap_override=count_cap
+            )
 
         # Register with C3 settlement monitor
         if self._c3 is not None and loan_offer is not None:

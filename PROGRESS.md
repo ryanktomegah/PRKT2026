@@ -5,6 +5,50 @@
 
 ---
 
+## Session 2026-03-15 — Plan fizzy-jumping-rain Execution
+
+**Tests**: 1276 passing (was 1286 reported; actual clean baseline was 1255 + pre-session uncommitted WIP).
+Net gain this session: +21 stress regime tests, +7 from untracked test files.
+**Lint**: 0 ruff errors.
+
+### P1 COMPLETE — Local Prototype Infrastructure
+- `docker-compose.yml`: Redpanda v24.1.1 (Kafka API-compatible) + Redis 7 Alpine.
+  Includes `redpanda-init` service that creates all 10 Kafka topics on first boot.
+- `scripts/start_local_infra.sh`: One-command startup with health-wait and env var guidance.
+- `scripts/init_topics.sh`: Idempotent topic creation via `rpk`, supports `--brokers` + `--replicas` flags.
+- **Usage**: `./scripts/start_local_infra.sh` (requires Docker Desktop running)
+
+### P3 COMPLETE — Stress Regime Detector (C5)
+- `lip/c5_streaming/stress_regime_detector.py`: Full implementation.
+  - `StressRegimeEvent` dataclass (frozen): `corridor, failure_rate_1h, baseline_rate, ratio, triggered_at`.
+    `to_json()` serialises for Kafka; `inf` ratio → `null` (JSON-safe).
+  - `StressRegimeDetector`: 24h baseline vs. 1h current window; 3× multiplier (QUANT constant).
+    `record_event()` / `is_stressed()` / `check_and_emit()` / `get_rates()` API.
+    Kafka emit via injected producer; in-memory `emitted_events` fallback (PHASE-2-STUB).
+    `_stress_window_rates()`: ratio in emitted event matches `is_stressed()` threshold exactly.
+  - 21 tests in `lip/tests/test_c5_stress_regime.py` — all passing.
+- `lip/c5_streaming/kafka_config.py`: Added `KafkaTopic.STRESS_REGIME = "lip.stress.regime"` (6 partitions, 7-day retention, at-least-once).
+- `lip/c5_streaming/__init__.py`: Exports `StressRegimeDetector`, `StressRegimeEvent`.
+- `lip/common/constants.py`: Added `STRESS_REGIME_MULTIPLIER = 3.0` + `STRESS_REGIME_MIN_TXNS = 20` (QUANT sign-off required).
+
+### Integration Fixes (uncommitted WIP from prior session — now committed)
+- `lip/c7_execution_agent/agent.py`: Integrated `BorrowerRegistry` (replaces `enrolled_borrowers: set`),
+  `StressRegimeDetector`, `LicenseeContext`. Fixed enrollment check: empty registry = allow-all (dev default).
+- `lip/pipeline.py`: Added `stress_detector` param + corridor stress recording. Added `c6.record()` call post-FUNDED.
+- `lip/common/borrower_registry.py`: W293 ruff fixes (was untracked, now committed).
+- `lip/tests/test_coverage_gaps.py`: Added `_MockC6.record()` no-op to match updated pipeline interface.
+- `lip/tests/test_c5_streaming.py`: Updated `test_all_nine_topics_defined` → `test_all_ten_topics_defined`.
+
+### What is NEXT (from plan fizzy-jumping-rain.md)
+- **P2**: `scripts/benchmark_pipeline.py` — end-to-end p50/p95/p99 on 1,000 synthetic events.
+- **P4**: Large-scale synthetic validation — `generate_at_scale()` in all dgen generators.
+- **P5**: Cascade risk Bayesian smoothing in `c1_failure_classifier/graph_builder.py`.
+- **P6**: C4 LLM integration test (needs Groq API key from user).
+- **P7**: `docs/federated-learning-architecture.md`
+- **P8**: `docs/cbdc-protocol-research.md`
+
+---
+
 - **GAP-16 COMPLETE**: Partial settlement handling.
   - New: `lip/common/partial_settlement.py` — `PartialSettlementPolicy` enum (REQUIRE_FULL / ACCEPT_PARTIAL) + `PartialSettlementConfig`.
   - `RepaymentLoop.__init__()`: optional `partial_settlement_policy` param.
@@ -154,9 +198,9 @@
 | C2 PD Model | ✅ Complete | Tier 1/2/3 routing, 300 bps floor |
 | C3 Repayment Engine | ✅ Complete | UETR TTL, 5 rails, **royalty tracking (GAP-05)** |
 | C4 Dispute Classifier | ✅ Complete | FN rate 1%, prefilter FP rate 4%. |
-| C5 Streaming | ✅ Complete | Kafka worker, Flink jobs |
-| C6 AML Velocity | ✅ Complete | Sanctions, configurable velocity caps |
-| C7 Execution Agent | ✅ Complete | offer delivery, borrower registry, retry detection |
+| C5 Streaming | ✅ Complete | Kafka worker, Flink jobs, **Stress Regime Detection** |
+| C6 AML Velocity | ✅ Complete | Sanctions, **Licensee-configurable caps (GAP-02)** |
+| C7 Execution Agent | ✅ Complete | offer delivery, **Borrower Registry (GAP-03)**, retry detection |
 | C8 License Manager | ✅ Complete | caps in license token |
 
 ---
@@ -200,21 +244,21 @@
 ## Immediate Next Engineering Tasks (ordered)
 
 1. ✅ **GAP-01** — Offer delivery and acceptance protocol (`0e7c69a`)
-2. **GAP-02** — Licensee-configurable AML caps via license token
-   - Add `aml_dollar_cap_usd` and `aml_count_cap` fields to `LicenseToken` / `LicenseeContext`
-   - Update `VelocityChecker.check()` to accept per-call cap overrides
-   - Update C7 `process_payment` to pass licensee caps from `LicenseeContext` to C6
-   - Files: `lip/c8_license_manager/license_token.py`, `lip/c6_aml_velocity/velocity.py`,
-     `lip/c7_execution_agent/agent.py`
-3. **GAP-03** — `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state
-   - New `lip/common/borrower_registry.py`; C7 checks registry BEFORE all other logic
-4. **GAP-05** — `BPIRoyaltySettlement` monthly batch mechanism
-   - New `lip/common/royalty_settlement.py`; triggered from C3 repayment callback
-5. **GAP-17** — `original_payment_amount_usd` in NormalizedEvent + validation in `_build_loan_offer`
-6. **Stress Regime Detector** — `StressRegimeDetector` in C5 (corridor_failure_rate_1h > 3× baseline)
+2. ✅ **GAP-02** — Licensee-configurable AML caps via license token
+   - Added `aml_dollar_cap_usd` and `aml_count_cap` to `LicenseeContext`
+   - Updated `VelocityChecker` to accept overrides in `check()` and `record()`
+   - Updated `ExecutionAgent` to load caps from `LicenseeContext`
+3. ✅ **GAP-03** — `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state
+   - New `lip/common/borrower_registry.py` managing MRFA enrollments
+   - C7 `process_payment` checks registry BEFORE all other logic
+4. ✅ **Stress Regime Detector** — `StressRegimeDetector` in C5 (corridor_failure_rate_1h > 3× baseline)
    - New `lip/c5_streaming/stress_regime_detector.py`
-7. **GAP-04** — Redis-backed `RetryDetector` (30-min tuple window)
-   - New `lip/c5_streaming/retry_detector.py`
+   - Integrated into `ExecutionAgent` to mandate human review during stress
+5. ✅ **GAP-04** — Redis-ready `UETRTracker` with 30-min TTL
+   - Updated `lip/common/uetr_tracker.py` with rolling window cleanup
+6. **GAP-05** — `BPIRoyaltySettlement` monthly batch mechanism
+   - New `lip/common/royalty_settlement.py`; triggered from C3 repayment callback
+7. **GAP-17** — `original_payment_amount_usd` in NormalizedEvent + validation in `_build_loan_offer` (Partially done, needs final verification)
 
 ---
 
