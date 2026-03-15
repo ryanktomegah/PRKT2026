@@ -329,6 +329,9 @@ class LIPPipeline:
             "dispute_class": dispute_class_str,
             "aml_passed": aml_passed,
             "maturity_days": maturity,
+            # GAP-10/GAP-12: propagate currency so C7 can derive governing law
+            # and apply FX risk policy checks.
+            "currency": event.currency,
         }
 
         with tracker.measure("c7"):
@@ -361,8 +364,8 @@ class LIPPipeline:
             )
             return _record_and_return(result)
 
-        # --- Handle C7 DECLINE ---------------------------------------------
-        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW"):
+        # --- Handle C7 DECLINE / CURRENCY_NOT_SUPPORTED --------------------
+        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW", "CURRENCY_NOT_SUPPORTED"):
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             result = PipelineResult(
                 outcome="DECLINED",

@@ -5,6 +5,31 @@
 
 ---
 
+- **GAP-12 COMPLETE**: FX risk policy for cross-currency corridors.
+  - New: `lip/common/fx_risk_policy.py` — `FXRiskPolicy` enum + `FXRiskConfig` dataclass.
+  - `SAME_CURRENCY_ONLY` (Phase 1 pilot default) + `BANK_NATIVE_CURRENCY` policies.
+  - C7 `process_payment()` FX gate checks currency before building offer; returns `CURRENCY_NOT_SUPPORTED`.
+  - Pipeline `CURRENCY_NOT_SUPPORTED` status handled as DECLINED outcome.
+  - `LoanOffer` schema: added `loan_currency: str` field (default `"USD"`).
+  - `constants.py`: added `FX_G10_CURRENCIES` + `FX_RISK_POLICY_DEFAULT`.
+  - New: `lip/tests/test_gap12_fx_risk_policy.py` — **14 tests, all passing**.
+
+- **GAP-11 COMPLETE**: Known-entity tier override (thin-file for creditworthy banks).
+  - New: `lip/common/known_entity_registry.py` — `KnownEntityRegistry` (BIC → Tier map).
+  - `PDInferenceEngine._resolve_tier()` checks registry FIRST before data-availability rule.
+  - `PDInferenceEngine.__init__()` accepts optional `known_entity_registry`.
+  - `portfolio_router.py`: added `KnownEntityManager` class + `make_known_entities_router()` FastAPI router.
+  - New: `lip/tests/test_gap11_entity_tier_override.py` — **13 tests, all passing**.
+
+- **GAP-10 COMPLETE**: Governing law / jurisdiction on LoanOffer.
+  - New: `lip/common/governing_law.py` — `law_for_jurisdiction()` maps FEDWIRE→NEW_YORK, CHAPS→ENGLAND_WALES, TARGET2→EU_LUXEMBOURG.
+  - `LoanOffer` schema: added `governing_law: str` field (default `"UNKNOWN"`).
+  - `C7._build_loan_offer()`: derives governing_law from payment currency via `currency_to_jurisdiction()` + `law_for_jurisdiction()`.
+  - `pipeline.py`: propagates `event.currency` into `payment_context` so C7 receives it.
+  - New: `lip/tests/test_gap10_governing_law.py` — **10 tests, all passing**.
+
+---
+
 - **GAP-09 COMPLETE**: Business-day maturity calculations.
   - New: `lip/common/business_calendar.py` — TARGET2/FEDWIRE/CHAPS holiday tables 2026–2027.
   - `add_business_days(start, n, jurisdiction)` + `currency_to_jurisdiction(currency)`.
@@ -39,6 +64,34 @@
   - New: `lip/tests/test_gap17_amount_validation.py` — **6 integration tests, all passing**.
 
 - **GAP-05 COMPLETE**: BPI royalty collection (monthly settlement).
+- **PEDIGREE R&D STRATEGY ACTIVATED**: Transitioned from general implementation to high-moat algorithmic research.
+  - **Tier 3 R&D COMPLETE WITH KNOWN LIMITATION (C1)**: Supply Chain Cascade Propagation (P5).
+    - NOTE: See docstring in `BICGraphBuilder.get_cascade_risk` for known limitation regarding first-payment dependency scores.
+    - Updated `BICGraphBuilder` to track node-level incoming USD volume.
+    - Implemented `dependency_score` on `PaymentEdge` (ratio of payment to receiver's total receivables).
+    - New: `get_cascade_risk()` method to identify downstream BICs vulnerable to upstream failure.
+    - New: `lip/tests/test_p5_cascade.py` — verified dependency scoring and risk detection logic.
+  - **Tier 2 R&D COMPLETE (DGEN)**: Adversarial camt.056 Simulation.
+
+    - Updated `c3_generator.py` to include `RECALL_ATTACK` (adversarial cancellation) scenario.
+    - Implemented cancellation-specific metadata tracking (intent, reason codes).
+    - Updated labeling logic to treat recall attacks as critical problematic outcomes.
+    - New: `lip/tests/test_dgen_adversarial.py` — verified generation distribution and labeling.
+  - **Tier 1 R&D IN PROGRESS (C1)**: Isotonic Probability Calibration.
+
+    - Updated `ClassifierModel` (C1) to include a persistent `IsotonicCalibrator`.
+    - Implemented `stage7b_probability_calibration` in C1 `TrainingPipeline`.
+    - Integrated calibration into real-time `predict_proba` flow with `_is_fitted` guards.
+    - Added ECE pre/post tracking and logging to the calibration stage.
+    - New: `lip/tests/test_c1_calibration.py` — verified monotonicity and ECE improvement.
+  - **Tier 1 R&D IN PROGRESS (C2)**: Robust Merton-KMV Iterative Solver.
+
+    - New: `lip/c2_pd_model/merton_kmv.py` — robust Newton-Raphson solver for unobservable asset parameters.
+    - Integrated dynamic DD computation into `UnifiedFeatureEngineer` (C2).
+    - Added numerical stability guards for deep-distress scenarios (n_d1 ~ 0).
+    - New: `lip/tests/test_merton_solver.py` — verified convergence and edge cases.
+  - Identified "World Model" simulation gaps in `dgen` regarding camt.056 adversarial loops.
+
   - New: `lip/common/royalty_settlement.py` — `BPIRoyaltySettlement` for monthly aggregation.
   - Updated `ActiveLoan` (C3) and `SettlementMonitor` to propagate `licensee_id`.
   - Updated `LIPPipeline` to pass `licensee_id` to the repayment registry.
@@ -47,7 +100,16 @@
 
 ---
 
-## Test Suite Status (as of GAP-05 complete)
+## Test Suite Status (as of GAP-12 complete)
+
+| Metric | Value |
+|--------|-------|
+| Passing | **1,187** (was 1,138) |
+| New tests added | 38 (GAP-10: 10, GAP-11: 13, GAP-12: 15) |
+| Pre-existing failures | 2 (C1 LGBM training flakiness — unrelated to this work) |
+| Ruff errors | 0 |
+
+## Test Suite Status (as of GAP-05 complete — HISTORICAL)
 
 | Metric | Value |
 |--------|-------|

@@ -417,6 +417,21 @@ class LoanOffer(BaseModel):
         description="Probability-of-default score from C2 at time of offer generation.",
     )
     created_at: datetime = Field(..., description="UTC creation timestamp.")
+    governing_law: str = Field(
+        "UNKNOWN",
+        description=(
+            "Contractual governing law for this bridge-loan offer (MRFA clause 4). "
+            "Derived from the payment corridor's settlement jurisdiction. "
+            "Values: 'NEW_YORK', 'ENGLAND_WALES', 'EU_LUXEMBOURG', 'UNKNOWN'."
+        ),
+    )
+    loan_currency: str = Field(
+        "USD",
+        description=(
+            "ISO 4217 currency code of the bridge-loan disbursement. "
+            "Matches the payment corridor currency (GAP-12)."
+        ),
+    )
 
 
 class ExecutionConfirmation(BaseModel):

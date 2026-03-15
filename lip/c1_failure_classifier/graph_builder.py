@@ -47,6 +47,7 @@ class PaymentEdge:
     amount_usd: float
     currency_pair: str
     timestamp: float
+    dependency_score: float = 0.0  # R&D Upgrade (P5): Ratio of payment to receiver's total incoming volume
     features: dict = field(default_factory=dict)
 
 
@@ -97,6 +98,8 @@ class BICGraphBuilder:
         self._adjacency: Dict[str, Dict[str, List[PaymentEdge]]] = {}
         # {bic -> earliest timestamp} for corridor age
         self._bic_first_seen: Dict[str, float] = {}
+        # {bic -> total incoming USD volume} for dependency calculation (P5)
+        self._in_volumes: Dict[str, float] = {}
         self._all_edges: List[PaymentEdge] = []
         logger.debug("BICGraphBuilder initialised")
 
@@ -124,6 +127,12 @@ class BICGraphBuilder:
         self._out_edges.setdefault(s, []).append(edge)
         self._in_edges.setdefault(r, []).append(edge)
         self._adjacency.setdefault(s, {}).setdefault(r, []).append(edge)
+
+        # Update incoming volume and dependency score (P5)
+        self._in_volumes[r] = self._in_volumes.get(r, 0.0) + edge.amount_usd
+        # score = payment_amount / total_receivables_to_date
+        edge.dependency_score = edge.amount_usd / self._in_volumes[r]
+
         self._all_edges.append(edge)
 
     # ------------------------------------------------------------------
@@ -156,6 +165,44 @@ class BICGraphBuilder:
             corridor_volume.items(), key=lambda kv: kv[1], reverse=True
         )
         return [nbr for nbr, _ in sorted_neighbors[:k]]
+
+    def get_cascade_risk(self, bic: str, dependency_threshold: float = 0.2) -> List[str]:
+        """Identify downstream BICs highly dependent on payments from this BIC.
+
+        Implements core logic for Supply Chain Cascade Detection (P5).
+
+        Parameters
+        ----------
+        bic:
+            Source BIC whose failure might cascade.
+        dependency_threshold:
+            Minimum ratio of payment-to-receivables to trigger a risk flag.
+
+        Returns
+        -------
+        List[str]
+            BICs at risk of cascade failure.
+
+        Known limitation: The first payment to any receiver node always produces
+        dependency_score = 1.0 because the volume accumulator includes the current
+        payment before the ratio is computed. New corridors will be incorrectly
+        flagged as maximum cascade risk on first payment. This is a point-in-time
+        artefact, not a true risk signal. Filter results where node edge count < 5
+        before using cascade risk scores in production decisions.
+        """
+        if bic not in self._adjacency:
+            return []
+
+        at_risk = []
+        for receiving_bic, edges in self._adjacency[bic].items():
+            # Check latest payment dependency
+            if not edges:
+                continue
+            latest = max(edges, key=lambda e: e.timestamp)
+            if latest.dependency_score >= dependency_threshold:
+                at_risk.append(receiving_bic)
+
+        return at_risk
 
     # ------------------------------------------------------------------
     # Feature computation

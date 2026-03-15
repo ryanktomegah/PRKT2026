@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+import mlflow
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
@@ -450,7 +451,7 @@ class TrainingPipeline:
         TabTransformerModel
             Initialised and pre-trained TabTransformer model.
         """
-        model = TabTransformerModel(input_dim=96)
+        model = TabTransformerModel(input_dim=88)
         n = len(y_train)
         rng = np.random.default_rng(seed=self.config.random_seed + 1)
         limit = np.sqrt(6.0 / (model.output_dim + 1))
@@ -469,7 +470,7 @@ class TrainingPipeline:
             for b in range(n_batches):
                 batch_idx = indices[b * batch_size: (b + 1) * batch_size]
                 for i in batch_idx:
-                    x_tab = X_train[i]
+                    x_tab = X_train[i][8:]
                     tab_emb = model.forward(x_tab)
                     logit = float((tab_emb @ W_head + b_head).item())
                     p = _sigmoid(logit)
@@ -626,9 +627,10 @@ class TrainingPipeline:
             for b in range(n_batches):
                 batch_idx = indices[b * self.config.batch_size: (b + 1) * self.config.batch_size]
                 for i in batch_idx:
-                    x_tab = X_train[i]
+                    x_full = X_train[i]
+                    x_tab = x_full[8:]
                     tab_emb = tabtransformer.forward(x_tab)
-                    node_feat = x_tab[:graphsage_input_dim]
+                    node_feat = x_full[:graphsage_input_dim]
                     sage_emb = graphsage.forward(node_feat, [], [])
                     fused = np.concatenate([sage_emb, tab_emb])
                     prob = mlp.forward(fused)
@@ -688,6 +690,68 @@ class TrainingPipeline:
 
         logger.info("stage7_joint_training: complete")
         return model
+
+    # ------------------------------------------------------------------
+    # Stage 7b — Probability calibration (Isotonic)
+    # ------------------------------------------------------------------
+
+    def stage7b_probability_calibration(
+        self,
+        model: ClassifierModel,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+    ) -> float:
+        """Fit the Isotonic calibrator using the validation set.
+
+        Returns:
+            Computed ECE after calibration.
+        """
+        from .calibration import compute_ece  # noqa: PLC0415
+
+        # 1. Get raw scores (calibrate=False)
+        raw_scores = []
+        for i in range(len(X_val)):
+            score = self._get_model_score_on_fused(model, X_val[i])
+            raw_scores.append(score)
+
+        scores_arr = np.array(raw_scores)
+        ece_before = compute_ece(y_val, scores_arr)
+
+        # 2. Fit calibrator
+        model.calibrator.fit(scores_arr, y_val)
+
+        # 3. Compute ECE after calibration
+        calibrated_scores = model.calibrator.predict(scores_arr)
+        ece_after = compute_ece(y_val, calibrated_scores)
+
+        logger.info(
+            "stage7b_probability_calibration: ECE_before=%.5f → ECE_after=%.5f",
+            ece_before, ece_after
+        )
+
+        mlflow.log_metric("ece_pre_calibration", ece_before)
+        mlflow.log_metric("ece_post_calibration", ece_after)
+
+        if ece_after > ece_before:
+            logger.warning("Calibration degraded ECE: %.5f -> %.5f", ece_before, ece_after)
+
+        return ece_after
+
+    def _get_model_score_on_fused(self, model: ClassifierModel, fused_vec: np.ndarray) -> float:
+        """Helper to get score from fused vector using the public predict_proba API."""
+        # Split fused vector back into components
+        # X has shape (n, 96) — graph node features [0:8] prepended to tabular features [8:96]
+        node_feat = fused_vec[:8]
+        tab_feat = fused_vec[8:]
+
+        # During training/calibration on simple fused vectors, we don't have neighbor info
+        return model.predict_proba(
+            node_features=node_feat,
+            neighbors_l1=[],
+            neighbors_l2=[],
+            tabular_features=tab_feat,
+            calibrate=False
+        )
 
     # ------------------------------------------------------------------
     # Stage 8 — Threshold calibration
@@ -794,6 +858,13 @@ class TrainingPipeline:
         tabtransformer = _run_stage("stage6_tabtransformer_pretrain", self.stage6_tabtransformer_pretrain, X_train, y_train)
         model = _run_stage("stage7_joint_training", self.stage7_joint_training, graphsage, tabtransformer, X_train, y_train, X_val, y_val)
         model.lgbm_model = lgbm_model  # attach LightGBM to complete the 3-model ensemble
+        ece_after = _run_stage("stage7b_probability_calibration", self.stage7b_probability_calibration, model, X_val, y_val)
+        mlflow.log_metric("c1_ece_after_calibration", ece_after)
+        if ece_after > 0.05:
+            logger.error(
+                "AUDIT GATE 1.1 FAIL: C1 ECE=%.4f exceeds 0.05 threshold. "
+                "Do not deploy this model.", ece_after
+            )
         threshold = _run_stage("stage8_threshold_calibration", self.stage8_threshold_calibration, model, X_val, y_val)
         emb_pipeline = _run_stage("stage9_embedding_generation", self.stage9_embedding_generation, model, validated)
 

@@ -21,6 +21,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
+from lip.c2_pd_model.tier_assignment import Tier
+from lip.common.known_entity_registry import KnownEntityRegistry
+
 
 def _tier_from_fee_bps(fee_bps: int) -> int:
     """Derive credit tier from annualised fee basis points.
@@ -195,6 +198,61 @@ class PortfolioReporter:
 
 
 # ---------------------------------------------------------------------------
+# KnownEntityManager — GAP-11: known entity tier-override administration
+# ---------------------------------------------------------------------------
+
+class KnownEntityManager:
+    """Administrative interface for the known-entity tier-override registry.
+
+    Wraps a :class:`~lip.common.known_entity_registry.KnownEntityRegistry`
+    and exposes CRUD operations suitable for HTTP API exposure.
+
+    Args:
+        registry: The underlying :class:`KnownEntityRegistry` instance.
+            Changes made through this manager are reflected immediately.
+    """
+
+    def __init__(self, registry: KnownEntityRegistry) -> None:
+        self._registry = registry
+
+    def list_entities(self) -> List[Dict]:
+        """Return all registered BIC → Tier overrides.
+
+        Returns:
+            List of dicts, each with keys ``bic`` (str) and ``tier`` (int).
+        """
+        return [
+            {"bic": bic, "tier": int(tier)}
+            for bic, tier in sorted(self._registry.list_all().items())
+        ]
+
+    def register(self, bic: str, tier: int) -> Dict:
+        """Register a BIC with a manual tier override.
+
+        Args:
+            bic: SWIFT BIC code.
+            tier: Tier value — 1, 2, or 3.
+
+        Returns:
+            Dict with keys ``bic``, ``tier``, ``status``.
+        """
+        self._registry.register(bic, Tier(tier))
+        return {"bic": bic.upper(), "tier": tier, "status": "registered"}
+
+    def unregister(self, bic: str) -> Dict:
+        """Remove a BIC's tier override.
+
+        Args:
+            bic: SWIFT BIC code to remove.
+
+        Returns:
+            Dict with keys ``bic``, ``status``.
+        """
+        self._registry.unregister(bic)
+        return {"bic": bic.upper(), "status": "unregistered"}
+
+
+# ---------------------------------------------------------------------------
 # Optional FastAPI router — only imported when FastAPI is available
 # ---------------------------------------------------------------------------
 
@@ -231,6 +289,41 @@ try:
         def yield_report() -> Dict:
             """Cumulative and estimated annualised yield on active book."""
             return reporter.get_yield()
+
+        return router
+
+    def make_known_entities_router(manager: KnownEntityManager) -> APIRouter:
+        """Create a FastAPI APIRouter for known-entity tier-override administration.
+
+        Usage::
+
+            app = FastAPI()
+            app.include_router(
+                make_known_entities_router(manager), prefix="/known-entities"
+            )
+
+        Args:
+            manager: Configured :class:`KnownEntityManager` instance.
+
+        Returns:
+            :class:`~fastapi.APIRouter` with list, register, and delete endpoints.
+        """
+        router = APIRouter(tags=["known-entities"])
+
+        @router.get("")
+        def list_entities() -> List[Dict]:
+            """All registered BIC → Tier overrides."""
+            return manager.list_entities()
+
+        @router.post("")
+        def register_entity(bic: str, tier: int) -> Dict:
+            """Register a BIC with a manual tier override."""
+            return manager.register(bic, tier)
+
+        @router.delete("/{bic}")
+        def delete_entity(bic: str) -> Dict:
+            """Remove a BIC's tier override."""
+            return manager.unregister(bic)
 
         return router
 

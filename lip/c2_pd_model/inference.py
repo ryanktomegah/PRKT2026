@@ -10,7 +10,9 @@ Three-entity role mapping:
 import logging
 import time
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
+
+from lip.common.known_entity_registry import KnownEntityRegistry
 
 from .features import UnifiedFeatureEngineer
 from .fee import compute_fee_bps_from_el
@@ -80,12 +82,14 @@ class PDInferenceEngine:
         auto_tier: bool = True,
         thin_file_pd_min: float = 0.05,
         thin_file_pd_max: float = 0.25,
+        known_entity_registry: Optional[KnownEntityRegistry] = None,
     ) -> None:
         self._model = model
         self._base_engineer = feature_engineer
         self._auto_tier = auto_tier
         self._thin_file_pd_min = thin_file_pd_min
         self._thin_file_pd_max = thin_file_pd_max
+        self._known_entity_registry = known_entity_registry
 
     # ------------------------------------------------------------------
     # Public API
@@ -218,7 +222,20 @@ class PDInferenceEngine:
 
     def _resolve_tier(self, borrower: dict) -> Tier:
         """Derive the tier from borrower availability flags, or fall back to
-        the base engineer's tier when *auto_tier* is disabled."""
+        the base engineer's tier when *auto_tier* is disabled.
+
+        GAP-11: If a :class:`~lip.common.known_entity_registry.KnownEntityRegistry`
+        is configured, it is checked *first*.  A registered BIC override takes
+        precedence over both the data-availability rule and the base engineer
+        tier, enabling known creditworthy institutions to bypass the thin-file
+        penalty even when they have no transaction history in LIP.
+        """
+        # GAP-11: Known-entity registry override (checked before data-availability rule)
+        if self._known_entity_registry is not None:
+            override = self._known_entity_registry.lookup(borrower.get("bic", ""))
+            if override is not None:
+                return override
+
         if not self._auto_tier:
             return self._base_engineer.tier
 

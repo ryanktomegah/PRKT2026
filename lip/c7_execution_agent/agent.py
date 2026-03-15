@@ -17,6 +17,11 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
+from lip.common.business_calendar import currency_to_jurisdiction
+from lip.common.fx_risk_policy import FXRiskConfig
+from lip.common.governing_law import law_for_jurisdiction
+from lip.common.known_entity_registry import KnownEntityRegistry
+
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
 from .human_override import HumanOverrideInterface
@@ -89,6 +94,8 @@ class ExecutionAgent:
         aml_dollar_cap_usd: int = 1000000,
         aml_count_cap: int = 100,
         offer_delivery: Optional[OfferDeliveryService] = None,
+        known_entity_registry: Optional[KnownEntityRegistry] = None,
+        fx_risk_config: Optional[FXRiskConfig] = None,
     ) -> None:
         self.kill_switch = kill_switch
         self.decision_logger = decision_logger
@@ -100,6 +107,8 @@ class ExecutionAgent:
         self.aml_dollar_cap_usd = aml_dollar_cap_usd
         self.aml_count_cap = aml_count_cap
         self.offer_delivery = offer_delivery
+        self._known_entity_registry = known_entity_registry
+        self._fx_risk_config = fx_risk_config
 
     # ── main processing entry point ──────────────────────────────────────────
 
@@ -202,6 +211,27 @@ class ExecutionAgent:
             )
             return {"status": "DECLINE", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": None}
 
+        # 4b. GAP-12: FX risk policy gate — block unsupported currencies before offer
+        if self._fx_risk_config is not None:
+            currency = payment_context.get("currency", self._fx_risk_config.bank_base_currency)
+            if not self._fx_risk_config.is_supported(currency):
+                logger.warning(
+                    "Currency not supported by FX risk policy: currency=%s policy=%s uetr=%s",
+                    currency,
+                    self._fx_risk_config.policy.value,
+                    uetr,
+                )
+                entry_id = self._log_decision(
+                    uetr, individual_payment_id, "CURRENCY_NOT_SUPPORTED",
+                    failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                )
+                return {
+                    "status": "CURRENCY_NOT_SUPPORTED",
+                    "loan_offer": None,
+                    "decision_entry_id": entry_id,
+                    "halt_reason": "currency_not_supported",
+                }
+
         # 5. Build offer — returns None if GAP-17 amount mismatch detected
         offer = self._build_loan_offer(payment_context, pd_score, fee_bps)
         if offer is None:
@@ -265,6 +295,10 @@ class ExecutionAgent:
         from lip.common.swift_disbursement import build_disbursement_message
         swift_msg = build_disbursement_message(uetr, loan_id, capped)
 
+        # GAP-10: Derive governing law from payment corridor currency (MRFA clause 4).
+        loan_currency = payment_context.get("currency", "USD")
+        governing_law = law_for_jurisdiction(currency_to_jurisdiction(loan_currency))
+
         return {
             "loan_id": loan_id,
             "uetr": uetr,
@@ -276,6 +310,8 @@ class ExecutionAgent:
             "expires_at": (datetime.now(tz=timezone.utc) + timedelta(minutes=15)).isoformat(),
             "swift_disbursement_ref": swift_msg.end_to_end_id,
             "swift_remittance_info": swift_msg.remittance_info,
+            "governing_law": governing_law,
+            "loan_currency": loan_currency,
         }
 
     def _requires_human_review(self, payment_context: dict) -> bool:

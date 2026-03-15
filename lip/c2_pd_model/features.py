@@ -15,6 +15,15 @@ import numpy as np
 
 from .tier_assignment import Tier
 
+# # QUARTERLY REVIEW REQUIRED
+_RISK_FREE_BY_CURRENCY = {
+    "USD": 0.043,
+    "EUR": 0.026,
+    "GBP": 0.047,
+    "CAD": 0.030,
+    "SGD": 0.036,
+}
+
 # ---------------------------------------------------------------------------
 # Feature-name registries
 # ---------------------------------------------------------------------------
@@ -425,7 +434,25 @@ class UnifiedFeatureEngineer:
             vec[30] = sf(altman)
             available.append("avail_altman_inputs")
 
+        # R&D Upgrade: Iterative Merton Solver
         merton = borrower.get("merton_distance_to_default")
+
+        # If we have raw inputs, we prefer computing it fresh
+        eq_val = borrower.get("equity_market_value")
+        eq_vol = borrower.get("equity_volatility")
+        debt = borrower.get("total_debt")
+
+        if eq_val is not None and eq_vol is not None and debt is not None:
+            from .merton_kmv import compute_merton_dd  # noqa: PLC0415
+            maturity_days = borrower.get("maturity_days", 7)
+            merton = compute_merton_dd(
+                equity_value=float(eq_val),
+                equity_vol=float(eq_vol),
+                debt=float(debt),
+                risk_free=_RISK_FREE_BY_CURRENCY.get(borrower.get("currency", "USD"), 0.04),
+                T=maturity_days / 365.0
+            )
+
         if merton is not None:
             vec[31] = sf(merton)
             available.append("avail_merton_inputs")
