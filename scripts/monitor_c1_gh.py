@@ -17,14 +17,13 @@ PYTHONPATH does not need to be set — this script has no lip imports.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta
 
 # Reuse stage metadata and TrainingState from the local monitor
 _SCRIPT_DIR = __file__
-import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from monitor_c1 import (  # noqa: E402
