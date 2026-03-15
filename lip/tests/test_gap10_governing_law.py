@@ -5,6 +5,7 @@ Governing-law / jurisdiction field on LoanOffer.
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Any, Dict
 
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c7_execution_agent.decision_log import DecisionLogger
@@ -49,7 +50,7 @@ def _make_context(currency: str = "USD") -> dict:
 
 def _make_loan_offer(**overrides) -> LoanOffer:
     """Build a valid LoanOffer Pydantic instance for schema validation tests."""
-    defaults = dict(
+    defaults: Dict[str, Any] = dict(
         offer_id=uuid.uuid4(),
         uetr=uuid.uuid4(),
         mlo_entity_id="mlo-001",

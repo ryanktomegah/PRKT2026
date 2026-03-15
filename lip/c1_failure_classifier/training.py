@@ -659,9 +659,10 @@ class TrainingPipeline:
 
             scores: List[float] = []
             for i in range(len(ckpt_X)):
-                x_tab = ckpt_X[i]
+                x_full = ckpt_X[i]
+                x_tab = x_full[8:]
                 tab_emb = tabtransformer.forward(x_tab)
-                node_feat = x_tab[:graphsage_input_dim]
+                node_feat = x_full[:graphsage_input_dim]
                 sage_emb = graphsage.forward(node_feat, [], [])
                 fused = np.concatenate([sage_emb, tab_emb])
                 scores.append(mlp.forward(fused))
@@ -780,9 +781,10 @@ class TrainingPipeline:
             F2-optimal threshold in ``[0, 1]``.
         """
         scores: List[float] = []
-        for x_tab in X_val:
+        for x_full in X_val:
+            x_tab = x_full[8:]
             tab_emb = model.tabtransformer.forward(x_tab)
-            node_feat = x_tab[:8]
+            node_feat = x_full[:8]
             sage_emb = model.graphsage.forward(node_feat, [], [])
             fused = np.concatenate([sage_emb, tab_emb])
             scores.append(model.mlp.forward(fused))
@@ -853,7 +855,7 @@ class TrainingPipeline:
         graph = _run_stage("stage2_graph_construction", self.stage2_graph_construction, validated)
         X, y, bics = _run_stage("stage3_feature_extraction", self.stage3_feature_extraction, validated, graph)
         X_train, X_val, y_train, y_val, _bic_train, _bic_val = _run_stage("stage4_train_val_split", self.stage4_train_val_split, X, y, bics)
-        lgbm_model = _run_stage("stage5b_lightgbm_pretrain", self.stage5b_lightgbm_pretrain, X_train, y_train)
+        lgbm_model = _run_stage("stage5b_lightgbm_pretrain", self.stage5b_lightgbm_pretrain, X_train[:, 8:], y_train)
         graphsage = _run_stage("stage5_graphsage_pretrain", self.stage5_graphsage_pretrain, X_train, y_train)
         tabtransformer = _run_stage("stage6_tabtransformer_pretrain", self.stage6_tabtransformer_pretrain, X_train, y_train)
         model = _run_stage("stage7_joint_training", self.stage7_joint_training, graphsage, tabtransformer, X_train, y_train, X_val, y_val)
