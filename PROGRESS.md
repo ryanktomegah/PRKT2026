@@ -39,13 +39,37 @@ Net gain this session: +21 stress regime tests, +7 from untracked test files.
 - `lip/tests/test_coverage_gaps.py`: Added `_MockC6.record()` no-op to match updated pipeline interface.
 - `lip/tests/test_c5_streaming.py`: Updated `test_all_nine_topics_defined` → `test_all_ten_topics_defined`.
 
+### P2 COMPLETE — Latency Benchmark
+- `scripts/benchmark_pipeline.py`: 1,000 events (100 cold + 900 warm). Mock C1/C2; real C4+C6+C7+HMAC.
+- Result: warm p99=0.29ms (323× below 94ms SLO). Cold path higher due to model init.
+- `docs/benchmark-results.md`: Auto-generated, clearly states ML inference NOT measured.
+
+### P5 COMPLETE — Cascade Risk Bayesian Smoothing
+- `lip/c1_failure_classifier/graph_builder.py`: Added `_SMOOTHING_K=5`, `_DEPENDENCY_PRIOR_DEFAULT=0.10`.
+  Added `observation_count: int` to `PaymentEdge`. Smoothing: `score = (n×raw + k×prior) / (n+k)`.
+  `get_cascade_risk()` now returns `(at_risk_bics, CascadeConfidence)` tuple.
+- `lip/tests/test_p5_cascade.py`: 10 tests covering first-payment fix, convergence, high-confidence.
+
+### P4 COMPLETE — Large-Scale Synthetic Validation (Session 2026-03-15 continuation)
+- `lip/dgen/c1_generator.py`: NEW — BIS CPMI-calibrated corridor distributions, 300 synthetic BICs,
+  ISO 20022 rejection codes (A/B/C/BLOCK taxonomy). `generate_at_scale(n=2_000_000, seed=42)`.
+- `lip/dgen/c2_generator.py`: Added `generate_at_scale(n=500_000, seed=42)`.
+- `lip/dgen/c4_generator.py`: Added `generate_at_scale(n=200_000, seed=42)`.
+- `lip/dgen/c6_generator.py`: Added `generate_at_scale(n=300_000, seed=42)`.
+- `scripts/run_poc_validation.py`: Orchestrates generation + inference + metrics for all 4 components.
+  Default: 10K records per component (~27s). Full-scale with `--full-scale` flag.
+  C4 uses DisputeClassifier (MockLLMBackend). C6 uses AnomalyDetector (80/20 train/test).
+- `docs/poc-validation-report.md`: Auto-generated bank-readable report. Results at n=10K:
+  - C1: ✅ corridor rate error=0.0, temporal span=539.9 days, class fracs match BIS targets
+  - C2: ✅ Altman Z separation healthy=3.995 vs default=1.33, tier default rates within tolerance
+  - C4: ⚠️ DISPUTE_CONFIRMED recall=0.528 (known MockLLMBackend limitation; P6 fixes this)
+  - C6: ✅ AML flag rate=7.85% (target 8%), precision=1.0, recall=0.244 (Isolation Forest unsupervised)
+- **Tests**: 1284 passing, 1 skipped, 0 failures. 0 ruff errors.
+
 ### What is NEXT (from plan fizzy-jumping-rain.md)
-- **P2**: `scripts/benchmark_pipeline.py` — end-to-end p50/p95/p99 on 1,000 synthetic events.
-- **P4**: Large-scale synthetic validation — `generate_at_scale()` in all dgen generators.
-- **P5**: Cascade risk Bayesian smoothing in `c1_failure_classifier/graph_builder.py`.
 - **P6**: C4 LLM integration test (needs Groq API key from user).
-- **P7**: `docs/federated-learning-architecture.md`
-- **P8**: `docs/cbdc-protocol-research.md`
+- **P7**: `docs/federated-learning-architecture.md` — FedAvg vs Secure Aggregation, DP budget.
+- **P8**: `docs/cbdc-protocol-research.md` — BIS mBridge, ECB DLT, P9 patent.
 
 ---
 

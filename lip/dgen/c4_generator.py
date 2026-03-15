@@ -338,3 +338,14 @@ def generate_dispute_corpus(
         })
 
     return records
+
+
+def generate_at_scale(n: int = 200_000, seed: int = 42) -> List[dict]:
+    """Generate C4 dispute narratives at prototype validation scale.
+
+    Calls :func:`generate_dispute_corpus` with template-based text generation.
+    EU AI Act Art.10 traceability fully preserved via seed.
+
+    For CI/CD and demo runs, use n=5_000 or n=15_000.
+    """
+    return generate_dispute_corpus(n_samples=n, seed=seed)

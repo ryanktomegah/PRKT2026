@@ -293,3 +293,15 @@ def generate_aml_corpus(
         records.append(rec)
 
     return records
+
+
+def generate_at_scale(n: int = 300_000, seed: int = 42) -> List[dict]:
+    """Generate C6 AML corpus at prototype validation scale.
+
+    Calls :func:`generate_aml_corpus` with FATF-aligned typology patterns.
+    CIPHER rule: output must NOT be committed to the repository — generate
+    fresh per training environment.
+
+    For CI/CD and demo runs, use n=5_000 or n=20_000.
+    """
+    return generate_aml_corpus(n_samples=n, seed=seed)

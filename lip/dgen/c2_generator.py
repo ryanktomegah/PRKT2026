@@ -359,3 +359,15 @@ def generate_pd_training_data_v2(
         })
 
     return records
+
+
+def generate_at_scale(n: int = 500_000, seed: int = 42) -> List[dict]:
+    """Generate C2 PD records at prototype validation scale.
+
+    Calls :func:`generate_pd_training_data_v2` with QUANT-validated correlated
+    financials and SR 11-7 temporal structure. At n=500,000 this requires
+    approximately 2-3 GB RAM due to the multivariate normal draws per record.
+
+    For CI/CD and demo runs, use n=10_000 or n=30_000.
+    """
+    return generate_pd_training_data_v2(n_samples=n, seed=seed)
