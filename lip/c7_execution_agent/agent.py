@@ -17,10 +17,16 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
+from lip.common.business_calendar import currency_to_jurisdiction
+from lip.common.fx_risk_policy import FXRiskConfig
+from lip.common.governing_law import law_for_jurisdiction
+from lip.common.known_entity_registry import KnownEntityRegistry
+
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
 from .human_override import HumanOverrideInterface
 from .kill_switch import KillSwitch
+from .offer_delivery import OfferDeliveryService
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +37,7 @@ class ExecutionConfig:
     max_loan_amount: Decimal = field(default_factory=lambda: Decimal("10000000"))
     auto_approve_threshold: float = 0.95
     require_human_review_above_pd: float = 0.20
+    enrolled_borrowers: set[str] = field(default_factory=set)
 
 
 class _TPSLimiter:
@@ -84,6 +91,11 @@ class ExecutionAgent:
         config: Optional[ExecutionConfig] = None,
         licensee_id: str = "",
         max_tps: int = 0,
+        aml_dollar_cap_usd: int = 1000000,
+        aml_count_cap: int = 100,
+        offer_delivery: Optional[OfferDeliveryService] = None,
+        known_entity_registry: Optional[KnownEntityRegistry] = None,
+        fx_risk_config: Optional[FXRiskConfig] = None,
     ) -> None:
         self.kill_switch = kill_switch
         self.decision_logger = decision_logger
@@ -92,6 +104,11 @@ class ExecutionAgent:
         self.config = config or ExecutionConfig()
         self.licensee_id = licensee_id
         self._tps_limiter = _TPSLimiter(max_tps=max_tps)
+        self.aml_dollar_cap_usd = aml_dollar_cap_usd
+        self.aml_count_cap = aml_count_cap
+        self.offer_delivery = offer_delivery
+        self._known_entity_registry = known_entity_registry
+        self._fx_risk_config = fx_risk_config
 
     # ── main processing entry point ──────────────────────────────────────────
 
@@ -118,6 +135,29 @@ class ExecutionAgent:
             reason = "kill_switch_active" if self.kill_switch.is_active() else "kms_unavailable"
             logger.warning("Halting new offer for uetr=%s reason=%s", uetr, reason)
             return {"status": "HALT", "loan_offer": None, "decision_entry_id": None, "halt_reason": reason}
+
+        # 1b. Borrower enrollment guard (GAP-03)
+        sending_bic = payment_context.get("sending_bic", "")
+        if self.config.enrolled_borrowers and sending_bic not in self.config.enrolled_borrowers:
+            logger.warning("Borrower not enrolled: bic=%s uetr=%s", sending_bic, uetr)
+            # Use BLOCK status for unenrolled borrowers as it's a policy-based hard gate
+            failure_prob = float(payment_context.get("failure_probability", 0.0))
+            pd_score = float(payment_context.get("pd_score", 0.0))
+            fee_bps = int(payment_context.get("fee_bps", 300))
+            loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
+            dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
+            aml_passed = bool(payment_context.get("aml_passed", True))
+
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "BLOCK",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+            )
+            return {
+                "status": "BLOCK",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "borrower_not_enrolled"
+            }
 
         failure_prob = float(payment_context.get("failure_probability", 0.0))
         pd_score = float(payment_context.get("pd_score", 0.0))
@@ -171,30 +211,107 @@ class ExecutionAgent:
             )
             return {"status": "DECLINE", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": None}
 
-        # 5. Build offer
+        # 4b. GAP-12: FX risk policy gate — block unsupported currencies before offer
+        if self._fx_risk_config is not None:
+            currency = payment_context.get("currency", self._fx_risk_config.bank_base_currency)
+            if not self._fx_risk_config.is_supported(currency):
+                logger.warning(
+                    "Currency not supported by FX risk policy: currency=%s policy=%s uetr=%s",
+                    currency,
+                    self._fx_risk_config.policy.value,
+                    uetr,
+                )
+                entry_id = self._log_decision(
+                    uetr, individual_payment_id, "CURRENCY_NOT_SUPPORTED",
+                    failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                )
+                return {
+                    "status": "CURRENCY_NOT_SUPPORTED",
+                    "loan_offer": None,
+                    "decision_entry_id": entry_id,
+                    "halt_reason": "currency_not_supported",
+                }
+
+        # 5. Build offer — returns None if GAP-17 amount mismatch detected
         offer = self._build_loan_offer(payment_context, pd_score, fee_bps)
+        if offer is None:
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "LOAN_AMOUNT_MISMATCH",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+            )
+            return {
+                "status": "LOAN_AMOUNT_MISMATCH",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "loan_amount_mismatch",
+            }
+
+        delivery_id: Optional[str] = None
+        if self.offer_delivery is not None:
+            delivery = self.offer_delivery.deliver(offer)
+            delivery_id = str(delivery.delivery_id)
+            logger.info(
+                "Offer delivery registered: offer_id=%s delivery_id=%s",
+                offer["loan_id"],
+                delivery_id,
+            )
         entry_id = self._log_decision(
             uetr, individual_payment_id, "OFFER",
             failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
             human_override=human_override_applied,
         )
-        return {"status": "OFFER", "loan_offer": offer, "decision_entry_id": entry_id, "halt_reason": None}
+        return {
+            "status": "OFFER",
+            "loan_offer": offer,
+            "decision_entry_id": entry_id,
+            "halt_reason": None,
+            "delivery_id": delivery_id,
+        }
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
-    def _build_loan_offer(self, payment_context: dict, pd: float, fee_bps: int) -> dict:
+    def _build_loan_offer(self, payment_context: dict, pd: float, fee_bps: int) -> Optional[dict]:
         loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
+
+        # GAP-17: Validate that the loan amount equals the original payment
+        # amount the receiver is owed. ±$0.01 tolerance covers FX rounding.
+        original_amt = Decimal(str(payment_context.get("original_payment_amount_usd", loan_amount)))
+        if abs(loan_amount - original_amt) > Decimal("0.01"):
+            logger.error(
+                "LOAN_AMOUNT_MISMATCH: loan_amount=%s original_payment_amount_usd=%s uetr=%s",
+                loan_amount,
+                original_amt,
+                payment_context.get("uetr"),
+            )
+            return None
+
         capped = min(loan_amount, self.config.max_loan_amount)
         maturity_days = int(payment_context.get("maturity_days", 7))
+        loan_id = str(uuid.uuid4())
+        uetr = str(payment_context.get("uetr", ""))
+
+        # GAP-06: Build SWIFT pacs.008 disbursement message so ELO can populate
+        # EndToEndId and RmtInf/Ustrd on the outbound bridge credit transfer.
+        from lip.common.swift_disbursement import build_disbursement_message
+        swift_msg = build_disbursement_message(uetr, loan_id, capped)
+
+        # GAP-10: Derive governing law from payment corridor currency (MRFA clause 4).
+        loan_currency = payment_context.get("currency", "USD")
+        governing_law = law_for_jurisdiction(currency_to_jurisdiction(loan_currency))
+
         return {
-            "loan_id": str(uuid.uuid4()),
-            "uetr": payment_context.get("uetr"),
+            "loan_id": loan_id,
+            "uetr": uetr,
             "loan_amount": str(capped),
             "fee_bps": fee_bps,
             "maturity_days": maturity_days,
             "pd_score": pd,
             "offered_at": datetime.now(tz=timezone.utc).isoformat(),
             "expires_at": (datetime.now(tz=timezone.utc) + timedelta(minutes=15)).isoformat(),
+            "swift_disbursement_ref": swift_msg.end_to_end_id,
+            "swift_remittance_info": swift_msg.remittance_info,
+            "governing_law": governing_law,
+            "loan_currency": loan_currency,
         }
 
     def _requires_human_review(self, payment_context: dict) -> bool:

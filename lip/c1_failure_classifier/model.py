@@ -301,6 +301,10 @@ class ClassifierModel:
         self.mlp = mlp
         self.lgbm_model: Optional[Any] = None  # attached after stage5b training
 
+        # R&D Upgrade: Probability Calibration (Isotonic)
+        from .calibration import IsotonicCalibrator  # noqa: PLC0415
+        self.calibrator = IsotonicCalibrator()
+
     # ------------------------------------------------------------------
     # Inference
     # ------------------------------------------------------------------
@@ -311,6 +315,7 @@ class ClassifierModel:
         neighbors_l1: List[np.ndarray],
         neighbors_l2: List[np.ndarray],
         tabular_features: np.ndarray,
+        calibrate: bool = True,
     ) -> float:
         """Return the predicted failure probability for a payment.
 
@@ -325,6 +330,8 @@ class ClassifierModel:
         tabular_features:
             88-dim tabular feature vector from
             :class:`~lip.c1_failure_classifier.features.TabularFeatureEngineer`.
+        calibrate:
+            When True, apply the fitted Isotonic calibrator.
 
         Returns
         -------
@@ -335,11 +342,19 @@ class ClassifierModel:
         tab_emb = self.tabtransformer.forward(tabular_features)
         fused = np.concatenate([sage_emb, tab_emb])  # (472,)
         neural_prob = self.mlp.forward(fused)
+
         if self.lgbm_model is not None:
-            x_tab = np.asarray(tabular_features, dtype=np.float64).reshape(1, -1)
+            # Slicing to last 88 dims ensures compatibility if a 96-dim fused vector was passed
+            x_tab = np.asarray(tabular_features[-88:], dtype=np.float64).reshape(1, -1)
             lgbm_prob = float(self.lgbm_model.predict_proba(x_tab)[0, 1])
-            return 0.5 * neural_prob + 0.5 * lgbm_prob
-        return neural_prob
+            raw_score = 0.5 * neural_prob + 0.5 * lgbm_prob
+        else:
+            raw_score = neural_prob
+
+        if calibrate and self.calibrator._is_fitted:
+            return float(self.calibrator.predict(np.array([raw_score]))[0])
+
+        return raw_score
 
     # ------------------------------------------------------------------
     # Loss

@@ -30,6 +30,11 @@ class NormalizedEvent:
     rejection_code: Optional[str] = None
     narrative: Optional[str] = None
     raw_source: dict = field(default_factory=dict)
+    # GAP-17: ISO 20022 interbank settlement amount in USD (IntrBkSttlmAmt).
+    # Populated when the raw source carries an explicit settlement amount distinct
+    # from the instructed amount (e.g. cross-currency pacs.008). None means the
+    # pipeline falls back to `amount` when building the loan offer.
+    original_payment_amount_usd: Optional[Decimal] = None
 
 
 def _safe_decimal(value) -> Decimal:
@@ -100,6 +105,15 @@ class EventNormalizer:
         rsn = sts_rsn.get('Rsn', {})
         rejection_code = rsn.get('Cd') if isinstance(rsn, dict) else rsn
 
+        # GAP-17: Extract interbank settlement amount (IntrBkSttlmAmt in pacs.008)
+        # as the authoritative USD amount the beneficiary will receive.
+        sttlm = msg.get('IntrBkSttlmAmt', {})
+        if isinstance(sttlm, dict):
+            sttlm_val = _safe_decimal(sttlm.get('value', sttlm.get('Amt', None)))
+        else:
+            sttlm_val = _safe_decimal(sttlm)
+        original_payment_amount_usd = sttlm_val if sttlm_val > Decimal('0') else None
+
         return NormalizedEvent(
             uetr=grp.get('MsgId', ''),
             individual_payment_id=tx.get('OrgnlEndToEndId', ''),
@@ -112,6 +126,7 @@ class EventNormalizer:
             rejection_code=rejection_code or None,
             narrative=tx.get('AddtlInf'),
             raw_source=msg,
+            original_payment_amount_usd=original_payment_amount_usd,
         )
 
     def normalize_fednow(self, msg: dict) -> NormalizedEvent:
@@ -126,6 +141,14 @@ class EventNormalizer:
             amount = _safe_decimal(amt_block)
             currency = msg.get('currency', 'USD')
 
+        # GAP-17: FedNow settlement amount equals instructed amount; no separate field.
+        fednow_sttlm = msg.get('settlementAmount', {})
+        if isinstance(fednow_sttlm, dict):
+            fednow_sttlm_val = _safe_decimal(fednow_sttlm.get('value', '0'))
+        else:
+            fednow_sttlm_val = _safe_decimal(fednow_sttlm)
+        original_payment_amount_usd = fednow_sttlm_val if fednow_sttlm_val > Decimal('0') else None
+
         return NormalizedEvent(
             uetr=ct.get('messageId', msg.get('messageId', '')),
             individual_payment_id=ct.get('endToEndId', msg.get('endToEndId', '')),
@@ -138,6 +161,7 @@ class EventNormalizer:
             rejection_code=msg.get('rejectReason') or None,
             narrative=msg.get('remittanceInfo'),
             raw_source=msg,
+            original_payment_amount_usd=original_payment_amount_usd,
         )
 
     def normalize_rtp(self, msg: dict) -> NormalizedEvent:
@@ -151,6 +175,14 @@ class EventNormalizer:
             amount = _safe_decimal(msg.get('amount', '0'))
             currency = msg.get('currency', 'USD')
 
+        # GAP-17: RTP settlement amount equals instructed amount; no separate field.
+        rtp_sttlm = msg.get('settlementAmount', {})
+        if isinstance(rtp_sttlm, dict):
+            rtp_sttlm_val = _safe_decimal(rtp_sttlm.get('value', '0'))
+        else:
+            rtp_sttlm_val = _safe_decimal(rtp_sttlm)
+        original_payment_amount_usd = rtp_sttlm_val if rtp_sttlm_val > Decimal('0') else None
+
         return NormalizedEvent(
             uetr=pm.get('messageId', msg.get('messageId', '')),
             individual_payment_id=pm.get('endToEndId', msg.get('endToEndId', '')),
@@ -163,6 +195,7 @@ class EventNormalizer:
             rejection_code=msg.get('rejectReason') or None,
             narrative=msg.get('narrative'),
             raw_source=msg,
+            original_payment_amount_usd=original_payment_amount_usd,
         )
 
     def normalize_sepa(self, msg: dict) -> NormalizedEvent:
@@ -194,6 +227,14 @@ class EventNormalizer:
         rsn = sts_rsn.get('Rsn', {})
         rejection_code = rsn.get('Cd') if isinstance(rsn, dict) else rsn
 
+        # GAP-17: SEPA interbank settlement amount (IntrBkSttlmAmt in pacs.008).
+        sepa_sttlm = msg.get('IntrBkSttlmAmt', {})
+        if isinstance(sepa_sttlm, dict):
+            sepa_sttlm_val = _safe_decimal(sepa_sttlm.get('value', sepa_sttlm.get('Amt', '0')))
+        else:
+            sepa_sttlm_val = _safe_decimal(sepa_sttlm)
+        original_payment_amount_usd = sepa_sttlm_val if sepa_sttlm_val > Decimal('0') else None
+
         return NormalizedEvent(
             uetr=tx.get('OrgnlEndToEndId', grp.get('MsgId', '')),
             individual_payment_id=tx.get('OrgnlEndToEndId', ''),
@@ -206,6 +247,7 @@ class EventNormalizer:
             rejection_code=rejection_code or None,
             narrative=tx.get('AddtlInf'),
             raw_source=msg,
+            original_payment_amount_usd=original_payment_amount_usd,
         )
 
     def normalize(self, rail: str, msg: dict) -> NormalizedEvent:

@@ -93,9 +93,22 @@ class HumanOverrideResponse:
 class HumanOverrideInterface:
     """EU AI Act Art.14 compliant human-in-the-loop override interface."""
 
-    def __init__(self, requires_dual_approval: bool = False, timeout_seconds: float = 300):
+    def __init__(
+        self,
+        requires_dual_approval: bool = False,
+        timeout_seconds: float = 300,
+        timeout_action: str = "DECLINE",
+    ):
+        if timeout_action not in ("DECLINE", "OFFER"):
+            raise ValueError(
+                f"timeout_action must be 'DECLINE' or 'OFFER', got '{timeout_action}'"
+            )
         self._requires_dual_approval = requires_dual_approval
         self._timeout_seconds = timeout_seconds
+        # GAP-08: Configurable outcome when a review request expires with no
+        # human response. Default is DECLINE (conservative); licensees may
+        # configure OFFER for low-PD edge cases where speed outweighs review.
+        self.timeout_action = timeout_action
         self._pending: Dict[str, HumanOverrideRequest] = {}
         self._responses: Dict[str, HumanOverrideResponse] = {}
 
@@ -213,6 +226,39 @@ class HumanOverrideInterface:
         if req is None:
             return True
         return datetime.now(tz=timezone.utc) > req.expires_at
+
+    def resolve_expired(self, request_id: str) -> str:
+        """Return the configured ``timeout_action`` for an expired request.
+
+        GAP-08: Provides the definitive outcome (``"DECLINE"`` or ``"OFFER"``)
+        when a human review request times out with no operator response.  The
+        caller (e.g., a polling process or callback) uses this to close the
+        pending UETR with a logged terminal decision.
+
+        Args:
+            request_id: UUID4 string of the override request.
+
+        Returns:
+            The string ``"DECLINE"`` or ``"OFFER"``, according to
+            ``self.timeout_action``.
+
+        Raises:
+            ValueError: If the request has *not* yet expired (i.e., is still
+                pending).  Prevents premature resolution.
+            ValueError: If the request ID is unknown (defensive).
+        """
+        if request_id not in self._pending and request_id not in self._responses:
+            raise ValueError(f"Unknown override request: {request_id}")
+        if request_id in self._pending and not self.is_expired(request_id):
+            raise ValueError(
+                f"Override request {request_id} has not yet expired; cannot resolve."
+            )
+        # Remove from pending if still there (clean up)
+        self._pending.pop(request_id, None)
+        logger.info(
+            "Override expired: %s resolved as %s", request_id, self.timeout_action
+        )
+        return self.timeout_action
 
     def get_pending_overrides(self) -> List[HumanOverrideRequest]:
         """Return all non-expired pending override requests.

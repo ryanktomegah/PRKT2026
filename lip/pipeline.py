@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable, List, Optional
 
@@ -41,12 +41,14 @@ from lip.c3_repayment_engine.rejection_taxonomy import (
 from lip.c3_repayment_engine.repayment_loop import ActiveLoan
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
 from lip.c5_streaming.event_normalizer import NormalizedEvent
+from lip.common.business_calendar import add_business_days, currency_to_jurisdiction
 from lip.common.state_machines import (
     LoanState,
     LoanStateMachine,
     PaymentState,
     PaymentStateMachine,
 )
+from lip.common.uetr_tracker import UETRTracker
 from lip.instrumentation import LatencyTracker
 from lip.pipeline_result import PipelineResult
 
@@ -96,6 +98,9 @@ class LIPPipeline:
     c3_monitor:
         Optional ``SettlementMonitor`` instance.  When provided, funded loans
         are registered for settlement monitoring.
+    uetr_tracker:
+        Optional ``UETRTracker`` instance for retry detection (GAP-04).
+        If ``None``, a new local tracker is created.
     threshold:
         Decision threshold (default: ``FAILURE_PROBABILITY_THRESHOLD``).
     global_latency_tracker:
@@ -111,6 +116,7 @@ class LIPPipeline:
         c6_checker: Any,
         c7_agent: Any,
         c3_monitor: Optional[Any] = None,
+        uetr_tracker: Optional[UETRTracker] = None,
         threshold: float = FAILURE_PROBABILITY_THRESHOLD,
         global_latency_tracker: Optional[LatencyTracker] = None,
     ) -> None:
@@ -120,6 +126,7 @@ class LIPPipeline:
         self._c6 = c6_checker
         self._c7 = c7_agent
         self._c3 = c3_monitor
+        self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
 
@@ -156,6 +163,19 @@ class LIPPipeline:
         """
         t_start = time.perf_counter()
         tracker = LatencyTracker()
+
+        # --- GAP-04: Retry Detection ---------------------------------------
+        if self._uetr_tracker.is_retry(event.uetr):
+            logger.warning("Retry detected: uetr=%s - blocking to prevent double-funding", event.uetr)
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            return PipelineResult(
+                outcome="RETRY_BLOCKED",
+                uetr=event.uetr,
+                failure_probability=0.0,
+                above_threshold=False,
+                total_latency_ms=total_ms,
+            )
+
         borrower = borrower or {}
         entity_id = entity_id or event.sending_bic
         beneficiary_id = beneficiary_id or event.receiving_bic
@@ -168,6 +188,11 @@ class LIPPipeline:
         def _record_payment_transition(new_state: PaymentState) -> None:
             payment_sm.transition(new_state)
             state_history.append(payment_sm.current_state.value)
+
+        def _record_and_return(res: PipelineResult) -> PipelineResult:
+            self._uetr_tracker.record(res.uetr, res.outcome)
+            self._record_global(tracker, res.total_latency_ms)
+            return res
 
         # --- Step 1: C1 inference -------------------------------------------
         payment_dict = self._event_to_payment_dict(event)
@@ -192,8 +217,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # Transition: MONITORING → FAILURE_DETECTED
         _record_payment_transition(PaymentState.FAILURE_DETECTED)
@@ -244,8 +268,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- C6 hard block check -------------------------------------------
         if aml_hard_block:
@@ -269,8 +292,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- Step 3: C2 PD inference ---------------------------------------
         with tracker.measure("c2"):
@@ -288,17 +310,28 @@ class LIPPipeline:
         # Determine maturity_days from rejection code
         maturity = self._derive_maturity_days(event.rejection_code)
 
-        # --- Step 4: C7 execution ------------------------------------------
+        # --- Step 5: C7 Execution decision (OFFER / DECLINE / BLOCK) -------
         payment_context = {
             "uetr": event.uetr,
             "individual_payment_id": event.individual_payment_id,
+            "sending_bic": event.sending_bic,
             "failure_probability": failure_probability,
             "pd_score": pd_estimate,
             "fee_bps": fee_bps,
-            "loan_amount": str(event.amount),
+            "loan_amount": event.amount,
+            # GAP-17: propagate the authoritative settlement amount so C7 can
+            # validate the loan offer equals what the receiver is owed.
+            # Falls back to event.amount when not present (same-currency rails).
+            "original_payment_amount_usd": str(
+                event.original_payment_amount_usd if event.original_payment_amount_usd is not None
+                else event.amount
+            ),
             "dispute_class": dispute_class_str,
             "aml_passed": aml_passed,
             "maturity_days": maturity,
+            # GAP-10/GAP-12: propagate currency so C7 can derive governing law
+            # and apply FX risk policy checks.
+            "currency": event.currency,
         }
 
         with tracker.measure("c7"):
@@ -329,11 +362,10 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
-        # --- Handle C7 DECLINE ---------------------------------------------
-        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW"):
+        # --- Handle C7 DECLINE / CURRENCY_NOT_SUPPORTED --------------------
+        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW", "CURRENCY_NOT_SUPPORTED"):
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             result = PipelineResult(
                 outcome="DECLINED",
@@ -355,8 +387,7 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            self._record_global(tracker, total_ms)
-            return result
+            return _record_and_return(result)
 
         # --- OFFER accepted → FUNDED --------------------------------------
         # Transition: FAILURE_DETECTED → BRIDGE_OFFERED → FUNDED
@@ -394,8 +425,7 @@ class LIPPipeline:
             component_latencies=tracker.get_latest_all(),
             total_latency_ms=total_ms,
         )
-        self._record_global(tracker, total_ms)
-        return result
+        return _record_and_return(result)
 
     # ── Private helpers ────────────────────────────────────────────────────────
 
@@ -452,8 +482,19 @@ class LIPPipeline:
             Returns the raw result from ``c6_checker.check()``; ``None``
             is treated as ``passed=True`` by the caller.
         """
+        dollar_cap = None
+        count_cap = None
+        if hasattr(self._c7, "aml_dollar_cap_usd"):
+            dollar_cap = Decimal(str(self._c7.aml_dollar_cap_usd))
+        if hasattr(self._c7, "aml_count_cap"):
+            count_cap = self._c7.aml_count_cap
+
         with tracker.measure("c6"):
-            return self._c6.check(entity_id, event.amount, beneficiary_id)
+            return self._c6.check(
+                entity_id, event.amount, beneficiary_id,
+                dollar_cap_override=dollar_cap,
+                count_cap_override=count_cap,
+            )
 
     def _log_block(
         self,
@@ -543,7 +584,14 @@ class LIPPipeline:
         """
         try:
             now_utc = datetime.now(tz=timezone.utc)
-            maturity_date = now_utc + timedelta(days=maturity_days)
+            # GAP-09: Use business days for maturity so weekend failures
+            # don't expire before SWIFT settlement can be attempted.
+            jurisdiction = currency_to_jurisdiction(event.currency)
+            maturity_date = datetime.combine(
+                add_business_days(now_utc.date(), maturity_days, jurisdiction),
+                now_utc.time(),
+                tzinfo=timezone.utc,
+            )
             # Derive rejection class from the event's rejection code
             try:
                 rej_class = classify_rejection_code(event.rejection_code).value if event.rejection_code else RejectionClass.CLASS_B.value
@@ -559,6 +607,7 @@ class LIPPipeline:
                 rejection_class=rej_class,
                 corridor=f"{event.currency}_USD",
                 funded_at=now_utc,
+                licensee_id=getattr(self._c7, "licensee_id", ""),
             )
             self._c3.register_loan(loan)
             logger.info(

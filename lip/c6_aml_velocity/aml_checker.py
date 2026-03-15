@@ -131,6 +131,8 @@ class AMLChecker:
         beneficiary_id: str,
         entity_name: Optional[str] = None,
         beneficiary_name: Optional[str] = None,
+        dollar_cap_override: Optional[Decimal] = None,
+        count_cap_override: Optional[int] = None,
     ) -> AMLResult:
         """Run the full C6 AML gate for a single transaction.
 
@@ -152,6 +154,10 @@ class AMLChecker:
             Falls back to ``entity_id`` string when ``None``.
         beneficiary_name:
             Optional plaintext beneficiary name for sanctions screening.
+        dollar_cap_override:
+            Optional USD cap to use instead of the default $1M limit.
+        count_cap_override:
+            Optional count cap to use instead of the default 100 limit.
 
         Returns
         -------
@@ -197,7 +203,11 @@ class AMLChecker:
             )
 
         # ── Step 2: Velocity controls ─────────────────────────────────────────
-        vel_result: VelocityResult = self._velocity.check(entity_id, amount, beneficiary_id)
+        vel_result: VelocityResult = self._velocity.check(
+            entity_id, amount, beneficiary_id,
+            dollar_cap_override=dollar_cap_override,
+            count_cap_override=count_cap_override,
+        )
 
         if not vel_result.passed:
             triggered_rules.append(vel_result.reason or "VELOCITY_BLOCKED")

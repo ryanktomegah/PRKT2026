@@ -28,6 +28,8 @@ def _make_token(
     licensee_id: str = "TEST_BANK_001",
     days_until_expiry: int = 365,
     max_tps: int = 500,
+    aml_dollar_cap: int = 1000000,
+    aml_count_cap: int = 100,
     components: list | None = None,
 ) -> LicenseToken:
     today = date.today()
@@ -37,6 +39,8 @@ def _make_token(
         issue_date=today.isoformat(),
         expiry_date=expiry.isoformat(),
         max_tps=max_tps,
+        aml_dollar_cap_usd=aml_dollar_cap,
+        aml_count_cap=aml_count_cap,
         permitted_components=components or list(ALL_COMPONENTS),
     )
 
@@ -78,6 +82,8 @@ class TestLicenseToken:
             issue_date=signed.issue_date,
             expiry_date=signed.expiry_date,
             max_tps=signed.max_tps,
+            aml_dollar_cap_usd=signed.aml_dollar_cap_usd,
+            aml_count_cap=signed.aml_count_cap,
             permitted_components=signed.permitted_components,
             hmac_signature=signed.hmac_signature,  # reuse original sig
         )
@@ -105,12 +111,20 @@ class TestLicenseToken:
         restored = LicenseToken.from_dict(signed.to_dict())
         assert restored.licensee_id == signed.licensee_id
         assert restored.hmac_signature == signed.hmac_signature
+        assert restored.aml_dollar_cap_usd == signed.aml_dollar_cap_usd
+        assert restored.aml_count_cap == signed.aml_count_cap
         assert verify_token(restored, _KEY)
 
     def test_max_tps_preserved_after_sign(self):
         token = _make_token(max_tps=1000)
         signed = sign_token(token, _KEY)
         assert signed.max_tps == 1000
+
+    def test_aml_caps_preserved_after_sign(self):
+        token = _make_token(aml_dollar_cap=50000, aml_count_cap=5)
+        signed = sign_token(token, _KEY)
+        assert signed.aml_dollar_cap_usd == 50000
+        assert signed.aml_count_cap == 5
 
 
 # ── LicenseeContext tests ─────────────────────────────────────────────────────
@@ -121,11 +135,15 @@ class TestLicenseeContext:
         ctx = LicenseeContext(
             licensee_id="BANK_X",
             max_tps=200,
+            aml_dollar_cap_usd=50000,
+            aml_count_cap=5,
             permitted_components=["C1", "C7"],
             token_expiry="2027-01-01",
         )
         assert ctx.licensee_id == "BANK_X"
         assert ctx.max_tps == 200
+        assert ctx.aml_dollar_cap_usd == 50000
+        assert ctx.aml_count_cap == 5
         assert "C7" in ctx.permitted_components
 
 

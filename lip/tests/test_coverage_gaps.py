@@ -697,7 +697,7 @@ class _MockC6:
     def __init__(self, passed: bool = True):
         self._passed = passed
 
-    def check(self, entity_id, amount, beneficiary_id):
+    def check(self, entity_id, amount, beneficiary_id, **kwargs):
         return SimpleNamespace(passed=self._passed)
 
 

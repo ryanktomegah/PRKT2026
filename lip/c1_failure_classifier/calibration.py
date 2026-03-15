@@ -39,6 +39,7 @@ class IsotonicCalibrator:
     def __init__(self) -> None:
         self._x_: Optional[np.ndarray] = None
         self._y_: Optional[np.ndarray] = None
+        self._is_fitted: bool = False
 
     def fit(self, scores: np.ndarray, y_true: np.ndarray) -> "IsotonicCalibrator":
         """Fit the isotonic regression on calibration data.
@@ -78,6 +79,7 @@ class IsotonicCalibrator:
 
         self._x_ = np.array([b[2] for b in blocks], dtype=np.float64)
         self._y_ = np.array([b[0] / b[1] for b in blocks], dtype=np.float64)
+        self._is_fitted = True
 
         logger.info("IsotonicCalibrator.fit: %d knots", len(self._x_))
         return self
@@ -100,7 +102,7 @@ class IsotonicCalibrator:
         RuntimeError
             If :meth:`fit` has not been called.
         """
-        if self._x_ is None or self._y_ is None:
+        if not self._is_fitted or self._x_ is None or self._y_ is None:
             raise RuntimeError("IsotonicCalibrator must be fitted before predict()")
 
         scores = np.asarray(scores, dtype=np.float64)

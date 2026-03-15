@@ -56,11 +56,12 @@ _RAIL_LATENCY_S = {
 
 # Scenario type weights
 _SCENARIO_WEIGHTS = {
-    "SUCCESS":      0.68,
+    "SUCCESS":      0.65,
     "TIMEOUT":      0.12,
     "PARTIAL":      0.08,
     "RAIL_FALLBACK": 0.08,
     "EARLY_REPAY":  0.04,
+    "RECALL_ATTACK": 0.03,  # R&D Upgrade: Adversarial camt.056 simulation
 }
 
 # Rejection class distribution (mirrors C1 failure class distribution)
@@ -215,16 +216,26 @@ def _generate_record(
         is_settled = True
         repayment_triggered_by = "EARLY_REPAY_MANUAL"
 
+    elif scenario == "RECALL_ATTACK":
+        # R&D Upgrade: Adversarial camt.056 cancellation
+        # Sender issues recall 2-48 hours after disbursement
+        recall_delay_s = float(rng.uniform(7200.0, 172800.0))
+        settlement_ts = funded_ts + recall_delay_s
+        settlement_amount_usd = 0.0
+        is_settled = False
+        repayment_triggered_by = "CAMT056_RECALL_PENDING"
+
     # ── Latency SLO check (informational) ────────────────────────────────────
     # Time from funded to first settlement signal received (C5 → C3 handoff)
     c5_handoff_latency_ms = float(rng.exponential(scale=12.0))   # ~12ms mean
     within_slo = c5_handoff_latency_ms <= 94.0                   # LATENCY_SLO_MS
 
     # ── Label ─────────────────────────────────────────────────────────────────
-    # label=1 → problematic outcome (timeout or partial shortfall > 20%)
+    # label=1 → problematic outcome (timeout, partial shortfall > 20%, or recall attack)
     label = int(
         is_timeout
         or (is_partial and shortfall_usd / (principal_usd + 1e-9) > 0.20)
+        or scenario == "RECALL_ATTACK"
     )
 
     return {
@@ -257,8 +268,13 @@ def _generate_record(
         "settlement_amount_usd": round(settlement_amount_usd, 2),
         "shortfall_usd": round(shortfall_usd, 2),
         "repayment_triggered_by": repayment_triggered_by,
+        "cancellation_metadata": {
+            "is_adversarial": scenario == "RECALL_ATTACK",
+            "message_type": "camt.056",
+            "reason_code": "CUST"
+        } if scenario == "RECALL_ATTACK" else None,
         # Latency
-        "c5_handoff_latency_ms": round(c5_handoff_latency_ms, 3),
+        "c5_handoff_latency_ms": round(c5_handoff_latency_ms, 2),
         "within_slo": within_slo,
         # Label (1 = problematic / write-off risk)
         "label": label,

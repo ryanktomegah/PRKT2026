@@ -189,7 +189,7 @@ class TestTrainingPipelineConvergence:
         X, y = _make_separable_data(n=200)
         # Use smaller models for speed
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel(input_dim=96)
+        tabtransformer = TabTransformerModel(input_dim=88)
 
         epoch_losses = []
         _mlp = pipeline.stage7_joint_training.__func__  # just verify it runs
@@ -206,9 +206,10 @@ class TestTrainingPipelineConvergence:
             total_loss = 0.0
             indices = rng.permutation(len(y))
             for i in indices:
-                x_tab = X[i]
+                x_full = X[i]
+                x_tab = x_full[8:]
+                node_feat = x_full[:8]
                 tab_emb = tabtransformer.forward(x_tab)
-                node_feat = x_tab[:8]
                 sage_emb = graphsage.forward(node_feat, [], [])
                 fused = np.concatenate([sage_emb, tab_emb])
                 prob = mlp_head.forward(fused)
@@ -240,7 +241,7 @@ class TestTrainingPipelineConvergence:
         X_val, y_val = X[:n_val], y[:n_val]
 
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel(input_dim=96)
+        tabtransformer = TabTransformerModel(input_dim=88)
         mlp_head = MLPHead()
 
         rng = np.random.default_rng(42)
@@ -250,9 +251,10 @@ class TestTrainingPipelineConvergence:
         for _ in range(config.n_epochs):
             indices = rng.permutation(len(y_train))
             for i in indices:
-                x_tab = X_train[i]
+                x_full = X_train[i]
+                x_tab = x_full[8:]
+                node_feat = x_full[:8]
                 tab_emb = tabtransformer.forward(x_tab)
-                node_feat = x_tab[:8]
                 sage_emb = graphsage.forward(node_feat, [], [])
                 fused = np.concatenate([sage_emb, tab_emb])
                 prob = mlp_head.forward(fused)
@@ -263,9 +265,10 @@ class TestTrainingPipelineConvergence:
         # Evaluate on validation set
         scores = []
         for i in range(len(y_val)):
-            x_tab = X_val[i]
+            x_full = X_val[i]
+            x_tab = x_full[8:]
+            node_feat = x_full[:8]
             tab_emb = tabtransformer.forward(x_tab)
-            node_feat = x_tab[:8]
             sage_emb = graphsage.forward(node_feat, [], [])
             fused = np.concatenate([sage_emb, tab_emb])
             scores.append(mlp_head.forward(fused))
@@ -280,7 +283,7 @@ class TestTrainingPipelineConvergence:
 
         X, y = _make_separable_data(n=200)
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel(input_dim=96)
+        tabtransformer = TabTransformerModel(input_dim=88)
         mlp_head = MLPHead()
         model = ClassifierModel(graphsage=graphsage, tabtransformer=tabtransformer, mlp=mlp_head)
 
@@ -342,7 +345,7 @@ class TestTrainingPipelineConvergence:
         X_val, y_val = X[:n_val], y[:n_val]
 
         graphsage = GraphSAGEModel()
-        tabtransformer = TabTransformerModel(input_dim=96)
+        tabtransformer = TabTransformerModel(input_dim=88)
         mlp_head = MLPHead()
 
         rng = np.random.default_rng(42)
@@ -352,9 +355,10 @@ class TestTrainingPipelineConvergence:
         for _ in range(config.n_epochs):
             indices = rng.permutation(len(y_train))
             for i in indices:
-                x_tab = X_train[i]
+                x_full = X_train[i]
+                x_tab = x_full[8:]
+                node_feat = x_full[:8]
                 tab_emb = tabtransformer.forward(x_tab)
-                node_feat = x_tab[:8]
                 sage_emb = graphsage.forward(node_feat, [], [])
                 fused = np.concatenate([sage_emb, tab_emb])
                 prob = mlp_head.forward(fused)
@@ -364,9 +368,10 @@ class TestTrainingPipelineConvergence:
 
         scores = []
         for i in range(len(y_val)):
-            x_tab = X_val[i]
+            x_full = X_val[i]
+            x_tab = x_full[8:]
+            node_feat = x_full[:8]
             tab_emb = tabtransformer.forward(x_tab)
-            node_feat = x_tab[:8]
             sage_emb = graphsage.forward(node_feat, [], [])
             fused = np.concatenate([sage_emb, tab_emb])
             scores.append(mlp_head.forward(fused))
