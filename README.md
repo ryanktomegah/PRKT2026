@@ -1,6 +1,6 @@
 # LIP — Liquidity Intelligence Platform
 
-![Tests](https://img.shields.io/badge/tests-972%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1284%20passed-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-92%25-green)
 ![Lint](https://img.shields.io/badge/ruff-0%20errors-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.13%2B-blue)
@@ -59,9 +59,13 @@ C8 License Manager — HMAC token enforcement (cross-cutting)
 | [`docs/architecture.md`](docs/architecture.md) | Algorithm 1 step-by-step, state machines, canonical constants, Redis/Kafka maps, patent claims |
 | [`docs/api-reference.md`](docs/api-reference.md) | All Pydantic schemas (C1–C8), fee formula warning, DecisionLogEntry retention |
 | [`docs/compliance.md`](docs/compliance.md) | SR 11-7, EU AI Act Art.9/13/14/17/61, DORA Art.30, AML controls, data privacy |
-| [`docs/developer-guide.md`](docs/developer-guide.md) | Setup, test commands, canonical constants table, never-commit list, mock injection |
+| [`docs/developer-guide.md`](docs/developer-guide.md) | Setup, test commands, local infra, canonical constants table, never-commit list, mock injection |
 | [`docs/deployment.md`](docs/deployment.md) | Docker images, K8s manifests, HPA, network policies, secrets, env vars, health checks |
-| [`docs/data-pipeline.md`](docs/data-pipeline.md) | dgen generators, training commands, C1 AUC gap, C4 FN gap, artefact policy |
+| [`docs/data-pipeline.md`](docs/data-pipeline.md) | dgen generators, training commands, C1 AUC status, C4 LLM performance, artefact policy |
+| [`docs/benchmark-results.md`](docs/benchmark-results.md) | End-to-end latency benchmark results (warm p99 = 0.29ms) |
+| [`docs/poc-validation-report.md`](docs/poc-validation-report.md) | Prototype PoC validation — C1/C2/C4/C6 results on synthetic corpus |
+| [`docs/federated-learning-architecture.md`](docs/federated-learning-architecture.md) | P12 patent: FedProx protocol, DP budget, layer partitioning, Phase 2 plan |
+| [`docs/cbdc-protocol-research.md`](docs/cbdc-protocol-research.md) | P9 patent: mBridge/ECB DLT/FedNow research, C3/C5 CBDC extension stubs |
 
 ## Components
 
@@ -127,7 +131,7 @@ PRKT2026/
 │   ├── configs/                ← YAML configs (canonical numbers, corridors)
 │   ├── dgen/                   ← Synthetic data generators
 │   ├── infrastructure/         ← Docker, Helm, K8s manifests
-│   ├── tests/                  ← Test suite (84% coverage)
+│   ├── tests/                  ← Test suite (92%+ coverage)
 │   ├── pipeline.py             ← End-to-end pipeline orchestrator
 │   └── pyproject.toml          ← Package configuration
 ├── consolidation files/        ← Patent specs, architecture docs, governance

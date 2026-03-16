@@ -18,8 +18,8 @@ This memo documents the current specialised R&D state of the Liquidity Intellige
 *   **Governance:** Mandatory Platt scaling for probability calibration, ensuring `fee_bps` (floor 300 bps) reflects absolute risk, not just relative ranking.
 
 ### C4: Adversarial Dispute Detection
-*   **Architecture:** Fast-path Keyword Prefilter + Async LLM (Fine-tuned Llama-3 8B).
-*   **Innovation:** Logit-constrained output ensures the LLM acts as a high-precision classifier, not a generative agent. Dedicated "negation suite" R&D prevents false-positives on phrases like "no dispute confirmed."
+*   **Architecture:** Fast-path Keyword Prefilter + `qwen/qwen3-32b` via Groq API (OpenAI-compatible).
+*   **Innovation:** Logit-constrained output ensures the LLM acts as a high-precision classifier, not a generative agent. `/no_think` directive disables chain-of-thought. Measured: FN=0.0%, FP=4.0% on 100-case multilingual negation corpus (2026-03-16). Multilingual FP=0% (FR/DE/ES/AR).
 
 ### C7: Safe Execution & Human-in-the-Loop
 *   **Architecture:** HMAC-signed Immutable Decision Logs + Art.14 Override Workflow.
@@ -31,9 +31,9 @@ This memo documents the current specialised R&D state of the Liquidity Intellige
 *   **Portfolio Reporting:** Real-time API for capital providers showing aggregate exposure by corridor, tier, and yield.
 
 ## 4. Current R&D Roadmap (Backbone Priority)
-1.  **Supply Chain Cascade Propagation:** Implementing P5 (Supply Chain Patent) logic to predict downstream failures from upstream rejections.
-2.  **Cross-Network Interoperability (P9):** Researching inter-rail failure modes between SWIFT gpi and emerging CBDC networks.
-3.  **Federated Learning (P12):** Investigating privacy-preserving model updates across multiple bank licensees without raw data sharing.
+1.  **Supply Chain Cascade Propagation (P5):** ✅ COMPLETE — Bayesian smoothing (k=5) eliminates first-payment over-inflation. `get_cascade_risk()` returns `(at_risk_bics, CascadeConfidence)`.
+2.  **Cross-Network Interoperability (P9):** ✅ COMPLETE — `docs/cbdc-protocol-research.md`. mBridge/ECB DLT/FedNow analysis + C3/C5 extension stubs documented.
+3.  **Federated Learning (P12):** ✅ COMPLETE — `docs/federated-learning-architecture.md`. FedProx + DP-SGD (ε=1.0, δ=1e-5) + Flower framework selected. Phase 2 pending pilot bank onboarding.
 
 ## 5. Architectural Mandates for Sub-Agents
 *   **Precision over Simplicity:** Use `Decimal` for all math. Use `datetime` with `timezone.utc`.

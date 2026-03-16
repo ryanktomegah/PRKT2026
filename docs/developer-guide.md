@@ -11,12 +11,32 @@ pip install -e "lip/[all]"
 ruff check lip/
 PYTHONPATH=. python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py -q
 
-# 3. Generate synthetic training data
+# 3. Start local infrastructure (Redpanda + Redis via Docker)
+./scripts/start_local_infra.sh   # requires Docker Desktop
+
+# 4. Generate synthetic training data
 PYTHONPATH=. python -m lip.dgen.generate_all --output-dir artifacts/synthetic
 
-# 4. Train all models
+# 5. Train all models
 PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic
 ```
+
+## Local Infrastructure (Docker)
+
+`docker-compose.yml` at repo root starts all required services:
+
+```bash
+docker compose up -d          # start Redpanda (Kafka-compatible) + Redis 7
+./scripts/start_local_infra.sh  # same, with health checks + guidance
+docker compose down           # stop and remove containers
+```
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Redpanda | 9092 | Kafka API-compatible, single-node, zero ZooKeeper |
+| Redis | 6379 | Redis 7 Alpine, standalone mode |
+
+All 10 Kafka topics are created automatically on first boot via the `redpanda-init` container.
 
 ## Test Commands
 
@@ -27,8 +47,12 @@ PYTHONPATH=. python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py
 # Single component
 PYTHONPATH=. python -m pytest lip/tests/test_c6_aml_velocity.py -v
 
-# E2E pipeline (requires running Kafka + Redis)
+# E2E pipeline (requires running Kafka + Redis — start with docker compose up -d first)
 PYTHONPATH=. python -m pytest lip/tests/test_e2e_pipeline.py -v
+
+# C4 LLM integration tests (requires GROQ_API_KEY — free at console.groq.com)
+GROQ_API_KEY=gsk_... PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
+# Auto-skipped without GROQ_API_KEY. All 17 tests pass in ~46s.
 
 # Type checking
 mypy lip/

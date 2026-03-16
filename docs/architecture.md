@@ -140,6 +140,7 @@ All keys namespaced under `lip:` prefix.
 | `lip.repayment.events` | 6 | 7 days | `uetr` |
 | `lip.decision.log` | 12 | **7 years** | `uetr` |
 | `lip.dead.letter` | 6 | 7 days | `uetr` |
+| `lip.stress.regime` | 6 | 7 days | `corridor` |
 
 ## Patent Claims Mapping
 

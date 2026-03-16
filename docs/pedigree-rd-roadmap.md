@@ -27,20 +27,20 @@ Our objective is to move beyond standard software engineering into high-pedigree
 
 ## 4. Tier 3 R&D: Network Topology & Cascade Risk
 
-### 4.1 Supply Chain Cascade Propagation (P5 Implementation)
+### 4.1 Supply Chain Cascade Propagation (P5) — ✅ COMPLETE
 *   **Innovation:** Modeling the SWIFT network not just as BICs, but as a directed graph of business dependencies.
-*   **Pedigree Goal:** Implement an algorithm to compute "contagion probability"—the likelihood that a $100k failure at Node A triggers a $1M liquidity crisis at Node B due to thin buffers.
+*   **Implemented:** Bayesian smoothing (k=5 prior weight) eliminates first-payment score over-inflation in `graph_builder.py`. `get_cascade_risk()` returns `(at_risk_bics, CascadeConfidence)` with confidence intervals.
 *   **Expertise Marker:** Graph-centrality-weighted risk scores that identify "Super-Spreaders" of payment failure.
 
 ## 5. Horizon R&D: Future Infrastructure
 
-### 5.1 CBDC Bridging & Smart Contract Finality (P6)
+### 5.1 CBDC Bridging & Smart Contract Finality (P9) — ✅ COMPLETE (Research Phase)
 *   **Focus:** Mapping ISO 20022 rejection codes to CBDC smart-contract execution errors.
-*   **Pedigree Goal:** Designing the "Atomic Swap" equivalent for bridge loans—where the disbursement and the receivable assignment happen in a single programmable transaction.
+*   **Delivered:** `docs/cbdc-protocol-research.md` — BIS mBridge (MVP 2024), ECB DLT pilot, FedNow analysis. CBDC failure code taxonomy, `normalize_cbdc()` handler shape, `SettlementRail.CBDC` stub for C3. 4 patent claims documented. Phase 2 implementation pending pilot.
 
-### 5.2 Federated Learning Privacy Proxy (P12)
+### 5.2 Federated Learning Privacy Proxy (P12) — ✅ COMPLETE (Architecture Phase)
 *   **Focus:** Training global failure classifiers across multiple banks without moving raw transaction data.
-*   **Pedigree Goal:** Researching Differential Privacy (DP) constraints for BIC-level features.
+*   **Delivered:** `docs/federated-learning-architecture.md` — FedProx selected (non-IID robustness), DP-SGD (ε=1.0, δ=1e-5), Flower + Opacus framework, layer partitioning (local: BIC embeddings; shared: final aggregation layers). 4 patent claims documented. Phase 2 pending pilot bank onboarding.
 
 ## 6. Execution Mandates
 1.  **Simulation First:** No model is "expert" if the world it was trained in is naive. Simulations must include "Black Swan" events and adversarial behavior.
