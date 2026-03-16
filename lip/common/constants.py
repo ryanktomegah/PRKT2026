@@ -85,6 +85,15 @@ FX_G10_CURRENCIES: frozenset[str] = frozenset(
 )
 FX_RISK_POLICY_DEFAULT = "SAME_CURRENCY_ONLY"  # conservative pilot default
 
+# ── Settlement P95 targets by rejection class (data-derived, 2026-03-16) ──────
+# Derived from 2M synthetic records in payments_synthetic.parquet (seed=42).
+# Calibration source: BIS/SWIFT GPI Joint Analytics — confirmed at scale.
+# These are the canonical Tier 0 corridor buffer references (Architecture Spec S11.4).
+# QUANT sign-off required before changing.
+SETTLEMENT_P95_CLASS_A_HOURS = 7.05    # Routing/account errors   — BIS/SWIFT GPI target 7.0h
+SETTLEMENT_P95_CLASS_B_HOURS = 53.58   # Compliance/AML holds     — BIS/SWIFT GPI target 53.6h
+SETTLEMENT_P95_CLASS_C_HOURS = 170.67  # Liquidity/timing         — BIS/SWIFT GPI target 171.0h
+
 # ── Stress regime detection ────────────────────────────────────────────────────
 # QUANT sign-off required to change STRESS_REGIME_MULTIPLIER.
 # Rationale: 3× baseline is consistent with BIS CPMI alert thresholds for

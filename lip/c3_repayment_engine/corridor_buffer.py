@@ -32,6 +32,14 @@ _WINDOW_SECONDS: float = _WINDOW_DAYS * 86_400.0
 
 
 def _default_corridor_defaults() -> dict:
+    # Tier 0 defaults (days) — Architecture Spec S11.4
+    # Updated 2026-03-16 against data-derived P95 values from payments_synthetic.parquet
+    # (2M records, seed=42, BIS/SWIFT GPI calibrated):
+    #   Class A (routing/account):   P95 =   7.05h = 0.29 days  → major corridors ~0.3d
+    #   Class B (compliance holds):  P95 =  53.58h = 2.23 days  → major corridors ~2.5d
+    #   Class C (liquidity/timing):  P95 = 170.67h = 7.11 days  → DEFAULT 7.0 days confirmed
+    # Defaults represent the weighted mix across all rejection classes for each corridor.
+    # Canonical hours available in lip.common.constants.SETTLEMENT_P95_CLASS_{A,B,C}_HOURS.
     return {
         "USD_EUR": 3.0,
         "USD_GBP": 3.0,
