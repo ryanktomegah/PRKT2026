@@ -69,6 +69,12 @@ dev = [
     "mypy>=1.8.0",
     "locust>=2.24.0",
 ]
+live = [
+    # Required for test_e2e_live.py — not in 'all' because it needs a C library (librdkafka).
+    # Install separately: pip install confluent-kafka
+    # The test module auto-skips if this package is absent.
+    "confluent-kafka>=2.3.0",
+]
 all = [
     "lip[ml,monitoring,dev]",
 ]
@@ -88,6 +94,7 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short"
 markers = [
     "slow: marks tests as slow-running convergence checks (deselect with '-m \"not slow\"')",
+    "live: marks tests that require live Redpanda/Redis infrastructure — start with ./scripts/start_local_infra.sh",
 ]
 
 [tool.ruff]

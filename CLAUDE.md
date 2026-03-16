@@ -50,7 +50,10 @@ After auth, Claude can:
 - test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally
 
 ## Test Suite Notes
-- Full suite (excl. e2e) takes ~12 min (722s, ~980 tests); exclude e2e for speed: `--ignore=lip/tests/test_e2e_pipeline.py`
+- Full suite takes ~12 min (722s, ~1010+ tests); use `-m "not slow"` for fast iteration
+- `test_e2e_pipeline.py` is 100% in-memory (8 scenarios, mock C1/C2, no Kafka/Redis) — safe to run without infrastructure; DO NOT use `--ignore` on it
+- `test_e2e_live.py` requires live Redpanda at localhost:9092 — marked `@pytest.mark.live`; auto-skips when infra is down. Run with: `PYTHONPATH=. python -m pytest lip/tests/test_e2e_live.py -m live -v`
+- Exclude live tests from default suite: `--ignore=lip/tests/test_e2e_live.py`
 - `test_slo_p99_94ms` (test_c1_classifier.py) is a FLAKY TIMING test — fails under CPU load, passes in isolation; not a regression signal
 - Long pytest runs are auto-backgrounded by the Bash tool; wait with `TaskOutput(block=True, timeout=600000)` and kill competing runs with `TaskStop` before starting a new one
 
