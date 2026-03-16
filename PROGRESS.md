@@ -89,11 +89,28 @@ Net gain this session: +21 stress regime tests, +7 from untracked test files.
   - 4 patent claims + novelty over JPMorgan US7089207B1 documented.
   - Competitive moat: 36-60 month lead on DLT bridge lending (no known prior art).
 
+### P6 COMPLETE — C4 LLM Integration Test (2026-03-16)
+- `lip/tests/test_c4_llm_integration.py`: 17 tests, 6 test classes. **All 17 passing** (46s with Groq).
+  - `TestC4FourClassAccuracy`: 4 parametrized cases — all 4 classes correct.
+  - `TestC4NegationAwareness`: 6 negation tests — not-dispute, no-fraud, double-negation, conditional — all pass.
+  - `TestC4Multilingual`: French/German/Spanish — all pass.
+  - `TestC4PrefilterInteraction`: FRAU prefilter + empty narrative — pass.
+  - `TestC4LLMLatency`: p95 < 10s on 10 consecutive calls — pass.
+  - `TestC4NegationBulk`: FN rate on 50 sampled corpus cases < 15% — pass.
+- `scripts/evaluate_c4_on_negation_corpus.py`: 100-case evaluation (20/category). Key results:
+  - DISPUTE_CONFIRMED FN rate: **0.0%** (vs MockLLMBackend: 47.2%)
+  - NOT_DISPUTE FP rate: **4.0%** (vs MockLLMBackend: 0.1%)
+  - Overall accuracy: **71%** (low on conditional_negation; LLM conservatively flags conditionals as disputes)
+  - Model: `qwen/qwen3-32b` via Groq API; `/no_think` directive disables chain-of-thought.
+- `lip/common/constants.py`: `DISPUTE_FN_CURRENT` updated to `0.0000` (LLM=qwen/qwen3-32b, n=100).
+- Key fix: removed `stop=["\n", " "]` from `_Qwen3GroqBackend.generate()` in both files.
+  Root cause: stop token halted generation inside unclosed `<think>` block; `/no_think` + regex stripping is the correct approach.
+
 ### What is NEXT
-- **P6**: C4 LLM integration test (needs Groq API key from user — free at console.groq.com).
-  Without Groq key: all other plan items are COMPLETE.
-- Tests: 1284 passing, 1 skipped, 0 ruff errors.
-- Commits: `ff8c875` (P4), current session adding P7+P8.
+- **ALL PLAN ITEMS COMPLETE** (P1–P8 + P6).
+- Tests: 1284 passing, 1 skipped, 0 ruff errors. 17 new LLM integration tests (skipped without GROQ_API_KEY).
+- The `fizzy-jumping-rain.md` plan is fully executed.
+- Next sessions: pilot bank onboarding, real SWIFT data calibration (QUANT sign-off required), C1 AUC validation on anonymised data.
 
 ---
 

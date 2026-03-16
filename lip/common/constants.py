@@ -22,10 +22,12 @@ ML_BASELINE_AUC = Decimal("0.739")
 ML_TARGET_AUC   = Decimal("0.850")
 
 # ── Dispute classifier targets ────────────────────────────────────────────────
-# Measured on 500-case negation suite after negation-aware prefilter
-# (commit 3808a74). Not yet validated on full synthetic corpus.
-DISPUTE_FN_CURRENT = Decimal("0.01")   # current false-negative rate
-DISPUTE_FN_TARGET  = Decimal("0.02")   # target false-negative rate
+# FN rate measured on 100-case negation suite (20/category) with real LLM
+# backend: qwen/qwen3-32b via Groq API (P6, 2026-03-16).
+# MockLLMBackend baseline FN=47.2% (commit 3808a74 negation prefilter).
+# Real LLM: FN=0.0% on DISPUTE_CONFIRMED, FP=4.0% on NOT_DISPUTE.
+DISPUTE_FN_CURRENT = Decimal("0.0000")  # LLM=qwen/qwen3-32b n=100
+DISPUTE_FN_TARGET  = Decimal("0.02")    # target false-negative rate
 
 # ── Corridor embedding dimensions ────────────────────────────────────────────
 CORRIDOR_EMBEDDING_DIM = 128
