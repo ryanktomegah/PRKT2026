@@ -240,46 +240,66 @@ class BICPool:
         dst = self.get_currency(receiver_bic)
         return f"{src}/{dst}"
 
-    def sample_bic_pair(
-        self,
-        rng: np.random.Generator,
-    ) -> tuple[str, str]:
-        """Sample a (sender_bic, receiver_bic) pair, sender ≠ receiver.
+    def get_bics_by_currency(self, currency: str) -> list[str]:
+        """Return all BICs whose country maps to the given ISO 4217 currency code."""
+        return [bic for bic in self.all_bics if self.get_currency(bic) == currency]
 
-        Hub banks receive 60% of the total transaction weight, creating
-        a realistic hub-and-spoke correspondent banking topology.
+    def build_currency_index(self) -> dict[str, tuple[list[str], np.ndarray]]:
+        """Build {currency: (bic_list, hub_spoke_weights)} for fast corridor-aligned sampling.
+
+        Pre-computing this avoids repeated list comprehensions in the hot path.
+        Weights respect hub/spoke topology: hubs receive 60% of their currency's
+        weight even after filtering to a subset of BICs.
         """
-        idx1 = int(rng.choice(self.n_total, p=self._weights_arr))
-        # Receiver: same distribution but must differ from sender
-        while True:
-            idx2 = int(rng.choice(self.n_total, p=self._weights_arr))
-            if idx2 != idx1:
-                break
-        return self.all_bics[idx1], self.all_bics[idx2]
+        hub_set = set(self.hub_bics)
+        index: dict[str, tuple[list[str], np.ndarray]] = {}
+        # Group BICs by currency
+        currency_bics: dict[str, list[str]] = {}
+        for bic in self.all_bics:
+            curr = self.get_currency(bic)
+            currency_bics.setdefault(curr, []).append(bic)
 
-    def sample_bic_pairs_batch(
-        self,
-        rng: np.random.Generator,
-        n: int,
-    ) -> tuple[list[str], list[str]]:
-        """Vectorised batch sampling of n BIC pairs.
-
-        Uses rejection sampling to ensure sender ≠ receiver.
-        Typically requires < 2 passes at standard pool sizes.
-        """
-        senders_idx = rng.choice(self.n_total, size=n, p=self._weights_arr)
-        receivers_idx = rng.choice(self.n_total, size=n, p=self._weights_arr)
-
-        # Fix any collisions (sender == receiver)
-        collisions = senders_idx == receivers_idx
-        while collisions.any():
-            n_fix = int(collisions.sum())
-            receivers_idx[collisions] = rng.choice(
-                self.n_total, size=n_fix, p=self._weights_arr
+        for curr, bics in currency_bics.items():
+            raw_w = np.array(
+                [0.60 / self.n_hubs if b in hub_set else 0.40 / self.n_spokes for b in bics],
+                dtype=np.float64,
             )
-            collisions = senders_idx == receivers_idx
+            raw_w /= raw_w.sum()  # normalise within this currency
+            index[curr] = (bics, raw_w)
+        return index
 
-        bics = self.all_bics
-        senders = [bics[i] for i in senders_idx]
-        receivers = [bics[i] for i in receivers_idx]
+    def sample_bic_pairs_by_corridor(
+        self,
+        rng: np.random.Generator,
+        src_currency: str,
+        dst_currency: str,
+        n: int,
+        currency_index: dict,
+    ) -> tuple[list[str], list[str]]:
+        """Vectorised sampling of n BIC pairs aligned to a specific corridor.
+
+        Sender BICs are drawn from src_currency countries; receiver BICs from
+        dst_currency countries. For same-currency corridors sender ≠ receiver.
+
+        Parameters
+        ----------
+        currency_index : dict
+            Pre-built from :meth:`build_currency_index` — avoids rebuilding per chunk.
+        """
+        src_bics, src_w = currency_index.get(src_currency, (self.all_bics, self._weights_arr))
+        dst_bics, dst_w = currency_index.get(dst_currency, (self.all_bics, self._weights_arr))
+
+        src_idx = rng.choice(len(src_bics), size=n, p=src_w)
+        dst_idx = rng.choice(len(dst_bics), size=n, p=dst_w)
+
+        # For same-currency corridors, enforce sender ≠ receiver
+        if src_currency == dst_currency:
+            same = src_idx == dst_idx
+            while same.any():
+                n_fix = int(same.sum())
+                dst_idx[same] = rng.choice(len(dst_bics), size=n_fix, p=dst_w)
+                same = src_idx == dst_idx
+
+        senders = [src_bics[i] for i in src_idx]
+        receivers = [dst_bics[i] for i in dst_idx]
         return senders, receivers

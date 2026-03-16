@@ -382,7 +382,7 @@ def _generate_chunk(
     """
     rng = np.random.default_rng(seed)
 
-    # Sample corridors
+    # Sample corridors first — this drives BIC selection, amounts, and rails
     corridor_idx = rng.choice(len(_CORRIDORS), size=chunk_size, p=_CORRIDOR_VOLUME_WEIGHTS)
 
     # Sample rejection codes
@@ -390,12 +390,30 @@ def _generate_chunk(
     codes = [_CODE_LIST[i] for i in code_idx]
     classes = [_REJECTION_CODES[c][0] for c in codes]
 
-    # Sample BIC pairs (vectorised)
-    senders, receivers = bic_pool.sample_bic_pairs_batch(rng, chunk_size)
+    # Sample BIC pairs corridor-aligned: for each corridor, draw BICs whose country
+    # matches the corridor's src/dst currencies. This ensures corridor labels are
+    # consistent with the amount/settlement distributions used below.
+    currency_index = bic_pool.build_currency_index()
+    senders: list[str] = [""] * chunk_size
+    receivers: list[str] = [""] * chunk_size
+    corridors_str: list[str] = [""] * chunk_size
+    currency_pairs: list[str] = [""] * chunk_size
 
-    # Derive corridors, currency pairs from BIC geography
-    corridors_str = [bic_pool.get_corridor(s, r) for s, r in zip(senders, receivers)]
-    currency_pairs = [bic_pool.get_currency_pair(s, r) for s, r in zip(senders, receivers)]
+    for ci, corr in enumerate(_CORRIDORS):
+        positions = np.where(corridor_idx == ci)[0]
+        n_mask = len(positions)
+        if n_mask == 0:
+            continue
+        src_curr, dst_curr = corr.name.split("/")
+        s_bics, r_bics = bic_pool.sample_bic_pairs_by_corridor(
+            rng, src_curr, dst_curr, n_mask, currency_index
+        )
+        corridor_label = corr.name.replace("/", "-")   # e.g. "EUR-USD"
+        for j, pos in enumerate(positions):
+            senders[pos] = s_bics[j]
+            receivers[pos] = r_bics[j]
+            corridors_str[pos] = corridor_label
+            currency_pairs[pos] = corr.name            # e.g. "EUR/USD"
 
     # Sample amounts per corridor (log-normal)
     amounts = np.empty(chunk_size, dtype=np.float64)
