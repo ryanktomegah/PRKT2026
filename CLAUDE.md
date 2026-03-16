@@ -68,3 +68,44 @@ After auth, Claude can:
   FN rate: 1% on negation suite; not yet validated on full synthetic corpus.
 - When updating measured values in `lip/common/constants.py`, cite commit hash +
   dataset scope in the comment (see DISPUTE_FN_CURRENT for example).
+
+## C4 LLM Backend — Groq / Qwen3-32b (commit 2477ac2)
+
+### Chosen model: `qwen/qwen3-32b` via Groq API
+Benchmarked against llama-3.3-70b-versatile and openai/gpt-oss-120b on the 100-case
+negation corpus through the full DisputeClassifier pipeline. qwen3-32b wins on:
+- Multilingual FP: 0.0% vs llama's 10.0% — critical for cross-border SWIFT narratives
+- Overall FP: 4.0% vs llama's 6.0%
+- p95 latency: ~793ms vs llama's ~2375ms
+- FN rate: 0.0% — tied with all alternatives
+
+### Qwen3 thinking mode — NEVER use stop tokens
+Qwen3-32b emits `<think>...</think>` chain-of-thought tokens before the classification
+label. The ONLY correct suppression strategy is:
+1. Append `\n/no_think` to the system prompt (documented Qwen3 directive)
+2. Strip residual blocks with `re.compile(r"<think>.*?</think>", re.DOTALL)`
+
+**DO NOT add `stop=["\n", " "]` or any stop tokens.** Stop tokens halt generation
+*inside* an unclosed `<think>` block (the regex requires `</think>` to match), leaving
+the raw `<think>` tag as the entire response → downstream token parser sees `<think>`
+as the label → falls through to DISPUTE_POSSIBLE fallback → spurious test failures.
+This was the root cause of 5 failing tests in the first integration test run.
+
+### Groq project-level model permissions
+Groq API keys are scoped to a project. Models listed in `client.models.list()` may
+still return 403 `model_permission_blocked_project` if not enabled in project settings
+at console.groq.com/settings/project/limits. Both API keys in use:
+- `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` — qwen/qwen3-32b only
+- `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` — broader model access
+
+### Model comparison protocol — minimum 100 cases before switching
+50-case evaluations produce statistically unreliable FP/FN estimates. In the model
+comparison session, llama-3.3-70b showed 0% FP at n=50 but 6% FP at n=100 — the
+50-case result was sample luck. Always run the full negation suite (n_per_category=20,
+100 total) through `DisputeClassifier` (not raw LLM) before deciding to switch models.
+
+### Integration test run command
+```bash
+GROQ_API_KEY=gsk_... PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
+```
+Tests are `@pytest.mark.slow` and auto-skipped without GROQ_API_KEY. All 17 pass in ~46s.
