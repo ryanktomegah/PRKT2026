@@ -94,11 +94,26 @@ SETTLEMENT_P95_CLASS_A_HOURS = 7.05    # Routing/account errors   — BIS/SWIFT 
 SETTLEMENT_P95_CLASS_B_HOURS = 53.58   # Compliance/AML holds     — BIS/SWIFT GPI target 53.6h
 SETTLEMENT_P95_CLASS_C_HOURS = 170.67  # Liquidity/timing         — BIS/SWIFT GPI target 171.0h
 
-# ── Loan amount thresholds (QUANT-controlled) ─────────────────────────────────
-# Source: ECB PAY distribution — mean €4.3M, median €6.5K.  Product targets the
-# wholesale tail; floor and tiered rates protect unit economics in the mid-range.
-MIN_LOAN_AMOUNT_USD         = Decimal("500000")   # default minimum; configurable via C8 token
-MIN_CASH_FEE_USD            = Decimal("500")      # absolute minimum cash fee per cycle
+# ── Loan amount thresholds by rejection class (QUANT-controlled) ──────────────
+# Class-aware minimums replace the flat MIN_LOAN_AMOUNT_USD gate.
+# Rationale (NOVA + QUANT, 2026-03-17):
+#   Class A (3d): P95 resolution = 7.05h — loan matures 10x before the problem resolves.
+#     Early repayment destroys yield; only large principals generate sufficient fee to
+#     cover expected-loss risk.  Breakeven at 400bps/3d = $1,520,833 → rounded to $1.5M.
+#   Class B (7d): compliance holds run close to full term.  Breakeven at 400bps/7d =
+#     $651,786 → rounded up to $700K.
+#   Class C (21d): liquidity/sanctions holds almost always run to maturity.
+#     $500K clears the fee floor at 400bps/21d ($1,150+).  No change.
+MIN_LOAN_AMOUNT_CLASS_A_USD = Decimal("1500000")  # Class A (routing errors, 3-day maturity)
+MIN_LOAN_AMOUNT_CLASS_B_USD = Decimal("700000")   # Class B (compliance holds, 7-day maturity)
+MIN_LOAN_AMOUNT_CLASS_C_USD = Decimal("500000")   # Class C (liquidity/sanctions, 21-day maturity)
+MIN_LOAN_AMOUNT_USD         = Decimal("500000")   # legacy default for unlabelled / unknown class
+
+# MIN_CASH_FEE_USD: coherent safety net at the Class A boundary value.
+# $500K × 400bps × 3/365 = $164.38 → rounded down to $150 with ~9% headroom.
+# This is no longer the primary exclusion mechanism for Class A (the class-aware
+# loan minimum handles that); it remains as a last-resort arithmetic guard.
+MIN_CASH_FEE_USD            = Decimal("150")      # absolute minimum cash fee per cycle
 
 # ── Tiered fee floors by principal (QUANT-controlled) ─────────────────────────
 # Brackets:  < $500K → 500 bps  |  $500K–$2M → 400 bps  |  ≥ $2M → 300 bps

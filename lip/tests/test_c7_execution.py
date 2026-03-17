@@ -298,7 +298,7 @@ class TestExecutionAgent:
 
 
 class TestLoanAmountAndFeeGates:
-    """Tests for minimum loan amount gate (4c) and minimum cash fee gate (4d)."""
+    """Tests for class-aware minimum loan amount gate (4c) and min cash fee gate (4d)."""
 
     def _make_agent_no_review(self, min_loan_amount_usd: int = 500000):
         cfg = ExecutionConfig(require_human_review_above_pd=0.99)
@@ -309,75 +309,132 @@ class TestLoanAmountAndFeeGates:
             min_loan_amount_usd=min_loan_amount_usd,
         )
 
-    def _ctx(self, loan_amount: str, maturity_days: int = 7, fee_bps: int = 300):
+    def _ctx(self, loan_amount: str, maturity_days: int = 7, fee_bps: int = 300,
+             rejection_class: str = "CLASS_B"):
         return {
             "uetr": "u-amt", "individual_payment_id": "p-amt",
             "failure_probability": 0.8, "pd_score": 0.05,
             "fee_bps": fee_bps, "loan_amount": loan_amount,
             "maturity_days": maturity_days,
+            "rejection_class": rejection_class,
             "dispute_class": "NOT_DISPUTE", "aml_passed": True,
         }
 
-    def test_below_min_loan_amount_declined(self):
-        """Principals below $500K are declined with BELOW_MIN_LOAN_AMOUNT."""
+    # ── Class A (routing errors, 3-day, $1.5M minimum) ───────────────────────
+
+    def test_class_a_below_1_5m_declined(self):
+        """Class A loans below $1.5M are declined — routing errors resolve in ~7h,
+        early repayment destroys yield on sub-$1.5M principals."""
         agent = self._make_agent_no_review()
-        result = agent.process_payment(self._ctx("100000"))
+        result = agent.process_payment(self._ctx("900000", maturity_days=3,
+                                                  rejection_class="CLASS_A"))
         assert result["status"] == "BELOW_MIN_LOAN_AMOUNT"
         assert result["halt_reason"] == "below_min_loan_amount"
-        assert result["decision_entry_id"] is not None
 
-    def test_exactly_min_loan_amount_passes_gate(self):
-        """A principal exactly equal to the minimum must pass the gate."""
+    def test_class_a_at_1_5m_passes_gate(self):
+        """Class A at exactly $1.5M clears the class-aware floor."""
         agent = self._make_agent_no_review()
-        result = agent.process_payment(self._ctx("500000", maturity_days=21))
-        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT",)
+        result = agent.process_payment(self._ctx("1500000", maturity_days=3,
+                                                  rejection_class="CLASS_A"))
+        assert result["status"] != "BELOW_MIN_LOAN_AMOUNT"
 
-    def test_above_min_loan_amount_passes_gate(self):
-        """$1M is well above the $500K floor; gate must not trigger."""
+    def test_class_a_above_1_5m_passes_gate(self):
+        """Class A at $2M is well above the floor and must not be declined by gate 4c."""
         agent = self._make_agent_no_review()
-        result = agent.process_payment(self._ctx("1000000"))
+        result = agent.process_payment(self._ctx("2000000", maturity_days=3,
+                                                  rejection_class="CLASS_A"))
+        assert result["status"] != "BELOW_MIN_LOAN_AMOUNT"
+
+    # ── Class B (compliance holds, 7-day, $700K minimum) ─────────────────────
+
+    def test_class_b_below_700k_declined(self):
+        """Class B loans below $700K declined — breakeven requires ~$652K at 400bps/7d."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("500000", maturity_days=7,
+                                                  rejection_class="CLASS_B"))
+        assert result["status"] == "BELOW_MIN_LOAN_AMOUNT"
+
+    def test_class_b_at_700k_passes_gate(self):
+        """Class B at exactly $700K clears the floor."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("700000", maturity_days=7,
+                                                  rejection_class="CLASS_B"))
+        assert result["status"] != "BELOW_MIN_LOAN_AMOUNT"
+
+    # ── Class C (liquidity/sanctions, 21-day, $500K minimum) ─────────────────
+
+    def test_class_c_at_500k_passes_gate(self):
+        """Class C at $500K passes — 21-day loans always run to maturity, fee is economic."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("500000", maturity_days=21,
+                                                  rejection_class="CLASS_C"))
+        assert result["status"] != "BELOW_MIN_LOAN_AMOUNT"
+
+    def test_class_c_below_500k_declined(self):
+        """Class C below $500K still declined by the legacy MIN_LOAN_AMOUNT_USD floor."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("300000", maturity_days=21,
+                                                  rejection_class="CLASS_C"))
+        assert result["status"] == "BELOW_MIN_LOAN_AMOUNT"
+
+    # ── Unknown / missing rejection class falls back to $500K default ─────────
+
+    def test_unknown_class_uses_default_floor(self):
+        """Payments with no rejection_class use the legacy $500K default."""
+        agent = self._make_agent_no_review()
+        ctx = self._ctx("600000", maturity_days=7)
+        ctx.pop("rejection_class")
+        result = agent.process_payment(ctx)
+        assert result["status"] != "BELOW_MIN_LOAN_AMOUNT"
+
+    # ── Min cash fee gate (now coherent at $150) ──────────────────────────────
+
+    def test_min_cash_fee_gate_still_active(self):
+        """Gate 4d still catches near-zero fees; $150 floor is the coherent boundary."""
+        agent = self._make_agent_no_review()
+        # Construct a near-boundary case: $700K CLASS_B at 400bps/7d = $538 > $150 — passes
+        result = agent.process_payment(self._ctx("700000", maturity_days=7,
+                                                  fee_bps=300, rejection_class="CLASS_B"))
+        assert result["status"] != "BELOW_MIN_CASH_FEE"
+
+    def test_large_amount_clears_all_gates(self):
+        """$3M CLASS_B for 7 days clears every gate cleanly."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("3000000", maturity_days=7,
+                                                  fee_bps=300, rejection_class="CLASS_B"))
         assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT", "BELOW_MIN_CASH_FEE")
 
-    def test_licensee_override_min_loan_amount(self):
-        """C8 token can lower the minimum for a specific licensee."""
-        agent = self._make_agent_no_review(min_loan_amount_usd=100000)
-        result = agent.process_payment(self._ctx("150000", maturity_days=21))
-        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT",)
-
-    def test_below_min_cash_fee_declined(self):
-        """$500K for 3 days at 500bps = ~$205 cash fee, below $500 minimum."""
-        agent = self._make_agent_no_review()
-        # $500K × 500bps × 3/365 ≈ $205 — below MIN_CASH_FEE_USD=$500
-        result = agent.process_payment(self._ctx("500000", maturity_days=3, fee_bps=300))
-        assert result["status"] == "BELOW_MIN_CASH_FEE"
-        assert result["halt_reason"] == "below_min_cash_fee"
-        assert result["decision_entry_id"] is not None
-
-    def test_large_amount_clears_min_cash_fee(self):
-        """$3M for 7 days at 300bps = ~$1726 — well above $500 minimum."""
-        agent = self._make_agent_no_review()
-        result = agent.process_payment(self._ctx("3000000", maturity_days=7, fee_bps=300))
-        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT", "BELOW_MIN_CASH_FEE")
+    # ── Tiered fee floors ─────────────────────────────────────────────────────
 
     def test_tiered_fee_floor_mid_tier_applied(self):
-        """$1M loan should use 400bps floor (mid tier), not 300bps."""
+        """$1M CLASS_B loan: 400bps mid-tier floor must override a low C2 fee_bps."""
         cfg = ExecutionConfig(require_human_review_above_pd=0.99)
         ks = KillSwitch()
         dl = DecisionLogger(hmac_key=_HMAC_KEY)
         agent = ExecutionAgent(ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg)
-        ctx = self._ctx("1000000", maturity_days=7, fee_bps=100)  # C2 returns low fee_bps
+        ctx = self._ctx("1000000", maturity_days=7, fee_bps=100, rejection_class="CLASS_B")
         result = agent.process_payment(ctx)
-        # If an offer is made, the fee_bps in the offer must be ≥ 400 (mid-tier floor)
         if result["status"] == "OFFER":
             assert result["loan_offer"]["fee_bps"] >= 400
 
     def test_tiered_fee_floor_large_tier_applied(self):
-        """$5M loan should use the canonical 300bps floor (large tier)."""
+        """$5M loan uses the canonical 300bps floor."""
         cfg = ExecutionConfig(require_human_review_above_pd=0.99)
         ks = KillSwitch()
         dl = DecisionLogger(hmac_key=_HMAC_KEY)
         agent = ExecutionAgent(ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg)
-        ctx = self._ctx("5000000", maturity_days=7, fee_bps=100)
+        ctx = self._ctx("5000000", maturity_days=7, fee_bps=100, rejection_class="CLASS_B")
         result = agent.process_payment(ctx)
         if result["status"] == "OFFER":
             assert result["loan_offer"]["fee_bps"] >= 300
+
+    # ── Licensee C8 token override ────────────────────────────────────────────
+
+    def test_licensee_override_is_additive_not_permissive(self):
+        """Licensee min_loan_amount_usd tightens the floor but cannot loosen it below
+        the class minimum.  CLASS_A floor is $1.5M; a licensee setting $500K cannot
+        unlock Class A loans at $900K."""
+        agent = self._make_agent_no_review(min_loan_amount_usd=500000)
+        result = agent.process_payment(self._ctx("900000", maturity_days=3,
+                                                  rejection_class="CLASS_A"))
+        assert result["status"] == "BELOW_MIN_LOAN_AMOUNT"

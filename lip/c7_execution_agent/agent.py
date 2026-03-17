@@ -22,7 +22,13 @@ from lip.c5_streaming.stress_regime_detector import StressRegimeDetector
 from lip.c8_license_manager.license_token import LicenseeContext
 from lip.common.borrower_registry import BorrowerRegistry
 from lip.common.business_calendar import currency_to_jurisdiction
-from lip.common.constants import MIN_CASH_FEE_USD
+from lip.common.constants import (
+    MIN_CASH_FEE_USD,
+    MIN_LOAN_AMOUNT_CLASS_A_USD,
+    MIN_LOAN_AMOUNT_CLASS_B_USD,
+    MIN_LOAN_AMOUNT_CLASS_C_USD,
+    MIN_LOAN_AMOUNT_USD,
+)
 from lip.common.fx_risk_policy import FXRiskConfig
 from lip.common.governing_law import law_for_jurisdiction
 from lip.common.known_entity_registry import KnownEntityRegistry
@@ -263,11 +269,27 @@ class ExecutionAgent:
                     "halt_reason": "currency_not_supported",
                 }
 
-        # 4c. Minimum loan amount gate — decline sub-threshold principals
-        if loan_amount < Decimal(str(self.min_loan_amount_usd)):
+        # 4c. Class-aware minimum loan amount gate (QUANT+NOVA, 2026-03-17)
+        # Class A (3d): $1.5M — routing errors resolve in ~7h; sub-$1.5M yield
+        #   is destroyed by early repayment and cannot absorb one default at EU LGD.
+        # Class B (7d): $700K — compliance holds run near full term; breakeven ~$652K.
+        # Class C (21d): $500K — liquidity/sanctions holds run to maturity; always economic.
+        # Licensee C8 token can override via min_loan_amount_usd for edge cases.
+        rejection_class = str(payment_context.get("rejection_class", "")).upper()
+        _CLASS_MINIMUMS = {
+            "CLASS_A": MIN_LOAN_AMOUNT_CLASS_A_USD,
+            "CLASS_B": MIN_LOAN_AMOUNT_CLASS_B_USD,
+            "CLASS_C": MIN_LOAN_AMOUNT_CLASS_C_USD,
+        }
+        class_floor = _CLASS_MINIMUMS.get(rejection_class, MIN_LOAN_AMOUNT_USD)
+        # Licensee token override applies when it is stricter than the class floor
+        licensee_floor = Decimal(str(self.min_loan_amount_usd))
+        effective_loan_min = max(class_floor, licensee_floor)
+
+        if loan_amount < effective_loan_min:
             logger.info(
-                "Loan amount below minimum: amount=%s min=%s uetr=%s",
-                loan_amount, self.min_loan_amount_usd, uetr,
+                "Loan amount below class minimum: amount=%s min=%s class=%s uetr=%s",
+                loan_amount, effective_loan_min, rejection_class, uetr,
             )
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "DECLINE",
