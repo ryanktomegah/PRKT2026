@@ -68,6 +68,7 @@ class LicenseToken:
     max_tps: int
     aml_dollar_cap_usd: int = 1000000
     aml_count_cap: int = 100
+    min_loan_amount_usd: int = 500000
     permitted_components: List[str] = field(default_factory=lambda: list(ALL_COMPONENTS))
     hmac_signature: str = ""
 
@@ -85,6 +86,7 @@ class LicenseToken:
             "max_tps": self.max_tps,
             "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
             "aml_count_cap": self.aml_count_cap,
+            "min_loan_amount_usd": self.min_loan_amount_usd,
             "permitted_components": sorted(self.permitted_components),
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -103,6 +105,7 @@ class LicenseToken:
             "max_tps": self.max_tps,
             "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
             "aml_count_cap": self.aml_count_cap,
+            "min_loan_amount_usd": self.min_loan_amount_usd,
             "permitted_components": self.permitted_components,
             "hmac_signature": self.hmac_signature,
         }
@@ -116,6 +119,7 @@ class LicenseToken:
             max_tps=int(data["max_tps"]),
             aml_dollar_cap_usd=int(data.get("aml_dollar_cap_usd", 1000000)),
             aml_count_cap=int(data.get("aml_count_cap", 100)),
+            min_loan_amount_usd=int(data.get("min_loan_amount_usd", 500000)),
             permitted_components=list(data.get("permitted_components", ALL_COMPONENTS)),
             hmac_signature=data.get("hmac_signature", ""),
         )
@@ -147,6 +151,7 @@ class LicenseeContext:
     max_tps: int
     aml_dollar_cap_usd: int
     aml_count_cap: int
+    min_loan_amount_usd: int
     permitted_components: List[str]
     token_expiry: str
 
@@ -185,6 +190,7 @@ def sign_token(token: LicenseToken, signing_key: bytes) -> LicenseToken:
         max_tps=token.max_tps,
         aml_dollar_cap_usd=token.aml_dollar_cap_usd,
         aml_count_cap=token.aml_count_cap,
+        min_loan_amount_usd=token.min_loan_amount_usd,
         permitted_components=list(token.permitted_components),
         hmac_signature=sig,
     )

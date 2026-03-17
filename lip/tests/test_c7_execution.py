@@ -220,8 +220,8 @@ class TestExecutionAgent:
         cfg = ExecutionConfig(require_human_review_above_pd=0.99)  # disable human review
         agent = _make_agent(cfg)
         ctx = {"uetr": "u4", "individual_payment_id": "p4", "failure_probability": 0.8,
-               "pd_score": 0.05, "fee_bps": 300, "loan_amount": "100000",
-               "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+               "pd_score": 0.05, "fee_bps": 300, "loan_amount": "1000000",
+               "maturity_days": 7, "dispute_class": "NOT_DISPUTE", "aml_passed": True}
         result = agent.process_payment(ctx)
         assert result["status"] in ("OFFER", "DECLINE")
 
@@ -229,8 +229,8 @@ class TestExecutionAgent:
         cfg = ExecutionConfig(require_human_review_above_pd=0.99)
         agent = _make_agent(cfg)
         ctx = {"uetr": "u5", "individual_payment_id": "p5", "failure_probability": 0.8,
-               "pd_score": 0.05, "fee_bps": 300, "loan_amount": "100000",
-               "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+               "pd_score": 0.05, "fee_bps": 300, "loan_amount": "1000000",
+               "maturity_days": 7, "dispute_class": "NOT_DISPUTE", "aml_passed": True}
         result = agent.process_payment(ctx)
         assert result["decision_entry_id"] is not None
         # Verify the log entry is retrievable and signature is valid
@@ -256,7 +256,8 @@ class TestExecutionAgent:
         )
         ctx = {"uetr": "u-lic-1", "individual_payment_id": "p-lic-1",
                "failure_probability": 0.8, "pd_score": 0.05, "fee_bps": 300,
-               "loan_amount": "100000", "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+               "loan_amount": "1000000", "maturity_days": 7,
+               "dispute_class": "NOT_DISPUTE", "aml_passed": True}
         result = agent.process_payment(ctx)
         eid = result["decision_entry_id"]
         assert eid is not None
@@ -289,7 +290,94 @@ class TestExecutionAgent:
         )
         ctx = {"uetr": "u-unl", "individual_payment_id": "p-unl",
                "failure_probability": 0.8, "pd_score": 0.05, "fee_bps": 300,
-               "loan_amount": "100000", "dispute_class": "NOT_DISPUTE", "aml_passed": True}
+               "loan_amount": "1000000", "maturity_days": 7,
+               "dispute_class": "NOT_DISPUTE", "aml_passed": True}
         results = [agent.process_payment(ctx) for _ in range(20)]
         tps_halts = sum(1 for r in results if r.get("halt_reason") == "tps_limit_exceeded")
         assert tps_halts == 0
+
+
+class TestLoanAmountAndFeeGates:
+    """Tests for minimum loan amount gate (4c) and minimum cash fee gate (4d)."""
+
+    def _make_agent_no_review(self, min_loan_amount_usd: int = 500000):
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        ks = KillSwitch()
+        dl = DecisionLogger(hmac_key=_HMAC_KEY)
+        return ExecutionAgent(
+            ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg,
+            min_loan_amount_usd=min_loan_amount_usd,
+        )
+
+    def _ctx(self, loan_amount: str, maturity_days: int = 7, fee_bps: int = 300):
+        return {
+            "uetr": "u-amt", "individual_payment_id": "p-amt",
+            "failure_probability": 0.8, "pd_score": 0.05,
+            "fee_bps": fee_bps, "loan_amount": loan_amount,
+            "maturity_days": maturity_days,
+            "dispute_class": "NOT_DISPUTE", "aml_passed": True,
+        }
+
+    def test_below_min_loan_amount_declined(self):
+        """Principals below $500K are declined with BELOW_MIN_LOAN_AMOUNT."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("100000"))
+        assert result["status"] == "BELOW_MIN_LOAN_AMOUNT"
+        assert result["halt_reason"] == "below_min_loan_amount"
+        assert result["decision_entry_id"] is not None
+
+    def test_exactly_min_loan_amount_passes_gate(self):
+        """A principal exactly equal to the minimum must pass the gate."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("500000", maturity_days=21))
+        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT",)
+
+    def test_above_min_loan_amount_passes_gate(self):
+        """$1M is well above the $500K floor; gate must not trigger."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("1000000"))
+        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT", "BELOW_MIN_CASH_FEE")
+
+    def test_licensee_override_min_loan_amount(self):
+        """C8 token can lower the minimum for a specific licensee."""
+        agent = self._make_agent_no_review(min_loan_amount_usd=100000)
+        result = agent.process_payment(self._ctx("150000", maturity_days=21))
+        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT",)
+
+    def test_below_min_cash_fee_declined(self):
+        """$500K for 3 days at 500bps = ~$205 cash fee, below $500 minimum."""
+        agent = self._make_agent_no_review()
+        # $500K × 500bps × 3/365 ≈ $205 — below MIN_CASH_FEE_USD=$500
+        result = agent.process_payment(self._ctx("500000", maturity_days=3, fee_bps=300))
+        assert result["status"] == "BELOW_MIN_CASH_FEE"
+        assert result["halt_reason"] == "below_min_cash_fee"
+        assert result["decision_entry_id"] is not None
+
+    def test_large_amount_clears_min_cash_fee(self):
+        """$3M for 7 days at 300bps = ~$1726 — well above $500 minimum."""
+        agent = self._make_agent_no_review()
+        result = agent.process_payment(self._ctx("3000000", maturity_days=7, fee_bps=300))
+        assert result["status"] not in ("BELOW_MIN_LOAN_AMOUNT", "BELOW_MIN_CASH_FEE")
+
+    def test_tiered_fee_floor_mid_tier_applied(self):
+        """$1M loan should use 400bps floor (mid tier), not 300bps."""
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        ks = KillSwitch()
+        dl = DecisionLogger(hmac_key=_HMAC_KEY)
+        agent = ExecutionAgent(ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg)
+        ctx = self._ctx("1000000", maturity_days=7, fee_bps=100)  # C2 returns low fee_bps
+        result = agent.process_payment(ctx)
+        # If an offer is made, the fee_bps in the offer must be ≥ 400 (mid-tier floor)
+        if result["status"] == "OFFER":
+            assert result["loan_offer"]["fee_bps"] >= 400
+
+    def test_tiered_fee_floor_large_tier_applied(self):
+        """$5M loan should use the canonical 300bps floor (large tier)."""
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        ks = KillSwitch()
+        dl = DecisionLogger(hmac_key=_HMAC_KEY)
+        agent = ExecutionAgent(ks, dl, HumanOverrideInterface(), DegradedModeManager(), cfg)
+        ctx = self._ctx("5000000", maturity_days=7, fee_bps=100)
+        result = agent.process_payment(ctx)
+        if result["status"] == "OFFER":
+            assert result["loan_offer"]["fee_bps"] >= 300

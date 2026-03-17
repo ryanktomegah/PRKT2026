@@ -14,6 +14,13 @@ Three-entity role mapping:
 
 from decimal import ROUND_HALF_UP, Decimal
 
+from lip.common.constants import (
+    FEE_FLOOR_TIER_MID_BPS,
+    FEE_FLOOR_TIER_SMALL_BPS,
+    FEE_TIER_MID_THRESHOLD_USD,
+    MIN_LOAN_AMOUNT_USD,
+)
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -165,6 +172,34 @@ def compute_platform_royalty(
     royalty_rate = Decimal(str(royalty_rate))
     royalty = fee_amount_usd * royalty_rate
     return royalty.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def compute_tiered_fee_floor(loan_amount: Decimal) -> Decimal:
+    """Return the applicable annualized fee floor in bps for a given principal amount.
+
+    Tier thresholds (QUANT-controlled; sourced from constants):
+      < $500K  : 500 bps  (thin tail — unit economics require higher floor)
+      $500K–$2M: 400 bps  (mid tier)
+      ≥ $2M    : 300 bps  (canonical floor — wholesale ticket)
+
+    The ≥$2M result equals ``FEE_FLOOR_BPS`` so the two are always consistent.
+
+    Parameters
+    ----------
+    loan_amount:
+        Bridge-loan principal in USD.
+
+    Returns
+    -------
+    Decimal
+        Annualized fee floor in basis points.
+    """
+    amount = Decimal(str(loan_amount))
+    if amount < MIN_LOAN_AMOUNT_USD:
+        return Decimal(str(FEE_FLOOR_TIER_SMALL_BPS))
+    if amount < FEE_TIER_MID_THRESHOLD_USD:
+        return Decimal(str(FEE_FLOOR_TIER_MID_BPS))
+    return FEE_FLOOR_BPS
 
 
 def verify_floor_applies(fee_bps: Decimal) -> bool:

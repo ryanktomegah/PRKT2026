@@ -94,6 +94,19 @@ SETTLEMENT_P95_CLASS_A_HOURS = 7.05    # Routing/account errors   — BIS/SWIFT 
 SETTLEMENT_P95_CLASS_B_HOURS = 53.58   # Compliance/AML holds     — BIS/SWIFT GPI target 53.6h
 SETTLEMENT_P95_CLASS_C_HOURS = 170.67  # Liquidity/timing         — BIS/SWIFT GPI target 171.0h
 
+# ── Loan amount thresholds (QUANT-controlled) ─────────────────────────────────
+# Source: ECB PAY distribution — mean €4.3M, median €6.5K.  Product targets the
+# wholesale tail; floor and tiered rates protect unit economics in the mid-range.
+MIN_LOAN_AMOUNT_USD         = Decimal("500000")   # default minimum; configurable via C8 token
+MIN_CASH_FEE_USD            = Decimal("500")      # absolute minimum cash fee per cycle
+
+# ── Tiered fee floors by principal (QUANT-controlled) ─────────────────────────
+# Brackets:  < $500K → 500 bps  |  $500K–$2M → 400 bps  |  ≥ $2M → 300 bps
+# The ≥$2M tier uses the canonical FEE_FLOOR_BPS (300); no separate constant needed.
+FEE_FLOOR_TIER_SMALL_BPS   = 500   # principal < MIN_LOAN_AMOUNT_USD
+FEE_FLOOR_TIER_MID_BPS     = 400   # MIN_LOAN_AMOUNT_USD ≤ principal < FEE_TIER_MID_THRESHOLD_USD
+FEE_TIER_MID_THRESHOLD_USD = Decimal("2000000")  # boundary: mid tier → canonical 300 bps floor
+
 # ── Stress regime detection ────────────────────────────────────────────────────
 # QUANT sign-off required to change STRESS_REGIME_MULTIPLIER.
 # Rationale: 3× baseline is consistent with BIS CPMI alert thresholds for

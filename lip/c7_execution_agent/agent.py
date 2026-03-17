@@ -17,10 +17,12 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
+from lip.c2_pd_model.fee import compute_loan_fee, compute_tiered_fee_floor
 from lip.c5_streaming.stress_regime_detector import StressRegimeDetector
 from lip.c8_license_manager.license_token import LicenseeContext
 from lip.common.borrower_registry import BorrowerRegistry
 from lip.common.business_calendar import currency_to_jurisdiction
+from lip.common.constants import MIN_CASH_FEE_USD
 from lip.common.fx_risk_policy import FXRiskConfig
 from lip.common.governing_law import law_for_jurisdiction
 from lip.common.known_entity_registry import KnownEntityRegistry
@@ -96,6 +98,7 @@ class ExecutionAgent:
         max_tps: int = 0,
         aml_dollar_cap_usd: int = 1000000,
         aml_count_cap: int = 100,
+        min_loan_amount_usd: int = 500000,
         licensee_context: Optional[LicenseeContext] = None,
         stress_detector: Optional[StressRegimeDetector] = None,
         offer_delivery: Optional[OfferDeliveryService] = None,
@@ -113,11 +116,13 @@ class ExecutionAgent:
             self.max_tps = licensee_context.max_tps
             self.aml_dollar_cap_usd = licensee_context.aml_dollar_cap_usd
             self.aml_count_cap = licensee_context.aml_count_cap
+            self.min_loan_amount_usd = licensee_context.min_loan_amount_usd
         else:
             self.licensee_id = licensee_id
             self.max_tps = max_tps
             self.aml_dollar_cap_usd = aml_dollar_cap_usd
             self.aml_count_cap = aml_count_cap
+            self.min_loan_amount_usd = min_loan_amount_usd
 
         self._tps_limiter = _TPSLimiter(max_tps=self.max_tps)
         self.stress_detector = stress_detector
@@ -258,6 +263,44 @@ class ExecutionAgent:
                     "halt_reason": "currency_not_supported",
                 }
 
+        # 4c. Minimum loan amount gate — decline sub-threshold principals
+        if loan_amount < Decimal(str(self.min_loan_amount_usd)):
+            logger.info(
+                "Loan amount below minimum: amount=%s min=%s uetr=%s",
+                loan_amount, self.min_loan_amount_usd, uetr,
+            )
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "DECLINE",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+            )
+            return {
+                "status": "BELOW_MIN_LOAN_AMOUNT",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "below_min_loan_amount",
+            }
+
+        # 4d. Minimum cash fee gate — decline when projected revenue is uneconomic
+        maturity_days_val = int(payment_context.get("maturity_days", 7))
+        tiered_floor = compute_tiered_fee_floor(loan_amount)
+        effective_bps = tiered_floor if tiered_floor > Decimal(str(fee_bps)) else Decimal(str(fee_bps))
+        projected_fee = compute_loan_fee(loan_amount, effective_bps, maturity_days_val)
+        if projected_fee < MIN_CASH_FEE_USD:
+            logger.info(
+                "Projected cash fee below minimum: fee=%s min=%s uetr=%s",
+                projected_fee, MIN_CASH_FEE_USD, uetr,
+            )
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "DECLINE",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+            )
+            return {
+                "status": "BELOW_MIN_CASH_FEE",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "below_min_cash_fee",
+            }
+
         # 5. Build offer — returns None if GAP-17 amount mismatch detected
         offer = self._build_loan_offer(payment_context, pd_score, fee_bps)
         if offer is None:
@@ -297,7 +340,12 @@ class ExecutionAgent:
     # ── helpers ──────────────────────────────────────────────────────────────
 
     def _build_loan_offer(self, payment_context: dict, pd: float, fee_bps: int) -> Optional[dict]:
+        # Defense-in-depth: enforce tiered fee floor even if C2 returns a lower value.
+        # Primary enforcement is in C2 fee.py; this is the second gate.
+        # Tiered floor: <$500K→500bps, $500K–$2M→400bps, ≥$2M→300bps (canonical floor).
         loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
+        tiered_floor = int(compute_tiered_fee_floor(loan_amount))
+        fee_bps = max(fee_bps, tiered_floor)
 
         # GAP-17: Validate that the loan amount equals the original payment
         # amount the receiver is owed. ±$0.01 tolerance covers FX rounding.

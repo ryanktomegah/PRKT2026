@@ -30,6 +30,7 @@ def _make_token(
     max_tps: int = 500,
     aml_dollar_cap: int = 1000000,
     aml_count_cap: int = 100,
+    min_loan_amount_usd: int = 500000,
     components: list | None = None,
 ) -> LicenseToken:
     today = date.today()
@@ -41,6 +42,7 @@ def _make_token(
         max_tps=max_tps,
         aml_dollar_cap_usd=aml_dollar_cap,
         aml_count_cap=aml_count_cap,
+        min_loan_amount_usd=min_loan_amount_usd,
         permitted_components=components or list(ALL_COMPONENTS),
     )
 
@@ -84,6 +86,7 @@ class TestLicenseToken:
             max_tps=signed.max_tps,
             aml_dollar_cap_usd=signed.aml_dollar_cap_usd,
             aml_count_cap=signed.aml_count_cap,
+            min_loan_amount_usd=signed.min_loan_amount_usd,
             permitted_components=signed.permitted_components,
             hmac_signature=signed.hmac_signature,  # reuse original sig
         )
@@ -126,6 +129,17 @@ class TestLicenseToken:
         assert signed.aml_dollar_cap_usd == 50000
         assert signed.aml_count_cap == 5
 
+    def test_min_loan_amount_preserved_after_sign(self):
+        token = _make_token(min_loan_amount_usd=1000000)
+        signed = sign_token(token, _KEY)
+        assert signed.min_loan_amount_usd == 1000000
+
+    def test_min_loan_amount_round_trip_dict(self):
+        signed = sign_token(_make_token(min_loan_amount_usd=750000), _KEY)
+        restored = LicenseToken.from_dict(signed.to_dict())
+        assert restored.min_loan_amount_usd == 750000
+        assert verify_token(restored, _KEY)
+
 
 # ── LicenseeContext tests ─────────────────────────────────────────────────────
 
@@ -137,6 +151,7 @@ class TestLicenseeContext:
             max_tps=200,
             aml_dollar_cap_usd=50000,
             aml_count_cap=5,
+            min_loan_amount_usd=750000,
             permitted_components=["C1", "C7"],
             token_expiry="2027-01-01",
         )
@@ -144,6 +159,7 @@ class TestLicenseeContext:
         assert ctx.max_tps == 200
         assert ctx.aml_dollar_cap_usd == 50000
         assert ctx.aml_count_cap == 5
+        assert ctx.min_loan_amount_usd == 750000
         assert "C7" in ctx.permitted_components
 
 
@@ -255,3 +271,16 @@ class TestLicenseBootValidator:
         validator = LicenseBootValidator(kill_switch=ks)
         ctx = validator.validate()
         assert validator.context is ctx
+
+    def test_min_loan_amount_propagated_to_context(self, monkeypatch):
+        """min_loan_amount_usd in token must appear in the LicenseeContext."""
+        signed = sign_token(_make_token(min_loan_amount_usd=2000000), _KEY)
+        monkeypatch.setenv("LIP_LICENSE_TOKEN_JSON", json.dumps(signed.to_dict()))
+        monkeypatch.setenv("LIP_LICENSE_KEY_HEX", _KEY.hex())
+        ks = self._ks()
+
+        validator = LicenseBootValidator(kill_switch=ks, required_component="C7")
+        ctx = validator.validate()
+
+        assert ctx is not None
+        assert ctx.min_loan_amount_usd == 2000000
