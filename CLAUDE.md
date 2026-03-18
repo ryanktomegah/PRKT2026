@@ -71,6 +71,7 @@ The user is a strategic, non-technical founder. They set direction and make fina
 - Before assessing any data, metric, or code behaviour, read the source implementation and docstrings to verify the semantics and design intent of every field — never infer meaning from names, computed statistics, or surface patterns alone.
 - NEVER commit `artifacts/` (model binaries, generated data)
 - NEVER commit `c6_corpus_*.json` (AML typology patterns — CIPHER rule)
+- NEVER commit API keys, tokens, or secrets of any kind — use `.env` (gitignored) locally and GitHub Actions secrets on Codespace. Reference secrets via environment variables only. If a key appears in any file being committed, stop and refuse.
 - Always run `ruff check lip/` before committing
 - Always run `python -m pytest lip/tests/` before committing
 - test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally
