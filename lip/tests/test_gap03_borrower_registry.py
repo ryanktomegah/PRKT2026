@@ -65,9 +65,17 @@ def test_pipeline_borrower_unregistered():
         config=config
     )
 
+    # EPG-26: configure predict() explicitly — MagicMock always has predict as an attribute
+    # so pipeline.py:252 calls _c2.predict() not _c2(); both must return the right dict.
+    _c2_result = {"pd_score": 0.05, "fee_bps": 300}
+    c2_mock = MagicMock(
+        return_value=_c2_result,
+        predict=MagicMock(return_value=_c2_result),
+    )
+
     pipeline = LIPPipeline(
         c1_engine=MagicMock(return_value={"failure_probability": 0.2, "above_threshold": True}),
-        c2_engine=MagicMock(return_value={"pd_score": 0.05, "fee_bps": 300}),
+        c2_engine=c2_mock,
         c4_classifier=MagicMock(classify=MagicMock(return_value={"dispute_class": "NOT_DISPUTE"})),
         c6_checker=MagicMock(check=MagicMock(return_value=MagicMock(passed=True, anomaly_flagged=False))),
         c7_agent=agent
@@ -88,7 +96,7 @@ def test_pipeline_borrower_unregistered():
 
     result = pipeline.process(event)
 
-    # Current pipeline logic treats all non-OFFER/HALT from C7 as DECLINED
-    # Let's verify it gets to C7 and returns correctly
+    # Empty registry = allow all (dev mode). Payment reaches C7, loan_amount $1K < $500K
+    # minimum → BELOW_MIN_LOAN_AMOUNT → pipeline outcome DECLINED.
     assert result.outcome == "DECLINED"
-    assert result.payment_state == "FAILURE_DETECTED" # Since it reached C7 but didn't OFFER
+    assert result.payment_state == "FAILURE_DETECTED"  # reached C7 but no offer

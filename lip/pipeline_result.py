@@ -26,6 +26,11 @@ class PipelineResult:
         ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"`` |
         ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"`` | ``"AML_CHECK_UNAVAILABLE"``
 
+        ``"PENDING_HUMAN_REVIEW"`` — C7 human review gate triggered; payment is parked
+        pending operator decision. ``override_request_id`` is populated. Caller must store
+        the original event keyed by ``override_request_id`` and re-submit via
+        ``pipeline.process(event, human_override_decision="APPROVE")`` after approval (EPG-26).
+
         ``"COMPLIANCE_HOLD"`` — C7 detected an active compliance/regulatory hold on this
         payment (rejection codes: RR04, AG01, LEGL). Distinct from ``"DECLINED"`` to support
         regulatory audit trail requirements (FATF R.18/R.20, SR 11-7). No loan offer generated.
@@ -105,6 +110,9 @@ class PipelineResult:
     # C7 output
     loan_offer: Optional[dict] = None
     decision_entry_id: Optional[str] = None
+    # EPG-26: populated when outcome == "PENDING_HUMAN_REVIEW" — used by caller
+    # to store context and re-enter the pipeline after human approval.
+    override_request_id: Optional[str] = None
 
     # State machine states
     payment_state: Optional[str] = None

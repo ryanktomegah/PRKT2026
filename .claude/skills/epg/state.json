@@ -90,14 +90,14 @@
     "notes": "Fixed: velocity.py — _ATOMIC_CHECK_RECORD_LUA Lua script + RollingWindow.atomic_check_and_add() + VelocityChecker.check_and_record() (Redis: atomic Lua, in-memory: threading.Lock). aml_checker.py updated to call check_and_record() — deferred record() removed. Concurrency test (10 threads, cap=3) PASS. 32/32 AML tests pass."
   },
   "EPG-26": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "HIGH",
     "title": "Human review dead end — PENDING_HUMAN_REVIEW has no pipeline re-entry path",
     "owner": ["NOVA", "FORGE", "REX"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "human_override.py + pipeline.py + UETR tracker — implement re-entry after human decision"
+    "commit": "pending-commit",
+    "signoffs": ["NOVA", "FORGE", "REX"],
+    "notes": "Fixed: pipeline.py separates PENDING_HUMAN_REVIEW from DECLINE tuple — distinct outcome with override_request_id on PipelineResult. human_override.py adds store_context()/pop_context() for re-entry. agent.py: human_override_decision=APPROVE bypasses review gate on re-entry. Full flow tested: park → approve → re-enter. Pre-existing mock bug (C2 pd_score=1.0) exposed and fixed in test_gap03. 1353 tests pass."
   },
   "EPG-04": {
     "status": "OPEN",

@@ -149,6 +149,7 @@ class LIPPipeline:
         borrower: Optional[dict] = None,
         entity_id: Optional[str] = None,
         beneficiary_id: Optional[str] = None,
+        human_override_decision: Optional[str] = None,
     ) -> PipelineResult:
         """Run Algorithm 1 for a single payment event.
 
@@ -165,6 +166,11 @@ class LIPPipeline:
         beneficiary_id:
             Beneficiary identifier for C6 AML velocity check.  Defaults to
             ``event.receiving_bic``.
+        human_override_decision:
+            When ``"APPROVE"``, signals that a human operator has reviewed this
+            payment and approved proceeding.  C7 will skip the human review gate
+            and continue to offer generation.  Used for pipeline re-entry after a
+            ``PENDING_HUMAN_REVIEW`` outcome (EPG-26).
 
         Returns
         -------
@@ -434,6 +440,8 @@ class LIPPipeline:
             "currency": event.currency,
             # EPG-18: anomaly flag propagated for audit trail
             "aml_anomaly_flagged": aml_anomaly_flagged,
+            # EPG-26: propagate human override decision for re-entry after review
+            "human_override_decision": human_override_decision,
         }
 
         with tracker.measure("c7"):
@@ -518,9 +526,35 @@ class LIPPipeline:
             )
             return _record_and_return(result)
 
+        # --- Handle C7 human review pending — park, not decline (EPG-26) ----
+        if c7_status == "PENDING_HUMAN_REVIEW":
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            result = PipelineResult(
+                outcome="PENDING_HUMAN_REVIEW",
+                uetr=event.uetr,
+                failure_probability=failure_probability,
+                above_threshold=True,
+                shap_top20=shap_top20,
+                dispute_class=dispute_class_str,
+                aml_passed=aml_passed,
+                pd_estimate=pd_estimate,
+                fee_bps=fee_bps,
+                tier=tier,
+                shap_values_c2=shap_values_c2,
+                loan_offer=None,
+                decision_entry_id=decision_entry_id,
+                payment_state=payment_sm.current_state.value,
+                loan_state=loan_sm.current_state.value,
+                payment_state_history=state_history,
+                component_latencies=tracker.get_latest_all(),
+                total_latency_ms=total_ms,
+                override_request_id=c7_result.get("override_request_id"),
+            )
+            return _record_and_return(result)
+
         # --- Handle C7 DECLINE / economic declines --------------------------
         if c7_status in (
-            "DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW",
+            "DECLINE", "BLOCK",
             "CURRENCY_NOT_SUPPORTED", "BORROWER_NOT_ENROLLED",
             "BELOW_MIN_LOAN_AMOUNT",   # EPG-10: was falling through to FUNDED
             "BELOW_MIN_CASH_FEE",      # EPG-10: was falling through to FUNDED

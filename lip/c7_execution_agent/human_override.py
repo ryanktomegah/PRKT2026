@@ -11,7 +11,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,9 @@ class HumanOverrideInterface:
         self.timeout_action = timeout_action
         self._pending: Dict[str, HumanOverrideRequest] = {}
         self._responses: Dict[str, HumanOverrideResponse] = {}
+        # EPG-26: stores original payment context keyed by override_request_id
+        # so the pipeline can re-enter after a human approval.
+        self._context_store: Dict[str, Any] = {}
 
     def request_override(
         self,
@@ -272,3 +275,34 @@ class HumanOverrideInterface:
         """
         now = datetime.now(tz=timezone.utc)
         return [r for r in self._pending.values() if r.expires_at > now]
+
+    # ── EPG-26: re-entry context store ──────────────────────────────────────
+
+    def store_context(self, request_id: str, event: Any) -> None:
+        """Store the original payment event for pipeline re-entry (EPG-26).
+
+        Called by the pipeline consumer immediately after receiving a
+        ``PENDING_HUMAN_REVIEW`` result.  The stored event is retrieved via
+        :meth:`pop_context` once the operator submits an APPROVE decision.
+
+        Args:
+            request_id: UUID4 string of the :class:`HumanOverrideRequest`.
+            event: Original ``NormalizedEvent`` (or any picklable context) to
+                preserve for re-processing.
+        """
+        self._context_store[request_id] = event
+        logger.debug("Context stored for re-entry: request_id=%s", request_id)
+
+    def pop_context(self, request_id: str) -> Optional[Any]:
+        """Retrieve and remove the stored payment event for re-entry (EPG-26).
+
+        Returns ``None`` when no context was stored (e.g. already consumed or
+        never stored).
+
+        Args:
+            request_id: UUID4 string of the resolved override request.
+
+        Returns:
+            The previously stored event, or ``None``.
+        """
+        return self._context_store.pop(request_id, None)

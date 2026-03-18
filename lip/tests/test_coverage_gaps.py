@@ -874,10 +874,11 @@ class TestPipelineDeclinePath:
         assert result.outcome == "DECLINED"
 
     def test_pending_human_review_outcome(self):
+        # EPG-26: PENDING_HUMAN_REVIEW is now a distinct outcome, not DECLINED
         p = _build_pipeline(fp=0.80, c7_status="PENDING_HUMAN_REVIEW")
         event = _make_normalized_event()
         result = p.process(event)
-        assert result.outcome == "DECLINED"
+        assert result.outcome == "PENDING_HUMAN_REVIEW"
 
     def test_decline_no_loan_offer(self):
         p = _build_pipeline(fp=0.80, c7_status="DECLINE")

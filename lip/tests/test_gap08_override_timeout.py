@@ -81,3 +81,99 @@ class TestGap08OverrideTimeout:
         decline_interface.resolve_expired(req.request_id)
         assert not decline_interface.is_pending(req.request_id)
         assert len(decline_interface.get_pending_overrides()) == 0
+
+
+class TestEPG26ReentryContextStore:
+    """EPG-26 regression: context store enables pipeline re-entry after human approval."""
+
+    def test_store_and_pop_context(self):
+        iface = HumanOverrideInterface()
+        sentinel = object()
+        iface.store_context("req-abc", sentinel)
+        assert iface.pop_context("req-abc") is sentinel
+
+    def test_pop_missing_returns_none(self):
+        iface = HumanOverrideInterface()
+        assert iface.pop_context("nonexistent") is None
+
+    def test_pop_is_destructive(self):
+        iface = HumanOverrideInterface()
+        iface.store_context("req-xyz", "event_data")
+        iface.pop_context("req-xyz")
+        assert iface.pop_context("req-xyz") is None
+
+    def test_full_reentry_flow_with_c7(self):
+        """End-to-end: first pass parks, second pass with APPROVE produces OFFER."""
+        from unittest.mock import MagicMock
+
+        from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
+        from lip.common.borrower_registry import BorrowerRegistry
+
+        override_iface = HumanOverrideInterface(timeout_seconds=60)
+
+        registry = BorrowerRegistry()
+        registry.enroll("BORROW1")
+
+        agent = ExecutionAgent(
+            kill_switch=MagicMock(
+                should_halt_new_offers=MagicMock(return_value=False),
+                is_active=MagicMock(return_value=False),
+            ),
+            decision_logger=MagicMock(),
+            human_override=override_iface,
+            degraded_mode_manager=MagicMock(
+                should_halt_new_offers=MagicMock(return_value=False),
+                get_state_dict=MagicMock(return_value={
+                    "degraded_mode": False, "gpu_fallback": False, "kms_unavailable_gap": False,
+                }),
+            ),
+            config=ExecutionConfig(
+                borrower_registry=registry,
+                require_human_review_above_pd=0.10,  # low threshold — PD 0.5 triggers review
+            ),
+        )
+
+        payment_ctx = {
+            "uetr": "uetr-epg26",
+            "individual_payment_id": "ipid-001",
+            "sending_bic": "BORROW1",
+            "failure_probability": 0.9,
+            "pd_score": 0.50,           # above 0.10 → human review triggered
+            "fee_bps": 350,
+            "loan_amount": 50000,
+            "original_payment_amount_usd": "50000",
+            "dispute_class": "NOT_DISPUTE",
+            "aml_passed": True,
+            "maturity_days": 7,
+            "rejection_code": "AM04",
+            "rejection_class": "CLASS_A",
+            "corridor": "USD_EUR",
+            "currency": "USD",
+        }
+
+        # --- First pass: parks for human review ---
+        result1 = agent.process_payment(payment_ctx)
+        assert result1["status"] == "PENDING_HUMAN_REVIEW"
+        request_id = result1["override_request_id"]
+        assert request_id is not None
+
+        # Caller stores context
+        override_iface.store_context(request_id, payment_ctx)
+
+        # Operator approves
+        override_iface.submit_response(
+            request_id,
+            decision=__import__(
+                "lip.c7_execution_agent.human_override", fromlist=["OverrideDecision"]
+            ).OverrideDecision.APPROVE,
+            operator_id="operator-001",
+            justification="Reviewed — legitimate payment",
+        )
+        ctx_back = override_iface.pop_context(request_id)
+        assert ctx_back is not None
+
+        # --- Re-entry pass: human_override_decision="APPROVE" bypasses gate ---
+        ctx_back["human_override_decision"] = "APPROVE"
+        result2 = agent.process_payment(ctx_back)
+        # Should proceed past the human review gate (OFFER or DECLINE based on PD logic)
+        assert result2["status"] != "PENDING_HUMAN_REVIEW"

@@ -279,33 +279,41 @@ class ExecutionAgent:
                 "halt_reason": "compliance_hold",
             }
 
-        # 3. Human review gate
+        # 3. Human review gate (EPG-26: bypass on re-entry with human approval)
         human_override_applied = False
+        human_override_decision = payment_context.get("human_override_decision")
         if self._requires_human_review(payment_context):
-            pd_limit = self.config.require_human_review_above_pd
-            corridor = payment_context.get("corridor", "UNKNOWN")
-            is_stressed = self.stress_detector.is_stressed(corridor) if self.stress_detector else False
+            if human_override_decision == "APPROVE":
+                # Re-entry path: operator has already approved — log and continue.
+                human_override_applied = True
+                logger.info(
+                    "Human override pre-approved for re-entry: uetr=%s — proceeding to offer",
+                    uetr,
+                )
+            else:
+                pd_limit = self.config.require_human_review_above_pd
+                corridor = payment_context.get("corridor", "UNKNOWN")
+                is_stressed = self.stress_detector.is_stressed(corridor) if self.stress_detector else False
 
-            review_reason = f"PD {pd_score:.3f} exceeds review threshold {pd_limit}"
-            if is_stressed:
-                review_reason = f"STRESS_REGIME detected in corridor {corridor}. Manual review mandatory."
+                review_reason = f"PD {pd_score:.3f} exceeds review threshold {pd_limit}"
+                if is_stressed:
+                    review_reason = f"STRESS_REGIME detected in corridor {corridor}. Manual review mandatory."
 
-            req = self.human_override.request_override(
-                uetr=uetr,
-                original_decision="OFFER",
-                ai_confidence=failure_prob,
-                reason=review_reason,
-            )
-            logger.info("Human review requested: %s - reason: %s", req.request_id, review_reason)
-            # In production, this would block until a response arrives.
-            # Here we return a PENDING status and let the caller poll.
-            return {
-                "status": "PENDING_HUMAN_REVIEW",
-                "loan_offer": None,
-                "decision_entry_id": None,
-                "halt_reason": None,
-                "override_request_id": req.request_id,
-            }
+                req = self.human_override.request_override(
+                    uetr=uetr,
+                    original_decision="OFFER",
+                    ai_confidence=failure_prob,
+                    reason=review_reason,
+                )
+                logger.info("Human review requested: %s - reason: %s", req.request_id, review_reason)
+                # Park the payment — pipeline re-entry occurs after operator response (EPG-26).
+                return {
+                    "status": "PENDING_HUMAN_REVIEW",
+                    "loan_offer": None,
+                    "decision_entry_id": None,
+                    "halt_reason": None,
+                    "override_request_id": req.request_id,
+                }
 
         # 4. Decline low-probability payments
         if failure_prob < 0.10:
