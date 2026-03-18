@@ -165,9 +165,132 @@ class TestNotificationWebhook:
 
 class TestAllEventTypes:
     def test_all_event_types_are_accepted(self):
-        """NotificationService accepts all six NotificationEventType values."""
+        """NotificationService accepts all NotificationEventType values."""
         svc = NotificationService()
         for et in NotificationEventType:
             record = svc.notify(et, uetr="u")
             assert record.event_type == et
         assert svc.record_count == len(NotificationEventType)
+
+
+# ---------------------------------------------------------------------------
+# EPG-11: COMPLIANCE_HOLD notification via pipeline
+# ---------------------------------------------------------------------------
+
+class TestEPG11ComplianceHoldNotification:
+    """EPG-11: COMPLIANCE_HOLD outcome must trigger compliance-team notification."""
+
+    def _make_pipeline(self, notification_service):
+        from unittest.mock import MagicMock
+
+        from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
+        from lip.common.borrower_registry import BorrowerRegistry
+        from lip.pipeline import LIPPipeline
+
+        registry = BorrowerRegistry()
+        registry.enroll("SENDERBIC")
+
+        agent = ExecutionAgent(
+            kill_switch=MagicMock(should_halt_new_offers=MagicMock(return_value=False)),
+            decision_logger=MagicMock(),
+            human_override=MagicMock(request_override=MagicMock(return_value=MagicMock(request_id="req-1"))),
+            degraded_mode_manager=MagicMock(
+                should_halt_new_offers=MagicMock(return_value=False),
+                get_state_dict=MagicMock(return_value={"degraded_mode": False, "gpu_fallback": False, "kms_unavailable_gap": False}),
+            ),
+            config=ExecutionConfig(borrower_registry=registry),
+        )
+        # Patch agent to return COMPLIANCE_HOLD_BLOCKS_BRIDGE
+        agent.process_payment = MagicMock(return_value={
+            "status": "COMPLIANCE_HOLD_BLOCKS_BRIDGE",
+            "uetr": "uetr-epg11",
+        })
+
+        return LIPPipeline(
+            c1_engine=MagicMock(return_value={"failure_probability": 0.9, "above_threshold": True}),
+            c2_engine=MagicMock(return_value={"pd_score": 0.1, "fee_bps": 300}),
+            c4_classifier=MagicMock(classify=MagicMock(return_value={"dispute_class": "NOT_DISPUTE"})),
+            c6_checker=MagicMock(check=MagicMock(return_value=MagicMock(passed=True, anomaly_flagged=False))),
+            c7_agent=agent,
+            notification_service=notification_service,
+        )
+
+    def _make_event(self):
+        from datetime import datetime, timezone
+        from decimal import Decimal
+
+        from lip.c5_streaming.event_normalizer import NormalizedEvent
+        return NormalizedEvent(
+            uetr="uetr-epg11",
+            individual_payment_id="pmt-epg11",
+            sending_bic="SENDERBIC",
+            receiving_bic="RECEIVERBIC",
+            amount=Decimal("500000"),
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="MS03",  # CLASS_B generic — does not trigger early BLOCK gate
+        )
+
+    def test_compliance_hold_fires_notification(self):
+        """Pipeline fires COMPLIANCE_HOLD notification when C7 blocks a bridge."""
+        svc = NotificationService()
+        pipeline = self._make_pipeline(svc)
+        result = pipeline.process(self._make_event())
+
+        assert result.outcome == "COMPLIANCE_HOLD"
+        assert svc.record_count == 1
+        record = svc.get_notifications(event_type=NotificationEventType.COMPLIANCE_HOLD)
+        assert len(record) == 1
+        assert record[0].uetr == "uetr-epg11"
+
+    def test_compliance_hold_notification_payload(self):
+        """COMPLIANCE_HOLD notification payload includes BIC and rejection code."""
+        svc = NotificationService()
+        pipeline = self._make_pipeline(svc)
+        pipeline.process(self._make_event())
+
+        record = svc.get_notifications(event_type=NotificationEventType.COMPLIANCE_HOLD)[0]
+        assert record.payload["sending_bic"] == "SENDERBIC"
+        assert record.payload["rejection_code"] == "MS03"
+
+    def test_no_notification_service_does_not_raise(self):
+        """Pipeline without notification_service silently skips notification."""
+        pipeline = self._make_pipeline(notification_service=None)
+        result = pipeline.process(self._make_event())
+        assert result.outcome == "COMPLIANCE_HOLD"  # still works without notifier
+
+    def test_non_compliance_hold_does_not_fire_notification(self):
+        """DECLINE outcome must NOT produce a COMPLIANCE_HOLD notification."""
+        from unittest.mock import MagicMock
+
+        from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
+        from lip.common.borrower_registry import BorrowerRegistry
+        from lip.pipeline import LIPPipeline
+
+        svc = NotificationService()
+
+        registry = BorrowerRegistry()
+        registry.enroll("SENDERBIC")
+        agent = ExecutionAgent(
+            kill_switch=MagicMock(should_halt_new_offers=MagicMock(return_value=False)),
+            decision_logger=MagicMock(),
+            human_override=MagicMock(),
+            degraded_mode_manager=MagicMock(
+                should_halt_new_offers=MagicMock(return_value=False),
+                get_state_dict=MagicMock(return_value={"degraded_mode": False, "gpu_fallback": False, "kms_unavailable_gap": False}),
+            ),
+            config=ExecutionConfig(borrower_registry=registry),
+        )
+        agent.process_payment = MagicMock(return_value={"status": "DECLINED", "uetr": "uetr-epg11"})
+
+        pipeline = LIPPipeline(
+            c1_engine=MagicMock(return_value={"failure_probability": 0.9, "above_threshold": True}),
+            c2_engine=MagicMock(return_value={"pd_score": 0.1, "fee_bps": 300}),
+            c4_classifier=MagicMock(classify=MagicMock(return_value={"dispute_class": "NOT_DISPUTE"})),
+            c6_checker=MagicMock(check=MagicMock(return_value=MagicMock(passed=True, anomaly_flagged=False))),
+            c7_agent=agent,
+            notification_service=svc,
+        )
+        pipeline.process(self._make_event())
+        assert svc.get_notifications(event_type=NotificationEventType.COMPLIANCE_HOLD) == []

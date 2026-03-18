@@ -43,6 +43,7 @@ from lip.c3_repayment_engine.repayment_loop import ActiveLoan
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
 from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.common.business_calendar import add_business_days, currency_to_jurisdiction
+from lip.common.notification_service import NotificationEventType, NotificationService
 from lip.common.state_machines import (
     LoanState,
     LoanStateMachine,
@@ -102,6 +103,10 @@ class LIPPipeline:
     stress_detector:
         Optional ``StressRegimeDetector`` instance for detecting corridor
         failure rate spikes.
+    notification_service:
+        Optional ``NotificationService`` instance.  When provided,
+        ``COMPLIANCE_HOLD`` outcomes trigger a compliance-team notification
+        (EPG-11).  If ``None``, no notification is sent.
     uetr_tracker:
         Optional ``UETRTracker`` instance for retry detection (GAP-04).
         If ``None``, a new local tracker is created.
@@ -121,6 +126,7 @@ class LIPPipeline:
         c7_agent: Any,
         c3_monitor: Optional[Any] = None,
         stress_detector: Optional[Any] = None,
+        notification_service: Optional[NotificationService] = None,
         uetr_tracker: Optional[UETRTracker] = None,
         threshold: float = FAILURE_PROBABILITY_THRESHOLD,
         global_latency_tracker: Optional[LatencyTracker] = None,
@@ -133,6 +139,7 @@ class LIPPipeline:
         self._c7 = c7_agent
         self._c3 = c3_monitor
         self._stress_detector = stress_detector
+        self._notification = notification_service
         self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
@@ -536,6 +543,18 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
+            # EPG-11: notify compliance team whenever a compliance hold blocks a bridge.
+            if self._notification is not None:
+                self._notification.notify(
+                    NotificationEventType.COMPLIANCE_HOLD,
+                    uetr=event.uetr,
+                    payload={
+                        "sending_bic": event.sending_bic,
+                        "rejection_code": event.rejection_code,
+                        "rejection_class": payment_context.get("rejection_class"),
+                        "decision_entry_id": decision_entry_id,
+                    },
+                )
             return _record_and_return(result)
 
         # --- Handle C7 human review pending — park, not decline (EPG-26) ----

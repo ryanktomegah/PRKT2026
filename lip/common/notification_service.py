@@ -54,6 +54,9 @@ class NotificationEventType(str, Enum):
     OFFER_ACCEPTED = "OFFER_ACCEPTED"
     """ELO treasury accepted the loan offer; disbursement pending."""
 
+    COMPLIANCE_HOLD = "COMPLIANCE_HOLD"
+    """EPG-11: C7 returned COMPLIANCE_HOLD_BLOCKS_BRIDGE — compliance team must be notified."""
+
 
 # ---------------------------------------------------------------------------
 # Notification record
