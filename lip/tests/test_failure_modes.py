@@ -27,7 +27,7 @@ from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistr
 from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c4_dispute_classifier.taxonomy import DisputeClass, is_blocking, timeout_fallback
-from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD, VelocityChecker
+from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.decision_log import DecisionLogEntryData, DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager, DegradedReason
 from lip.c7_execution_agent.kill_switch import KillSwitch
@@ -39,6 +39,8 @@ from lip.common.state_machines import (
     PaymentStateMachine,
 )
 
+# EPG-16: module-level caps are now 0 (unlimited). Tests must use explicit values.
+_TEST_DOLLAR_CAP_USD = Decimal("1000000")
 _SALT = b"chaos_test_salt_32bytes_________"
 _HMAC_KEY = b"chaos_test_hmac_32bytes_________"
 
@@ -287,17 +289,19 @@ class TestVelocityCapEdge:
         assert result.passed is True
 
     def test_single_transaction_over_cap_fails(self):
-        """A single transaction exceeding $1M cap must fail."""
+        """A single transaction exceeding the cap must fail."""
         checker = VelocityChecker(salt=_SALT)
-        over_cap = Decimal(str(DOLLAR_CAP_USD)) + Decimal("0.01")
-        result = checker.check("entity_over", over_cap, "beneficiary_B")
+        over_cap = _TEST_DOLLAR_CAP_USD + Decimal("0.01")
+        result = checker.check("entity_over", over_cap, "beneficiary_B",
+                               dollar_cap_override=_TEST_DOLLAR_CAP_USD)
         assert result.passed is False
 
     def test_single_transaction_at_cap_passes(self):
         """Exactly at the cap is not exceeded."""
         checker = VelocityChecker(salt=_SALT)
-        at_cap = Decimal(str(DOLLAR_CAP_USD))
-        result = checker.check("entity_at_cap", at_cap, "beneficiary_C")
+        at_cap = _TEST_DOLLAR_CAP_USD
+        result = checker.check("entity_at_cap", at_cap, "beneficiary_C",
+                               dollar_cap_override=_TEST_DOLLAR_CAP_USD)
         assert result.passed is True
 
 

@@ -22,7 +22,7 @@ from lip.c3_repayment_engine.rejection_taxonomy import (
 from lip.c4_dispute_classifier.prefilter import apply_prefilter
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
 from lip.c6_aml_velocity.aml_checker import AMLChecker
-from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD, VelocityChecker
+from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c7_execution_agent.decision_log import DecisionLogEntryData, DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager
@@ -35,6 +35,8 @@ from lip.common.state_machines import (
     PaymentStateMachine,
 )
 
+# EPG-16: module-level cap is now 0 (unlimited). Tests must use explicit values.
+_TEST_DOLLAR_CAP_USD = Decimal("1000000")
 _SALT = b"integration_test_salt_32bytes___"
 _HMAC_KEY = b"integration_test_hmac_32bytes___"
 
@@ -150,8 +152,9 @@ class TestFlow3AMLVelocityBlock:
 
     def test_velocity_check_blocks_at_cap(self):
         checker = VelocityChecker(salt=_SALT)
-        checker.record("entity_flow3", DOLLAR_CAP_USD - Decimal("100"), "bene1")
-        result = checker.check("entity_flow3", Decimal("200"), "bene2")
+        checker.record("entity_flow3", _TEST_DOLLAR_CAP_USD - Decimal("100"), "bene1")
+        result = checker.check("entity_flow3", Decimal("200"), "bene2",
+                               dollar_cap_override=_TEST_DOLLAR_CAP_USD)
         assert result.passed is False
         assert "CAP" in result.reason
 
@@ -308,14 +311,14 @@ class TestCombinedAMLGate:
     def test_velocity_block_does_not_increment_on_failure(self):
         """A velocity-blocked transaction must not be recorded in the velocity store."""
         checker = _make_aml_checker()
-        from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD
         # Saturate velocity
-        checker._velocity.record("entity_sat", DOLLAR_CAP_USD - Decimal("1"), "b1")
-        result = checker.check("entity_sat", Decimal("2"), "b2")
+        checker._velocity.record("entity_sat", _TEST_DOLLAR_CAP_USD - Decimal("1"), "b1")
+        result = checker.check("entity_sat", Decimal("2"), "b2",
+                               dollar_cap_override=_TEST_DOLLAR_CAP_USD)
         assert result.passed is False
-        # Volume should still be DOLLAR_CAP_USD - 1, not incremented further
+        # Volume should still be _TEST_DOLLAR_CAP_USD - 1, not incremented further
         vol_result = checker._velocity.check("entity_sat", Decimal("0"), "x")
-        assert vol_result.dollar_volume_24h == DOLLAR_CAP_USD - Decimal("1")
+        assert vol_result.dollar_volume_24h == _TEST_DOLLAR_CAP_USD - Decimal("1")
 
     def test_passing_transaction_is_recorded(self):
         """A passing transaction must be recorded in the velocity store."""

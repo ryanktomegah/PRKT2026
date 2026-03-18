@@ -41,8 +41,8 @@ from typing import Deque, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-DOLLAR_CAP_USD = Decimal("1000000")
-COUNT_CAP = 100
+DOLLAR_CAP_USD = Decimal("0")  # EPG-16: 0 = unlimited; set per-licensee via C8 token
+COUNT_CAP = 0                  # EPG-16: 0 = unlimited; set per-licensee via C8 token
 BENEFICIARY_CONCENTRATION_THRESHOLD = Decimal("0.80")
 
 # Redis key template for the per-entity sorted set
@@ -357,13 +357,14 @@ class VelocityChecker:
         dollar_cap = dollar_cap_override if dollar_cap_override is not None else DOLLAR_CAP_USD
         count_cap = count_cap_override if count_cap_override is not None else COUNT_CAP
 
-        if vol + amount > dollar_cap:
+        # EPG-16: 0 means unlimited — skip cap enforcement entirely.
+        if dollar_cap > 0 and vol + amount > dollar_cap:
             return VelocityResult(
                 passed=False, reason="DOLLAR_CAP_EXCEEDED",
                 entity_id_hash=entity_hash, dollar_volume_24h=vol,
                 count_24h=cnt, beneficiary_concentration=conc,
             )
-        if cnt + 1 > count_cap:
+        if count_cap > 0 and cnt + 1 > count_cap:
             return VelocityResult(
                 passed=False, reason="COUNT_CAP_EXCEEDED",
                 entity_id_hash=entity_hash, dollar_volume_24h=vol,

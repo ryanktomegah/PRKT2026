@@ -8,9 +8,14 @@ from lip.c6_aml_velocity.anomaly import AnomalyDetector
 from lip.c6_aml_velocity.cross_licensee import CrossLicenseeAggregator, cross_licensee_hash
 from lip.c6_aml_velocity.salt_rotation import SaltRotationManager
 from lip.c6_aml_velocity.sanctions import SanctionsScreener
-from lip.c6_aml_velocity.velocity import COUNT_CAP, DOLLAR_CAP_USD, VelocityChecker
+from lip.c6_aml_velocity.velocity import VelocityChecker
 
 _SALT = b"test_salt_32bytes_long_exactly__"
+
+# EPG-16: Module-level caps are now 0 (unlimited). Tests that exercise cap
+# enforcement must pass explicit overrides so they remain deterministic.
+_TEST_DOLLAR_CAP = Decimal("1000000")
+_TEST_COUNT_CAP = 100
 
 
 class TestVelocityChecker:
@@ -21,16 +26,18 @@ class TestVelocityChecker:
 
     def test_dollar_cap_exceeded(self):
         checker = VelocityChecker(salt=_SALT)
-        checker.record("entity1", DOLLAR_CAP_USD - Decimal("1"), "bene1")
-        result = checker.check("entity1", Decimal("2"), "bene2")
+        checker.record("entity1", _TEST_DOLLAR_CAP - Decimal("1"), "bene1")
+        result = checker.check("entity1", Decimal("2"), "bene2",
+                               dollar_cap_override=_TEST_DOLLAR_CAP)
         assert result.passed is False
         assert result.reason == "DOLLAR_CAP_EXCEEDED"
 
     def test_count_cap_exceeded(self):
         checker = VelocityChecker(salt=_SALT)
-        for i in range(COUNT_CAP):
+        for i in range(_TEST_COUNT_CAP):
             checker.record("entity2", Decimal("1"), f"bene{i}")
-        result = checker.check("entity2", Decimal("1"), "bene_new")
+        result = checker.check("entity2", Decimal("1"), "bene_new",
+                               count_cap_override=_TEST_COUNT_CAP)
         assert result.passed is False
         assert result.reason == "COUNT_CAP_EXCEEDED"
 
@@ -53,7 +60,7 @@ class TestVelocityChecker:
 
     def test_different_entities_isolated(self):
         checker = VelocityChecker(salt=_SALT)
-        checker.record("entity_a", DOLLAR_CAP_USD - Decimal("1"), "bene1")
+        checker.record("entity_a", _TEST_DOLLAR_CAP - Decimal("1"), "bene1")
         # entity_b is unaffected by entity_a's volume
         result = checker.check("entity_b", Decimal("500000"), "bene2")
         assert result.passed is True
@@ -202,8 +209,9 @@ class TestAMLChecker:
         """When sanctions pass, velocity cap must still block."""
         checker = _make_aml_checker()
         # Saturate velocity via the internal _velocity attribute
-        checker._velocity.record("entity_v", DOLLAR_CAP_USD - Decimal("1"), "b1")
-        result = checker.check("entity_v", Decimal("2"), "b2")
+        checker._velocity.record("entity_v", _TEST_DOLLAR_CAP - Decimal("1"), "b1")
+        result = checker.check("entity_v", Decimal("2"), "b2",
+                               dollar_cap_override=_TEST_DOLLAR_CAP)
         assert result.passed is False
         assert "CAP" in result.reason
 
@@ -229,8 +237,9 @@ class TestAMLChecker:
         amount = Decimal("50000")
         checker.check("entity_rec", amount, "bene_rec")
         # Push toward cap: record near the remaining budget
-        checker._velocity.record("entity_rec", DOLLAR_CAP_USD - amount - Decimal("1"), "b2")
-        result2 = checker.check("entity_rec", Decimal("2"), "b3")
+        checker._velocity.record("entity_rec", _TEST_DOLLAR_CAP - amount - Decimal("1"), "b2")
+        result2 = checker.check("entity_rec", Decimal("2"), "b3",
+                                dollar_cap_override=_TEST_DOLLAR_CAP)
         assert result2.passed is False  # now over cap
 
 

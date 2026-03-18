@@ -66,8 +66,8 @@ class LicenseToken:
     issue_date: str
     expiry_date: str
     max_tps: int
-    aml_dollar_cap_usd: int = 1000000
-    aml_count_cap: int = 100
+    aml_dollar_cap_usd: int = 0  # EPG-16: 0 = unlimited; 1M retail default removed
+    aml_count_cap: int = 0       # EPG-16: 0 = unlimited; 100 retail default removed
     min_loan_amount_usd: int = 500000
     permitted_components: List[str] = field(default_factory=lambda: list(ALL_COMPONENTS))
     hmac_signature: str = ""
@@ -117,8 +117,8 @@ class LicenseToken:
             issue_date=data["issue_date"],
             expiry_date=data["expiry_date"],
             max_tps=int(data["max_tps"]),
-            aml_dollar_cap_usd=int(data.get("aml_dollar_cap_usd", 1000000)),
-            aml_count_cap=int(data.get("aml_count_cap", 100)),
+            aml_dollar_cap_usd=int(data["aml_dollar_cap_usd"]),   # EPG-17: required field — no silent default
+            aml_count_cap=int(data["aml_count_cap"]),              # EPG-17: required field — no silent default
             min_loan_amount_usd=int(data.get("min_loan_amount_usd", 500000)),
             permitted_components=list(data.get("permitted_components", ALL_COMPONENTS)),
             hmac_signature=data.get("hmac_signature", ""),

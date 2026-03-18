@@ -113,7 +113,7 @@ def test_pipeline_integration_with_stress():
         c1_engine=MagicMock(return_value={"failure_probability": 0.2, "above_threshold": True}),
         c2_engine=MagicMock(return_value={"pd_score": 0.05, "fee_bps": 300}),
         c4_classifier=MagicMock(classify=MagicMock(return_value={"dispute_class": "NOT_DISPUTE"})),
-        c6_checker=MagicMock(check=MagicMock(return_value=MagicMock(passed=True))),
+        c6_checker=MagicMock(check=MagicMock(return_value=MagicMock(passed=True, anomaly_flagged=False))),
         c7_agent=agent,
         stress_detector=detector
     )

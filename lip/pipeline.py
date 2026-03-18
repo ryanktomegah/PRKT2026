@@ -290,6 +290,8 @@ class LIPPipeline:
         # Extract AML result
         aml_passed = bool(c6_result.passed) if c6_result is not None else True
         aml_hard_block = not aml_passed
+        # EPG-18: extract anomaly soft flag (does not block — routes to human review)
+        aml_anomaly_flagged = bool(getattr(c6_result, "anomaly_flagged", False)) if c6_result is not None else False
 
         # --- C4 hard block check -------------------------------------------
         if dispute_hard_block:
@@ -340,6 +342,30 @@ class LIPPipeline:
             )
             return _record_and_return(result)
 
+        # --- EPG-18: C6 anomaly gate (EU AI Act Art.14 human oversight) -----------
+        # Anomaly flag is a soft advisory — does NOT trigger aml_hard_block.
+        # EU AI Act Art.14 requires a human in the loop when an automated system
+        # flags anomalous risk patterns. Route to PENDING_HUMAN_REVIEW instead of
+        # making an autonomous FUNDED decision.
+        if aml_anomaly_flagged:
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            result = PipelineResult(
+                outcome="PENDING_HUMAN_REVIEW",
+                uetr=event.uetr,
+                failure_probability=failure_probability,
+                above_threshold=True,
+                shap_top20=shap_top20,
+                dispute_class=dispute_class_str,
+                aml_passed=True,
+                aml_anomaly_flagged=True,
+                payment_state=payment_sm.current_state.value,
+                loan_state=loan_sm.current_state.value,
+                payment_state_history=state_history,
+                component_latencies=tracker.get_latest_all(),
+                total_latency_ms=total_ms,
+            )
+            return _record_and_return(result)
+
         # --- Step 3: C2 PD inference ---------------------------------------
         with tracker.measure("c2"):
             c2_result = (
@@ -382,6 +408,8 @@ class LIPPipeline:
             # GAP-10/GAP-12: propagate currency so C7 can derive governing law
             # and apply FX risk policy checks.
             "currency": event.currency,
+            # EPG-18: anomaly flag propagated for audit trail
+            "aml_anomaly_flagged": aml_anomaly_flagged,
         }
 
         with tracker.measure("c7"):
@@ -390,6 +418,33 @@ class LIPPipeline:
         c7_status = c7_result["status"]
         loan_offer = c7_result.get("loan_offer")
         decision_entry_id = c7_result.get("decision_entry_id")
+
+        # --- Handle C7 COMPLIANCE_HOLD (EPG-09/10) -------------------------
+        # Distinct from DECLINED: compliance/regulatory/legal holds have their own
+        # audit obligation (FATF R.18/R.20, EU AMLD6 Art.10). Callers must be able
+        # to distinguish a compliance hold from an economic decline in the audit trail.
+        if c7_status == "COMPLIANCE_HOLD_BLOCKS_BRIDGE":
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            result = PipelineResult(
+                outcome="COMPLIANCE_HOLD",
+                uetr=event.uetr,
+                failure_probability=failure_probability,
+                above_threshold=True,
+                shap_top20=shap_top20,
+                dispute_class=dispute_class_str,
+                aml_passed=aml_passed,
+                pd_estimate=pd_estimate,
+                fee_bps=fee_bps,
+                tier=tier,
+                compliance_hold=True,
+                decision_entry_id=decision_entry_id,
+                payment_state=payment_sm.current_state.value,
+                loan_state=loan_sm.current_state.value,
+                payment_state_history=state_history,
+                component_latencies=tracker.get_latest_all(),
+                total_latency_ms=total_ms,
+            )
+            return _record_and_return(result)
 
         # --- Handle C7 HALT (kill switch / KMS) ----------------------------
         if c7_status == "HALT":

@@ -119,8 +119,8 @@ class ExecutionAgent:
         config: Optional[ExecutionConfig] = None,
         licensee_id: str = "",
         max_tps: int = 0,
-        aml_dollar_cap_usd: int = 1000000,
-        aml_count_cap: int = 100,
+        aml_dollar_cap_usd: int = 0,  # EPG-16: 0 = unlimited; set per-licensee via C8 token
+        aml_count_cap: int = 0,       # EPG-16: 0 = unlimited; set per-licensee via C8 token
         min_loan_amount_usd: int = 500000,
         licensee_context: Optional[LicenseeContext] = None,
         stress_detector: Optional[StressRegimeDetector] = None,

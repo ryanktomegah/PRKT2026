@@ -23,7 +23,7 @@ from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistr
 from lip.c3_repayment_engine.uetr_mapping import UETRMappingTable
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c4_dispute_classifier.taxonomy import DisputeClass
-from lip.c6_aml_velocity.velocity import DOLLAR_CAP_USD, VelocityChecker
+from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager, DegradedReason
@@ -36,6 +36,10 @@ from lip.common.state_machines import (
 from lip.pipeline import FAILURE_PROBABILITY_THRESHOLD, LIPPipeline
 
 from .conftest import _HMAC_KEY, _SALT, MockC1Engine, MockC2Engine, make_event
+
+# EPG-16: DOLLAR_CAP_USD is now 0 (unlimited) by default. AML block tests must
+# set an explicit test-level cap so the velocity checker actually enforces a limit.
+_TEST_DOLLAR_CAP_USD = Decimal("1000000")
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -222,17 +226,18 @@ class TestScenario2DisputeBlock:
 # ===========================================================================
 
 class TestScenario3AMLBlock:
-    """Entity exceeds $1M rolling 24h cap → C6 hard block → AML_BLOCKED state."""
+    """Entity exceeds rolling 24h cap → C6 hard block → AML_BLOCKED state."""
 
     def test_entity_over_dollar_cap_triggers_block(self):
         vc = VelocityChecker(salt=_SALT)
         entity_id = "aml_test_entity_over_cap"
-        # Pre-fill to just below cap
-        vc.record(entity_id, DOLLAR_CAP_USD - Decimal("100"), "bene1")
+        # Pre-fill to just below test cap
+        vc.record(entity_id, _TEST_DOLLAR_CAP_USD - Decimal("100"), "bene1")
 
         pipeline = _make_pipeline(failure_probability=0.80)
-        # Override velocity checker
         pipeline._c6 = vc
+        # EPG-16: explicit cap required; 0 = unlimited so tests must set a cap
+        pipeline._c7.aml_dollar_cap_usd = int(_TEST_DOLLAR_CAP_USD)
 
         event = make_event(
             rejection_code="CURR",
@@ -244,10 +249,11 @@ class TestScenario3AMLBlock:
     def test_payment_state_is_aml_blocked(self):
         vc = VelocityChecker(salt=_SALT)
         entity_id = "aml_test_entity_blocked"
-        vc.record(entity_id, DOLLAR_CAP_USD - Decimal("50"), "bene1")
+        vc.record(entity_id, _TEST_DOLLAR_CAP_USD - Decimal("50"), "bene1")
 
         pipeline = _make_pipeline(failure_probability=0.80)
         pipeline._c6 = vc
+        pipeline._c7.aml_dollar_cap_usd = int(_TEST_DOLLAR_CAP_USD)
 
         event = make_event(rejection_code="CURR", sending_bic=entity_id)
         result = pipeline.process(event, entity_id=entity_id, beneficiary_id="bene2")
@@ -257,10 +263,11 @@ class TestScenario3AMLBlock:
     def test_no_loan_offer_on_aml_block(self):
         vc = VelocityChecker(salt=_SALT)
         entity_id = "aml_test_entity_no_offer"
-        vc.record(entity_id, DOLLAR_CAP_USD - Decimal("1"), "bene1")
+        vc.record(entity_id, _TEST_DOLLAR_CAP_USD - Decimal("1"), "bene1")
 
         pipeline = _make_pipeline(failure_probability=0.80)
         pipeline._c6 = vc
+        pipeline._c7.aml_dollar_cap_usd = int(_TEST_DOLLAR_CAP_USD)
 
         event = make_event(rejection_code="CURR", sending_bic=entity_id)
         result = pipeline.process(event, entity_id=entity_id, beneficiary_id="bene2")

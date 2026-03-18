@@ -25,7 +25,7 @@ def pipeline(uetr_tracker):
     c4 = MagicMock()
     c4.classify.return_value = {"dispute_class": "NOT_DISPUTE"}
     c6 = MagicMock()
-    c6.check.return_value = MagicMock(passed=True)
+    c6.check.return_value = MagicMock(passed=True, anomaly_flagged=False)
     c7 = MagicMock()
     c7.process_payment.return_value = {"status": "OFFER", "loan_offer": {"loan_id": "L1", "fee_bps": 300}}
     c7.aml_dollar_cap_usd = 1000000

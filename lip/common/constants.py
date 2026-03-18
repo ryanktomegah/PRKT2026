@@ -49,8 +49,10 @@ MATURITY_CLASS_B_DAYS  = 7
 MATURITY_CLASS_C_DAYS  = 21
 
 # ── AML velocity limits ───────────────────────────────────────────────────────
-AML_DOLLAR_CAP_USD          = 1_000_000     # per entity per 24 hr rolling window
-AML_COUNT_CAP               = 100           # transactions per entity per 24 hr
+# EPG-16: Default 0 = unlimited (no cap enforced). Retail $1M cap was inoperable
+# at correspondent banking scale. Caps are set per-licensee via C8 token.
+AML_DOLLAR_CAP_USD          = 0             # 0 = unlimited; set per-licensee via C8 token
+AML_COUNT_CAP               = 0             # 0 = unlimited; set per-licensee via C8 token
 BENEFICIARY_CONCENTRATION   = Decimal("0.80")  # >80% to single beneficiary triggers alert
 
 # ── Retention ─────────────────────────────────────────────────────────────────

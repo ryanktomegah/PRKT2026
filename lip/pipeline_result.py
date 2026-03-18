@@ -24,7 +24,7 @@ class PipelineResult:
         Final pipeline outcome. One of:
         ``"FUNDED"`` | ``"DISPUTE_BLOCKED"`` | ``"AML_BLOCKED"`` |
         ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"`` |
-        ``"RETRY_BLOCKED"``
+        ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"``
     uetr:
         Unique end-to-end transaction reference from the input event.
     failure_probability:
@@ -84,6 +84,10 @@ class PipelineResult:
     # C6 output
     aml_passed: Optional[bool] = None
     aml_hard_block: bool = False
+    aml_anomaly_flagged: bool = False  # EPG-18: soft alert from C6 anomaly detector
+
+    # Compliance hold (EPG-09/10)
+    compliance_hold: bool = False  # True when C7 blocked on a compliance/regulatory hold
 
     # C2 output
     pd_estimate: Optional[float] = None
