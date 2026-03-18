@@ -27,7 +27,7 @@ from typing import Optional
 
 from lip.c7_execution_agent.kill_switch import KillSwitch
 
-from .license_token import LicenseeContext, LicenseToken, verify_token
+from .license_token import _AML_CAP_UNSET, LicenseeContext, LicenseToken, verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,18 @@ class LicenseBootValidator:
 
         if not verify_token(token, key):
             self._engage("license_invalid_or_expired")
+            return None
+
+        # EPG-16/17: reject tokens that never had aml_dollar_cap_usd explicitly set.
+        # A missing cap silently defaults to $1M, which is inoperable for
+        # correspondent banking and violates deployment-time enforcement requirements.
+        if token.aml_dollar_cap_usd == _AML_CAP_UNSET:
+            logger.critical(
+                "License token is missing aml_dollar_cap_usd for licensee=%s — "
+                "cap must be explicitly set in the BPI provisioning token",
+                token.licensee_id,
+            )
+            self._engage("aml_cap_not_configured")
             return None
 
         if self._required_component not in token.permitted_components:

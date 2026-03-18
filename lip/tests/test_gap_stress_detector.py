@@ -139,3 +139,78 @@ def test_pipeline_integration_with_stress():
     # 2. Mocking a stress condition is easier by directly recording to detector
     # but let's just verify the 'outcome' is being recorded.
     assert len(detector._history["EUR_USD"]) == 1
+
+
+class TestEPG18AnomalyTriggersHumanReview:
+    """EPG-18 regression: anomaly_flagged in payment_context must route to human review."""
+
+    def _make_agent(self):
+        registry = BorrowerRegistry()
+        registry.enroll("BORROW1")
+        return ExecutionAgent(
+            kill_switch=MagicMock(
+                should_halt_new_offers=MagicMock(return_value=False),
+                is_active=MagicMock(return_value=False),
+            ),
+            decision_logger=MagicMock(),
+            human_override=MagicMock(
+                request_override=MagicMock(return_value=MagicMock(request_id="req-epg18")),
+            ),
+            degraded_mode_manager=MagicMock(
+                should_halt_new_offers=MagicMock(return_value=False),
+                get_state_dict=MagicMock(return_value={
+                    "degraded_mode": False, "gpu_fallback": False, "kms_unavailable_gap": False,
+                }),
+            ),
+            config=ExecutionConfig(
+                borrower_registry=registry,
+                require_human_review_above_pd=0.90,  # high threshold — only anomaly triggers
+            ),
+        )
+
+    def _base_ctx(self):
+        return {
+            "uetr": "uetr-epg18",
+            "individual_payment_id": "ipid-epg18",
+            "sending_bic": "BORROW1",
+            "failure_probability": 0.5,
+            "pd_score": 0.05,           # well below 0.90 threshold
+            "fee_bps": 350,
+            "loan_amount": 1000000,
+            "original_payment_amount_usd": "1000000",
+            "dispute_class": "NOT_DISPUTE",
+            "aml_passed": True,
+            "maturity_days": 7,
+            "rejection_code": "AM04",
+            "rejection_class": "CLASS_A",
+            "corridor": "USD_EUR",
+            "currency": "USD",
+        }
+
+    def test_no_anomaly_does_not_trigger_review(self):
+        agent = self._make_agent()
+        ctx = self._base_ctx()
+        ctx["anomaly_flagged"] = False
+        result = agent.process_payment(ctx)
+        # PD 0.05 < threshold 0.90, no anomaly → should not trigger human review
+        assert result["status"] != "PENDING_HUMAN_REVIEW"
+
+    def test_anomaly_flag_triggers_human_review(self):
+        agent = self._make_agent()
+        ctx = self._base_ctx()
+        ctx["anomaly_flagged"] = True   # EPG-18: anomaly must now trigger review
+        result = agent.process_payment(ctx)
+        assert result["status"] == "PENDING_HUMAN_REVIEW"
+
+    def test_requires_human_review_returns_true_for_anomaly(self):
+        agent = self._make_agent()
+        ctx = self._base_ctx()
+        ctx["anomaly_flagged"] = True
+        assert agent._requires_human_review(ctx) is True
+
+    def test_requires_human_review_returns_false_without_anomaly(self):
+        agent = self._make_agent()
+        ctx = self._base_ctx()
+        ctx["anomaly_flagged"] = False
+        # PD 0.05 < threshold 0.90, not stressed, no anomaly
+        assert agent._requires_human_review(ctx) is False

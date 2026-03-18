@@ -284,3 +284,52 @@ class TestLicenseBootValidator:
 
         assert ctx is not None
         assert ctx.min_loan_amount_usd == 2000000
+
+    def test_missing_aml_cap_engages_kill_switch(self, monkeypatch):
+        """EPG-16/17: token provisioned without aml_dollar_cap_usd must be rejected.
+
+        A BPI provisioning workflow that omits the cap produces a token with
+        aml_dollar_cap_usd = _AML_CAP_UNSET (-1).  The token is valid HMAC-wise
+        (signed with the sentinel) but boot_validator rejects it at startup.
+        """
+        from lip.c8_license_manager.license_token import _AML_CAP_UNSET, LicenseToken
+
+        today = __import__("datetime").date.today()
+        expiry = today + __import__("datetime").timedelta(days=365)
+        # Token with sentinel value — as if provisioning workflow omitted the cap
+        uncapped_token = LicenseToken(
+            licensee_id="UNCAPPED_BANK",
+            issue_date=today.isoformat(),
+            expiry_date=expiry.isoformat(),
+            max_tps=100,
+            aml_dollar_cap_usd=_AML_CAP_UNSET,  # not set
+            aml_count_cap=100,
+            min_loan_amount_usd=500000,
+        )
+        signed = sign_token(uncapped_token, _KEY)
+
+        monkeypatch.setenv("LIP_LICENSE_TOKEN_JSON", json.dumps(signed.to_dict()))
+        monkeypatch.setenv("LIP_LICENSE_KEY_HEX", _KEY.hex())
+        ks = self._ks()
+
+        validator = LicenseBootValidator(kill_switch=ks, required_component="C7")
+        result = validator.validate()
+
+        assert result is None
+        ks.activate.assert_called_once()
+        call_kwargs = ks.activate.call_args
+        assert "aml_cap_not_configured" in str(call_kwargs)
+
+    def test_explicit_aml_cap_passes_validation(self, monkeypatch):
+        """EPG-16/17: token with explicit aml_dollar_cap_usd must pass."""
+        signed = sign_token(_make_token(aml_dollar_cap=5_000_000), _KEY)
+        monkeypatch.setenv("LIP_LICENSE_TOKEN_JSON", json.dumps(signed.to_dict()))
+        monkeypatch.setenv("LIP_LICENSE_KEY_HEX", _KEY.hex())
+        ks = self._ks()
+
+        validator = LicenseBootValidator(kill_switch=ks, required_component="C7")
+        ctx = validator.validate()
+
+        assert ctx is not None
+        assert ctx.aml_dollar_cap_usd == 5_000_000
+        ks.activate.assert_not_called()

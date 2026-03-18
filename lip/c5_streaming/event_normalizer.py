@@ -110,6 +110,11 @@ class NormalizedEvent:
     # from the instructed amount (e.g. cross-currency pacs.008). None means the
     # pipeline falls back to `amount` when building the loan offer.
     original_payment_amount_usd: Optional[Decimal] = None
+    # EPG-28: end-customer account identifier extracted from OrgnlTxRef.DbtrAcct
+    # (IBAN or Othr.Id). When present, the pipeline uses a composite
+    # (sending_bic, debtor_account) AML velocity key so each originator within
+    # a correspondent bank has its own rolling window. None → falls back to BIC-only.
+    debtor_account: Optional[str] = None
 
 
 def _safe_decimal(value) -> Decimal:
@@ -189,6 +194,14 @@ class EventNormalizer:
             sttlm_val = _safe_decimal(sttlm)
         original_payment_amount_usd = sttlm_val if sttlm_val > Decimal('0') else None
 
+        # EPG-28: extract end-customer debtor account for composite velocity key.
+        # ISO 20022 pacs.002 / pacs.008: OrgnlTxRef.DbtrAcct.Id.IBAN or .Othr.Id
+        dbtr_acct_id = orig_ref.get('DbtrAcct', {}).get('Id', {})
+        debtor_account = (
+            dbtr_acct_id.get('IBAN')
+            or dbtr_acct_id.get('Othr', {}).get('Id')
+        ) or None
+
         return NormalizedEvent(
             uetr=grp.get('MsgId', ''),
             individual_payment_id=tx.get('OrgnlEndToEndId', ''),
@@ -202,6 +215,7 @@ class EventNormalizer:
             narrative=tx.get('AddtlInf'),
             raw_source=msg,
             original_payment_amount_usd=original_payment_amount_usd,
+            debtor_account=debtor_account,
         )
 
     def normalize_fednow(self, msg: dict) -> NormalizedEvent:

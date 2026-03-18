@@ -229,7 +229,16 @@ class LIPPipeline:
             )
 
         borrower = borrower or {}
-        entity_id = entity_id or event.sending_bic
+        # EPG-28: composite (sending_bic, debtor_account) key so each end-customer
+        # originator within a correspondent bank has its own velocity window.
+        # Falls back to BIC-only when debtor_account is not available (non-SWIFT rails
+        # or pacs.002 messages that don't carry DbtrAcct).
+        if entity_id is None:
+            entity_id = (
+                f"{event.sending_bic}:{event.debtor_account}"
+                if event.debtor_account
+                else event.sending_bic
+            )
         beneficiary_id = beneficiary_id or event.receiving_bic
 
         # Initialise state machines
@@ -322,6 +331,7 @@ class LIPPipeline:
         aml_hard_block = not aml_passed
         # EPG-18: extract anomaly soft flag (does not block — routes to human review)
         aml_anomaly_flagged = bool(getattr(c6_result, "anomaly_flagged", False)) if c6_result is not None else False
+        anomaly_flagged = aml_anomaly_flagged  # alias used by C7 payment_context key
 
         # --- C4 hard block check -------------------------------------------
         if dispute_hard_block:
@@ -442,6 +452,8 @@ class LIPPipeline:
             "aml_anomaly_flagged": aml_anomaly_flagged,
             # EPG-26: propagate human override decision for re-entry after review
             "human_override_decision": human_override_decision,
+            # EPG-18: propagate C6 anomaly flag so C7 can route to human review
+            "anomaly_flagged": anomaly_flagged,
         }
 
         with tracker.measure("c7"):

@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 # Component IDs recognised by the token validator
 ALL_COMPONENTS: List[str] = ["C1", "C2", "C3", "C4", "C5", "C6", "C7"]
 
+# EPG-16/17: sentinel marking an AML dollar cap that was never explicitly configured.
+# Any token that omits aml_dollar_cap_usd from its JSON receives this value.
+# LicenseBootValidator rejects tokens with this sentinel (kill switch engaged).
+_AML_CAP_UNSET: int = -1
+
 
 @dataclass
 class LicenseToken:

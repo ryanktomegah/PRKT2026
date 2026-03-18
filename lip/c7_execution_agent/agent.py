@@ -503,6 +503,10 @@ class ExecutionAgent:
         if self.stress_detector and self.stress_detector.is_stressed(corridor):
             return True
 
+        # EPG-18: AML anomaly flag triggers human review (was advisory-only before)
+        if payment_context.get("anomaly_flagged", False):
+            return True
+
         return False
 
     def _log_decision(
