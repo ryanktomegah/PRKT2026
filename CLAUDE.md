@@ -65,6 +65,54 @@ The user is a strategic, non-technical founder. They set direction and make fina
 - UETR TTL buffer: 45 days
 - Salt rotation: 365 days, 30-day overlap
 - Latency SLO: ≤ 94ms
+- AML caps: default 0 (unlimited); set per-licensee in C8 token (EPG-16)
+
+## EPIGNOSIS Architecture Review — Team Decisions (2026-03-18)
+
+### EPG-19: Compliance-hold bridging — NEVER (REX final authority, unanimous)
+LIP must never bridge any payment where the originating bank's compliance system raised a hold:
+DNOR, CNOR, RR01, RR02, RR03, RR04, AG01, LEGL. Three independent grounds:
+- **CIPHER**: Bridging a compliance-held payment is a structuring/layering typology violation.
+  FATF R.21 tipping-off means correctly-operating banks often code SARs as MS03/NARR — the
+  explicitly-coded holds are the *visible floor* of a larger compliance problem.
+- **REX**: AMLD6 Art.10 criminal liability for legal persons. A bank that uses its LIP deployment
+  to bridge a payment its own AML system blocked has not taken "reasonable precautions."
+- **NOVA**: C3 repayment mechanics are structurally broken for compliance holds — UETR never
+  settles (DNOR = permanent prohibition), disbursement may not land (CNOR), maturity windows
+  miscalibrated for compliance investigation timelines vs. technical errors.
+**Defense-in-depth**: All 8 codes are BLOCK class in rejection_taxonomy.py (Layer 1 — pipeline
+short-circuit) AND listed in `_COMPLIANCE_HOLD_CODES` in agent.py (Layer 2 — C7 gate).
+**Open legal requirement**: BPI License Agreement must require banks to push compliance holds
+to a dedicated API register (EPG-04/EPG-05). The code cannot see SAR-coded payments — this
+is a contractual gap that legal counsel must close before any bank pilot.
+
+### EPG-14: Who is the borrower — B2B interbank, originating bank (REX final authority, unanimous)
+The MRFA runs to the enrolled originating bank BIC (Deutsche Bank), not the end customer (Siemens).
+Bridge loans are B2B interbank credit facilities. Five required actions before B2B structure is operable:
+1. **MRFA explicit B2B clause** — originating bank is borrower; repayment unconditional (not
+   contingent on underlying payment settling). Legal counsel required. (Tier 1, blocking)
+2. **MRFA permanently-blocked-payment clause** — repayment due at maturity regardless. (Tier 1)
+3. **Governing law from BIC, not currency** — FIXED in code (EPG-14 code fix, commit see PROGRESS.md).
+   `bic_to_jurisdiction()` in governing_law.py uses BIC chars 4–5; `_build_loan_offer` in agent.py
+   uses BIC-first with currency fallback. (Tier 2 — done)
+4. **BPI License Agreement AML disclosure** — C6 screen does not see bank's internal compliance
+   holds or SAR history. Indemnity clause required. (Tier 1, blocking)
+5. **C2 model card** — document that 300bps floor prices bank PD (near-zero for Tier 1), not
+   end-customer credit risk. (Tier 3 — documentation only)
+**CIPHER warning**: B2B structure is NOT an OFAC shield. If bridge funds ultimately benefit a
+sanctioned person, OFAC strict liability applies regardless of who the nominal borrower is.
+
+### EPG-09/10/16/17/18 — Implemented (2026-03-18, commit 0ec874c)
+- EPG-09/10: outcome="COMPLIANCE_HOLD" (distinct from "DECLINED"), compliance_hold=True on PipelineResult
+- EPG-16: AML caps default 0 (unlimited), per-licensee via C8 token; 0=unlimited guard in velocity.py
+- EPG-17: license_token.from_dict requires aml_dollar_cap_usd and aml_count_cap as explicit JSON fields
+- EPG-18: C6 anomaly flag → PENDING_HUMAN_REVIEW (EU AI Act Art.14 human oversight)
+
+### CLASS_B label warning (QUANT + REX must align before changing)
+`SETTLEMENT_P95_CLASS_B_HOURS = 53.58` was previously labelled "Compliance/AML holds" — WRONG.
+CLASS_B covers systemic/processing delays only. Compliance-hold payments are BLOCK class and are
+never bridged. The label has been corrected in constants.py. The value (53.58h) must NOT be used
+to calibrate compliance-hold resolution time expectations.
 
 ## Key Rules
 - Whenever a mistake is caught — by the user or self-identified — immediately add a generalised rule to this file that prevents the entire *class* of mistake, not just the specific instance. The rule must be broad enough to apply to future situations that share the same underlying failure mode.
@@ -72,6 +120,7 @@ The user is a strategic, non-technical founder. They set direction and make fina
 - NEVER commit `artifacts/` (model binaries, generated data)
 - NEVER commit `c6_corpus_*.json` (AML typology patterns — CIPHER rule)
 - NEVER commit API keys, tokens, or secrets of any kind — use `.env` (gitignored) locally and GitHub Actions secrets on Codespace. Reference secrets via environment variables only. If a key appears in any file being committed, stop and refuse.
+- Never derive governing law from payment currency — use the enrolled BIC's country code (chars 4–5). Currency is wrong for cross-border correspondent banking. (EPG-14 rule)
 - Always run `ruff check lip/` before committing
 - Always run `python -m pytest lip/tests/` before committing
 - test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally

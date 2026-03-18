@@ -92,9 +92,14 @@ FX_RISK_POLICY_DEFAULT = "SAME_CURRENCY_ONLY"  # conservative pilot default
 # Calibration source: BIS/SWIFT GPI Joint Analytics — confirmed at scale.
 # These are the canonical Tier 0 corridor buffer references (Architecture Spec S11.4).
 # QUANT sign-off required before changing.
-SETTLEMENT_P95_CLASS_A_HOURS = 7.05    # Routing/account errors   — BIS/SWIFT GPI target 7.0h
-SETTLEMENT_P95_CLASS_B_HOURS = 53.58   # Compliance/AML holds     — BIS/SWIFT GPI target 53.6h
-SETTLEMENT_P95_CLASS_C_HOURS = 170.67  # Liquidity/timing         — BIS/SWIFT GPI target 171.0h
+SETTLEMENT_P95_CLASS_A_HOURS = 7.05    # Routing/account errors          — BIS/SWIFT GPI target 7.0h
+# EPG-19 (REX, 2026-03-18): CLASS_B label "Compliance/AML holds" was WRONG.
+# CLASS_B covers systemic/processing delays only. Compliance-hold payments
+# (DNOR, CNOR, RR01-RR04, AG01, LEGL) are never bridged — they are BLOCK class.
+# This constant must NOT be used to calibrate compliance-hold resolution time.
+# QUANT + REX must align before this label or value is changed.
+SETTLEMENT_P95_CLASS_B_HOURS = 53.58   # Systemic/processing delays      — BIS/SWIFT GPI target 53.6h
+SETTLEMENT_P95_CLASS_C_HOURS = 170.67  # Liquidity/sanctions/investigation — BIS/SWIFT GPI target 171.0h
 
 # ── Loan amount thresholds by rejection class (QUANT-controlled) ──────────────
 # Class-aware minimums replace the flat MIN_LOAN_AMOUNT_USD gate.

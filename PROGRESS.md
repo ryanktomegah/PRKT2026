@@ -466,3 +466,84 @@ python -m lip.dgen.run_production_pipeline \
 
 *Last updated: 2026-03-16 — Session: DGEN production pipeline complete, 1321 tests passing,
 feat/e2e-simulation-harness merged to main. All 17 platform gaps done. P95 constants locked.*
+
+---
+
+## Session 2026-03-17/18 — EPIGNOSIS Architecture Review + C1 Production Training
+
+**Tests**: 1351 passing (was 1321), 1 skipped. Zero ruff errors.
+**Commits**: `be16c22` (EPG-01/03/07/08 taxonomy BLOCK), `0ec874c` (EPG-09/10/16/17/18), `[this session]` (EPG-14 code fix + defense-in-depth)
+
+### DGEN Mixed Corpus — COMPLETE ✅
+- `iso20022_payments.py`: now generates mixed corpus — RJCT events (label=1) + successful payments (label=0)
+- Default `success_multiplier=4.0` → 80/20 split (success/RJCT); Option C labeling now valid
+- `statistical_validator_production.py`: updated for mixed corpus (split RJCT/all-record checks, label distribution validation)
+- `scripts/train_c1_on_parquet.py`: updated to use `label` column directly (Option C)
+
+### EPG Taxonomy Fixes — COMPLETE ✅ (commit be16c22)
+All compliance-hold and KYC-failure rejection codes moved to BLOCK class in `rejection_taxonomy.py`:
+
+| Code | Meaning | EPG |
+|------|---------|-----|
+| RR01 | MissingDebtorAccountOrIdentification — KYC failure | EPG-01 |
+| RR02 | MissingDebtorNameOrAddress — KYC failure | EPG-01 |
+| RR03 | MissingCreditorNameOrAddress — KYC failure | EPG-01 |
+| RR04 | RegulatoryReason — regulatory prohibition | EPG-07 |
+| DNOR | DebtorNotAllowedToSend — compliance prohibition | EPG-02 |
+| CNOR | CreditorNotAllowedToReceive — compliance prohibition | EPG-03 |
+| AG01 | TransactionForbidden — bank-level prohibition | EPG-08 |
+| LEGL | LegalDecision — court/regulatory hold | EPG-08 |
+
+Tests updated: `test_c3_repayment.py` — 8 new BLOCK assertions, AG02 as canonical CLASS_B.
+
+### EPG Compliance Architecture Fixes — COMPLETE ✅ (commit 0ec874c)
+
+| EPG | Description | Implementation |
+|-----|-------------|----------------|
+| EPG-09/10 | Compliance hold audit trail | `outcome="COMPLIANCE_HOLD"` distinct from `"DECLINED"`; `compliance_hold: bool` on PipelineResult |
+| EPG-16 | AML cap default scaled for correspondent banking | `AML_DOLLAR_CAP_USD=0`, `AML_COUNT_CAP=0` (unlimited); per-licensee via C8 token; 0=unlimited guard in velocity.py |
+| EPG-17 | Explicit cap enforcement at boot | `license_token.from_dict` requires `aml_dollar_cap_usd`/`aml_count_cap` as mandatory JSON fields; missing → KeyError → boot_validator engages kill switch |
+| EPG-18 | C6 anomaly → human review (EU AI Act Art.14) | `aml_anomaly_flagged` extracted from C6 result; routes to `PENDING_HUMAN_REVIEW` before any autonomous FUNDED decision |
+
+### EPIGNOSIS Team Deliberation — EPG-19 and EPG-14 — COMPLETE ✅
+
+**EPG-19 — Compliance-hold bridging: UNANIMOUS NO (REX final authority)**
+
+NOVA + CIPHER + REX deliberated and reached full alignment. Defense-in-depth implemented:
+- **Layer 1** (already in place): BLOCK class in rejection taxonomy → pipeline.py short-circuit
+- **Layer 2** (this session): `_COMPLIANCE_HOLD_CODES` in agent.py expanded from 3 codes to 8:
+  Added DNOR, CNOR, RR01, RR02, RR03 — previously absent despite being BLOCK-class. Comment
+  updated with full rationale from all three agents.
+
+Open (non-code): BPI License Agreement must require banks to maintain a compliance hold register
+API. SAR-coded payments (MS03/NARR) are invisible to LIP — contractual mitigation required.
+
+**EPG-14 — Who is the borrower: UNANIMOUS B2B interbank (REX final authority)**
+
+Five required actions. Code action completed this session:
+- ✅ **Tier 2 code fix**: `governing_law` now derived from `bic_to_jurisdiction(sending_bic)` not
+  `currency_to_jurisdiction(loan_currency)`. New `bic_to_jurisdiction()` function in `governing_law.py`
+  uses BIC chars 4–5 (ISO 3166-1 country code) → FEDWIRE/CHAPS/TARGET2/UNKNOWN, with currency fallback.
+
+Open (legal/contract — not code):
+- Tier 1: MRFA explicit B2B framing, originating bank as borrower, unconditional repayment clause
+- Tier 1: BPI License Agreement AML disclosure (C6 cannot see bank's internal compliance holds)
+- Tier 3: C2 model card — document PD model prices bank (near-zero PD), not end-customer
+
+### Miscellaneous Fixes
+- `SETTLEMENT_P95_CLASS_B_HOURS` label corrected in constants.py: was "Compliance/AML holds" (wrong —
+  compliance holds are BLOCK, never bridged); now "Systemic/processing delays"
+- CLAUDE.md: full EPIGNOSIS findings documented, governing_law rule added to Key Rules
+- All test mock c6 results updated with `anomaly_flagged=False` where EPG-18 gate was triggering on MagicMock truthy bleed
+
+### What is NEXT
+
+**Immediate (blocking pre-pilot)**:
+1. Legal counsel engagement — MRFA explicit B2B framing + unconditional repayment clause (EPG-14)
+2. BPI License Agreement — compliance hold register API clause (EPG-19), AML screen disclosure (EPG-14)
+3. C2 model card — B2B PD framing documentation (EPG-14, Tier 3)
+
+**Engineering (when legal is underway)**:
+4. C1 training on production parquet — check Codespace training status (PID 1118)
+5. C6 Redis Phase 2 — distributed velocity tracking (velocity.py TODO)
+6. Cloud deployment — K8s for pilot bank onboarding

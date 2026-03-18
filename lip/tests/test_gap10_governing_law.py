@@ -13,7 +13,7 @@ from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
 from lip.common.business_calendar import currency_to_jurisdiction
-from lip.common.governing_law import law_for_jurisdiction
+from lip.common.governing_law import bic_to_jurisdiction, law_for_jurisdiction
 from lip.common.schemas import LoanOffer
 
 _HMAC_KEY = b"test_hmac_key_gap10_governing_law"
@@ -143,3 +143,66 @@ class TestLoanOfferSchemaGoverningLaw:
         result = agent.process_payment(_make_context("GBP"))
         assert result["status"] == "OFFER"
         assert result["loan_offer"]["loan_currency"] == "GBP"
+
+
+# ---------------------------------------------------------------------------
+# EPG-14: bic_to_jurisdiction() — BIC country code → settlement jurisdiction
+# ---------------------------------------------------------------------------
+
+class TestBICToJurisdiction:
+    """EPG-14 (REX, 2026-03-18): governing law must derive from enrolled BIC
+    country, not payment currency. BIC chars 4–5 = ISO 3166-1 alpha-2 country."""
+
+    def test_us_bic_returns_fedwire(self):
+        """BIC with country=US (chars 4-5) → FEDWIRE."""
+        assert bic_to_jurisdiction("CHASUS33XXX") == "FEDWIRE"  # JPMorgan Chase US
+
+    def test_gb_bic_returns_chaps(self):
+        """BIC with country=GB → CHAPS."""
+        assert bic_to_jurisdiction("BARCGB22XXX") == "CHAPS"  # Barclays UK
+
+    def test_de_bic_returns_target2(self):
+        """BIC with country=DE (Germany, eurozone) → TARGET2."""
+        assert bic_to_jurisdiction("DEUTDEDBXXX") == "TARGET2"  # Deutsche Bank
+
+    def test_fr_bic_returns_target2(self):
+        """BIC with country=FR (France, eurozone) → TARGET2."""
+        assert bic_to_jurisdiction("BNPAFRPPXXX") == "TARGET2"  # BNP Paribas
+
+    def test_nl_bic_returns_target2(self):
+        """BIC with country=NL (Netherlands, eurozone) → TARGET2."""
+        assert bic_to_jurisdiction("ABNANL2AXXX") == "TARGET2"  # ABN AMRO
+
+    def test_unknown_country_returns_unknown(self):
+        """BIC with unrecognised country code → UNKNOWN."""
+        assert bic_to_jurisdiction("TESTJPYYXXX") == "UNKNOWN"  # Japan not mapped
+
+    def test_short_bic_returns_unknown(self):
+        """BIC shorter than 6 chars → UNKNOWN (cannot extract country code)."""
+        assert bic_to_jurisdiction("ABC") == "UNKNOWN"
+
+    def test_empty_bic_returns_unknown(self):
+        """Empty BIC → UNKNOWN."""
+        assert bic_to_jurisdiction("") == "UNKNOWN"
+
+    def test_bic_takes_priority_over_currency(self):
+        """EPG-14 core case: EUR payment from a US bank must get NEW_YORK law.
+        Currency-first logic would incorrectly return EU_LUXEMBOURG.
+        BIC-first logic returns NEW_YORK — the bank's jurisdiction governs the MRFA."""
+        agent = _make_agent()
+        ctx = _make_context("EUR")
+        ctx["sending_bic"] = "CHASUS33XXX"  # JPMorgan Chase — US bank, EUR payment
+        result = agent.process_payment(ctx)
+        assert result["status"] == "OFFER"
+        # Must be NEW_YORK (from US BIC), NOT EU_LUXEMBOURG (from EUR currency)
+        assert result["loan_offer"]["governing_law"] == "NEW_YORK"
+
+    def test_unknown_bic_falls_back_to_currency(self):
+        """When BIC country is unknown, fall back to currency-based jurisdiction."""
+        agent = _make_agent()
+        ctx = _make_context("EUR")
+        ctx["sending_bic"] = "TESTJPYYXXX"  # Japanese BIC — not mapped
+        result = agent.process_payment(ctx)
+        assert result["status"] == "OFFER"
+        # Falls back to currency: EUR → EU_LUXEMBOURG
+        assert result["loan_offer"]["governing_law"] == "EU_LUXEMBOURG"

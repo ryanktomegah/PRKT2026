@@ -30,7 +30,7 @@ from lip.common.constants import (
     MIN_LOAN_AMOUNT_USD,
 )
 from lip.common.fx_risk_policy import FXRiskConfig
-from lip.common.governing_law import law_for_jurisdiction
+from lip.common.governing_law import bic_to_jurisdiction, law_for_jurisdiction
 from lip.common.known_entity_registry import KnownEntityRegistry
 
 from .decision_log import DecisionLogEntryData, DecisionLogger
@@ -46,16 +46,45 @@ logger = logging.getLogger(__name__)
 # Offering a bridge loan while the hold is active bypasses the bank's own
 # compliance judgment — a violation of FATF R.18/R.20 and EU AMLD6 Art.10.
 #
-# Note: FRAU / FRAD / DUPL / DISP are BLOCK-class in the rejection taxonomy and
-# are hard-blocked in pipeline.py before C7 is reached; they are not listed here.
-# This set covers the remaining compliance-hold codes that reach C7.
+# EPG-19 team deliberation (NOVA + CIPHER + REX, 2026-03-18) — unanimous:
+#   No bridge, ever, on compliance-held payments. Three independent grounds:
+#   - CIPHER: structuring/layering typology — bridge achieves same value movement
+#     as the blocked payment, with LIP as the instrument. FATF R.21 tipping-off
+#     means well-coded banks use MS03/NARR for SARs; explicitly-coded holds are
+#     the visible floor of a larger compliance problem.
+#   - REX: AMLD6 Art.10 criminal liability for legal persons. A bank that uses
+#     its LIP deployment to bridge a payment its own AML system blocked has not
+#     taken "reasonable precautions" — it affirmatively acted against its own
+#     compliance judgment. DORA audit trail integrity: holds must be distinguishable
+#     from economic declines in regulatory examination.
+#   - NOVA: C3 repayment mechanics are structurally broken for compliance holds —
+#     UETR never settles (DNOR = permanent), disbursement may not land (CNOR),
+#     maturity windows miscalibrated for compliance investigation timelines.
 #
-# REX sign-off: 2026-03-17 (FATF R.18/R.20, EU AMLD6 Art.10, US BSA §1010.410)
-# CIPHER sign-off: 2026-03-17 (layering/structuring typology — pre-empting holds)
+# Defense-in-depth architecture:
+#   Layer 1 — rejection_taxonomy.py: ALL codes below are BLOCK class → pipeline.py
+#              short-circuits before C7 is reached (is_dispute_block check).
+#   Layer 2 — THIS SET: second gate in C7, catches any code that reaches here
+#              due to a taxonomy gap or future code addition not yet reflected above.
+#
+# Note: FRAU / FRAD / DUPL / DISP are also BLOCK-class and hard-blocked in
+# pipeline.py before C7; they are not listed here to keep scopes clean.
+#
+# REX sign-off: 2026-03-18 (FATF R.18/R.20, EU AMLD6 Art.10, US BSA §1010.410)
+# CIPHER sign-off: 2026-03-18 (layering/structuring typology)
+# NOVA sign-off: 2026-03-18 (C3 repayment mechanics — UETR settlement dependency)
 _COMPLIANCE_HOLD_CODES: frozenset[str] = frozenset({
-    "RR04",   # RegulatoryReason — bank flagged this payment for regulatory review
-    "AG01",   # TransactionForbidden — bank has explicitly forbidden this transaction
-    "LEGL",   # LegalDecision — court order, garnishment, or sanctions legal hold
+    # KYC / identity failures — bank cannot identify who is sending or receiving
+    "RR01",   # MissingDebtorAccountOrIdentification — debtor account unknown (EPG-01)
+    "RR02",   # MissingDebtorNameOrAddress — debtor identity incomplete (EPG-01)
+    "RR03",   # MissingCreditorNameOrAddress — creditor identity incomplete (EPG-01)
+    # Compliance prohibition — bank's own rules prohibit this transaction
+    "RR04",   # RegulatoryReason — bank flagged for regulatory review (EPG-07)
+    "DNOR",   # DebtorNotAllowedToSend — bank compliance prohibited this sender (EPG-02)
+    "CNOR",   # CreditorNotAllowedToReceive — bank prohibited receiving entity (EPG-03)
+    "AG01",   # TransactionForbidden — bank explicitly forbidden this transaction (EPG-08)
+    # Legal / court hold
+    "LEGL",   # LegalDecision — court order, garnishment, or sanctions legal hold (EPG-08)
 })
 
 
@@ -429,9 +458,18 @@ class ExecutionAgent:
         from lip.common.swift_disbursement import build_disbursement_message
         swift_msg = build_disbursement_message(uetr, loan_id, capped)
 
-        # GAP-10: Derive governing law from payment corridor currency (MRFA clause 4).
+        # EPG-14 (REX, 2026-03-18): Derive governing law from the enrolled originating
+        # bank's BIC country code — NOT the payment currency. Currency-based derivation
+        # is wrong for cross-border correspondent banking (e.g., EUR payment from a US
+        # bank should be NEW_YORK law, not EU_LUXEMBOURG). BIC chars 4–5 encode the
+        # bank's home country. Fall back to currency when BIC yields UNKNOWN.
         loan_currency = payment_context.get("currency", "USD")
-        governing_law = law_for_jurisdiction(currency_to_jurisdiction(loan_currency))
+        sending_bic = str(payment_context.get("sending_bic", ""))
+        bic_jur = bic_to_jurisdiction(sending_bic)
+        if bic_jur != "UNKNOWN":
+            governing_law = law_for_jurisdiction(bic_jur)
+        else:
+            governing_law = law_for_jurisdiction(currency_to_jurisdiction(loan_currency))
 
         return {
             "loan_id": loan_id,
