@@ -67,12 +67,25 @@ _CLASS_TOLERANCE_PP: float = 0.05  # ±5 percentage points
 _SETTLEMENT_P95_TARGETS: dict[str, float] = {"A": 7.0, "B": 53.6, "C": 171.0}
 _SETTLEMENT_P95_TOLERANCE: float = 0.10  # ±10%
 
-# Required fields (no nulls allowed)
-_REQUIRED_PAYMENT_FIELDS = [
-    "uetr", "bic_sender", "bic_receiver", "corridor", "rejection_code",
-    "rejection_class", "amount_usd", "settlement_time_hours",
-    "is_permanent_failure", "timestamp_utc", "currency_pair", "rail",
+# Required fields — split for mixed corpus (RJCT failures + successful payments)
+#
+# _REQUIRED_PAYMENT_FIELDS_ALL: present and non-null in EVERY record
+#   (both successes label=0 and RJCT events label=1)
+#
+# _REQUIRED_PAYMENT_FIELDS_RJCT: present and non-null ONLY in RJCT records
+#   (null for success records by design)
+_REQUIRED_PAYMENT_FIELDS_ALL = [
+    "uetr", "bic_sender", "bic_receiver", "corridor", "label",
+    "amount_usd", "is_permanent_failure", "timestamp_utc", "currency_pair", "rail",
 ]
+_REQUIRED_PAYMENT_FIELDS_RJCT = [
+    "rejection_code", "rejection_class", "settlement_time_hours",
+]
+
+# Expected fraction of RJCT records (label=1) in the mixed corpus.
+# With success_multiplier=4.0: 1/(1+4) = 0.20; tolerance ±0.10.
+_LABEL_RJCT_TARGET: float = 0.20
+_LABEL_RJCT_TOLERANCE: float = 0.10
 
 _REQUIRED_AML_FIELDS = [
     "uetr", "entity_id", "bic_sender", "bic_receiver", "amount_usd",
@@ -183,8 +196,49 @@ def _check_uetr_uniqueness(df: "pd.DataFrame") -> ValidationCheck:
     return ValidationCheck("uetr_uniqueness", ok, msg, {"n_total": n, "n_unique": n_unique})
 
 
+def _check_label_distribution(df: "pd.DataFrame") -> ValidationCheck:
+    """Verify the label column is binary and RJCT fraction is within expected range.
+
+    For a mixed corpus generated with success_multiplier=4.0, the RJCT
+    fraction (label=1) should be ~20% (±10pp tolerance).
+    """
+    if "label" not in df.columns:
+        return ValidationCheck("label_distribution", False, "label column missing", {})
+
+    n = len(df)
+    n_rjct = int((df["label"] == 1).sum())
+    n_success = int((df["label"] == 0).sum())
+    n_other = n - n_rjct - n_success
+
+    if n_other > 0:
+        return ValidationCheck(
+            "label_distribution",
+            False,
+            f"label column has non-binary values: {n_other} records not in {{0, 1}}",
+            {"n_rjct": n_rjct, "n_success": n_success, "n_other": n_other},
+        )
+
+    rjct_frac = n_rjct / n if n > 0 else 0.0
+    lo = _LABEL_RJCT_TARGET - _LABEL_RJCT_TOLERANCE
+    hi = _LABEL_RJCT_TARGET + _LABEL_RJCT_TOLERANCE
+    ok = lo <= rjct_frac <= hi
+    msg = (
+        f"RJCT fraction={rjct_frac:.3f} (target {_LABEL_RJCT_TARGET:.2f} ±{_LABEL_RJCT_TOLERANCE:.2f}) "
+        f"— {'PASS' if ok else 'FAIL'} | n_rjct={n_rjct:,} n_success={n_success:,}"
+    )
+    return ValidationCheck(
+        "label_distribution",
+        ok,
+        msg,
+        {"n_rjct": n_rjct, "n_success": n_success, "rjct_fraction": round(rjct_frac, 4)},
+    )
+
+
 def _check_rejection_code_chisq(df: "pd.DataFrame") -> ValidationCheck:
     """Chi-square test: observed rejection code frequencies vs BIS/SWIFT GPI priors.
+
+    Applied to RJCT records only (label=1). Success records have null
+    rejection_code by design and must be excluded.
 
     Null hypothesis: observed frequencies match expected priors.
     Reject null (fail) if p < 0.05.
@@ -193,8 +247,10 @@ def _check_rejection_code_chisq(df: "pd.DataFrame") -> ValidationCheck:
         import numpy as np  # noqa: PLC0415
         from scipy import stats  # noqa: PLC0415
 
-        n = len(df)
-        codes_in_data = df["rejection_code"].value_counts()
+        # Filter to RJCT records — success records have null rejection codes
+        rjct_df = df[df["label"] == 1] if "label" in df.columns else df
+        n = len(rjct_df)
+        codes_in_data = rjct_df["rejection_code"].value_counts()
         prior_codes = list(_REJECTION_CODE_PRIORS.keys())
 
         observed = np.array([codes_in_data.get(c, 0) for c in prior_codes], dtype=np.float64)
@@ -289,12 +345,17 @@ def _check_amount_lognormality(df: "pd.DataFrame", subsample_n: int = 100) -> Va
 
 
 def _check_settlement_p95(df: "pd.DataFrame") -> ValidationCheck:
-    """Verify settlement_time_hours P95 per class is within ±10% of BIS/SWIFT GPI targets."""
+    """Verify settlement_time_hours P95 per class is within ±10% of BIS/SWIFT GPI targets.
+
+    Applied to RJCT records only (label=1). Success records have NaN
+    settlement_time_hours by design.
+    """
+    rjct_df = df[df["label"] == 1] if "label" in df.columns else df
     results: dict[str, dict] = {}
     all_pass = True
 
     for cls, target_p95 in _SETTLEMENT_P95_TARGETS.items():
-        subset = df[df["rejection_class"] == cls]["settlement_time_hours"]
+        subset = rjct_df[rjct_df["rejection_class"] == cls]["settlement_time_hours"]
         if len(subset) < 50:
             results[cls] = {"status": "skipped"}
             continue
@@ -326,9 +387,14 @@ def _check_settlement_p95(df: "pd.DataFrame") -> ValidationCheck:
 
 
 def _check_class_ratio(df: "pd.DataFrame") -> ValidationCheck:
-    """Verify A/B/C rejection class distribution is within ±5pp of targets."""
-    n = len(df)
-    vc = df["rejection_class"].value_counts()
+    """Verify A/B/C rejection class distribution is within ±5pp of targets.
+
+    Applied to RJCT records only (label=1). Success records have null
+    rejection_class by design.
+    """
+    rjct_df = df[df["label"] == 1] if "label" in df.columns else df
+    n = len(rjct_df)
+    vc = rjct_df["rejection_class"].value_counts()
     results: dict[str, dict] = {}
     all_pass = True
 
@@ -391,15 +457,24 @@ def validate_payments(df: "pd.DataFrame") -> ProductionValidationReport:
         dataset_name="payments_synthetic", n_records=len(df)
     )
 
-    print("    [Validation] null_sweep...", end=" ", flush=True)
-    report.checks.append(_check_null_sweep(df, _REQUIRED_PAYMENT_FIELDS))
+    print("    [Validation] label_distribution...", end=" ", flush=True)
+    report.checks.append(_check_label_distribution(df))
+    print("done")
+
+    print("    [Validation] null_sweep (all records)...", end=" ", flush=True)
+    report.checks.append(_check_null_sweep(df, _REQUIRED_PAYMENT_FIELDS_ALL))
+    print("done")
+
+    print("    [Validation] null_sweep (RJCT records only)...", end=" ", flush=True)
+    rjct_df = df[df["label"] == 1] if "label" in df.columns else df
+    report.checks.append(_check_null_sweep(rjct_df, _REQUIRED_PAYMENT_FIELDS_RJCT))
     print("done")
 
     print("    [Validation] uetr_uniqueness...", end=" ", flush=True)
     report.checks.append(_check_uetr_uniqueness(df))
     print("done")
 
-    print("    [Validation] rejection_code_chisquare...", end=" ", flush=True)
+    print("    [Validation] rejection_code_chisquare (RJCT records)...", end=" ", flush=True)
     report.checks.append(_check_rejection_code_chisq(df))
     print("done")
 
@@ -407,11 +482,11 @@ def validate_payments(df: "pd.DataFrame") -> ProductionValidationReport:
     report.checks.append(_check_amount_lognormality(df))
     print("done")
 
-    print("    [Validation] settlement_p95_per_class...", end=" ", flush=True)
+    print("    [Validation] settlement_p95_per_class (RJCT records)...", end=" ", flush=True)
     report.checks.append(_check_settlement_p95(df))
     print("done")
 
-    print("    [Validation] class_ratio...", end=" ", flush=True)
+    print("    [Validation] class_ratio (RJCT records)...", end=" ", flush=True)
     report.checks.append(_check_class_ratio(df))
     print("done")
 

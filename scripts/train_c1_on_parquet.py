@@ -8,7 +8,7 @@ pre-computes corridor/BIC failure-rate statistics from the *full* corpus (up to
 Column mapping applied:
     bic_sender          → sending_bic
     bic_receiver        → receiving_bic
-    is_permanent_failure → label
+    label           → label (1=RJCT failed payment, 0=successful payment; BLOCK RJCT excluded)
     timestamp_utc (ISO) → timestamp (float, Unix epoch)
     corridor            → corridor_stats.failure_rate_{7d,30d}  (full-corpus rate)
     bic_sender          → sender_stats.failure_rate_30d          (full-corpus rate)
@@ -184,16 +184,14 @@ def load_parquet_as_records(
         sorted(df["rejection_code"].dropna().unique().tolist())[:5],  # sample for log
     )
 
-    # BIC-level failure rates are computed from the filtered corpus.
-    # Use is_permanent_failure as a proxy for per-BIC risk signal only
-    # (not as the training label — the label is set separately below).
+    # BIC-level failure rates are computed from the mixed corpus (successes + RJCT).
+    # df["label"] = 1 for RJCT events, 0 for successes — so groupby mean gives
+    # the actual per-BIC failure rate (fraction of failed payment attempts).
+    # This is the correct, calibrated signal: better than the previous proxy
+    # (Class A fraction from is_permanent_failure).
     logger.info("Computing BIC failure rates from filtered %d-row corpus…", len(df))
-    bic_send_rates: dict = (
-        df.groupby("bic_sender")["is_permanent_failure"].mean().to_dict()
-    )
-    bic_recv_rates: dict = (
-        df.groupby("bic_receiver")["is_permanent_failure"].mean().to_dict()
-    )
+    bic_send_rates: dict = df.groupby("bic_sender")["label"].mean().to_dict()
+    bic_recv_rates: dict = df.groupby("bic_receiver")["label"].mean().to_dict()
     logger.info(
         "Stats computed: %d corridors, %d sending BICs, %d receiving BICs",
         len(corridor_rates), len(bic_send_rates), len(bic_recv_rates),
@@ -211,14 +209,34 @@ def load_parquet_as_records(
     # Step 3 — Column renames and type coercions
     # ------------------------------------------------------------------
     # ------------------------------------------------------------------
-    # Label: is_bridgeable = 1 for every remaining (non-BLOCK) RJCT event.
-    # The parquet contains ONLY RJCT events. After filtering BLOCK codes,
-    # every record is a payment failure that LIP can bridge — all are
-    # positive class. C1's job is to identify RJCT events from the full
-    # payment stream; class discrimination (A/B/C) is downstream work
-    # for C2/C7. QUANT signed off on this label definition (Option C).
+    # Label: Option C — use df["label"] directly from the mixed corpus.
+    #
+    # DGEN generates both successful payments (label=0) and RJCT events
+    # (label=1). After the BLOCK filter above, the remaining corpus is:
+    #   - Successful payments: label=0 (natural negative class)
+    #   - Non-BLOCK RJCT events: label=1 (positive class — LIP bridges)
+    #
+    # This is ground-truth labelling: C1 learns to separate real failures
+    # from real successes, not a proxy class. No computation needed.
     # ------------------------------------------------------------------
-    df["label"] = 1
+    n_pos = int((df["label"] == 1).sum())
+    n_neg = int((df["label"] == 0).sum())
+    logger.info(
+        "Label distribution (Option C, mixed corpus): "
+        "%d pos (RJCT) / %d neg (success) — ratio %.2f:1",
+        n_pos, n_neg, (n_pos / n_neg) if n_neg > 0 else float("inf"),
+    )
+    if n_neg == 0:
+        raise RuntimeError(
+            "Label is degenerate: 0 negative examples (no success records found). "
+            "Regenerate the parquet with generate_payments(success_multiplier > 0). "
+            "The existing 10M RJCT-only parquet must be replaced."
+        )
+    if n_pos == 0:
+        raise RuntimeError(
+            "Label is degenerate: 0 positive examples (all records are successes). "
+            "Check the BLOCK filter and parquet contents."
+        )
 
     df = df.rename(
         columns={

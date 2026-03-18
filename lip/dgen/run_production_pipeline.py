@@ -116,7 +116,9 @@ def run_pipeline(
     _step_done(t0)
 
     # ── Step 2: Generate Payment Events ─────────────────────────────────────
-    t0 = _step_header(2, f"Generating {n_payments:,} payment events (parquet)")
+    # n_payments is the number of RJCT records; with success_multiplier=4.0
+    # the total output is 5× that.
+    t0 = _step_header(2, f"Generating {n_payments:,} RJCT + {n_payments * 4:,} success events (parquet)")
     try:
         import pandas as pd  # noqa: PLC0415
 
@@ -126,7 +128,7 @@ def run_pipeline(
             save_parquet,
         )
 
-        df_payments = generate_payments(n=n_payments, seed=seed)
+        df_payments = generate_payments(n=n_payments, seed=seed, success_multiplier=4.0)
         parquet_path = output_dir / "payments_synthetic.parquet"
         csv_path = output_dir / "payments_synthetic_sample.csv"
 
@@ -307,7 +309,10 @@ Examples:
         "--n-payments",
         type=int,
         default=_FULL_N_PAYMENTS,
-        help=f"Number of payment events to generate (default: {_FULL_N_PAYMENTS:,})",
+        help=(
+            f"Number of RJCT (failed) payment events to generate (default: {_FULL_N_PAYMENTS:,}). "
+            "Total corpus = n_payments × 5 (4 success records per RJCT record)."
+        ),
     )
     parser.add_argument(
         "--n-aml",

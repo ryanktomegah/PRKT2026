@@ -1,12 +1,18 @@
 """
 iso20022_payments.py — DGEN: Production ISO 20022 Payment Event Generator (Step 2)
 ===================================================================================
-Generates `payments_synthetic.parquet` — the main 2M+ record training dataset
-for C1 failure classifier and related ML components.
+Generates `payments_synthetic.parquet` — the main training dataset for C1
+failure classifier and related ML components.
 
-All records represent failed payments (pacs.002 RJCT events). The binary
-label `is_permanent_failure` distinguishes Class A (permanent, bridge loan
-opportunity) from Class B/C (recoverable, lower-priority).
+The corpus is a **mixed** dataset: both successful payments (label=0) and
+failed payments / RJCT events (label=1).  This is the correct design for C1
+training: the model learns to distinguish failed from succeeded payments, not
+to classify failure types (A/B/C — that is C2/C7's job).
+
+Corpus composition (default success_multiplier=4.0):
+  - n RJCT records  (label=1) — failed pacs.002 events
+  - 4n success records (label=0) — payments that cleared without rejection
+  - Total = 5n records, shuffled
 
 Calibration sources:
   - Corridor failure rates: BIS CPMI Quarterly Payment Statistics 2024
@@ -21,11 +27,12 @@ Output schema (parquet):
   bic_sender            str     — fictional 8-char BIC
   bic_receiver          str     — fictional 8-char BIC
   corridor              str     — e.g. "USD-EUR"
-  rejection_code        str     — ISO 20022 pacs.002 reason code
-  rejection_class       str     — A | B | C
+  label                 int     — 1=RJCT (failed payment), 0=success
+  rejection_code        str|NA  — ISO 20022 pacs.002 reason code (null for successes)
+  rejection_class       str|NA  — A | B | C (null for successes)
   amount_usd            float   — log-normal, corridor-calibrated
-  settlement_time_hours float   — lognormal per rejection class, P95-calibrated
-  is_permanent_failure  int     — 1=Class A, 0=Class B/C
+  settlement_time_hours float|NA— lognormal per rejection class, P95-calibrated (NaN for successes)
+  is_permanent_failure  int     — 1=Class A RJCT, 0=Class B/C RJCT or success
   timestamp_utc         str     — ISO 8601 UTC string, peaked 06:00-11:00 UTC
   currency_pair         str     — e.g. "USD/EUR"
   rail                  str     — SWIFT | FEDNOW | RTP | SEPA_INSTANT | STATISTICAL
@@ -360,39 +367,24 @@ def _sample_rail(rng: np.random.Generator, corridor: CorridorConfig, n: int) -> 
     return [rail_names[i] for i in indices]
 
 
-def _generate_chunk(
+def _generate_common_fields(
     chunk_size: int,
     seed: int,
     bic_pool: BICPool,
-) -> pd.DataFrame:
-    """Generate one chunk of synthetic payment events.
-
-    Parameters
-    ----------
-    chunk_size : int
-        Number of records in this chunk.
-    seed : int
-        Unique seed for this chunk (use chunk_index * prime offset).
-    bic_pool : BICPool
-        Pre-initialised BIC pool.
+) -> tuple:
+    """Sample fields common to both RJCT and success records.
 
     Returns
     -------
-    pd.DataFrame with all required output fields.
+    (rng, corridor_idx, senders, receivers, corridors_str, currency_pairs,
+     amounts, ts_iso, rails)
     """
     rng = np.random.default_rng(seed)
 
-    # Sample corridors first — this drives BIC selection, amounts, and rails
+    # Sample corridors first — drives BIC selection, amounts, and rails
     corridor_idx = rng.choice(len(_CORRIDORS), size=chunk_size, p=_CORRIDOR_VOLUME_WEIGHTS)
 
-    # Sample rejection codes
-    code_idx = rng.choice(len(_CODE_LIST), size=chunk_size, p=_CODE_WEIGHTS)
-    codes = [_CODE_LIST[i] for i in code_idx]
-    classes = [_REJECTION_CODES[c][0] for c in codes]
-
-    # Sample BIC pairs corridor-aligned: for each corridor, draw BICs whose country
-    # matches the corridor's src/dst currencies. This ensures corridor labels are
-    # consistent with the amount/settlement distributions used below.
+    # Sample BIC pairs corridor-aligned
     currency_index = bic_pool.build_currency_index()
     senders: list[str] = [""] * chunk_size
     receivers: list[str] = [""] * chunk_size
@@ -408,12 +400,12 @@ def _generate_chunk(
         s_bics, r_bics = bic_pool.sample_bic_pairs_by_corridor(
             rng, src_curr, dst_curr, n_mask, currency_index
         )
-        corridor_label = corr.name.replace("/", "-")   # e.g. "EUR-USD"
+        corridor_label = corr.name.replace("/", "-")
         for j, pos in enumerate(positions):
             senders[pos] = s_bics[j]
             receivers[pos] = r_bics[j]
             corridors_str[pos] = corridor_label
-            currency_pairs[pos] = corr.name            # e.g. "EUR/USD"
+            currency_pairs[pos] = corr.name
 
     # Sample amounts per corridor (log-normal)
     amounts = np.empty(chunk_size, dtype=np.float64)
@@ -425,20 +417,10 @@ def _generate_chunk(
         raw = np.exp(rng.normal(corr.amount_mu, corr.amount_sigma, size=n_mask))
         amounts[mask] = np.clip(raw, 5_000.0, 50_000_000.0)
 
-    # Sample settlement time per rejection class (log-normal)
-    settlement_times = np.empty(chunk_size, dtype=np.float64)
-    for cls, (mu, sigma) in _SETTLEMENT_PARAMS.items():
-        mask = np.array([c == cls for c in classes])
-        n_mask = int(mask.sum())
-        if n_mask == 0:
-            continue
-        raw = np.exp(rng.normal(mu, sigma, size=n_mask))
-        settlement_times[mask] = np.clip(raw, 0.1, 5000.0)
-
     # Sample timestamps (day-of-period + intraday seconds)
-    day_offsets = rng.uniform(0, _EPOCH_SPAN, size=chunk_size)  # uniform over 18 months
+    day_offsets = rng.uniform(0, _EPOCH_SPAN, size=chunk_size)
     intraday_secs = _sample_intraday_hour(rng, chunk_size)
-    day_base = (day_offsets // 86_400) * 86_400  # truncate to day boundary
+    day_base = (day_offsets // 86_400) * 86_400
     ts_unix = _EPOCH_START + day_base + intraday_secs
     ts_iso = [
         datetime.fromtimestamp(t, tz=timezone.utc).isoformat()
@@ -454,14 +436,43 @@ def _generate_chunk(
         rail_probs /= rail_probs.sum()
         rails.append(rail_names[int(rng.choice(len(rail_names), p=rail_probs))])
 
+    return rng, corridor_idx, senders, receivers, corridors_str, currency_pairs, amounts, ts_iso, rails
+
+
+def _generate_chunk(
+    chunk_size: int,
+    seed: int,
+    bic_pool: BICPool,
+) -> pd.DataFrame:
+    """Generate one chunk of RJCT (failed payment) records — label=1."""
+    rng, corridor_idx, senders, receivers, corridors_str, currency_pairs, amounts, ts_iso, rails = (
+        _generate_common_fields(chunk_size, seed, bic_pool)
+    )
+
+    # Sample rejection codes and classes
+    code_idx = rng.choice(len(_CODE_LIST), size=chunk_size, p=_CODE_WEIGHTS)
+    codes = [_CODE_LIST[i] for i in code_idx]
+    classes = [_REJECTION_CODES[c][0] for c in codes]
+
+    # Sample settlement time per rejection class (log-normal)
+    settlement_times = np.empty(chunk_size, dtype=np.float64)
+    for cls, (mu, sigma) in _SETTLEMENT_PARAMS.items():
+        mask = np.array([c == cls for c in classes])
+        n_mask = int(mask.sum())
+        if n_mask == 0:
+            continue
+        raw = np.exp(rng.normal(mu, sigma, size=n_mask))
+        settlement_times[mask] = np.clip(raw, 0.1, 5000.0)
+
     # is_permanent_failure = 1 iff Class A
     is_perm = [1 if c == "A" else 0 for c in classes]
 
-    df = pd.DataFrame({
+    return pd.DataFrame({
         "uetr": [str(uuid.uuid4()) for _ in range(chunk_size)],
         "bic_sender": senders,
         "bic_receiver": receivers,
         "corridor": corridors_str,
+        "label": 1,
         "rejection_code": codes,
         "rejection_class": classes,
         "amount_usd": np.round(amounts, 2),
@@ -472,46 +483,103 @@ def _generate_chunk(
         "rail": rails,
     })
 
-    return df
+
+def _generate_success_chunk(
+    chunk_size: int,
+    seed: int,
+    bic_pool: BICPool,
+) -> pd.DataFrame:
+    """Generate one chunk of successful payment records — label=0.
+
+    Success records share the same corridor/BIC/amount/timestamp/rail
+    distributions as RJCT records (same underlying payment population).
+    Rejection fields are null — these payments cleared without error.
+    """
+    _rng, _corridor_idx, senders, receivers, corridors_str, currency_pairs, amounts, ts_iso, rails = (
+        _generate_common_fields(chunk_size, seed, bic_pool)
+    )
+
+    return pd.DataFrame({
+        "uetr": [str(uuid.uuid4()) for _ in range(chunk_size)],
+        "bic_sender": senders,
+        "bic_receiver": receivers,
+        "corridor": corridors_str,
+        "label": 0,
+        "rejection_code": None,          # no rejection — payment succeeded
+        "rejection_class": None,         # no rejection class
+        "amount_usd": np.round(amounts, 2),
+        "settlement_time_hours": float("nan"),  # not applicable for successful payments
+        "is_permanent_failure": 0,
+        "timestamp_utc": ts_iso,
+        "currency_pair": currency_pairs,
+        "rail": rails,
+    })
 
 
 def generate_payments(
     n: int = 2_000_000,
     seed: int = 42,
     chunk_size: int = 500_000,
+    success_multiplier: float = 4.0,
 ) -> pd.DataFrame:
     """Generate the full synthetic ISO 20022 payment events dataset.
 
-    Generates in chunks to limit peak RAM usage. At n=2,000,000 with
-    chunk_size=500,000 the peak memory is approximately 200MB.
+    Produces a **mixed corpus**: RJCT failures (label=1) and successful
+    payments (label=0).  This is the correct design for C1 training —
+    the model learns to separate failures from successes, not to classify
+    failure types (A/B/C).
+
+    Generates in chunks to limit peak RAM usage.
 
     Parameters
     ----------
     n : int
-        Total number of payment events to generate (all are RJCT failures).
+        Number of RJCT (failed) payment events to generate.
     seed : int
-        Master random seed. Each chunk uses seed + chunk_index * 997 to
-        ensure statistical independence between chunks.
+        Master random seed. RJCT chunks use seed + i*997; success chunks
+        use seed + 1_000_003 + i*997 to ensure independence.
     chunk_size : int
         Records per chunk (reduce if OOM on <8GB RAM machines).
+    success_multiplier : float
+        Number of success records generated per RJCT record.
+        Default 4.0 → 80% successes, 20% RJCT — trainable imbalance that
+        approximates typical cross-border payment failure rates (~15–20%).
+        Set to 0.0 to produce a RJCT-only corpus (label=1 everywhere,
+        degenerate for C1 training — use only for specialised analysis).
 
     Returns
     -------
-    pd.DataFrame with all required output fields.
+    pd.DataFrame with all required output fields, shuffled.
     """
     bic_pool = BICPool()
     chunks: list[pd.DataFrame] = []
     n_chunks = (n + chunk_size - 1) // chunk_size  # ceil division
 
+    # ── RJCT chunks (label=1) ──────────────────────────────────────────────
     for i in range(n_chunks):
         start = i * chunk_size
         end = min(start + chunk_size, n)
         c_size = end - start
         c_seed = seed + i * 997  # prime offset for statistical independence
-        chunk_df = _generate_chunk(c_size, c_seed, bic_pool)
-        chunks.append(chunk_df)
+        chunks.append(_generate_chunk(c_size, c_seed, bic_pool))
+
+    # ── Success chunks (label=0) ───────────────────────────────────────────
+    if success_multiplier > 0.0:
+        n_success = int(n * success_multiplier)
+        n_success_chunks = (n_success + chunk_size - 1) // chunk_size
+        for i in range(n_success_chunks):
+            start = i * chunk_size
+            end = min(start + chunk_size, n_success)
+            c_size = end - start
+            # Offset by a large prime to avoid any seed overlap with RJCT chunks
+            c_seed = seed + 1_000_003 + i * 997
+            chunks.append(_generate_success_chunk(c_size, c_seed, bic_pool))
 
     df = pd.concat(chunks, ignore_index=True)
+
+    # Shuffle to interleave RJCT and success records — models must not exploit
+    # positional structure (all failures first, all successes last).
+    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
     return df
 
 
