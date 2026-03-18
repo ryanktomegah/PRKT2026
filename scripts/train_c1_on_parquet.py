@@ -370,12 +370,36 @@ def train(
 
     model.eval()
     import torch as _torch
+    from lip.c1_failure_classifier.training_torch import _build_neighbor_tensor
+
+    # Build val neighbor tensor using the same graph used during training.
+    # Passing None here would collapse AUC to ~0.5 because the model was
+    # trained with neighbor features — this was the bug in the original eval.
+    val_nbr = _build_neighbor_tensor(bic_val, graph, config.k_neighbors_infer)
+
     with _torch.no_grad():
         node_feat = _torch.tensor(X_val[:, :8], dtype=_torch.float32)
         tab_feat = _torch.tensor(X_val[:, 8:], dtype=_torch.float32)
-        logits = model(node_feat, tab_feat, None).squeeze(1)
-        scores = _torch.sigmoid(logits).cpu().numpy()
-    val_auc = _compute_auc(y_val, scores)
+        logits = model(node_feat, tab_feat, val_nbr).squeeze(1)
+        scores_torch = _torch.sigmoid(logits).cpu().numpy()
+
+    # Also evaluate LightGBM component of the ensemble
+    lgbm_scores = None
+    if hasattr(model, "lgbm_model") and model.lgbm_model is not None:
+        lgbm_scores = model.lgbm_model.predict_proba(X_val[:, 8:])[:, 1]
+        val_auc_lgbm = _compute_auc(y_val, lgbm_scores)
+        logger.info("Validation AUC (LightGBM): %.4f", val_auc_lgbm)
+
+    # Ensemble: 50/50 average of PyTorch and LightGBM scores
+    if lgbm_scores is not None:
+        scores = 0.5 * scores_torch + 0.5 * lgbm_scores
+        val_auc_torch = _compute_auc(y_val, scores_torch)
+        val_auc = _compute_auc(y_val, scores)
+        logger.info("Validation AUC (PyTorch only): %.4f", val_auc_torch)
+        logger.info("Validation AUC (ensemble 50/50): %.4f", val_auc)
+    else:
+        scores = scores_torch
+        val_auc = _compute_auc(y_val, scores)
     logger.info("Validation AUC: %.4f", val_auc)
 
     # F2-optimal threshold
