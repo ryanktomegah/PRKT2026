@@ -38,3 +38,5 @@ artifacts/
 # Generate fresh with: python -m lip.dgen.generate_all --output-dir artifacts/synthetic
 **/c6_corpus_*.json
 **/c6_corpus_*.json.sha256
+.env
+.env.local
