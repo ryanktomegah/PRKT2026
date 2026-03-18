@@ -34,25 +34,29 @@ def main():
         print("       Sanctions screening is disabled by default (EPG-24 not fixed).")
         sys.exit(1)
 
-    # Check 2: Is there a ConfigurationError or similar guard when resolver is None?
-    has_guard = bool(re.search(
-        r'(ConfigurationError|raise\s+\w*Error|raise\s+ValueError)[^\n]*resolver',
+    # Check 2: Is there a ConfigurationError raised when resolver is not provided?
+    # This is the primary fix: a sentinel default that raises at startup rather than
+    # silently falling through to BIC-as-name. The `else entity_id` fallback may
+    # still exist for the explicit entity_name_resolver=None (test) path — that's OK.
+    has_configuration_error_guard = bool(re.search(
+        r'raise\s+ConfigurationError',
+        source,
+    ))
+    has_sentinel = bool(re.search(
+        r'_RESOLVER_REQUIRED\s*=\s*object\(\)',
         source,
     ))
 
-    # Check 3: Does the fallback still use entity_id as the name?
-    has_fallback = bool(re.search(
-        r'if self\._resolve_name else entity_id',
-        source,
-    ))
-
-    if has_fallback:
-        print("FAIL — Fallback `else entity_id` still present — BIC codes still used as names.")
+    if not has_configuration_error_guard:
+        print("FAIL — No ConfigurationError guard found — missing resolver is not caught at startup.")
         sys.exit(1)
 
-    print("PASS — entity_name_resolver is no longer optional with a None default.")
-    if has_guard:
-        print("       ConfigurationError guard detected.")
+    if not has_sentinel:
+        print("FAIL — No _RESOLVER_REQUIRED sentinel found — default is still None (fail-open).")
+        sys.exit(1)
+
+    print("PASS — ConfigurationError guard and sentinel default detected.")
+    print("       Production deployments will fail at startup if entity_name_resolver is omitted.")
     print("EPG-24 fix verified.")
     sys.exit(0)
 

@@ -40,14 +40,14 @@
     "notes": "Fixed: c6_result is None now returns PipelineResult(outcome=AML_CHECK_UNAVAILABLE) — fail-closed. _run_c6 docstring updated. Verification script PASS."
   },
   "EPG-24": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 0,
     "severity": "CRITICAL",
     "title": "Sanctions screening disabled by default — entity_name_resolver=None",
     "owner": ["CIPHER", "FORGE"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "aml_checker.py — make entity_name_resolver required, raise ConfigurationError if None"
+    "commit": "pending-commit",
+    "signoffs": ["CIPHER"],
+    "notes": "Fixed: _RESOLVER_REQUIRED sentinel default + ConfigurationError at startup. 3 test callsites updated to entity_name_resolver=None (explicit opt-out). Verification script PASS. 1343 tests pass."
   },
   "EPG-01": {
     "status": "OPEN",

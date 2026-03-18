@@ -32,6 +32,20 @@ _DEFAULT_SANCTIONS_PATH = os.path.join(
     os.path.dirname(__file__), "data", "sanctions.json"
 )
 
+# Sentinel: distinguishes "not provided" from "explicitly None (no resolver)"
+_RESOLVER_REQUIRED = object()
+
+
+class ConfigurationError(Exception):
+    """Raised when AMLChecker is constructed without a required configuration value.
+
+    EPG-24: entity_name_resolver must be explicitly provided. Passing None is
+    permitted only when the caller explicitly acknowledges that entity_id values
+    are human-readable names (e.g. in unit tests). In production, omitting this
+    argument will raise ConfigurationError at startup rather than silently passing
+    BIC codes to the sanctions screener.
+    """
+
 
 # ---------------------------------------------------------------------------
 # AMLResult
@@ -94,9 +108,17 @@ class AMLChecker:
         Optional ``AnomalyDetector`` instance.  When ``None`` anomaly
         detection is skipped.
     entity_name_resolver:
-        Optional callable ``(entity_id: str) -> str`` that returns a
-        human-readable entity name for sanctions matching.  When ``None``
-        the raw ``entity_id`` string is screened directly.
+        Callable ``(entity_id: str) -> str`` that returns a human-readable entity
+        name for sanctions matching (e.g. resolves BIC ``"BNPAFRPPXXX"`` to
+        ``"BNP PARIBAS"``).
+
+        **This argument is required.** Omitting it raises ``ConfigurationError``
+        at construction time — passing BIC codes directly to the sanctions screener
+        produces Jaccard scores of 0.0 against every sanctioned entity name and
+        silently disables sanctions enforcement (EPG-24).
+
+        Pass ``entity_name_resolver=None`` explicitly only in unit tests where
+        ``entity_id`` values are already human-readable names.
     """
 
     def __init__(
@@ -104,8 +126,25 @@ class AMLChecker:
         velocity_checker: VelocityChecker,
         sanctions_screener: Optional[SanctionsScreener] = None,
         anomaly_detector=None,
-        entity_name_resolver=None,
+        entity_name_resolver=_RESOLVER_REQUIRED,
     ) -> None:
+        # EPG-24: require explicit configuration of the name resolver.
+        # Callers must either provide a resolver or pass entity_name_resolver=None
+        # to explicitly acknowledge they are running without one (tests only).
+        if entity_name_resolver is _RESOLVER_REQUIRED:
+            raise ConfigurationError(
+                "AMLChecker requires entity_name_resolver to be explicitly provided. "
+                "In production, supply a callable that resolves entity_id (e.g. a BIC) "
+                "to a human-readable name for sanctions screening. "
+                "In unit tests where entity_id values are already human-readable, "
+                "pass entity_name_resolver=None to acknowledge no resolver is needed."
+            )
+        if entity_name_resolver is None:
+            logger.warning(
+                "AMLChecker: entity_name_resolver=None — sanctions screening will use "
+                "raw entity_id strings. Acceptable in tests; not acceptable in production "
+                "where entity_id is a BIC code."
+            )
         self._velocity = velocity_checker
         if sanctions_screener is not None:
             self._sanctions = sanctions_screener

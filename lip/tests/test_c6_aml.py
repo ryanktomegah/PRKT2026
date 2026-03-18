@@ -182,8 +182,11 @@ class TestSaltRotation:
 
 
 def _make_aml_checker() -> AMLChecker:
-    """Create an AMLChecker with a default VelocityChecker."""
-    return AMLChecker(velocity_checker=VelocityChecker(salt=_SALT))
+    """Create an AMLChecker with a default VelocityChecker.
+    entity_name_resolver=None is explicit: test entity_ids are human-readable strings,
+    not BIC codes, so no resolver is needed (EPG-24).
+    """
+    return AMLChecker(velocity_checker=VelocityChecker(salt=_SALT), entity_name_resolver=None)
 
 
 class TestAMLChecker:
@@ -226,6 +229,7 @@ class TestAMLChecker:
         checker = AMLChecker(
             velocity_checker=VelocityChecker(salt=_SALT),
             anomaly_detector=detector,
+            entity_name_resolver=None,  # test entity_ids are human-readable (EPG-24)
         )
         result = checker.check("entity_anom", Decimal("1"), "bene_anom")
         assert isinstance(result.passed, bool)

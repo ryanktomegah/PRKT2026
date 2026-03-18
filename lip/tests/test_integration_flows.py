@@ -284,7 +284,8 @@ class TestFlow5ThinFileFeeFloor:
 
 def _make_aml_checker() -> AMLChecker:
     from lip.c6_aml_velocity.velocity import VelocityChecker
-    return AMLChecker(velocity_checker=VelocityChecker(salt=_SALT))
+    # entity_name_resolver=None: test entity_ids are human-readable strings (EPG-24)
+    return AMLChecker(velocity_checker=VelocityChecker(salt=_SALT), entity_name_resolver=None)
 
 
 class TestCombinedAMLGate:
