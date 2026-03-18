@@ -384,9 +384,9 @@ class TrainingPipelineTorch:
 
             avg_loss = total_loss / len(y_train)
             auc = _eval_auc_torch(model, ckpt_X, ckpt_y, ckpt_nbr)
-            logger.debug(
-                "Joint training epoch %d — avg_loss=%.5f  %s_auc=%.4f",
-                epoch + 1, avg_loss, ckpt_label, auc,
+            logger.info(
+                "Joint training epoch %d/%d — avg_loss=%.5f  %s_auc=%.4f",
+                epoch + 1, self.config.n_epochs, avg_loss, ckpt_label, auc,
             )
 
             if auc > best_auc:

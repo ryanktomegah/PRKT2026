@@ -435,9 +435,20 @@ def train(
     _torch.save(model.state_dict(), ckpt_path)
     logger.info("Checkpoint saved: %s", ckpt_path)
 
+    # Save LightGBM separately — torch.save(state_dict) only saves PyTorch
+    # parameters; model.lgbm_model is a sklearn object and must be pickled.
+    if hasattr(model, "lgbm_model") and model.lgbm_model is not None:
+        import pickle
+        lgbm_path = output / "c1_lgbm_parquet.pkl"
+        with open(lgbm_path, "wb") as fh:
+            pickle.dump(model.lgbm_model, fh)
+        logger.info("LightGBM checkpoint saved: %s", lgbm_path)
+
     # ---------- Save metrics ----------
     metrics = {
         "val_auc": round(val_auc, 6),
+        "val_auc_torch": round(val_auc_torch if lgbm_scores is not None else val_auc, 6),
+        "val_auc_lgbm": round(val_auc_lgbm, 6) if lgbm_scores is not None else None,
         "f2_threshold": round(best_thresh, 4),
         "f2_score": round(best_f2, 6),
         "ece": round(ece, 6),
