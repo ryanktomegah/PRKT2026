@@ -73,6 +73,10 @@ def _build_neighbor_tensor(
     feature vectors via :meth:`BICGraphBuilder.get_node_features`.  Pads
     with zeros for any missing neighbors (cold-start safe — no exceptions).
 
+    Performance: pre-computes a lookup table over unique BICs only (typically
+    ~75 unique values), then uses vectorised numpy indexing over the full N
+    records — avoiding an O(N) Python loop that stalls on large datasets.
+
     Parameters
     ----------
     bics:
@@ -89,14 +93,19 @@ def _build_neighbor_tensor(
     torch.Tensor
         Shape ``(N, k, input_dim)``, dtype ``float32``.
     """
-    N = len(bics)
-    result = torch.zeros(N, k, input_dim, dtype=torch.float32)
-    for i, bic in enumerate(bics):
+    unique_bics = list(dict.fromkeys(bics))  # preserve order, deduplicate
+    bic_to_idx = {bic: i for i, bic in enumerate(unique_bics)}
+
+    # Build lookup table over unique BICs only (e.g. 75, not 800K)
+    lookup = np.zeros((len(unique_bics), k, input_dim), dtype=np.float32)
+    for i, bic in enumerate(unique_bics):
         neighbors = graph.get_neighbors(bic, k)
         for j, nbr in enumerate(neighbors):
-            nf = graph.get_node_features(nbr)
-            result[i, j] = torch.tensor(nf, dtype=torch.float32)
-    return result
+            lookup[i, j] = graph.get_node_features(nbr)
+
+    # Vectorised mapping: 800K records → their unique-BIC index
+    indices = np.array([bic_to_idx.get(bic, 0) for bic in bics], dtype=np.intp)
+    return torch.tensor(lookup[indices], dtype=torch.float32)
 
 
 # ---------------------------------------------------------------------------
