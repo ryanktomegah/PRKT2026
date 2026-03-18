@@ -1,0 +1,282 @@
+{
+  "EPG-09": {
+    "status": "DONE",
+    "tier": 0,
+    "severity": "CRITICAL",
+    "title": "COMPLIANCE_HOLD_BLOCKS_BRIDGE falls through to FUNDED in pipeline.py",
+    "owner": ["NOVA"],
+    "commit": "pending-commit",
+    "signoffs": ["NOVA"],
+    "notes": "Fixed: separate equality check for COMPLIANCE_HOLD_BLOCKS_BRIDGE → outcome=COMPLIANCE_HOLD. BELOW_MIN_LOAN_AMOUNT, BELOW_MIN_CASH_FEE, LOAN_AMOUNT_MISMATCH added to decline tuple. 90/90 tests pass."
+  },
+  "EPG-10": {
+    "status": "DONE",
+    "tier": 0,
+    "severity": "CRITICAL",
+    "title": "No distinct PipelineResult outcome for compliance hold blocks",
+    "owner": ["NOVA"],
+    "commit": "pending-commit",
+    "signoffs": ["NOVA"],
+    "notes": "Fixed alongside EPG-09. outcome=COMPLIANCE_HOLD added. pipeline_result.py docstring updated. Verification script PASS."
+  },
+  "EPG-11": {
+    "status": "OPEN",
+    "tier": 0,
+    "severity": "HIGH",
+    "title": "Compliance hold blocks don't trigger compliance team notification",
+    "owner": ["REX", "FORGE"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "notification_service.py should be called for COMPLIANCE_HOLD outcomes"
+  },
+  "EPG-27": {
+    "status": "DONE",
+    "tier": 0,
+    "severity": "HIGH",
+    "title": "AML fail-open default — c6_result is None returns True in pipeline.py:291",
+    "owner": ["CIPHER", "FORGE"],
+    "commit": "pending-commit",
+    "signoffs": ["CIPHER"],
+    "notes": "Fixed: c6_result is None now returns PipelineResult(outcome=AML_CHECK_UNAVAILABLE) — fail-closed. _run_c6 docstring updated. Verification script PASS."
+  },
+  "EPG-24": {
+    "status": "OPEN",
+    "tier": 0,
+    "severity": "CRITICAL",
+    "title": "Sanctions screening disabled by default — entity_name_resolver=None",
+    "owner": ["CIPHER", "FORGE"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "aml_checker.py — make entity_name_resolver required, raise ConfigurationError if None"
+  },
+  "EPG-01": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "HIGH",
+    "title": "RR01-RR03 (KYC failures) not blocked — receive 3-day bridges",
+    "owner": ["REX", "CIPHER"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Add RR01, RR02, RR03 to _COMPLIANCE_HOLD_CODES in agent.py"
+  },
+  "EPG-02": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "HIGH",
+    "title": "DNOR (DebtorNotAllowedToSend) not blocked — receives 7-day bridge",
+    "owner": ["REX", "CIPHER"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Add DNOR to _COMPLIANCE_HOLD_CODES in agent.py"
+  },
+  "EPG-03": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "HIGH",
+    "title": "CNOR (CreditorNotAllowedToReceive) not blocked — receives 21-day bridge",
+    "owner": ["REX", "CIPHER"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Add CNOR to _COMPLIANCE_HOLD_CODES in agent.py"
+  },
+  "EPG-25": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "HIGH",
+    "title": "AML velocity check TOCTOU — check() and record() are non-atomic",
+    "owner": ["CIPHER"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "velocity.py — replace check+record with atomic Redis Lua check-and-reserve"
+  },
+  "EPG-26": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "HIGH",
+    "title": "Human review dead end — PENDING_HUMAN_REVIEW has no pipeline re-entry path",
+    "owner": ["NOVA", "FORGE", "REX"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "human_override.py + pipeline.py + UETR tracker — implement re-entry after human decision"
+  },
+  "EPG-04": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "HIGH",
+    "title": "Bank's AML system structurally opaque to LIP — no compliance hold register API",
+    "owner": ["REX", "Legal"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Contractual fix only — BPI License Agreement must require bank to provide hold register API"
+  },
+  "EPG-05": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "MEDIUM-HIGH",
+    "title": "Generic codes MS02/MS03/NARR hide AML reasoning and bypass all gates",
+    "owner": ["REX", "Legal"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Contractual fix only — indemnity clause + hold register API"
+  },
+  "EPG-07": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "LOW-MEDIUM",
+    "title": "RR04 in CLASS_A taxonomy — C7 is the only gate (no defense-in-depth)",
+    "owner": ["NOVA", "REX"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "rejection_taxonomy.yaml — move RR04, AG01, LEGL to BLOCK class"
+  },
+  "EPG-08": {
+    "status": "OPEN",
+    "tier": 1,
+    "severity": "LOW-MEDIUM",
+    "title": "AG01, LEGL in CLASS_B/C taxonomy — same taxonomy/gate misalignment as EPG-07",
+    "owner": ["NOVA", "REX"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "rejection_taxonomy.yaml — part of same fix as EPG-07"
+  },
+  "EPG-16": {
+    "status": "OPEN",
+    "tier": 2,
+    "severity": "MEDIUM",
+    "title": "Default AML dollar cap $1M inoperable for correspondent banking",
+    "owner": ["CIPHER", "NOVA"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "constants.py — change default to require explicit config or raise at startup"
+  },
+  "EPG-17": {
+    "status": "OPEN",
+    "tier": 2,
+    "severity": "MEDIUM",
+    "title": "C8 token must require explicit AML cap — no deployment-time enforcement",
+    "owner": ["CIPHER", "FORGE"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "C8 license token validation — require aml_dollar_cap_usd to be explicitly set"
+  },
+  "EPG-28": {
+    "status": "OPEN",
+    "tier": 2,
+    "severity": "MEDIUM-HIGH",
+    "title": "Velocity cap tracks BIC not economic entity — wrong granularity",
+    "owner": ["CIPHER", "NOVA", "QUANT"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "velocity.py + C5 normalization — use (sending_bic, originator_account_hash) composite key"
+  },
+  "EPG-14": {
+    "status": "OPEN",
+    "tier": 2,
+    "severity": "HIGH",
+    "title": "sending_bic is the bank not the end customer — MRFA and PD are misaligned",
+    "owner": ["REX", "ARIA"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Legal/contractual + C2 feature engineering"
+  },
+  "EPG-18": {
+    "status": "OPEN",
+    "tier": 2,
+    "severity": "MEDIUM",
+    "title": "Anomaly detection advisory-only — should trigger human review",
+    "owner": ["CIPHER", "REX"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "aml_checker.py + c7 _requires_human_review — propagate anomaly_flagged to human review path"
+  },
+  "EPG-06": {
+    "status": "OPEN",
+    "tier": 3,
+    "severity": "MEDIUM",
+    "title": "PD model prices credit risk but not regulatory outcome risk",
+    "owner": ["QUANT", "ARIA"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "C2 model card + synthetic data generator — document gap, add regulatory-outcome feature"
+  },
+  "EPG-12": {
+    "status": "OPEN",
+    "tier": 3,
+    "severity": "MEDIUM",
+    "title": "C1 trained on all failures including non-bridgeable ones",
+    "owner": ["ARIA", "DGEN"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "c1_generator.py — add bridgeable label, retrain with bridgeability objective"
+  },
+  "EPG-13": {
+    "status": "OPEN",
+    "tier": 3,
+    "severity": "MEDIUM",
+    "title": "tau*=0.152 optimized on mixed population (bridgeable + non-bridgeable)",
+    "owner": ["ARIA", "QUANT"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Re-optimize after EPG-12 corpus fix"
+  },
+  "EPG-15": {
+    "status": "OPEN",
+    "tier": 3,
+    "severity": "MEDIUM",
+    "title": "Thin-file C2 fires on institutional BICs with public credit data",
+    "owner": ["ARIA"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "borrower registry — ensure all enrolled BICs have explicit tier assignments"
+  },
+  "EPG-22": {
+    "status": "OPEN",
+    "tier": 3,
+    "severity": "MEDIUM",
+    "title": "C1 training objective should be bridgeability not failure detection",
+    "owner": ["ARIA", "DGEN"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Related to EPG-12 — same fix"
+  },
+  "EPG-19": {
+    "status": "OPEN",
+    "tier": 4,
+    "severity": "MEDIUM",
+    "title": "CLASS_B labeled Compliance/AML holds in constants but not treated as such",
+    "owner": ["Founder"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Requires founder product decision — fund or exclude compliance-hold CLASS_B payments?"
+  },
+  "EPG-20": {
+    "status": "OPEN",
+    "tier": 4,
+    "severity": "STRATEGIC",
+    "title": "Patent claims may implicitly cover compliance-hold bridging",
+    "owner": ["Legal", "REX"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Patent counsel review — dependent claims and ISO 20022 code coverage in spec"
+  },
+  "EPG-21": {
+    "status": "OPEN",
+    "tier": 4,
+    "severity": "STRATEGIC",
+    "title": "FATF tipping-off interaction could appear in patent prosecution record",
+    "owner": ["Legal"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Patent counsel — review spec language about generic codes before filing non-provisional"
+  },
+  "EPG-23": {
+    "status": "OPEN",
+    "tier": 4,
+    "severity": "MEDIUM",
+    "title": "Expired offer log entries are indistinguishable from funded offers",
+    "owner": ["NOVA", "REX"],
+    "commit": null,
+    "signoffs": [],
+    "notes": "Relates to GAP-01 resolution — offer delivery mechanism must be built first"
+  }
+}

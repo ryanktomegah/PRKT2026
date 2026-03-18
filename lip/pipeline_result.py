@@ -24,7 +24,14 @@ class PipelineResult:
         Final pipeline outcome. One of:
         ``"FUNDED"`` | ``"DISPUTE_BLOCKED"`` | ``"AML_BLOCKED"`` |
         ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"`` |
-        ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"``
+        ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"`` | ``"AML_CHECK_UNAVAILABLE"``
+
+        ``"COMPLIANCE_HOLD"`` — C7 detected an active compliance/regulatory hold on this
+        payment (rejection codes: RR04, AG01, LEGL). Distinct from ``"DECLINED"`` to support
+        regulatory audit trail requirements (FATF R.18/R.20, SR 11-7). No loan offer generated.
+
+        ``"AML_CHECK_UNAVAILABLE"`` — C6 AML gate returned None (unavailable / timed out).
+        Fail-closed: treated as a hard block. No loan offer generated.
     uetr:
         Unique end-to-end transaction reference from the input event.
     failure_probability:

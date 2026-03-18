@@ -287,8 +287,32 @@ class LIPPipeline:
         )
         dispute_hard_block = dispute_class_str in _DISPUTE_BLOCK_CLASSES
 
-        # Extract AML result
-        aml_passed = bool(c6_result.passed) if c6_result is not None else True
+        # Extract AML result — fail-closed (EPG-27: was fail-open `else True` before fix)
+        if c6_result is None:
+            logger.error(
+                "C6 AML check unavailable (returned None) — blocking payment uetr=%s",
+                event.uetr,
+            )
+            entry_id = self._log_block(event, failure_probability, "aml_check_unavailable")
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            result = PipelineResult(
+                outcome="AML_CHECK_UNAVAILABLE",
+                uetr=event.uetr,
+                failure_probability=failure_probability,
+                above_threshold=True,
+                shap_top20=shap_top20,
+                dispute_class=dispute_class_str,
+                aml_passed=None,
+                aml_hard_block=True,
+                decision_entry_id=entry_id,
+                payment_state=PaymentState.AML_BLOCKED.value,
+                loan_state=loan_sm.current_state.value,
+                payment_state_history=state_history + [PaymentState.AML_BLOCKED.value],
+                component_latencies=tracker.get_latest_all(),
+                total_latency_ms=total_ms,
+            )
+            return _record_and_return(result)
+        aml_passed = bool(c6_result.passed)
         aml_hard_block = not aml_passed
         # EPG-18: extract anomaly soft flag (does not block — routes to human review)
         aml_anomaly_flagged = bool(getattr(c6_result, "anomaly_flagged", False)) if c6_result is not None else False
@@ -469,8 +493,39 @@ class LIPPipeline:
             )
             return _record_and_return(result)
 
-        # --- Handle C7 DECLINE / CURRENCY_NOT_SUPPORTED --------------------
-        if c7_status in ("DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW", "CURRENCY_NOT_SUPPORTED", "BORROWER_NOT_ENROLLED"):
+        # --- Handle C7 compliance hold block — distinct outcome for audit trail (EPG-09/10)
+        if c7_status == "COMPLIANCE_HOLD_BLOCKS_BRIDGE":
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            result = PipelineResult(
+                outcome="COMPLIANCE_HOLD",
+                uetr=event.uetr,
+                failure_probability=failure_probability,
+                above_threshold=True,
+                shap_top20=shap_top20,
+                dispute_class=dispute_class_str,
+                aml_passed=aml_passed,
+                pd_estimate=pd_estimate,
+                fee_bps=fee_bps,
+                tier=tier,
+                shap_values_c2=shap_values_c2,
+                loan_offer=None,
+                decision_entry_id=decision_entry_id,
+                payment_state=payment_sm.current_state.value,
+                loan_state=loan_sm.current_state.value,
+                payment_state_history=state_history,
+                component_latencies=tracker.get_latest_all(),
+                total_latency_ms=total_ms,
+            )
+            return _record_and_return(result)
+
+        # --- Handle C7 DECLINE / economic declines --------------------------
+        if c7_status in (
+            "DECLINE", "BLOCK", "PENDING_HUMAN_REVIEW",
+            "CURRENCY_NOT_SUPPORTED", "BORROWER_NOT_ENROLLED",
+            "BELOW_MIN_LOAN_AMOUNT",   # EPG-10: was falling through to FUNDED
+            "BELOW_MIN_CASH_FEE",      # EPG-10: was falling through to FUNDED
+            "LOAN_AMOUNT_MISMATCH",    # EPG-10: was falling through to FUNDED
+        ):
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             result = PipelineResult(
                 outcome="DECLINED",
@@ -599,8 +654,8 @@ class LIPPipeline:
 
         Returns:
             AML check result object exposing a ``passed: bool`` attribute.
-            Returns the raw result from ``c6_checker.check()``; ``None``
-            is treated as ``passed=True`` by the caller.
+            If ``None`` is returned, the pipeline treats it as ``AML_CHECK_UNAVAILABLE``
+            and blocks the payment (fail-closed). Do not return ``None`` to mean "pass".
         """
         dollar_cap = None
         count_cap = None
