@@ -56,7 +56,7 @@ REJECTION_CODE_TAXONOMY: dict[str, RejectionClass] = {
     "AG02": RejectionClass.CLASS_B,  # InvalidBankOperationCode
     "CURR": RejectionClass.CLASS_B,  # UnrecognisedCurrency
     "CUST": RejectionClass.CLASS_B,  # RequestedByCustomer
-    "DNOR": RejectionClass.CLASS_B,  # DebtorNotAllowedToSend
+    "DNOR": RejectionClass.BLOCK,    # DebtorNotAllowedToSend — bank's compliance system prohibited this sender (EPG-02)
     "FOCR": RejectionClass.CLASS_B,  # FollowingCancellationRequest
     "MS02": RejectionClass.CLASS_B,  # NotSpecifiedReasonCustomerGenerated
     "MS03": RejectionClass.CLASS_B,  # NotSpecifiedReasonAgentGenerated
@@ -74,7 +74,7 @@ REJECTION_CODE_TAXONOMY: dict[str, RejectionClass] = {
     "CVCY": RejectionClass.CLASS_C,  # CurrencyConversionFailed
     "INVB": RejectionClass.CLASS_C,  # InvalidBIC
     "INVR": RejectionClass.CLASS_C,  # InvalidReference
-    "LEGL": RejectionClass.CLASS_C,  # LegalDecision
+    "LEGL": RejectionClass.BLOCK,    # LegalDecision — court/regulatory authority prevented payment (EPG-08)
     "OPAY": RejectionClass.CLASS_C,  # OtherPayment
     "PCOR": RejectionClass.CLASS_C,  # PartiallyCorrupt
     "QMIS": RejectionClass.CLASS_C,  # QualityMismatch

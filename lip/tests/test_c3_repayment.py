@@ -39,7 +39,16 @@ class TestRejectionTaxonomy:
         assert classify_rejection_code("AG01") == RejectionClass.CLASS_B
 
     def test_class_c_code(self):
-        assert classify_rejection_code("LEGL") == RejectionClass.CLASS_C
+        # LEGL moved to BLOCK (EPG-08); use AGNT as canonical CLASS_C example
+        assert classify_rejection_code("AGNT") == RejectionClass.CLASS_C
+
+    def test_legl_is_block(self):
+        # LegalDecision — court/regulatory authority stop, never bridge (EPG-08)
+        assert classify_rejection_code("LEGL") == RejectionClass.BLOCK
+
+    def test_dnor_is_block(self):
+        # DebtorNotAllowedToSend — bank compliance prohibition, never bridge (EPG-02)
+        assert classify_rejection_code("DNOR") == RejectionClass.BLOCK
 
     def test_block_code_disp(self):
         assert classify_rejection_code("DISP") == RejectionClass.BLOCK

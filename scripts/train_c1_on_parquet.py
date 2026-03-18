@@ -44,6 +44,11 @@ import numpy as np
 import pandas as pd
 import torch
 
+# Import dynamically so the filter stays in sync as the taxonomy evolves.
+# Any code added to BLOCK in rejection_taxonomy.py is automatically excluded
+# from C1 training — no manual list maintenance required.
+from lip.c3_repayment_engine.rejection_taxonomy import is_dispute_block
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -156,8 +161,33 @@ def load_parquet_as_records(
         )
         corridor_rates = df.groupby("corridor")["is_permanent_failure"].mean().to_dict()
 
-    # BIC-level failure rates are computed from the parquet (no external source).
-    logger.info("Computing BIC failure rates from full %d-row corpus…", len(df))
+    # ------------------------------------------------------------------
+    # Step 1b — Filter BLOCK-class rejection codes BEFORE computing BIC
+    # stats. These codes are intercepted before C1 at inference (early
+    # exit in pipeline.py). Training on them teaches C1 a decision
+    # boundary that doesn't exist in production.
+    # The filter uses is_dispute_block() so it stays in sync with
+    # rejection_taxonomy.py automatically — no manual list maintenance.
+    # Currently: DISP, FRAU, FRAD, DUPL, DNOR, LEGL
+    # ------------------------------------------------------------------
+    n_before = len(df)
+    block_mask = df["rejection_code"].apply(
+        lambda c: is_dispute_block(str(c)) if pd.notna(c) else False
+    )
+    df = df[~block_mask].reset_index(drop=True)
+    n_filtered = n_before - len(df)
+    logger.info(
+        "BLOCK filter: removed %d records (%.1f%% of corpus) — "
+        "rejection codes: %s",
+        n_filtered,
+        100.0 * n_filtered / n_before,
+        sorted(df["rejection_code"].dropna().unique().tolist())[:5],  # sample for log
+    )
+
+    # BIC-level failure rates are computed from the filtered corpus.
+    # Use is_permanent_failure as a proxy for per-BIC risk signal only
+    # (not as the training label — the label is set separately below).
+    logger.info("Computing BIC failure rates from filtered %d-row corpus…", len(df))
     bic_send_rates: dict = (
         df.groupby("bic_sender")["is_permanent_failure"].mean().to_dict()
     )
@@ -180,11 +210,20 @@ def load_parquet_as_records(
     # ------------------------------------------------------------------
     # Step 3 — Column renames and type coercions
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Label: is_bridgeable = 1 for every remaining (non-BLOCK) RJCT event.
+    # The parquet contains ONLY RJCT events. After filtering BLOCK codes,
+    # every record is a payment failure that LIP can bridge — all are
+    # positive class. C1's job is to identify RJCT events from the full
+    # payment stream; class discrimination (A/B/C) is downstream work
+    # for C2/C7. QUANT signed off on this label definition (Option C).
+    # ------------------------------------------------------------------
+    df["label"] = 1
+
     df = df.rename(
         columns={
             "bic_sender": "sending_bic",
             "bic_receiver": "receiving_bic",
-            "is_permanent_failure": "label",
         }
     )
 
