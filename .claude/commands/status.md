@@ -1,42 +1,17 @@
-# LIP Project Status
+---
+description: Show a full health dashboard for the LIP project — git state, test count, lint, artifacts, training status.
+allowed-tools: Bash, Read
+---
 
-Get a comprehensive status report of the LIP project.
+Produce a concise health dashboard for the LIP project. Work from `/Users/tomegah/Documents/PRKT2026`. Run the following checks in parallel where possible, then format the output as a clean table/summary.
 
-## Execution Protocol
+**Checks to run:**
 
-1. **Git status**: `git status && git log --oneline -5`
-2. **CI health**: `gh run list --limit 5`
-3. **Open PRs**: `gh pr list --state open`
-4. **Open issues**: `gh issue list --state open`
-5. **Test suite**: `PYTHONPATH=. python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py -q --tb=no` (quick pass/fail)
-6. **Lint check**: `ruff check lip/ --statistics` (summary only)
-7. **Dependabot alerts**: `gh api repos/YESHAPTNT/PRKT2026/dependabot/alerts --jq '.[].security_advisory.summary' 2>/dev/null | head -10`
+1. **Git** — `git log --oneline -5` (last 5 commits) + `git status --short` (dirty files)
+2. **Tests** — `python3 -m pytest lip/tests/ --ignore=lip/tests/test_e2e_live.py --co -q 2>/dev/null | tail -3` (count without running)
+3. **Lint** — `~/.pyenv/versions/3.14.3/bin/python3 -m ruff check lip/ --statistics 2>&1 | tail -5`
+4. **Artifacts** — `ls -lh artifacts/production_data_10m/*.parquet artifacts/*.pt artifacts/*.json 2>/dev/null` (what's on disk, sizes)
+5. **Training** — check if `artifacts/train_metrics_parquet.json` exists; if so, read and show val_AUC, F2 threshold, ECE
+6. **Python env** — confirm `~/.pyenv/versions/3.14.3/bin/python3 -c "import torch, numpy, pandas, lightgbm; print('OK')"` works
 
-## Report Format
-```
-## LIP Status Report — {date}
-
-### Git
-- Branch: {branch}
-- Last commit: {hash} {message}
-- Clean working tree: {yes/no}
-
-### CI
-- Latest run: {status} ({workflow}, {duration})
-- Open PRs: {count}
-- Open issues: {count}
-
-### Tests
-- Pass: {n} / Fail: {n} / Skip: {n}
-- Coverage: {n}%
-
-### Lint
-- Errors: {n}
-- Warnings: {n}
-
-### Security
-- Dependabot alerts: {count}
-
-### Next Actions
-- {prioritized list based on findings}
-```
+Format the dashboard with clear sections. Flag anything that needs attention: lint errors, failing tests, missing artifacts, or stale git state.

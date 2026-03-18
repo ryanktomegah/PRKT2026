@@ -41,6 +41,23 @@ from .offer_delivery import OfferDeliveryService
 
 logger = logging.getLogger(__name__)
 
+# ISO 20022 rejection codes that indicate a bank has placed an active compliance,
+# regulatory, or legal hold on THIS SPECIFIC PAYMENT at the settlement rail.
+# Offering a bridge loan while the hold is active bypasses the bank's own
+# compliance judgment — a violation of FATF R.18/R.20 and EU AMLD6 Art.10.
+#
+# Note: FRAU / FRAD / DUPL / DISP are BLOCK-class in the rejection taxonomy and
+# are hard-blocked in pipeline.py before C7 is reached; they are not listed here.
+# This set covers the remaining compliance-hold codes that reach C7.
+#
+# REX sign-off: 2026-03-17 (FATF R.18/R.20, EU AMLD6 Art.10, US BSA §1010.410)
+# CIPHER sign-off: 2026-03-17 (layering/structuring typology — pre-empting holds)
+_COMPLIANCE_HOLD_CODES: frozenset[str] = frozenset({
+    "RR04",   # RegulatoryReason — bank flagged this payment for regulatory review
+    "AG01",   # TransactionForbidden — bank has explicitly forbidden this transaction
+    "LEGL",   # LegalDecision — court order, garnishment, or sanctions legal hold
+})
+
 
 @dataclass
 class ExecutionConfig:
@@ -211,6 +228,27 @@ class ExecutionAgent:
                 human_override=False,
             )
             return {"status": "BLOCK", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": "dispute_blocked"}
+
+        # 2b. Compliance hold gate — FATF R.18/R.20, EU AMLD6 Art.10, US BSA §1010.410
+        # A payment frozen under a compliance, regulatory, or legal hold must never
+        # receive a bridge loan: doing so would allow value to move while the bank's
+        # own freeze is in force, which is a structuring/layering typology violation.
+        # _COMPLIANCE_HOLD_CODES is checked against the ISO 20022 rejection code that
+        # was normalised by C5 (FedNow/RTP proprietary strings mapped to ISO 20022
+        # before reaching this gate).
+        rejection_code = str(payment_context.get("rejection_code") or "").strip().upper()
+        if rejection_code in _COMPLIANCE_HOLD_CODES:
+            entry_id = self._log_decision(
+                uetr, individual_payment_id, "BLOCK",
+                failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                human_override=False,
+            )
+            return {
+                "status": "COMPLIANCE_HOLD_BLOCKS_BRIDGE",
+                "loan_offer": None,
+                "decision_entry_id": entry_id,
+                "halt_reason": "compliance_hold",
+            }
 
         # 3. Human review gate
         human_override_applied = False

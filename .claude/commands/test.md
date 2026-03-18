@@ -1,36 +1,28 @@
-# LIP Test Suite Runner
+---
+description: Run the LIP test suite. Usage: /test [fast|full|c1|c2|c3|c4|c5|c6|c7|c8|live|<pattern>]
+argument-hint: "[fast|full|c1..c8|<pattern>]"
+allowed-tools: Bash
+---
 
-Run the LIP test suite with coverage reporting. Validates all 8 components.
+Run the LIP test suite using `~/.pyenv/versions/3.14.3/bin/python3` with `PYTHONPATH=.` set from `/Users/tomegah/Documents/PRKT2026`.
 
-## Execution Protocol
+Interpret `$ARGUMENTS` as follows — if no argument given, default to `fast`:
 
-1. Set `PYTHONPATH` to repo root
-2. Run `ruff check lip/` — must be zero errors
-3. Run `mypy lip/` — check type safety
-4. Run `python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py -v --tb=short --cov=lip --cov-report=term-missing`
-5. Report results: pass/fail count, coverage %, any regressions
+| Argument | Command |
+|---|---|
+| `fast` (default) | `python -m pytest lip/tests/ -m "not slow" --ignore=lip/tests/test_e2e_live.py -q` |
+| `full` | `python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_live.py -q` |
+| `c1` | `python -m pytest lip/tests/test_c1_classifier.py lip/tests/test_c1_training.py -v` |
+| `c2` | `python -m pytest lip/tests/test_c2_pd_model.py -v` |
+| `c3` | `python -m pytest lip/tests/test_c3_repayment.py -v` |
+| `c4` | `python -m pytest lip/tests/test_c4_dispute.py -v` |
+| `c5` | `python -m pytest lip/tests/test_c5_stress_regime.py lip/tests/test_c5_streaming.py -v` |
+| `c6` | `python -m pytest lip/tests/test_c6_aml.py -v` |
+| `c7` | `python -m pytest lip/tests/test_c7_execution.py -v` |
+| `c8` | `python -m pytest lip/tests/test_c8_license.py -v` |
+| `live` | `python -m pytest lip/tests/test_e2e_live.py -m live -v` (requires Redpanda at localhost:9092) |
+| anything else | treat as a pytest `-k` pattern: `python -m pytest lip/tests/ -k "$ARGUMENTS" -v --ignore=lip/tests/test_e2e_live.py` |
 
-## Rules
-- `test_e2e_pipeline.py` requires live Redis/Kafka — always excluded from local runs
-- Coverage target: ≥ 84% (current baseline)
-- If coverage drops below 84%, flag which component lost coverage
-- If any test fails, investigate the root cause before suggesting fixes
-- Run from repo root: `/Users/halil/PRKT2026`
+**Known flaky test:** `test_slo_p99_94ms` fails under CPU load — not a regression signal, ignore it.
 
-## Component Test Map
-| Test File | Component | What It Validates |
-|-----------|-----------|-------------------|
-| test_c1_classifier.py | C1 | Feature extraction, inference, calibration |
-| test_c1_training.py | C1 | Training pipeline, GraphSAGE, TabTransformer |
-| test_c2_pd_model.py | C2 | Tiered PD, LGD, fee arithmetic |
-| test_c3_repayment.py | C3 | Settlement handlers, UETR mapping |
-| test_c4_dispute.py | C4 | Dispute classification, prefilter |
-| test_c4_backends.py | C4 | LLM backend integration |
-| test_c5_streaming.py | C5 | Event normalization, Kafka config |
-| test_c5_kafka_worker.py | C5 | Kafka worker lifecycle |
-| test_c6_aml.py | C6 | AML velocity, sanctions, salt rotation |
-| test_c7_execution.py | C7 | Kill switch, human override, decision log |
-| test_c8_license.py | C8 | HMAC tokens, boot validation |
-| test_state_machines.py | Common | Payment + Loan state machines |
-| test_fee_arithmetic.py | C2 | Fee floor enforcement, maturity windows |
-| test_e2e_*.py | Pipeline | End-to-end integration flows |
+After running, report: tests passed / failed / skipped, and highlight any failures with the relevant log excerpt. If tests fail, read the failing test file and the source it tests before diagnosing — never guess the root cause.

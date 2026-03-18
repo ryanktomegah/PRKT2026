@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, os, json\ntool_input = json.loads(os.environ.get('CLAUDE_TOOL_INPUT', '{}'))\npath = tool_input.get('file_path', '')\nwarnings = []\nif any(x in path for x in ['fee.py', 'lgd.py', 'tier_assignment.py', 'baseline.py']):\n    warnings.append('QUANT REVIEW REQUIRED: You edited a fee/PD/LGD file. QUANT must review this output before it is considered complete.')\nif any(x in path for x in ['c6_aml', 'aml_velocity', 'c8_license']):\n    warnings.append('CIPHER REVIEW REQUIRED: You edited a security/AML file. CIPHER must review this output before it is considered complete.')\nif any(x in path for x in ['training.py', 'training_torch.py', 'features.py', 'model.py', 'model_torch.py']):\n    warnings.append('ARIA REVIEW REQUIRED: You edited an ML pipeline file. Verify: no leakage, calibration preserved, F2 threshold retained.')\nif any(x in path for x in ['iso20022_payments.py', 'bic_pool.py', 'aml_production.py', 'statistical_validator']):\n    warnings.append('DGEN REVIEW REQUIRED: You edited a data generation file. Update data_card.json and re-validate the corpus.')\nif warnings:\n    print('\\n'.join(warnings))\n    sys.exit(2)\n\"\n"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, os, json\ntool_input = json.loads(os.environ.get('CLAUDE_TOOL_INPUT', '{}'))\ncmd = tool_input.get('command', '')\nblockers = []\nif '--no-verify' in cmd:\n    blockers.append('BLOCKED by FORGE: --no-verify is never allowed. Fix the underlying issue instead.')\nif 'push --force' in cmd and 'main' in cmd:\n    blockers.append('BLOCKED by FORGE: force-push to main is never allowed.')\nif 'c6_corpus' in cmd and 'git add' in cmd:\n    blockers.append('BLOCKED by CIPHER: c6_corpus_*.json must never be committed. It is gitignored by design.')\nif blockers:\n    print('\\n'.join(blockers))\n    sys.exit(2)\n\"\n"
+          }
+        ]
+      }
+    ]
+  }
+}

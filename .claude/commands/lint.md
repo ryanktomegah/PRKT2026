@@ -1,18 +1,15 @@
-# LIP Lint & Type Check
+---
+description: Run ruff linter on the LIP codebase. Usage: /lint [fix]
+argument-hint: "[fix]"
+allowed-tools: Bash, Edit
+---
 
-Run linting and type checking across the entire LIP codebase.
+Run `ruff check lip/` from `/Users/tomegah/Documents/PRKT2026` using `~/.pyenv/versions/3.14.3/bin/python3 -m ruff`.
 
-## Execution Protocol
+If `$ARGUMENTS` is `fix`, run `ruff check lip/ --fix` first, then re-run `ruff check lip/` to confirm zero errors remain. For any errors that `--fix` cannot auto-resolve, read the offending file and fix them manually using Edit.
 
-1. Run `ruff check lip/` — report any violations
-2. Run `mypy lip/` — report type errors
-3. If violations found: fix them automatically where safe, explain what was changed
-4. Re-run checks to confirm clean
+If no argument, just check and report.
 
-## Rules
-- ruff config: line-length=100, target=py310, select E/F/W/I, ignore E501
-- mypy config: python 3.10, strict=false, ignore_missing_imports=true
-- NEVER commit with ruff errors — this blocks CI
-- Auto-fixable issues (import sorting, unused imports): fix silently
-- Non-trivial issues: explain the fix before applying
-- Run from repo root: `/Users/halil/PRKT2026`
+**Goal is always zero errors.** Report the final count. If zero errors: confirm clean. If errors remain after fix attempt: show each one with the file path and line number, then fix them.
+
+Never commit code with ruff errors.

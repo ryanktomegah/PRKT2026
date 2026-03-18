@@ -1,33 +1,29 @@
-# LIP Gap Analysis
+---
+description: Analyse the current state of LIP platform gaps — what's open, what's closed, what's next. Usage: /gap [list|<gap-id>|new <description>]
+argument-hint: "[list|<GAP-id>|new <description>]"
+allowed-tools: Read, Grep, Bash
+---
 
-Analyze gaps between current implementation and Architecture Spec v1.2 targets.
+Analyse LIP platform gaps using PROGRESS.md and the codebase as sources of truth.
 
-## Execution Protocol
+Interpret `$ARGUMENTS`:
 
-1. Read the gap analysis docs: `consolidation files/BPI_Gap_Analysis_v2.0.md`
-2. Check each component against its spec:
-   - `consolidation files/BPI_C1_Component_Spec_v1.0.md`
-   - `consolidation files/BPI_C2_Component_Spec_v1.0.md`
-   - `consolidation files/BPI_C3_Component_Spec_v1.0_Part1.md` + Part2
-   - `consolidation files/BPI_C4_Component_Spec_v1.0.md`
-   - `consolidation files/BPI_C5_Component_Spec_v1.0_Part1.md` + Part2
-   - `consolidation files/BPI_C6_Component_Spec_v1.0.md`
-   - `consolidation files/BPI_C7_Component_Spec_v1.0_Part1.md` + Part2
-3. Compare current code against spec requirements
-4. Run tests to verify implementation completeness
-5. Report: implemented vs. missing, priority ranking
+**`list` or empty:**
+Read `PROGRESS.md` and grep for any `GAP-` references across the codebase. Produce a table:
+- All known GAPs with status (COMPLETE / OPEN / IN PROGRESS)
+- Group by component (C1–C8, infra, data)
+- Highlight any that are open with no owner
 
-## Known Gaps (from Build Validation Roadmap)
-- C1 AUC: **RESOLVED on synthetic data** (0.9998 achieved 2026-03-11, commit f38f0dc). Real-world target 0.850 pending pilot with anonymised SWIFT data under QUANT sign-off. Estimated real-world AUC: 0.82–0.88.
-- C4 FN rate: 8% vs target 2%
-- E2E integration: requires live Kafka/Redis (not tested locally)
-- C4 LLM backend: needs API key configuration for production
-- Sanctions loader: needs network access for OFAC/EU list updates
+**`<GAP-id>` (e.g. `GAP-05`):**
+Search `PROGRESS.md` and all source files for references to that GAP. Report: what the gap was, what was done to close it, which files were changed, and whether tests cover it.
 
-## Architecture Spec Reference
-- `consolidation files/BPI_Architecture_Specification_v1.2.md`
-- `consolidation files/BPI_Architecture_SignOff_Record_v1.2.md`
+**`new <description>`:**
+Given a description of a new gap, do the following:
+1. Assign the next sequential GAP number (find the highest existing number first)
+2. Identify which component(s) it belongs to
+3. Read the relevant source files to understand the current state
+4. Write a precise gap statement: what is missing, what the correct behaviour should be, which files need to change
+5. Add it to PROGRESS.md in the appropriate session section
+6. Suggest an implementation approach
 
-## Governance Reference
-- `consolidation files/BPI_SR11-7_Model_Governance_Pack_v1.0.md`
-- `consolidation files/BPI_Internal_Build_Validation_Roadmap_v1.0.md`
+Always ground gap analysis in actual code — read the source, don't rely on PROGRESS.md descriptions alone.

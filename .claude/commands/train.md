@@ -1,37 +1,27 @@
-# LIP Model Training
+---
+description: Train C1 on the production parquet. Usage: /train [smoke | full | <sample-size> <epochs>]
+argument-hint: "[smoke|full|<sample> <epochs>]"
+allowed-tools: Bash, Read
+---
 
-Train ML models for LIP components. Requires synthetic data to be generated first (run /dgen).
+Run C1 training from `/Users/tomegah/Documents/PRKT2026` using `~/.pyenv/versions/3.14.3/bin/python3` with `PYTHONPATH=.`.
 
-## Execution Protocol
+The parquet is expected at `artifacts/production_data_10m/payments_synthetic.parquet`. If it doesn't exist, tell the user to run `/dgen 10m` first.
 
-1. Verify `artifacts/synthetic/` exists and contains valid corpora
-2. Set `PYTHONPATH=.`
-3. Train specific component or all:
-   - All: `PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic`
-   - C1 only: `PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic --components c1`
-   - C2 only: `PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic --components c2`
-   - C6 only: `PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic --components c6`
-4. Report: model metrics (AUC, precision, recall), training time, artifacts saved
+Interpret `$ARGUMENTS`:
 
-## Model Performance Targets
-| Component | Metric | Current | Target |
-|-----------|--------|---------|--------|
-| C1 Failure Classifier | AUC | 0.9998 (synthetic) / 0.739 (baseline) | 0.850 (real-world) |
-| C1 Failure Classifier | F2-score | — | ≥ 0.80 |
-| C2 PD Model | RMSE | — | ≤ 0.02 |
-| C4 Dispute | FN rate | 0.08 | 0.02 |
-| C6 AML | Precision | — | ≥ 0.95 |
+| Argument | Command |
+|---|---|
+| `smoke` (or empty) | `python scripts/train_c1_on_parquet.py --sample 5000 --epochs 2` (~60s, validates adapter only) |
+| `full` | `python scripts/train_c1_on_parquet.py --sample 1000000 --epochs 20` (production run, ~2h on CPU) |
+| `<N> <E>` (two numbers) | `python scripts/train_c1_on_parquet.py --sample N --epochs E` |
 
-## Canonical Constants (QUANT sign-off required to change)
-- Failure threshold τ*: 0.152
-- F-beta β: 2 (recall-weighted)
-- Asymmetric BCE α: 0.7
-- Fee floor: 300 bps annualized
-- Latency SLO: ≤ 94ms
+Run full training in background. After completion (smoke or full), read `artifacts/train_metrics_parquet.json` and report:
+- `val_AUC` — target ≥ 0.95 on synthetic data (note: likely inflated due to rejection code label leak)
+- `f2_threshold` — optimal decision boundary
+- `ece` — calibration error
+- `train_elapsed_s` — wall time
 
-## Rules
-- NEVER commit model artifacts to git
-- Always validate model against canonical constants after training
-- If AUC drops below 0.739 baseline, investigate data quality first
-- Training requires `lip[ml]` extras installed
-- Run from repo root: `/Users/halil/PRKT2026`
+**Important context:** val_AUC will be artificially high (~0.99) because rejection codes are perfect class predictors in the current synthetic data. This is a known data quality issue — the metric reflects memorization, not generalization. Flag this in the report.
+
+Checkpoint saved to `artifacts/c1_model_parquet.pt` — NEVER commit this file.

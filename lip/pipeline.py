@@ -34,6 +34,7 @@ from typing import Any, Callable, List, Optional
 from lip.c3_repayment_engine.rejection_taxonomy import (
     RejectionClass,
     classify_rejection_code,
+    is_dispute_block,
 )
 from lip.c3_repayment_engine.rejection_taxonomy import (
     maturity_days as get_maturity_days,
@@ -123,6 +124,7 @@ class LIPPipeline:
         uetr_tracker: Optional[UETRTracker] = None,
         threshold: float = FAILURE_PROBABILITY_THRESHOLD,
         global_latency_tracker: Optional[LatencyTracker] = None,
+        corridor_rates: Optional[dict] = None,
     ) -> None:
         self._c1 = c1_engine
         self._c2 = c2_engine
@@ -134,6 +136,10 @@ class LIPPipeline:
         self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
+        # Per-corridor failure rates for C1 feature injection.
+        # Keys: "EUR_USD", "GBP_USD", etc.  Values: failure_rate float.
+        # Falls back to canonical midpoint (0.035) for unknown corridors.
+        self._corridor_rates: dict = corridor_rates or {}
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -181,6 +187,41 @@ class LIPPipeline:
                 total_latency_ms=total_ms,
             )
 
+        # Fix (stress timing): Record corridor failure NOW — before C1/C7 — so the
+        # stress detector's is_stressed() call inside C7 reflects this event.
+        # Every non-retry event entering the pipeline is an underlying payment failure.
+        if self._stress_detector:
+            self._stress_detector.record_event(f"{event.currency}_USD", True)
+
+        # Fix (early BLOCK): Short-circuit on FRAU / FRAD / DISP / DUPL rejection
+        # codes before running C1. These are unconditional BLOCK codes — no ML needed.
+        # Uses the same DISPUTE_BLOCKED outcome as the C4 path so callers see a
+        # consistent API regardless of whether the block was caught early or via C4.
+        if event.rejection_code and is_dispute_block(event.rejection_code):
+            logger.warning(
+                "Rejection code BLOCK: uetr=%s code=%s — skipping C1/C2/C7",
+                event.uetr, event.rejection_code,
+            )
+            entry_id = self._log_block(event, 0.0, "dispute_blocked")
+            self._uetr_tracker.record(event.uetr, "DISPUTE_BLOCKED")
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            return PipelineResult(
+                outcome="DISPUTE_BLOCKED",
+                uetr=event.uetr,
+                failure_probability=0.0,
+                above_threshold=False,
+                dispute_hard_block=True,
+                aml_passed=True,
+                decision_entry_id=entry_id,
+                payment_state=PaymentState.DISPUTE_BLOCKED.value,
+                loan_state=LoanState.OFFER_PENDING.value,
+                payment_state_history=[
+                    PaymentState.MONITORING.value,
+                    PaymentState.DISPUTE_BLOCKED.value,
+                ],
+                total_latency_ms=total_ms,
+            )
+
         borrower = borrower or {}
         entity_id = entity_id or event.sending_bic
         beneficiary_id = beneficiary_id or event.receiving_bic
@@ -197,19 +238,6 @@ class LIPPipeline:
         def _record_and_return(res: PipelineResult) -> PipelineResult:
             self._uetr_tracker.record(res.uetr, res.outcome)
             self._record_global(tracker, res.total_latency_ms)
-
-            # Record outcome in stress detector if present
-            if self._stress_detector:
-                corridor = f"{event.currency}_USD"
-                # In the BPI model, if we reach the pipeline, the original payment
-                # has already 'failed' (been rejected).
-                # FUNDED means a bridge loan was given to cover a failure.
-                # BELOW_THRESHOLD means we didn't give a loan, but the failure still happened.
-                # So we consider EVERY call to the pipeline as a failure for the corridor,
-                # unless it's a retry of a previous event.
-                is_failure = (res.outcome != "RETRY_BLOCKED")
-                self._stress_detector.record_event(corridor, is_failure)
-
             return res
 
         # --- Step 1: C1 inference -------------------------------------------
@@ -325,8 +353,9 @@ class LIPPipeline:
         tier = int(c2_result.get("tier", 3))
         shap_values_c2 = c2_result.get("shap_values", [])
 
-        # Determine maturity_days from rejection code
+        # Determine maturity_days and rejection_class from rejection code
         maturity = self._derive_maturity_days(event.rejection_code)
+        rejection_class_str = self._derive_rejection_class(event.rejection_code)
 
         # --- Step 5: C7 Execution decision (OFFER / DECLINE / BLOCK) -------
         payment_context = {
@@ -347,6 +376,8 @@ class LIPPipeline:
             "dispute_class": dispute_class_str,
             "aml_passed": aml_passed,
             "maturity_days": maturity,
+            "rejection_code": event.rejection_code,
+            "rejection_class": rejection_class_str,
             "corridor": f"{event.currency}_USD",
             # GAP-10/GAP-12: propagate currency so C7 can derive governing law
             # and apply FX risk policy checks.
@@ -596,6 +627,26 @@ class LIPPipeline:
         except ValueError:
             return 7
 
+    def _derive_rejection_class(self, rejection_code: Optional[str]) -> str:
+        """Derive the rejection class string from the ISO 20022 rejection code.
+
+        Returns the RejectionClass enum value as a string (e.g. "CLASS_A"),
+        or "CLASS_B" as the safe default when the code is absent or unrecognised.
+
+        Args:
+            rejection_code: ISO 20022 rejection code, or None.
+
+        Returns:
+            Rejection class string: "CLASS_A", "CLASS_B", "CLASS_C", or "BLOCK".
+        """
+        if not rejection_code:
+            return "CLASS_B"
+        try:
+            cls = classify_rejection_code(rejection_code)
+            return cls.value
+        except ValueError:
+            return "CLASS_B"
+
     def _register_with_c3(
         self,
         event: NormalizedEvent,
@@ -653,13 +704,14 @@ class LIPPipeline:
         except Exception:
             logger.exception("Failed to register loan with C3 for uetr=%s", event.uetr)
 
-    @staticmethod
-    def _event_to_payment_dict(event: NormalizedEvent) -> dict:
+    def _event_to_payment_dict(self, event: NormalizedEvent) -> dict:
         """Convert a NormalizedEvent to the payment dict expected by C1/C2.
 
-        The corridor failure rate is set to the canonical midpoint (3.5%)
-        from ``canonical_numbers.yaml`` when no richer corridor data is
-        available at pipeline time.
+        ``corridor_stats`` is populated from the per-corridor failure rates
+        supplied at construction time (``corridor_rates`` kwarg), falling back
+        to the canonical midpoint (3.5%) from ``canonical_numbers.yaml`` for
+        unknown corridors.  ``sender_stats`` and ``receiver_stats`` are empty
+        dicts — features.py handles missing keys with defaults.
 
         Args:
             event: :class:`~lip.c5_streaming.event_normalizer.NormalizedEvent`
@@ -668,16 +720,23 @@ class LIPPipeline:
         Returns:
             Dict with keys: ``amount_usd``, ``currency_pair``,
             ``sending_bic``, ``receiving_bic``, ``timestamp``,
-            ``corridor_failure_rate``, ``uetr``, ``rejection_code``,
-            ``narrative``.
+            ``corridor_stats``, ``sender_stats``, ``receiver_stats``,
+            ``uetr``, ``rejection_code``, ``narrative``.
         """
+        corridor_key = f"{event.currency}_USD"
+        rate = self._corridor_rates.get(corridor_key, 0.035)
         return {
             "amount_usd": float(event.amount),
-            "currency_pair": f"{event.currency}_USD",
+            "currency_pair": corridor_key,
             "sending_bic": event.sending_bic,
             "receiving_bic": event.receiving_bic,
             "timestamp": event.timestamp.isoformat(),
-            "corridor_failure_rate": 0.035,  # midpoint from canonical_numbers.yaml
+            "corridor_stats": {
+                "failure_rate_7d": rate,
+                "failure_rate_30d": rate,
+            },
+            "sender_stats": {},
+            "receiver_stats": {},
             "uetr": event.uetr,
             "rejection_code": event.rejection_code,
             "narrative": event.narrative,
