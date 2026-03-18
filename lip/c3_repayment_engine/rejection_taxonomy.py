@@ -3,10 +3,18 @@ rejection_taxonomy.py — SWIFT rejection code taxonomy
 Architecture Spec S8: Full code → Class A/B/C/BLOCK mapping
 
 T = f(rejection_code_class):
-  Class A → 3 days maturity
-  Class B → 7 days maturity
-  Class C → 21 days maturity
-  BLOCK   → dispute/legal block, no bridge offered
+  Class A → 3 days maturity  (technical/routing errors)
+  Class B → 7 days maturity  (systemic/processing errors)
+  Class C → 21 days maturity (investigation/complex errors)
+  BLOCK   → no bridge offered (compliance, dispute, legal)
+
+BLOCK codes — no bridge ever offered:
+  Compliance hold: DNOR, CNOR, RR01, RR02, RR03, RR04, AG01
+  Legal/court:     LEGL
+  Dispute/fraud:   DISP, FRAU, FRAD, DUPL
+
+EPG references: EPG-01 (RR01-RR03), EPG-02 (DNOR), EPG-03 (CNOR),
+                EPG-07 (RR04), EPG-08 (AG01, LEGL)
 """
 from enum import Enum
 
@@ -47,12 +55,12 @@ REJECTION_CODE_TAXONOMY: dict[str, RejectionClass] = {
     "MD02": RejectionClass.CLASS_A,  # MissingMandatoryInfo
     "MD06": RejectionClass.CLASS_A,  # RefundRequestedByEndCustomer
     "RC01": RejectionClass.CLASS_A,  # BankIdentifierIncorrect
-    "RR01": RejectionClass.CLASS_A,  # MissingDebtorAccountOrIdentification
-    "RR02": RejectionClass.CLASS_A,  # MissingDebtorNameOrAddress
-    "RR03": RejectionClass.CLASS_A,  # MissingCreditorNameOrAddress
-    "RR04": RejectionClass.CLASS_A,  # RegulatoryReason
+    "RR01": RejectionClass.BLOCK,    # MissingDebtorAccountOrIdentification — KYC failure, debtor unidentified (EPG-01)
+    "RR02": RejectionClass.BLOCK,    # MissingDebtorNameOrAddress — KYC failure, debtor name/address missing (EPG-01)
+    "RR03": RejectionClass.BLOCK,    # MissingCreditorNameOrAddress — KYC failure, creditor unidentified (EPG-01)
+    "RR04": RejectionClass.BLOCK,    # RegulatoryReason — regulatory prohibition, defense-in-depth (EPG-07)
     # ── CLASS B — Systemic / Processing (7-day maturity) ────────────────────
-    "AG01": RejectionClass.CLASS_B,  # TransactionForbidden
+    "AG01": RejectionClass.BLOCK,    # TransactionForbidden — bank-level prohibition on this transaction (EPG-08)
     "AG02": RejectionClass.CLASS_B,  # InvalidBankOperationCode
     "CURR": RejectionClass.CLASS_B,  # UnrecognisedCurrency
     "CUST": RejectionClass.CLASS_B,  # RequestedByCustomer
@@ -79,7 +87,8 @@ REJECTION_CODE_TAXONOMY: dict[str, RejectionClass] = {
     "PCOR": RejectionClass.CLASS_C,  # PartiallyCorrupt
     "QMIS": RejectionClass.CLASS_C,  # QualityMismatch
     "UMKA": RejectionClass.CLASS_C,  # UnmatchedAmount
-    # ── BLOCK — Dispute / Legal (no bridge offered) ──────────────────────────
+    # ── BLOCK — Compliance / Dispute / Legal (no bridge offered) ────────────
+    "CNOR": RejectionClass.BLOCK,    # CreditorNotAllowedToReceive — bank prohibited receiving entity (EPG-03)
     "DISP": RejectionClass.BLOCK,    # DisputedTransaction
     "FRAU": RejectionClass.BLOCK,    # Fraud
     "FRAD": RejectionClass.BLOCK,    # FraudulentOrigin

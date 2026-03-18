@@ -36,7 +36,8 @@ class TestRejectionTaxonomy:
         assert classify_rejection_code("AC01") == RejectionClass.CLASS_A
 
     def test_class_b_code(self):
-        assert classify_rejection_code("AG01") == RejectionClass.CLASS_B
+        # AG01 moved to BLOCK (EPG-08); use AG02 as canonical CLASS_B example
+        assert classify_rejection_code("AG02") == RejectionClass.CLASS_B
 
     def test_class_c_code(self):
         # LEGL moved to BLOCK (EPG-08); use AGNT as canonical CLASS_C example
@@ -49,6 +50,30 @@ class TestRejectionTaxonomy:
     def test_dnor_is_block(self):
         # DebtorNotAllowedToSend — bank compliance prohibition, never bridge (EPG-02)
         assert classify_rejection_code("DNOR") == RejectionClass.BLOCK
+
+    def test_cnor_is_block(self):
+        # CreditorNotAllowedToReceive — bank prohibited receiving entity (EPG-03)
+        assert classify_rejection_code("CNOR") == RejectionClass.BLOCK
+
+    def test_rr01_is_block(self):
+        # MissingDebtorAccountOrIdentification — KYC failure (EPG-01)
+        assert classify_rejection_code("RR01") == RejectionClass.BLOCK
+
+    def test_rr02_is_block(self):
+        # MissingDebtorNameOrAddress — KYC failure (EPG-01)
+        assert classify_rejection_code("RR02") == RejectionClass.BLOCK
+
+    def test_rr03_is_block(self):
+        # MissingCreditorNameOrAddress — KYC failure (EPG-01)
+        assert classify_rejection_code("RR03") == RejectionClass.BLOCK
+
+    def test_rr04_is_block(self):
+        # RegulatoryReason — regulatory prohibition (EPG-07)
+        assert classify_rejection_code("RR04") == RejectionClass.BLOCK
+
+    def test_ag01_is_block(self):
+        # TransactionForbidden — bank-level prohibition (EPG-08)
+        assert classify_rejection_code("AG01") == RejectionClass.BLOCK
 
     def test_block_code_disp(self):
         assert classify_rejection_code("DISP") == RejectionClass.BLOCK
@@ -83,6 +108,9 @@ class TestRejectionTaxonomy:
         codes = get_all_codes_for_class(RejectionClass.CLASS_A)
         assert len(codes) >= 5
         assert "AC01" in codes
+        # RR01-RR04 moved to BLOCK (EPG-01/07) — must not appear in CLASS_A
+        for rr in ("RR01", "RR02", "RR03", "RR04"):
+            assert rr not in codes, f"{rr} must be BLOCK, not CLASS_A"
 
     def test_total_codes_at_least_47(self):
         assert len(REJECTION_CODE_TAXONOMY) >= 47
