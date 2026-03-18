@@ -140,34 +140,34 @@
     "notes": "Fixed: AG01 moved from CLASS_B to BLOCK; LEGL moved from CLASS_C to BLOCK. Test assertions updated."
   },
   "EPG-16": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 2,
     "severity": "MEDIUM",
     "title": "Default AML dollar cap $1M inoperable for correspondent banking",
     "owner": ["CIPHER", "NOVA"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "constants.py — change default to require explicit config or raise at startup"
+    "commit": "739249e",
+    "signoffs": ["CIPHER", "NOVA"],
+    "notes": "Fixed: _AML_CAP_UNSET=-1 sentinel in license_token.py; boot_validator.validate() engages kill switch on sentinel — no silent $1M default. Tokens without explicit cap fail at boot with reason=aml_cap_not_configured."
   },
   "EPG-17": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 2,
     "severity": "MEDIUM",
     "title": "C8 token must require explicit AML cap — no deployment-time enforcement",
     "owner": ["CIPHER", "FORGE"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "C8 license token validation — require aml_dollar_cap_usd to be explicitly set"
+    "commit": "739249e",
+    "signoffs": ["CIPHER", "FORGE"],
+    "notes": "Fixed alongside EPG-16 — LicenseToken.from_dict() preserves sentinel when field absent; boot_validator checks == _AML_CAP_UNSET before issuing LicenseeContext."
   },
   "EPG-28": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 2,
     "severity": "MEDIUM-HIGH",
     "title": "Velocity cap tracks BIC not economic entity — wrong granularity",
     "owner": ["CIPHER", "NOVA", "QUANT"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "velocity.py + C5 normalization — use (sending_bic, originator_account_hash) composite key"
+    "commit": "739249e",
+    "signoffs": ["CIPHER", "NOVA", "QUANT"],
+    "notes": "Fixed: NormalizedEvent.debtor_account extracted from OrgnlTxRef.DbtrAcct.Id.IBAN or .Othr.Id. pipeline.py entity_id = f'{sending_bic}:{debtor_account}' when present; falls back to BIC-only for non-SWIFT rails."
   },
   "EPG-14": {
     "status": "OPEN",
@@ -180,14 +180,14 @@
     "notes": "Legal/contractual + C2 feature engineering"
   },
   "EPG-18": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 2,
     "severity": "MEDIUM",
     "title": "Anomaly detection advisory-only — should trigger human review",
     "owner": ["CIPHER", "REX"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "aml_checker.py + c7 _requires_human_review — propagate anomaly_flagged to human review path"
+    "commit": "739249e",
+    "signoffs": ["CIPHER", "REX"],
+    "notes": "Fixed: anomaly_flagged bool propagated from C6 AMLCheckResult through payment_context into C7 _requires_human_review(). bool(getattr(c6_result, 'anomaly_flagged', False)) guards against MagicMock attribute bleed. 4 regression tests added in test_gap_stress_detector.py."
   },
   "EPG-06": {
     "status": "OPEN",
