@@ -252,7 +252,7 @@ class StressRegimeDetector:
                     key=event.corridor.encode(),
                     value=event.to_json().encode(),
                 )
-                self._producer.poll(0)  # trigger delivery callbacks (non-blocking)
+                self._producer.poll(0)  # type: ignore[attr-defined]  # trigger delivery callbacks (non-blocking)
                 logger.info(
                     "StressRegimeEvent emitted → Kafka: corridor=%s ratio=%.2f",
                     event.corridor,

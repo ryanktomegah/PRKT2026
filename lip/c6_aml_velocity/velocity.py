@@ -337,7 +337,7 @@ class VelocityChecker:
         # Fetch all active records once — single Redis pipeline when Redis is wired
         records = self._window.get_records(entity_hash)
 
-        vol = sum(r[1] for r in records) if records else Decimal("0")
+        vol: Decimal = sum((r[1] for r in records), Decimal("0"))
         cnt = len(records)
 
         # Current beneficiary concentration (for VelocityResult reporting only)
