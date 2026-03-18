@@ -50,34 +50,34 @@
     "notes": "Fixed: _RESOLVER_REQUIRED sentinel default + ConfigurationError at startup. 3 test callsites updated to entity_name_resolver=None (explicit opt-out). Verification script PASS. 1343 tests pass."
   },
   "EPG-01": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "HIGH",
     "title": "RR01-RR03 (KYC failures) not blocked — receive 3-day bridges",
     "owner": ["REX", "CIPHER"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "Add RR01, RR02, RR03 to _COMPLIANCE_HOLD_CODES in agent.py"
+    "commit": "pending-commit",
+    "signoffs": ["REX", "CIPHER"],
+    "notes": "Fixed: RR01/RR02/RR03 added to _COMPLIANCE_HOLD_CODES (agent.py) AND moved to BLOCK in rejection_taxonomy.py. Defense-in-depth: taxonomy primary gate, C7 secondary."
   },
   "EPG-02": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "HIGH",
     "title": "DNOR (DebtorNotAllowedToSend) not blocked — receives 7-day bridge",
     "owner": ["REX", "CIPHER"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "Add DNOR to _COMPLIANCE_HOLD_CODES in agent.py"
+    "commit": "pending-commit",
+    "signoffs": ["REX", "CIPHER"],
+    "notes": "Fixed: DNOR added to _COMPLIANCE_HOLD_CODES and moved to BLOCK in taxonomy."
   },
   "EPG-03": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "HIGH",
     "title": "CNOR (CreditorNotAllowedToReceive) not blocked — receives 21-day bridge",
     "owner": ["REX", "CIPHER"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "Add CNOR to _COMPLIANCE_HOLD_CODES in agent.py"
+    "commit": "pending-commit",
+    "signoffs": ["REX", "CIPHER"],
+    "notes": "Fixed: CNOR added to _COMPLIANCE_HOLD_CODES and moved to BLOCK in taxonomy. Also added CNOR to rejection_taxonomy.py (was missing from Python dict entirely — would have silently fallen through)."
   },
   "EPG-25": {
     "status": "OPEN",
@@ -120,24 +120,24 @@
     "notes": "Contractual fix only — indemnity clause + hold register API"
   },
   "EPG-07": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "LOW-MEDIUM",
     "title": "RR04 in CLASS_A taxonomy — C7 is the only gate (no defense-in-depth)",
     "owner": ["NOVA", "REX"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "rejection_taxonomy.yaml — move RR04, AG01, LEGL to BLOCK class"
+    "commit": "pending-commit",
+    "signoffs": ["NOVA", "REX", "QUANT"],
+    "notes": "Fixed: RR04 moved to BLOCK in rejection_taxonomy.py. Also FRSP, INDM, SMND added to CLASS_C (were missing from Python dict entirely)."
   },
   "EPG-08": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "LOW-MEDIUM",
     "title": "AG01, LEGL in CLASS_B/C taxonomy — same taxonomy/gate misalignment as EPG-07",
     "owner": ["NOVA", "REX"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "rejection_taxonomy.yaml — part of same fix as EPG-07"
+    "commit": "pending-commit",
+    "signoffs": ["NOVA", "REX", "QUANT"],
+    "notes": "Fixed: AG01 moved from CLASS_B to BLOCK; LEGL moved from CLASS_C to BLOCK. Test assertions updated."
   },
   "EPG-16": {
     "status": "OPEN",

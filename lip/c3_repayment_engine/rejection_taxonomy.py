@@ -55,16 +55,13 @@ REJECTION_CODE_TAXONOMY: dict[str, RejectionClass] = {
     "MD02": RejectionClass.CLASS_A,  # MissingMandatoryInfo
     "MD06": RejectionClass.CLASS_A,  # RefundRequestedByEndCustomer
     "RC01": RejectionClass.CLASS_A,  # BankIdentifierIncorrect
-    "RR01": RejectionClass.BLOCK,    # MissingDebtorAccountOrIdentification — KYC failure, debtor unidentified (EPG-01)
-    "RR02": RejectionClass.BLOCK,    # MissingDebtorNameOrAddress — KYC failure, debtor name/address missing (EPG-01)
-    "RR03": RejectionClass.BLOCK,    # MissingCreditorNameOrAddress — KYC failure, creditor unidentified (EPG-01)
-    "RR04": RejectionClass.BLOCK,    # RegulatoryReason — regulatory prohibition, defense-in-depth (EPG-07)
+    # RR01-RR04 moved to BLOCK — EPG-01/07 (KYC failures + regulatory hold)
     # ── CLASS B — Systemic / Processing (7-day maturity) ────────────────────
-    "AG01": RejectionClass.BLOCK,    # TransactionForbidden — bank-level prohibition on this transaction (EPG-08)
     "AG02": RejectionClass.CLASS_B,  # InvalidBankOperationCode
+    # AG01 moved to BLOCK — EPG-08 (TransactionForbidden — bank explicitly forbids)
     "CURR": RejectionClass.CLASS_B,  # UnrecognisedCurrency
     "CUST": RejectionClass.CLASS_B,  # RequestedByCustomer
-    "DNOR": RejectionClass.BLOCK,    # DebtorNotAllowedToSend — bank's compliance system prohibited this sender (EPG-02)
+    # DNOR moved to BLOCK — EPG-02 (DebtorNotAllowedToSend — prohibited party)
     "FOCR": RejectionClass.CLASS_B,  # FollowingCancellationRequest
     "MS02": RejectionClass.CLASS_B,  # NotSpecifiedReasonCustomerGenerated
     "MS03": RejectionClass.CLASS_B,  # NotSpecifiedReasonAgentGenerated
@@ -79,20 +76,35 @@ REJECTION_CODE_TAXONOMY: dict[str, RejectionClass] = {
     "UPAY": RejectionClass.CLASS_B,  # UnduePayment
     # ── CLASS C — Investigation / Complex (21-day maturity) ─────────────────
     "AGNT": RejectionClass.CLASS_C,  # IncorrectAgent
+    # CNOR moved to BLOCK — EPG-03 (CreditorNotAllowedToReceive — prohibited party)
     "CVCY": RejectionClass.CLASS_C,  # CurrencyConversionFailed
+    "FRSP": RejectionClass.CLASS_C,  # FollowUpResponseToBankReceived
+    "INDM": RejectionClass.CLASS_C,  # IndemnificationRequest
     "INVB": RejectionClass.CLASS_C,  # InvalidBIC
     "INVR": RejectionClass.CLASS_C,  # InvalidReference
-    "LEGL": RejectionClass.BLOCK,    # LegalDecision — court/regulatory authority prevented payment (EPG-08)
+    # LEGL moved to BLOCK — EPG-08 (LegalDecision — court order / sanctions hold)
     "OPAY": RejectionClass.CLASS_C,  # OtherPayment
     "PCOR": RejectionClass.CLASS_C,  # PartiallyCorrupt
     "QMIS": RejectionClass.CLASS_C,  # QualityMismatch
+    "SMND": RejectionClass.CLASS_C,  # SpecificMandateInformation
     "UMKA": RejectionClass.CLASS_C,  # UnmatchedAmount
     # ── BLOCK — Compliance / Dispute / Legal (no bridge offered) ────────────
-    "CNOR": RejectionClass.BLOCK,    # CreditorNotAllowedToReceive — bank prohibited receiving entity (EPG-03)
+    # Original dispute/fraud codes — blocked before C1 runs (pipeline.py early exit)
     "DISP": RejectionClass.BLOCK,    # DisputedTransaction
-    "FRAU": RejectionClass.BLOCK,    # Fraud
-    "FRAD": RejectionClass.BLOCK,    # FraudulentOrigin
     "DUPL": RejectionClass.BLOCK,    # DuplicateDetected
+    "FRAD": RejectionClass.BLOCK,    # FraudulentOrigin
+    "FRAU": RejectionClass.BLOCK,    # Fraud
+    # KYC identity failures — EPG-01 (2026-03-18)
+    "RR01": RejectionClass.BLOCK,    # MissingDebtorAccountOrIdentification — KYC failure, debtor unidentified
+    "RR02": RejectionClass.BLOCK,    # MissingDebtorNameOrAddress — KYC failure, debtor name/address missing
+    "RR03": RejectionClass.BLOCK,    # MissingCreditorNameOrAddress — KYC failure, creditor unidentified
+    # Regulatory / legal holds — EPG-07/08 (2026-03-18)
+    "RR04": RejectionClass.BLOCK,    # RegulatoryReason — regulatory prohibition, defense-in-depth
+    "AG01": RejectionClass.BLOCK,    # TransactionForbidden — bank-level prohibition on this transaction
+    "LEGL": RejectionClass.BLOCK,    # LegalDecision — court/regulatory authority prevented payment
+    # Prohibited-party codes — EPG-02/03 (2026-03-18)
+    "DNOR": RejectionClass.BLOCK,    # DebtorNotAllowedToSend — bank's compliance system prohibited this sender
+    "CNOR": RejectionClass.BLOCK,    # CreditorNotAllowedToReceive — bank prohibited receiving entity
 }
 
 _MATURITY_MAP: dict[RejectionClass, int] = {

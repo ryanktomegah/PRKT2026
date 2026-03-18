@@ -37,19 +37,16 @@ class_a:
     MD02: "MissingMandatoryInfo"
     MD06: "RefundRequestedByEndCustomer"
     RC01: "BankIdentifierIncorrect"
-    RR01: "MissingDebtorAccountOrIdentification"
-    RR02: "MissingDebtorNameOrAddress"
-    RR03: "MissingCreditorNameOrAddress"
-    RR04: "RegulatoryReason"
+    # RR01-RR04 moved to BLOCK — EPG-01/02/03/07 (KYC failures + regulatory hold)
 
 class_b:
   description: "Systemic / processing failures — 7 day maturity window"
   codes:
-    AG01: "TransactionForbidden"
     AG02: "InvalidBankOperationCode"
     CURR: "UnrecognisedCurrency"
     CUST: "RequestedByCustomer"
-    DNOR: "DebtorNotAllowedToSend"
+    # AG01 moved to BLOCK — EPG-08 (TransactionForbidden)
+    # DNOR moved to BLOCK — EPG-02 (DebtorNotAllowedToSend)
     FOCR: "FollowingCancellationRequest"
     MS02: "NotSpecifiedReasonCustomerGenerated"
     MS03: "NotSpecifiedReasonAgentGenerated"
@@ -67,13 +64,13 @@ class_c:
   description: "Investigation / complex cases — 21 day maturity window"
   codes:
     AGNT: "IncorrectAgent"
-    CNOR: "CreditorNotAllowedToReceive"
+    # CNOR moved to BLOCK — EPG-03 (CreditorNotAllowedToReceive)
     CVCY: "CurrencyConversionFailed"
     FRSP: "FollowUpResponseToBankReceived"
     INDM: "IndemnificationRequest"
     INVB: "InvalidBIC"
     INVR: "InvalidReference"
-    LEGL: "LegalDecision"
+    # LEGL moved to BLOCK — EPG-08 (LegalDecision)
     OPAY: "OtherPayment"
     PCOR: "PartiallyCorrupt"
     QMIS: "QualityMismatch"
@@ -81,9 +78,21 @@ class_c:
     UMKA: "UnmatchedAmount"
 
 block:
-  description: "Dispute / legal block — no bridge offered (T=0)"
+  description: "Unconditional block — no bridge offered (T=0). Covers disputes, fraud,
+    KYC identity failures, prohibited-party codes, and regulatory/legal holds.
+    Pipeline terminates before C1 for FRAU/FRAD/DISP/DUPL; C7 gate (_COMPLIANCE_HOLD_CODES)
+    provides second-layer enforcement for all codes in this class.
+    EPG-01/02/03/07/08: RR01-RR04, AG01, LEGL, DNOR, CNOR moved here 2026-03-18."
   codes:
     DISP: "DisputedTransaction"
     DUPL: "DuplicateDetected"
     FRAD: "FraudulentOrigin"
     FRAU: "Fraud"
+    RR01: "MissingDebtorAccountOrIdentification"
+    RR02: "MissingDebtorNameOrAddress"
+    RR03: "MissingCreditorNameOrAddress"
+    RR04: "RegulatoryReason"
+    AG01: "TransactionForbidden"
+    DNOR: "DebtorNotAllowedToSend"
+    CNOR: "CreditorNotAllowedToReceive"
+    LEGL: "LegalDecision"
