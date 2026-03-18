@@ -20,14 +20,14 @@
     "notes": "Fixed alongside EPG-09. outcome=COMPLIANCE_HOLD added. pipeline_result.py docstring updated. Verification script PASS."
   },
   "EPG-11": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 0,
     "severity": "HIGH",
     "title": "Compliance hold blocks don't trigger compliance team notification",
     "owner": ["REX", "FORGE"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "notification_service.py should be called for COMPLIANCE_HOLD outcomes"
+    "commit": "66e4bfd",
+    "signoffs": ["REX", "FORGE"],
+    "notes": "Fixed: NotificationEventType.COMPLIANCE_HOLD added. LIPPipeline.notification_service optional param; fires notify(COMPLIANCE_HOLD) in COMPLIANCE_HOLD_BLOCKS_BRIDGE block with BIC/code/class/decision_entry_id payload. Backward compatible — None service skips silently."
   },
   "EPG-27": {
     "status": "DONE",
