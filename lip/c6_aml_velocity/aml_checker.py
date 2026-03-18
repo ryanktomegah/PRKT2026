@@ -241,8 +241,8 @@ class AMLChecker:
                 velocity_result=None,
             )
 
-        # ── Step 2: Velocity controls ─────────────────────────────────────────
-        vel_result: VelocityResult = self._velocity.check(
+        # ── Step 2: Velocity controls (atomic check-and-record — EPG-25) ────────
+        vel_result: VelocityResult = self._velocity.check_and_record(
             entity_id, amount, beneficiary_id,
             dollar_cap_override=dollar_cap_override,
             count_cap_override=count_cap_override,
@@ -290,11 +290,7 @@ class AMLChecker:
             except Exception as exc:
                 logger.debug("Anomaly detection skipped: %s", exc)
 
-        # Record the transaction in the velocity window (only after passing all gates)
-        try:
-            self._velocity.record(entity_id, amount, beneficiary_id)
-        except Exception as exc:
-            logger.error("Failed to record velocity event: %s", exc)
+        # Transaction already recorded atomically in Step 2 (EPG-25 — no separate record() call)
 
         return AMLResult(
             passed=True,

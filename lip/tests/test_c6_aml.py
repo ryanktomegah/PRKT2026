@@ -331,3 +331,38 @@ class TestCrossLicenseeSaltRotationDualHash:
 
         # Only one key should exist
         assert len(agg._store) == 2  # volume + count (current salt only)
+
+
+class TestVelocityCheckAndRecordTOCTOU:
+    """EPG-25 regression: concurrent check_and_record must not allow cap overruns."""
+
+    def test_in_memory_concurrent_no_cap_overrun(self):
+        """N threads all firing check_and_record simultaneously must not collectively
+        exceed the dollar cap.  Without the lock (old check()+record() split) all N
+        workers would see the same pre-write snapshot and all would pass."""
+        import threading
+
+        count_cap = 3
+        dollar_per_txn = Decimal("300000")
+        checker = VelocityChecker(salt=_SALT)
+
+        passes = []
+        barrier = threading.Barrier(10)
+
+        def worker():
+            barrier.wait()  # all threads release simultaneously
+            result = checker.check_and_record(
+                "entity_conc", dollar_per_txn, "bene_conc",
+                count_cap_override=count_cap,
+            )
+            if result.passed:
+                passes.append(1)
+
+        threads = [threading.Thread(target=worker) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # Exactly count_cap transactions should pass — no more leaked through
+        assert len(passes) == count_cap

@@ -80,14 +80,14 @@
     "notes": "Fixed: CNOR added to _COMPLIANCE_HOLD_CODES and moved to BLOCK in taxonomy. Also added CNOR to rejection_taxonomy.py (was missing from Python dict entirely — would have silently fallen through)."
   },
   "EPG-25": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 1,
     "severity": "HIGH",
     "title": "AML velocity check TOCTOU — check() and record() are non-atomic",
     "owner": ["CIPHER"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "velocity.py — replace check+record with atomic Redis Lua check-and-reserve"
+    "commit": "pending-commit",
+    "signoffs": ["CIPHER"],
+    "notes": "Fixed: velocity.py — _ATOMIC_CHECK_RECORD_LUA Lua script + RollingWindow.atomic_check_and_add() + VelocityChecker.check_and_record() (Redis: atomic Lua, in-memory: threading.Lock). aml_checker.py updated to call check_and_record() — deferred record() removed. Concurrency test (10 threads, cap=3) PASS. 32/32 AML tests pass."
   },
   "EPG-26": {
     "status": "OPEN",
