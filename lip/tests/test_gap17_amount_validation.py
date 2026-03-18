@@ -70,7 +70,7 @@ class TestGap17AmountValidation:
 
     def test_mismatch_logged_in_decision_log(self, agent):
         """LOAN_AMOUNT_MISMATCH must produce a decision log entry."""
-        ctx = _make_context("1000.00", "5000000.00")
+        ctx = _make_context("1000000.00", "5000000.00")
         result = agent.process_payment(ctx)
         assert result["status"] == "LOAN_AMOUNT_MISMATCH"
         entry_id = result["decision_entry_id"]

@@ -15,6 +15,81 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Proprietary rejection code normalisation — FedNow / RTP → ISO 20022
+# ---------------------------------------------------------------------------
+# FedNow (ISO 20022-based) and RTP (proprietary) surface rejection reasons as
+# free-form strings in their connector layer.  This table maps known proprietary
+# strings to their canonical ISO 20022 equivalents so downstream gates (C7
+# compliance hold, rejection taxonomy) operate on a uniform code space.
+#
+# Population guidance:
+#   - Add entries when a new FedNow/RTP connector string is observed in
+#     production logs.  Source: Fed's FedNow Participant Communication and
+#     TCH's RTP Implementation Guide.
+#   - DO NOT add entries based on inference — only confirmed mappings.
+#   - Unknown codes are passed through unchanged; C7 and the taxonomy treat
+#     them as unrecognised and apply the safe default (7-day maturity / no offer).
+_PROPRIETARY_TO_ISO20022: dict[str, str] = {
+    # FedNow — regulatory / compliance holds
+    "F002": "RR04",           # FedNow: regulatory requirement hold
+    "REGULATORY_HOLD": "RR04",
+    "COMPLIANCE_HOLD": "RR04",
+    "COMPLIANCE_REVIEW": "RR04",
+    "AML_HOLD": "RR04",
+    # FedNow — legal / forbidden
+    "TRANSACTION_FORBIDDEN": "AG01",
+    "LEGAL_HOLD": "LEGL",
+    "LEGAL_DECISION": "LEGL",
+    # RTP (TCH) — compliance holds
+    "RTP_COMPLIANCE": "RR04",
+    "RTP_REGULATORY": "RR04",
+    "RTP_LEGAL": "LEGL",
+    "RTP_FORBIDDEN": "AG01",
+    # Common freeform strings that map unambiguously
+    "FRAUD": "FRAU",
+    "FRAUD_SUSPECTED": "FRAU",
+}
+
+
+def _normalize_rejection_code(code: str | None, rail: str) -> str | None:
+    """Normalise a raw rejection code string to its ISO 20022 equivalent.
+
+    SWIFT and SEPA already surface ISO 20022 codes natively — passed through
+    unchanged.  FedNow and RTP may surface proprietary strings; these are
+    mapped via ``_PROPRIETARY_TO_ISO20022``.  Unrecognised codes are returned
+    as-is with a warning so the downstream taxonomy treats them safely.
+
+    Parameters
+    ----------
+    code:
+        Raw rejection code from the connector layer (may be None).
+    rail:
+        Payment rail — one of SWIFT / FEDNOW / RTP / SEPA.
+
+    Returns
+    -------
+    str or None
+        ISO 20022 code if a mapping exists, original string otherwise, or
+        None when ``code`` is absent.
+    """
+    if not code:
+        return None
+    if rail.upper() in ("SWIFT", "SEPA"):
+        return code  # already ISO 20022
+    upper = code.strip().upper()
+    mapped = _PROPRIETARY_TO_ISO20022.get(upper)
+    if mapped:
+        return mapped
+    # Unknown proprietary code — log and pass through so the taxonomy falls
+    # back to its safe default rather than silently suppressing the signal.
+    logger.warning(
+        "Unknown proprietary rejection code from rail=%s code=%r — "
+        "add mapping to _PROPRIETARY_TO_ISO20022 if ISO 20022 equivalent is known.",
+        rail, code,
+    )
+    return code
+
 
 @dataclass
 class NormalizedEvent:
@@ -158,7 +233,7 @@ class EventNormalizer:
             currency=currency,
             timestamp=_safe_datetime(msg.get('timestamp') or msg.get('createdAt')),
             rail='FEDNOW',
-            rejection_code=msg.get('rejectReason') or None,
+            rejection_code=_normalize_rejection_code(msg.get('rejectReason'), 'FEDNOW'),
             narrative=msg.get('remittanceInfo'),
             raw_source=msg,
             original_payment_amount_usd=original_payment_amount_usd,
@@ -192,7 +267,7 @@ class EventNormalizer:
             currency=currency,
             timestamp=_safe_datetime(msg.get('timestamp') or msg.get('createdAt')),
             rail='RTP',
-            rejection_code=msg.get('rejectReason') or None,
+            rejection_code=_normalize_rejection_code(msg.get('rejectReason'), 'RTP'),
             narrative=msg.get('narrative'),
             raw_source=msg,
             original_payment_amount_usd=original_payment_amount_usd,

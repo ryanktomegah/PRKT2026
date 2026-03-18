@@ -322,8 +322,8 @@ class TestScenario4KillSwitchHalt:
         active_loans = monitor.get_active_loans()
         assert any(loan.uetr == event.uetr for loan in active_loans)
 
-        # New offers are halted
-        event2 = make_event(rejection_code="CURR")
+        # New offers are halted (use distinct BIC so AML velocity doesn't block first)
+        event2 = make_event(rejection_code="CURR", sending_bic="CCCCGB2LXXX")
         result2 = pipeline.process(event2)
         assert result2.outcome == "HALT"
 
@@ -487,14 +487,19 @@ class TestScenario8FeeArithmetic:
         assert abs(fee_14 - 2 * fee_7) <= Decimal("0.02")
 
     def test_pipeline_fee_bps_used_in_loan_offer(self):
-        """Pipeline must propagate fee_bps from C2 to the loan offer."""
+        """Pipeline propagates fee_bps from C2; tiered floor applied in loan offer.
+
+        C2 emits 300 bps.  At $1M (mid tier $500K–$2M) the tiered floor raises it
+        to 400 bps in the offer.  result.fee_bps preserves the raw C2 value (300);
+        result.loan_offer["fee_bps"] reflects the effective floor (400).
+        """
         pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
-        event = make_event(rejection_code="CURR", amount=Decimal("100000"))
+        event = make_event(rejection_code="CURR", amount=Decimal("1000000"))
         result = pipeline.process(event)
         assert result.outcome == "FUNDED"
-        assert result.fee_bps == 300
+        assert result.fee_bps == 300                       # C2 output preserved
         assert result.loan_offer is not None
-        assert result.loan_offer["fee_bps"] == 300
+        assert result.loan_offer["fee_bps"] == 400         # tiered floor: mid tier
 
     def test_below_threshold_skips_fee_computation(self):
         pipeline = _make_pipeline(failure_probability=0.05)  # below 0.152

@@ -151,9 +151,9 @@ class LicenseeContext:
     max_tps: int
     aml_dollar_cap_usd: int
     aml_count_cap: int
-    min_loan_amount_usd: int
     permitted_components: List[str]
     token_expiry: str
+    min_loan_amount_usd: int = 500000
 
 
 # ── Token signing and verification ───────────────────────────────────────────

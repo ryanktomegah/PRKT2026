@@ -238,7 +238,7 @@ def make_event(
     uetr: Optional[str] = None,
     rejection_code: str = "CURR",      # CLASS_B → 7-day maturity
     narrative: Optional[str] = None,
-    amount: Decimal = Decimal("100000"),
+    amount: Decimal = Decimal("1000000"),
     currency: str = "USD",
     sending_bic: str = "AAAAGB2LXXX",
     receiving_bic: str = "BBBBDE2LXXX",

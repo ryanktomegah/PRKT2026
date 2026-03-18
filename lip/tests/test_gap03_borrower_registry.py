@@ -46,7 +46,8 @@ def test_execution_agent_borrower_guard():
         "failure_probability": 0.5,
         "pd_score": 0.1,
         "fee_bps": 300,
-        "loan_amount": 1000,
+        "loan_amount": "1000000",
+        "maturity_days": 7,
         "dispute_class": "NOT_DISPUTE",
         "aml_passed": True
     })

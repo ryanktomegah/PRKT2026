@@ -438,3 +438,84 @@ class TestLoanAmountAndFeeGates:
         result = agent.process_payment(self._ctx("900000", maturity_days=3,
                                                   rejection_class="CLASS_A"))
         assert result["status"] == "BELOW_MIN_LOAN_AMOUNT"
+
+
+class TestComplianceHoldGate:
+    """Gate 2b: compliance hold codes block bridge loans — FATF R.18/R.20."""
+
+    def _make_agent(self):
+        from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
+        from lip.c7_execution_agent.decision_log import DecisionLogger
+        from lip.c7_execution_agent.degraded_mode import DegradedModeManager
+        from lip.c7_execution_agent.human_override import HumanOverrideInterface
+        from lip.c7_execution_agent.kill_switch import KillSwitch
+        cfg = ExecutionConfig(require_human_review_above_pd=0.99)
+        return ExecutionAgent(
+            KillSwitch(), DecisionLogger(hmac_key=_HMAC_KEY),
+            HumanOverrideInterface(), DegradedModeManager(), cfg,
+        )
+
+    def _ctx(self, rejection_code, loan_amount="1000000"):
+        return {
+            "uetr": f"u-ch-{rejection_code}",
+            "individual_payment_id": f"p-ch-{rejection_code}",
+            "failure_probability": 0.8,
+            "pd_score": 0.05,
+            "fee_bps": 300,
+            "loan_amount": loan_amount,
+            "maturity_days": 7,
+            "rejection_code": rejection_code,
+            "rejection_class": "CLASS_B",
+            "dispute_class": "NOT_DISPUTE",
+            "aml_passed": True,
+        }
+
+    def test_rr04_blocks_bridge_loan(self):
+        """RR04 = RegulatoryReason — bank regulatory review hold must block bridge."""
+        result = self._make_agent().process_payment(self._ctx("RR04"))
+        assert result["status"] == "COMPLIANCE_HOLD_BLOCKS_BRIDGE"
+        assert result["halt_reason"] == "compliance_hold"
+        assert result["loan_offer"] is None
+
+    def test_ag01_blocks_bridge_loan(self):
+        """AG01 = TransactionForbidden — explicit bank prohibition must block bridge."""
+        result = self._make_agent().process_payment(self._ctx("AG01"))
+        assert result["status"] == "COMPLIANCE_HOLD_BLOCKS_BRIDGE"
+        assert result["halt_reason"] == "compliance_hold"
+
+    def test_legl_blocks_bridge_loan(self):
+        """LEGL = LegalDecision — court order / sanctions hold must block bridge."""
+        result = self._make_agent().process_payment(self._ctx("LEGL"))
+        assert result["status"] == "COMPLIANCE_HOLD_BLOCKS_BRIDGE"
+        assert result["halt_reason"] == "compliance_hold"
+
+    def test_lowercase_code_still_blocked(self):
+        """Rejection code comparison is case-insensitive."""
+        result = self._make_agent().process_payment(self._ctx("rr04"))
+        assert result["status"] == "COMPLIANCE_HOLD_BLOCKS_BRIDGE"
+
+    def test_no_rejection_code_not_blocked(self):
+        """No rejection code present — payment proceeds normally."""
+        ctx = self._ctx(None, loan_amount="1000000")
+        ctx["rejection_code"] = None
+        result = self._make_agent().process_payment(ctx)
+        assert result["status"] != "COMPLIANCE_HOLD_BLOCKS_BRIDGE"
+
+    def test_routing_error_ac01_not_blocked(self):
+        """AC01 = IncorrectAccountNumber — routing error, not compliance hold.
+        Class A requires $1.5M floor; at $1.5M it should pass or decline on economics,
+        not be blocked by the compliance hold gate."""
+        ctx = self._ctx("AC01", loan_amount="1500000")
+        ctx["rejection_class"] = "CLASS_A"
+        ctx["maturity_days"] = 3
+        result = self._make_agent().process_payment(ctx)
+        assert result["status"] != "COMPLIANCE_HOLD_BLOCKS_BRIDGE"
+
+    def test_compliance_hold_logged_as_block(self):
+        """Compliance hold must produce a BLOCK decision log entry."""
+        agent = self._make_agent()
+        result = agent.process_payment(self._ctx("RR04"))
+        entry_id = result["decision_entry_id"]
+        assert entry_id is not None
+        entry = agent.decision_logger.get(entry_id)
+        assert entry.decision_type == "BLOCK"

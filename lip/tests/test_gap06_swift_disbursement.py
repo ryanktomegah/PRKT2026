@@ -30,7 +30,7 @@ def agent():
     )
 
 
-def _offer_context(loan_amount: str = "10000.00", original_amount: str = "10000.00") -> dict:
+def _offer_context(loan_amount: str = "1000000.00", original_amount: str = "1000000.00") -> dict:
     """Minimal payment_context that passes all guards and reaches _build_loan_offer."""
     return {
         "uetr": _TEST_UETR,

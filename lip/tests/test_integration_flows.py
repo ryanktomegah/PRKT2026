@@ -97,7 +97,7 @@ class TestFlow1NormalPaymentFailureToBridgeLoan:
             "failure_probability": 0.75,
             "pd_score": 0.05,
             "fee_bps": 300,
-            "loan_amount": "100000",
+            "loan_amount": "1000000",
             "dispute_class": "NOT_DISPUTE",
             "aml_passed": True,
             "maturity_days": 7,
