@@ -5,7 +5,7 @@
     "severity": "CRITICAL",
     "title": "COMPLIANCE_HOLD_BLOCKS_BRIDGE falls through to FUNDED in pipeline.py",
     "owner": ["NOVA"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["NOVA"],
     "notes": "Fixed: separate equality check for COMPLIANCE_HOLD_BLOCKS_BRIDGE → outcome=COMPLIANCE_HOLD. BELOW_MIN_LOAN_AMOUNT, BELOW_MIN_CASH_FEE, LOAN_AMOUNT_MISMATCH added to decline tuple. 90/90 tests pass."
   },
@@ -15,7 +15,7 @@
     "severity": "CRITICAL",
     "title": "No distinct PipelineResult outcome for compliance hold blocks",
     "owner": ["NOVA"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["NOVA"],
     "notes": "Fixed alongside EPG-09. outcome=COMPLIANCE_HOLD added. pipeline_result.py docstring updated. Verification script PASS."
   },
@@ -35,7 +35,7 @@
     "severity": "HIGH",
     "title": "AML fail-open default — c6_result is None returns True in pipeline.py:291",
     "owner": ["CIPHER", "FORGE"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["CIPHER"],
     "notes": "Fixed: c6_result is None now returns PipelineResult(outcome=AML_CHECK_UNAVAILABLE) — fail-closed. _run_c6 docstring updated. Verification script PASS."
   },
@@ -45,7 +45,7 @@
     "severity": "CRITICAL",
     "title": "Sanctions screening disabled by default — entity_name_resolver=None",
     "owner": ["CIPHER", "FORGE"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["CIPHER"],
     "notes": "Fixed: _RESOLVER_REQUIRED sentinel default + ConfigurationError at startup. 3 test callsites updated to entity_name_resolver=None (explicit opt-out). Verification script PASS. 1343 tests pass."
   },
@@ -55,7 +55,7 @@
     "severity": "HIGH",
     "title": "RR01-RR03 (KYC failures) not blocked — receive 3-day bridges",
     "owner": ["REX", "CIPHER"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["REX", "CIPHER"],
     "notes": "Fixed: RR01/RR02/RR03 added to _COMPLIANCE_HOLD_CODES (agent.py) AND moved to BLOCK in rejection_taxonomy.py. Defense-in-depth: taxonomy primary gate, C7 secondary."
   },
@@ -65,7 +65,7 @@
     "severity": "HIGH",
     "title": "DNOR (DebtorNotAllowedToSend) not blocked — receives 7-day bridge",
     "owner": ["REX", "CIPHER"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["REX", "CIPHER"],
     "notes": "Fixed: DNOR added to _COMPLIANCE_HOLD_CODES and moved to BLOCK in taxonomy."
   },
@@ -75,7 +75,7 @@
     "severity": "HIGH",
     "title": "CNOR (CreditorNotAllowedToReceive) not blocked — receives 21-day bridge",
     "owner": ["REX", "CIPHER"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["REX", "CIPHER"],
     "notes": "Fixed: CNOR added to _COMPLIANCE_HOLD_CODES and moved to BLOCK in taxonomy. Also added CNOR to rejection_taxonomy.py (was missing from Python dict entirely — would have silently fallen through)."
   },
@@ -85,7 +85,7 @@
     "severity": "HIGH",
     "title": "AML velocity check TOCTOU — check() and record() are non-atomic",
     "owner": ["CIPHER"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["CIPHER"],
     "notes": "Fixed: velocity.py — _ATOMIC_CHECK_RECORD_LUA Lua script + RollingWindow.atomic_check_and_add() + VelocityChecker.check_and_record() (Redis: atomic Lua, in-memory: threading.Lock). aml_checker.py updated to call check_and_record() — deferred record() removed. Concurrency test (10 threads, cap=3) PASS. 32/32 AML tests pass."
   },
@@ -95,7 +95,7 @@
     "severity": "HIGH",
     "title": "Human review dead end — PENDING_HUMAN_REVIEW has no pipeline re-entry path",
     "owner": ["NOVA", "FORGE", "REX"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["NOVA", "FORGE", "REX"],
     "notes": "Fixed: pipeline.py separates PENDING_HUMAN_REVIEW from DECLINE tuple — distinct outcome with override_request_id on PipelineResult. human_override.py adds store_context()/pop_context() for re-entry. agent.py: human_override_decision=APPROVE bypasses review gate on re-entry. Full flow tested: park → approve → re-enter. Pre-existing mock bug (C2 pd_score=1.0) exposed and fixed in test_gap03. 1353 tests pass."
   },
@@ -125,7 +125,7 @@
     "severity": "LOW-MEDIUM",
     "title": "RR04 in CLASS_A taxonomy — C7 is the only gate (no defense-in-depth)",
     "owner": ["NOVA", "REX"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["NOVA", "REX", "QUANT"],
     "notes": "Fixed: RR04 moved to BLOCK in rejection_taxonomy.py. Also FRSP, INDM, SMND added to CLASS_C (were missing from Python dict entirely)."
   },
@@ -135,7 +135,7 @@
     "severity": "LOW-MEDIUM",
     "title": "AG01, LEGL in CLASS_B/C taxonomy — same taxonomy/gate misalignment as EPG-07",
     "owner": ["NOVA", "REX"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["NOVA", "REX", "QUANT"],
     "notes": "Fixed: AG01 moved from CLASS_B to BLOCK; LEGL moved from CLASS_C to BLOCK. Test assertions updated."
   },
@@ -175,7 +175,7 @@
     "severity": "HIGH",
     "title": "sending_bic is the bank not the end customer — MRFA and PD are misaligned",
     "owner": ["REX", "ARIA"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["QUANT", "REX", "ARIA"],
     "notes": "Team ruling: BIC-level PD is correct by design — the bank is the MRFA counterparty. AML velocity granularity concern resolved by EPG-28 (composite debtor_account key). Documented in constants.py. No code change to C2 PD model warranted without new contractual data."
   },
@@ -195,7 +195,7 @@
     "severity": "MEDIUM",
     "title": "PD model prices credit risk but not regulatory outcome risk",
     "owner": ["QUANT", "ARIA"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["QUANT", "ARIA", "REX"],
     "notes": "Documented in constants.py: C2 prices credit risk only; regulatory outcome risk (enforcement action / sanctions on borrower bank) is out-of-scope pending BPI license amendment. BIC-level PD correct by design (see EPG-14)."
   },
@@ -205,7 +205,7 @@
     "severity": "MEDIUM",
     "title": "C1 trained on all failures including non-bridgeable ones",
     "owner": ["ARIA", "DGEN"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["ARIA", "DGEN"],
     "notes": "Fixed: c1_generator.py now emits is_bridgeable=True for Class A/B/C and is_bridgeable=False for BLOCK. Field is the subsetting key for bridgeable-only C1 retraining. Docstring updated."
   },
@@ -215,7 +215,7 @@
     "severity": "MEDIUM",
     "title": "tau*=0.152 optimized on mixed population (bridgeable + non-bridgeable)",
     "owner": ["ARIA", "QUANT"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["ARIA", "QUANT"],
     "notes": "Documented in pipeline.py FAILURE_PROBABILITY_THRESHOLD docstring: tau* was calibrated on mixed corpus; re-optimization on bridgeable-only subset is pending C1 retraining using EPG-12 is_bridgeable label. Conservative bias documented — defence-in-depth is correct sequence."
   },
@@ -235,7 +235,7 @@
     "severity": "MEDIUM",
     "title": "C1 training objective should be bridgeability not failure detection",
     "owner": ["ARIA", "DGEN"],
-    "commit": "pending-commit",
+    "commit": "754c9c7",
     "signoffs": ["ARIA", "DGEN"],
     "notes": "Resolved with EPG-12 — same corpus label fix. is_bridgeable=False for BLOCK events enables training on bridgeable-only subset."
   },
