@@ -127,6 +127,7 @@ class TrainingPipelineTorch:
 
     def __init__(self, config: Optional[TrainingConfig] = None) -> None:
         self.config = config or TrainingConfig()
+        self.feature_scaler = None  # fitted StandardScaler, set by train_torch
 
     # ------------------------------------------------------------------
     # Stage 5 — GraphSAGE pre-training (PyTorch)
@@ -436,6 +437,11 @@ class TrainingPipelineTorch:
         X, y, bics = numpy_pipeline.stage3_feature_extraction(validated, graph)
         X_train, X_val, y_train, y_val, bic_train, bic_val = numpy_pipeline.stage4_train_val_split(X, y, bics)
         logger.info("Stages 1–4 complete in %.3f s", time.perf_counter() - t0)
+
+        t0 = time.perf_counter()
+        X_train, X_val = numpy_pipeline.stage3b_standard_scale(X_train, X_val)
+        self.feature_scaler = numpy_pipeline._feature_scaler
+        logger.info("Stage 3b (StandardScaler) complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()
         lgbm_model = numpy_pipeline.stage5b_lightgbm_pretrain(X_train[:, 8:], y_train)

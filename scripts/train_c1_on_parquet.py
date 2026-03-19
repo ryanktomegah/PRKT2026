@@ -184,17 +184,136 @@ def load_parquet_as_records(
         sorted(df["rejection_code"].dropna().unique().tolist())[:5],  # sample for log
     )
 
-    # BIC-level failure rates are computed from the mixed corpus (successes + RJCT).
-    # df["label"] = 1 for RJCT events, 0 for successes — so groupby mean gives
-    # the actual per-BIC failure rate (fraction of failed payment attempts).
-    # This is the correct, calibrated signal: better than the previous proxy
-    # (Class A fraction from is_permanent_failure).
-    logger.info("Computing BIC failure rates from filtered %d-row corpus…", len(df))
-    bic_send_rates: dict = df.groupby("bic_sender")["label"].mean().to_dict()
-    bic_recv_rates: dict = df.groupby("bic_receiver")["label"].mean().to_dict()
+    # -----------------------------------------------------------------------
+    # Comprehensive stats from full corpus (post-BLOCK filter, pre-sample)
+    # All 88 tabular features in features.py read from these dicts; leaving
+    # any key missing produces a structural zero for the entire training run.
+    # -----------------------------------------------------------------------
+    logger.info("Computing comprehensive stats from filtered %d-row corpus…", len(df))
+
+    global_failure_rate = float(df["label"].mean())
+
+    # Parse timestamps once for windowed volume computation
+    ts_full = pd.to_datetime(df["timestamp_utc"], format="ISO8601", utc=True)
+    ts_unix_full = ts_full.astype("int64") / 1e9
+    df["_ts"] = ts_unix_full
+
+    # ---- Corridor stats ----
+    c_grp = df.groupby("corridor")
+    c_ts_max = c_grp["_ts"].max()
+    c_ts_min = c_grp["_ts"].min()
+    c_tx_count = c_grp["label"].count()
+    c_avg = c_grp["amount_usd"].mean()
+    c_std = c_grp["amount_usd"].std().fillna(0.0)
+    c_max_amt = c_grp["amount_usd"].max()
+    c_min_amt = c_grp["amount_usd"].min()
+    c_p50 = c_grp["amount_usd"].quantile(0.5)
+    c_p95 = c_grp["amount_usd"].quantile(0.95)
+    c_ucurr = c_grp["currency_pair"].nunique()
+    c_age_days = ((c_ts_max - c_ts_min) / 86400).clip(lower=1.0)
+    c_tx_per_day = c_tx_count / c_age_days
+
+    # Windowed volumes via temporary mask columns
+    df["_c_ts_max"] = df["corridor"].map(c_ts_max)
+    df["_c_in_7d"] = df["_ts"] >= (df["_c_ts_max"] - 7 * 86400)
+    df["_c_in_30d"] = df["_ts"] >= (df["_c_ts_max"] - 30 * 86400)
+    c_vol_7d = (
+        df[df["_c_in_7d"]].groupby("corridor")["amount_usd"].sum()
+        .reindex(c_tx_count.index, fill_value=0.0)
+    )
+    c_vol_30d = (
+        df[df["_c_in_30d"]].groupby("corridor")["amount_usd"].sum()
+        .reindex(c_tx_count.index, fill_value=0.0)
+    )
+    c_vel_24h = c_tx_per_day            # avg daily rate ≈ velocity_24h
+    c_vel_1h = c_vel_24h / 24.0
+
+    # ---- Sender BIC stats ----
+    s_grp = df.groupby("bic_sender")
+    s_tx_count = s_grp["label"].count()
+    s_fail_rate = s_grp["label"].mean()
+    s_avg = s_grp["amount_usd"].mean()
+    s_std = s_grp["amount_usd"].std().fillna(0.0)
+    s_age_days = ((s_grp["_ts"].max() - s_grp["_ts"].min()) / 86400).clip(lower=1.0)
+    s_uniq_recv = s_grp["bic_receiver"].nunique()
+    s_vol_24h = s_grp["amount_usd"].sum() / s_age_days
+    s_large = (
+        df[df["amount_usd"] > 100_000].groupby("bic_sender")["label"].count()
+        .reindex(s_tx_count.index, fill_value=0)
+    )
+    s_pct_large = s_large / s_tx_count
+    # Herfindahl currency concentration
+    _s_cp = df.groupby(["bic_sender", "currency_pair"]).size().reset_index(name="_n")
+    _s_tot = _s_cp.groupby("bic_sender")["_n"].transform("sum")
+    _s_cp["_sq"] = (_s_cp["_n"] / _s_tot) ** 2
+    s_curr_conc = _s_cp.groupby("bic_sender")["_sq"].sum()
+    # in_degree for senders = number of distinct BICs that send TO each BIC
+    bic_in_deg = df.groupby("bic_receiver")["bic_sender"].nunique()
+
+    # ---- Receiver BIC stats ----
+    r_grp = df.groupby("bic_receiver")
+    r_tx_count = r_grp["label"].count()
+    r_fail_rate = r_grp["label"].mean()
+    r_avg = r_grp["amount_usd"].mean()
+    r_std = r_grp["amount_usd"].std().fillna(0.0)
+    r_age_days = ((r_grp["_ts"].max() - r_grp["_ts"].min()) / 86400).clip(lower=1.0)
+    r_uniq_send = r_grp["bic_sender"].nunique()
+    r_vol_24h = r_grp["amount_usd"].sum() / r_age_days
+    r_large = (
+        df[df["amount_usd"] > 100_000].groupby("bic_receiver")["label"].count()
+        .reindex(r_tx_count.index, fill_value=0)
+    )
+    r_pct_large = r_large / r_tx_count
+    _r_cp = df.groupby(["bic_receiver", "currency_pair"]).size().reset_index(name="_n")
+    _r_tot = _r_cp.groupby("bic_receiver")["_n"].transform("sum")
+    _r_cp["_sq"] = (_r_cp["_n"] / _r_tot) ** 2
+    r_curr_conc = _r_cp.groupby("bic_receiver")["_sq"].sum()
+    # out_degree for receivers = number of distinct BICs each BIC sends to
+    bic_out_deg = s_uniq_recv
+
+    # Drop temporary columns and convert to dicts for fast lookup
+    df.drop(columns=["_ts", "_c_ts_max", "_c_in_7d", "_c_in_30d"], inplace=True)
+
+    c_tx_count_d = c_tx_count.to_dict()
+    c_avg_d = c_avg.to_dict()
+    c_std_d = c_std.to_dict()
+    c_max_d = c_max_amt.to_dict()
+    c_min_d = c_min_amt.to_dict()
+    c_p50_d = c_p50.to_dict()
+    c_p95_d = c_p95.to_dict()
+    c_ucurr_d = c_ucurr.to_dict()
+    c_age_d = c_age_days.to_dict()
+    c_txpd_d = c_tx_per_day.to_dict()
+    c_vol7_d = c_vol_7d.to_dict()
+    c_vol30_d = c_vol_30d.to_dict()
+    c_vel24_d = c_vel_24h.to_dict()
+    c_vel1_d = c_vel_1h.to_dict()
+
+    s_fail_d = s_fail_rate.to_dict()
+    s_tx_d = s_tx_count.to_dict()
+    s_avg_d = s_avg.to_dict()
+    s_std_d = s_std.to_dict()
+    s_age_d = s_age_days.to_dict()
+    s_recv_d = s_uniq_recv.to_dict()
+    s_vol24_d = s_vol_24h.to_dict()
+    s_pct_d = s_pct_large.to_dict()
+    s_conc_d = s_curr_conc.to_dict()
+    bic_in_d = bic_in_deg.to_dict()
+
+    r_fail_d = r_fail_rate.to_dict()
+    r_tx_d = r_tx_count.to_dict()
+    r_avg_d = r_avg.to_dict()
+    r_std_d = r_std.to_dict()
+    r_age_d = r_age_days.to_dict()
+    r_send_d = r_uniq_send.to_dict()
+    r_vol24_d = r_vol_24h.to_dict()
+    r_pct_d = r_pct_large.to_dict()
+    r_conc_d = r_curr_conc.to_dict()
+    bic_out_d = bic_out_deg.to_dict()
+
     logger.info(
         "Stats computed: %d corridors, %d sending BICs, %d receiving BICs",
-        len(corridor_rates), len(bic_send_rates), len(bic_recv_rates),
+        len(c_tx_count), len(s_tx_count), len(r_tx_count),
     )
 
     # ------------------------------------------------------------------
@@ -260,27 +379,82 @@ def load_parquet_as_records(
     )
 
     # ------------------------------------------------------------------
-    # Step 4 — Inject pre-computed stats into per-record sub-dicts
-    # features.py reads corridor_stats / sender_stats / receiver_stats;
-    # embedding the full-corpus rates here ensures they flow through
-    # TabularFeatureEngineer.extract() even though the graph is built
-    # from the sample only.
+    # Step 4 — Inject comprehensive pre-computed stats into per-record
+    # sub-dicts.  All 88 tabular features in features.py read from these
+    # dicts — filling every key eliminates the ~48-feature structural-zero
+    # problem that collapsed AUC to ~0.50.
     # ------------------------------------------------------------------
-    corridor_stats_col = df["corridor"].map(
-        lambda c: {
-            "failure_rate_7d": corridor_rates.get(c, 0.0),
-            "failure_rate_30d": corridor_rates.get(c, 0.0),
+    def _c_stats(c: str) -> dict:
+        fr = corridor_rates.get(c, 0.0)
+        return {
+            "failure_rate_7d": fr,
+            "failure_rate_30d": fr,
+            "tx_count": int(c_tx_count_d.get(c, 0)),
+            "volume_7d": float(c_vol7_d.get(c, 0.0)),
+            "volume_30d": float(c_vol30_d.get(c, 0.0)),
+            "avg_amount": float(c_avg_d.get(c, 0.0)),
+            "std_amount": float(c_std_d.get(c, 0.0)),
+            "max_amount": float(c_max_d.get(c, 0.0)),
+            "min_amount": float(c_min_d.get(c, 0.0)),
+            "p50_amount": float(c_p50_d.get(c, 0.0)),
+            "p95_amount": float(c_p95_d.get(c, 0.0)),
+            "unique_currencies": int(c_ucurr_d.get(c, 1)),
+            "age_days": float(c_age_d.get(c, 1.0)),
+            "tx_per_day": float(c_txpd_d.get(c, 0.0)),
+            "velocity_1h": float(c_vel1_d.get(c, 0.0)),
+            "velocity_24h": float(c_vel24_d.get(c, 0.0)),
+            "consecutive_failures": 0,
         }
+
+    def _s_stats(b: str) -> dict:
+        fr = float(s_fail_d.get(b, 0.0))
+        return {
+            "failure_rate_30d": fr,
+            "failure_rate_7d": fr,
+            "failure_rate_1d": fr,
+            "tx_count": int(s_tx_d.get(b, 0)),
+            "out_degree": int(s_recv_d.get(b, 0)),
+            "in_degree": int(bic_in_d.get(b, 0)),
+            "volume_24h": float(s_vol24_d.get(b, 0.0)),
+            "avg_amount": float(s_avg_d.get(b, 0.0)),
+            "std_amount": float(s_std_d.get(b, 0.0)),
+            "age_days": float(s_age_d.get(b, 1.0)),
+            "currency_concentration": float(s_conc_d.get(b, 0.0)),
+            "unique_receivers": int(s_recv_d.get(b, 0)),
+            "pct_large_tx": float(s_pct_d.get(b, 0.0)),
+            "consecutive_failures": 0,
+        }
+
+    def _r_stats(b: str) -> dict:
+        fr = float(r_fail_d.get(b, 0.0))
+        return {
+            "failure_rate_30d": fr,
+            "failure_rate_7d": fr,
+            "failure_rate_1d": fr,
+            "tx_count": int(r_tx_d.get(b, 0)),
+            "out_degree": int(bic_out_d.get(b, 0)),
+            "in_degree": int(r_send_d.get(b, 0)),
+            "volume_24h": float(r_vol24_d.get(b, 0.0)),
+            "avg_amount": float(r_avg_d.get(b, 0.0)),
+            "std_amount": float(r_std_d.get(b, 0.0)),
+            "age_days": float(r_age_d.get(b, 1.0)),
+            "currency_concentration": float(r_conc_d.get(b, 0.0)),
+            "unique_senders": int(r_send_d.get(b, 0)),
+            "pct_large_tx": float(r_pct_d.get(b, 0.0)),
+            "consecutive_failures": 0,
+        }
+
+    df["corridor_stats"] = df["corridor"].map(_c_stats)
+    df["sender_stats"] = df["sending_bic"].map(_s_stats)
+    df["receiver_stats"] = df["receiving_bic"].map(_r_stats)
+
+    # amount_zscore per corridor (used as FX volatility proxy, features.py vec[78])
+    df["amount_zscore"] = (
+        (df["amount_usd"] - df["corridor"].map(c_avg_d))
+        / (df["corridor"].map(c_std_d).clip(lower=1e-9))
     )
-    sender_stats_col = df["sending_bic"].map(
-        lambda b: {"failure_rate_30d": bic_send_rates.get(b, 0.0)}
-    )
-    receiver_stats_col = df["receiving_bic"].map(
-        lambda b: {"failure_rate_30d": bic_recv_rates.get(b, 0.0)}
-    )
-    df["corridor_stats"] = corridor_stats_col
-    df["sender_stats"] = sender_stats_col
-    df["receiver_stats"] = receiver_stats_col
+    # global failure rate proxy (features.py vec[73])
+    df["global_failure_rate_24h"] = global_failure_rate
 
     records = df.to_dict("records")
     logger.info("Adapter complete: %d records ready for C1 pipeline", len(records))
@@ -367,6 +541,10 @@ def train(
     X_train, X_val, y_train, y_val, bic_train, bic_val = np_pipeline.stage4_train_val_split(
         X, y, bics
     )
+
+    # Apply the same StandardScaler that was fitted during train_torch
+    if pipeline.feature_scaler is not None:
+        X_val = pipeline.feature_scaler.transform(X_val)
 
     model.eval()
     import torch as _torch
