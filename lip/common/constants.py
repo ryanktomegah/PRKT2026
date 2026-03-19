@@ -21,6 +21,22 @@ LATENCY_P99_TARGET_MS = 94   # Architecture Spec v1.2 — canonical end-to-end S
 ML_BASELINE_AUC = Decimal("0.739")
 ML_TARGET_AUC   = Decimal("0.850")
 
+# ── C2 model scope limitations (EPG-06, EPG-14) ───────────────────────────────
+# EPG-06: C2 models credit risk (probability of default on the bridge loan
+# principal) but does NOT model regulatory outcome risk — the probability that
+# an enforcement action, sanctions designation, or legal hold on the borrower
+# bank makes the loan uncollectable.  Regulatory outcome risk requires a
+# separate risk feature sourced from BPI's counterparty risk system; this is
+# contractually gated on BPI license agreement amendment.  Until available, C2
+# fee-bps should be viewed as a credit-risk floor, not a regulatory-risk price.
+#
+# EPG-14: C2 prices risk at correspondent bank (BIC) level — the legal
+# counterparty in the MRFA.  End-customer (debtor account) level PD is not
+# modelled because LIP has no contractual relationship with, or data access to,
+# the bank's underlying originators.  The AML velocity granularity (EPG-28) was
+# fixed independently at the composite (BIC, debtor_account) key.
+# BIC-level PD is correct by design for the current MRFA structure.
+
 # ── Dispute classifier targets ────────────────────────────────────────────────
 # FN rate measured on 100-case negation suite (20/category) with real LLM
 # backend: qwen/qwen3-32b via Groq API (P6, 2026-03-16).

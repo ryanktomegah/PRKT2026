@@ -126,7 +126,9 @@ def generate_payment_events(n_samples: int = 10_000, seed: int = 42) -> List[dic
         Each dict contains: uetr, individual_payment_id, sending_bic,
         receiving_bic, amount_usd, currency_pair, rejection_code,
         rejection_class (A/B/C/BLOCK), corridor_failure_rate, timestamp_unix,
-        timestamp_iso, label (always 1 — failed), corpus_tag, generation_seed.
+        timestamp_iso, label (always 1 — failed), is_bridgeable (True when
+        rejection_class != BLOCK — EPG-12/22 bridgeability label),
+        corpus_tag, generation_seed.
     """
     rng = np.random.default_rng(seed)
     ts = datetime.now(tz=timezone.utc).isoformat()
@@ -170,6 +172,11 @@ def generate_payment_events(n_samples: int = 10_000, seed: int = 42) -> List[dic
             "timestamp_iso": ts_iso,
             "rail": "SWIFT",
             "label": 1,  # All events are failures (RJCT)
+            # EPG-12/22: is_bridgeable distinguishes failures where a bridge loan is
+            # permissible (Class A/B/C) from those where it is not (BLOCK — sanctions,
+            # fraud, legal halt).  C1 retraining on bridgeable-only subset requires this
+            # field as the subsetting key; tau* re-optimisation (EPG-13) depends on it.
+            "is_bridgeable": rj_class != "BLOCK",
             "corpus_tag": _CORPUS_TAG,
             "generation_seed": seed,
             "generation_timestamp": ts,
