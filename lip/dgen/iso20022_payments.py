@@ -154,6 +154,16 @@ _CORRIDOR_NAMES = [c.name for c in _CORRIDORS]
 _CORRIDOR_VOLUME_WEIGHTS = np.array([c.volume_weight for c in _CORRIDORS], dtype=np.float64)
 _CORRIDOR_VOLUME_WEIGHTS /= _CORRIDOR_VOLUME_WEIGHTS.sum()
 
+# Failure-weighted corridor sampling: RJCT events are sampled proportional to
+# failure_rate × volume so that high-failure corridors produce proportionally
+# more RJCT records than success records.  Without this, all corridors get the
+# same label rate (1/(1+success_multiplier) ≈ 20%), killing all corridor-level
+# discriminative signal for C1 training.
+_CORRIDOR_FAILURE_WEIGHTS = np.array(
+    [c.failure_rate * c.volume_weight for c in _CORRIDORS], dtype=np.float64
+)
+_CORRIDOR_FAILURE_WEIGHTS /= _CORRIDOR_FAILURE_WEIGHTS.sum()
+
 
 # ---------------------------------------------------------------------------
 # Settlement time parameters (lognormal per rejection class)
@@ -371,8 +381,18 @@ def _generate_common_fields(
     chunk_size: int,
     seed: int,
     bic_pool: BICPool,
+    corridor_weights: np.ndarray | None = None,
 ) -> tuple:
     """Sample fields common to both RJCT and success records.
+
+    Parameters
+    ----------
+    corridor_weights:
+        Probability weights for corridor sampling.  Defaults to
+        ``_CORRIDOR_VOLUME_WEIGHTS`` (volume-proportional).  Pass
+        ``_CORRIDOR_FAILURE_WEIGHTS`` for RJCT records so that high-failure
+        corridors produce proportionally more failures than successes,
+        creating the per-corridor label-rate variation that C1 needs.
 
     Returns
     -------
@@ -382,7 +402,8 @@ def _generate_common_fields(
     rng = np.random.default_rng(seed)
 
     # Sample corridors first — drives BIC selection, amounts, and rails
-    corridor_idx = rng.choice(len(_CORRIDORS), size=chunk_size, p=_CORRIDOR_VOLUME_WEIGHTS)
+    weights = corridor_weights if corridor_weights is not None else _CORRIDOR_VOLUME_WEIGHTS
+    corridor_idx = rng.choice(len(_CORRIDORS), size=chunk_size, p=weights)
 
     # Sample BIC pairs corridor-aligned
     currency_index = bic_pool.build_currency_index()
@@ -446,7 +467,7 @@ def _generate_chunk(
 ) -> pd.DataFrame:
     """Generate one chunk of RJCT (failed payment) records — label=1."""
     rng, corridor_idx, senders, receivers, corridors_str, currency_pairs, amounts, ts_iso, rails = (
-        _generate_common_fields(chunk_size, seed, bic_pool)
+        _generate_common_fields(chunk_size, seed, bic_pool, _CORRIDOR_FAILURE_WEIGHTS)
     )
 
     # Sample rejection codes and classes
