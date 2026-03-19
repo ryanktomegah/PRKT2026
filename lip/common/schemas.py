@@ -619,6 +619,75 @@ class DecisionLogEntry(BaseModel):
 # S4.9  Loan Offer Delivery and Acceptance (GAP-01)
 # ---------------------------------------------------------------------------
 
+class OfferExpiryReason(str, enum.Enum):
+    """Reason a loan offer reached the EXPIRED terminal state (EPG-23).
+
+    TIMEOUT          — 15-minute acceptance window closed with no ELO response.
+    BANK_REJECTED    — ELO explicitly declined (maps from LoanOfferRejection path).
+    SYSTEM_WITHDRAWN — BPI platform withdrew the offer (e.g. kill switch, AML update).
+    """
+    TIMEOUT          = "TIMEOUT"
+    BANK_REJECTED    = "BANK_REJECTED"
+    SYSTEM_WITHDRAWN = "SYSTEM_WITHDRAWN"
+
+
+class LoanOfferExpiry(BaseModel):
+    """Audit record created when a loan offer reaches the EXPIRED terminal state (EPG-23).
+
+    Parallel to LoanOfferAcceptance and LoanOfferRejection.  Enables pilot
+    conversion metrics to distinguish funded, expired, and declined offers —
+    critical for bank #2 sales conversations.
+
+    Fields
+    ------
+    expiry_id:
+        Unique identifier for this expiry event.
+    delivery_id:
+        LoanOfferDelivery.delivery_id of the offer that expired.
+    offer_id:
+        LoanOffer.offer_id that expired.
+    uetr:
+        ISO 20022 UETR of the underlying payment.
+    elo_entity_id:
+        Hashed ELO entity identifier (the bank that did not respond).
+    expiry_reason:
+        Enumerated reason: TIMEOUT, BANK_REJECTED, or SYSTEM_WITHDRAWN.
+    offer_generated_at:
+        UTC timestamp when the offer was first delivered (for window computation).
+    expired_at:
+        UTC timestamp when the expiry was recorded.
+    class_b_eligible:
+        False while Class B block-all is in effect (EPG-19 pending EPG-04/05).
+        Set to True once B1 bridging is unlocked contractually — pre-wires ARIA's
+        retraining data cut without backfilling historical logs (QUANT/EPG-13).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    expiry_id: UUID = Field(..., description="Unique identifier for this expiry event.")
+    delivery_id: UUID = Field(..., description="LoanOfferDelivery.delivery_id that expired.")
+    offer_id: UUID = Field(..., description="LoanOffer.offer_id that expired.")
+    uetr: UUID = Field(..., description="ISO 20022 UETR of the underlying payment.")
+    elo_entity_id: str = Field(..., description="Hashed ELO entity identifier.")
+    expiry_reason: OfferExpiryReason = Field(
+        ...,
+        description="Enumerated reason: TIMEOUT, BANK_REJECTED, or SYSTEM_WITHDRAWN.",
+    )
+    offer_generated_at: datetime = Field(
+        ...,
+        description="UTC timestamp when the offer was delivered (start of 15-min window).",
+    )
+    expired_at: datetime = Field(..., description="UTC timestamp of expiry event.")
+    class_b_eligible: bool = Field(
+        default=False,
+        description=(
+            "False while EPG-19 Class B block-all is in effect. "
+            "True once B1 bridging is contractually unlocked (EPG-04/05). "
+            "Pre-wires ARIA retraining data cut (EPG-13 / QUANT)."
+        ),
+    )
+
+
 class LoanOfferDelivery(BaseModel):
     """Outbound event that delivers a bridge-loan offer to the ELO for acceptance.
 
@@ -678,6 +747,14 @@ class LoanOfferDelivery(BaseModel):
         ),
     )
     delivered_at: datetime = Field(..., description="UTC timestamp of delivery event creation.")
+    class_b_eligible: bool = Field(
+        default=False,
+        description=(
+            "False while EPG-19 Class B block-all is in effect. "
+            "True once B1 bridging is contractually unlocked (EPG-04/05). "
+            "Pre-wires ARIA retraining data cut without backfilling historical logs."
+        ),
+    )
 
 
 class LoanOfferAcceptance(BaseModel):

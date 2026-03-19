@@ -25,7 +25,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Callable, Dict, List, Optional
 
-from lip.common.schemas import LoanOfferAcceptance, LoanOfferDelivery, LoanOfferRejection
+from lip.common.schemas import (
+    LoanOfferAcceptance,
+    LoanOfferDelivery,
+    LoanOfferExpiry,
+    LoanOfferRejection,
+    OfferExpiryReason,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +92,8 @@ class OfferDeliveryService:
         Callback invoked synchronously when an offer is rejected.
         Signature: (LoanOfferRejection) -> None.
     on_expire:
-        Callback invoked synchronously per expired offer_id during
-        ``expire_stale_offers()``. Signature: (offer_id: str) -> None.
+        Callback invoked synchronously per expired offer during
+        ``expire_stale_offers()``. Signature: (LoanOfferExpiry) -> None.
     delivery_endpoint:
         Optional webhook URL stamped on every LoanOfferDelivery so the ELO
         treasury system knows where to POST acceptance/rejection callbacks.
@@ -98,7 +104,7 @@ class OfferDeliveryService:
         self,
         on_accept: Optional[Callable[[LoanOfferAcceptance], None]] = None,
         on_reject: Optional[Callable[[LoanOfferRejection], None]] = None,
-        on_expire: Optional[Callable[[str], None]] = None,
+        on_expire: Optional[Callable[[LoanOfferExpiry], None]] = None,
         delivery_endpoint: Optional[str] = None,
     ) -> None:
         self._on_accept = on_accept
@@ -112,8 +118,8 @@ class OfferDeliveryService:
         self._acceptances: Dict[str, LoanOfferAcceptance] = {}
         # offer_id (str) → LoanOfferRejection
         self._rejections: Dict[str, LoanOfferRejection] = {}
-        # offer_ids that have been explicitly expired
-        self._expired: set = set()
+        # offer_id (str) → LoanOfferExpiry (EPG-23: structured record, not bare id set)
+        self._expiries: Dict[str, LoanOfferExpiry] = {}
 
     # ── Delivery ─────────────────────────────────────────────────────────────
 
@@ -296,7 +302,7 @@ class OfferDeliveryService:
 
     # ── Expiry sweep ─────────────────────────────────────────────────────────
 
-    def expire_stale_offers(self) -> List[str]:
+    def expire_stale_offers(self) -> List[LoanOfferExpiry]:
         """Sweep PENDING offers whose offer_expiry has passed.
 
         Should be called periodically (e.g., every 60 seconds) by a background
@@ -304,11 +310,11 @@ class OfferDeliveryService:
 
         Returns
         -------
-        List[str]
-            offer_id strings of offers newly moved to EXPIRED.
+        List[LoanOfferExpiry]
+            Structured expiry records for offers newly moved to EXPIRED (EPG-23).
         """
         now = datetime.now(tz=timezone.utc)
-        expired_ids: List[str] = []
+        new_expiries: List[LoanOfferExpiry] = []
 
         with self._lock:
             to_expire = [
@@ -317,19 +323,34 @@ class OfferDeliveryService:
                 if _is_expired(delivery, now)
             ]
             for oid in to_expire:
-                self._pending.pop(oid)
-                self._expired.add(oid)
-                expired_ids.append(oid)
+                delivery = self._pending.pop(oid)
+                expiry = LoanOfferExpiry(
+                    expiry_id=uuid.uuid4(),
+                    delivery_id=delivery.delivery_id,
+                    offer_id=delivery.offer_id,
+                    uetr=delivery.uetr,
+                    elo_entity_id=delivery.elo_entity_id,
+                    expiry_reason=OfferExpiryReason.TIMEOUT,
+                    offer_generated_at=delivery.delivered_at,
+                    expired_at=now,
+                    class_b_eligible=delivery.class_b_eligible,
+                )
+                self._expiries[oid] = expiry
+                new_expiries.append(expiry)
 
-        for oid in expired_ids:
-            logger.info("Offer expired: offer_id=%s", oid)
+        for expiry in new_expiries:
+            oid = str(expiry.offer_id)
+            logger.info(
+                "Offer expired: offer_id=%s uetr=%s reason=%s",
+                oid, expiry.uetr, expiry.expiry_reason.value,
+            )
             if self._on_expire is not None:
                 try:
-                    self._on_expire(oid)
+                    self._on_expire(expiry)
                 except Exception:
                     logger.exception("on_expire callback raised for offer_id=%s", oid)
 
-        return expired_ids
+        return new_expiries
 
     # ── Queries ──────────────────────────────────────────────────────────────
 
@@ -346,7 +367,7 @@ class OfferDeliveryService:
                 return OfferDeliveryOutcome.ACCEPTED
             if offer_id in self._rejections:
                 return OfferDeliveryOutcome.REJECTED
-            if offer_id in self._expired:
+            if offer_id in self._expiries:
                 return OfferDeliveryOutcome.EXPIRED
             if offer_id in self._pending:
                 return OfferDeliveryOutcome.PENDING
@@ -361,6 +382,11 @@ class OfferDeliveryService:
         """Return the LoanOfferRejection for ``offer_id``, or None if not rejected."""
         with self._lock:
             return self._rejections.get(offer_id)
+
+    def get_expiry(self, offer_id: str) -> Optional[LoanOfferExpiry]:
+        """Return the LoanOfferExpiry for ``offer_id``, or None if not expired (EPG-23)."""
+        with self._lock:
+            return self._expiries.get(offer_id)
 
     def get_pending_deliveries(self) -> List[LoanOfferDelivery]:
         """Return a snapshot of all PENDING (unresolved, unexpired) deliveries."""
@@ -379,7 +405,7 @@ class OfferDeliveryService:
             raise OfferAlreadyResolvedException(
                 f"offer_id {offer_id!r} has already been resolved"
             )
-        if offer_id in self._expired:
+        if offer_id in self._expiries:
             raise OfferExpiredException(f"offer_id {offer_id!r} has expired")
         if offer_id not in self._pending:
             raise OfferNotFoundException(f"offer_id {offer_id!r} not found")
@@ -388,7 +414,17 @@ class OfferDeliveryService:
         now = datetime.now(tz=timezone.utc)
         if _is_expired(delivery, now):
             self._pending.pop(offer_id)
-            self._expired.add(offer_id)
+            self._expiries[offer_id] = LoanOfferExpiry(
+                expiry_id=uuid.uuid4(),
+                delivery_id=delivery.delivery_id,
+                offer_id=delivery.offer_id,
+                uetr=delivery.uetr,
+                elo_entity_id=delivery.elo_entity_id,
+                expiry_reason=OfferExpiryReason.TIMEOUT,
+                offer_generated_at=delivery.delivered_at,
+                expired_at=now,
+                class_b_eligible=delivery.class_b_eligible,
+            )
             raise OfferExpiredException(
                 f"offer_id {offer_id!r} expired at {delivery.offer_expiry.isoformat()}"
             )

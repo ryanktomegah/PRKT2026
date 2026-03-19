@@ -427,15 +427,17 @@ class TestOfferDeliveryServiceExpiry:
     def test_expire_stale_marks_expired(self):
         svc = OfferDeliveryService()
         offer_id, _ = _deliver_offer(svc, expires_in_seconds=-1)
-        expired = svc.expire_stale_offers()
-        assert offer_id in expired
+        expiries = svc.expire_stale_offers()
+        expired_ids = [str(e.offer_id) for e in expiries]
+        assert offer_id in expired_ids
         assert svc.get_outcome(offer_id) == OfferDeliveryOutcome.EXPIRED
 
     def test_expire_fresh_offers_not_touched(self):
         svc = OfferDeliveryService()
         offer_id, _ = _deliver_offer(svc, expires_in_seconds=3600)
-        expired = svc.expire_stale_offers()
-        assert offer_id not in expired
+        expiries = svc.expire_stale_offers()
+        expired_ids = [str(e.offer_id) for e in expiries]
+        assert offer_id not in expired_ids
         assert svc.get_outcome(offer_id) == OfferDeliveryOutcome.PENDING
 
     def test_expire_fires_on_expire_callback(self):
@@ -443,7 +445,8 @@ class TestOfferDeliveryServiceExpiry:
         svc = OfferDeliveryService(on_expire=fired.append)
         offer_id, _ = _deliver_offer(svc, expires_in_seconds=-1)
         svc.expire_stale_offers()
-        assert offer_id in fired
+        # EPG-23: callback now receives LoanOfferExpiry, not bare offer_id string
+        assert any(str(e.offer_id) == offer_id for e in fired)
 
     def test_expire_removes_from_pending(self):
         svc = OfferDeliveryService()
@@ -462,9 +465,10 @@ class TestOfferDeliveryServiceExpiry:
         svc = OfferDeliveryService()
         stale_id, _ = _deliver_offer(svc, expires_in_seconds=-1)
         fresh_id, _ = _deliver_offer(svc, expires_in_seconds=3600)
-        expired = svc.expire_stale_offers()
-        assert stale_id in expired
-        assert fresh_id not in expired
+        expiries = svc.expire_stale_offers()
+        expired_ids = [str(e.offer_id) for e in expiries]
+        assert stale_id in expired_ids
+        assert fresh_id not in expired_ids
         assert svc.get_outcome(stale_id) == OfferDeliveryOutcome.EXPIRED
         assert svc.get_outcome(fresh_id) == OfferDeliveryOutcome.PENDING
 
@@ -472,6 +476,24 @@ class TestOfferDeliveryServiceExpiry:
         svc = OfferDeliveryService()
         _deliver_offer(svc, expires_in_seconds=3600)
         assert svc.expire_stale_offers() == []
+
+    def test_expiry_record_has_reason_and_timestamp(self):
+        """EPG-23: expired offer must have structured LoanOfferExpiry with reason and ts."""
+        from lip.common.schemas import LoanOfferExpiry, OfferExpiryReason
+        svc = OfferDeliveryService()
+        offer_id, _ = _deliver_offer(svc, expires_in_seconds=-1)
+        svc.expire_stale_offers()
+        record = svc.get_expiry(offer_id)
+        assert isinstance(record, LoanOfferExpiry)
+        assert record.expiry_reason == OfferExpiryReason.TIMEOUT
+        assert record.expired_at is not None
+        assert record.class_b_eligible is False
+
+    def test_class_b_eligible_defaults_false_on_delivery(self):
+        """EPG-23/EPG-19: class_b_eligible must default False until B1 is unlocked."""
+        svc = OfferDeliveryService()
+        _, delivery = _deliver_offer(svc, expires_in_seconds=-1)
+        assert delivery.class_b_eligible is False
 
 
 # ---------------------------------------------------------------------------
