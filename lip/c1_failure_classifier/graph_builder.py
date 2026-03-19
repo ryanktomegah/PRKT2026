@@ -138,6 +138,12 @@ class BICGraphBuilder:
         self._adjacency: Dict[str, Dict[str, List[PaymentEdge]]] = {}
         # {bic -> earliest timestamp} for corridor age
         self._bic_first_seen: Dict[str, float] = {}
+        # latest timestamp seen across all edges — used as reference point in
+        # get_node_features() so that time-window features (24h, 30d) are
+        # computed relative to the data, not wall-clock time.  This makes
+        # training on historical/synthetic data produce the same features as
+        # production inference on live data.
+        self._max_timestamp: float = time.time()
         # {bic -> total incoming USD volume} for dependency calculation (P5)
         self._in_volumes: Dict[str, float] = {}
         self._all_edges: List[PaymentEdge] = []
@@ -160,6 +166,9 @@ class BICGraphBuilder:
             as nodes if not already present.
         """
         s, r = edge.sending_bic, edge.receiving_bic
+
+        if edge.timestamp > self._max_timestamp:
+            self._max_timestamp = edge.timestamp
 
         for bic in (s, r):
             if bic not in self._bic_first_seen:
@@ -329,7 +338,7 @@ class BICGraphBuilder:
         np.ndarray
             Shape ``(8,)``, dtype ``float64``.
         """
-        now = time.time()
+        now = self._max_timestamp  # data-relative reference; correct for both training and production
         out_edges = self._out_edges.get(bic, [])
         _in_edges = self._in_edges.get(bic, [])
 
@@ -354,7 +363,7 @@ class BICGraphBuilder:
         avg_amount = math.log1p(float(np.mean(amounts))) if amounts else 0.0
         std_amount = math.log1p(float(np.std(amounts))) if len(amounts) > 1 else 0.0
 
-        first_seen = self._bic_first_seen.get(bic, now)
+        first_seen = self._bic_first_seen.get(bic, now)  # now = _max_timestamp
         corridor_age_days = (now - first_seen) / self._SECONDS_PER_DAY
 
         # Herfindahl-Hirschman index over currency pairs
@@ -423,7 +432,7 @@ class BICGraphBuilder:
         )
         corridor_failure_rate = failed_count / len(corridor_edges)
 
-        now = time.time()
+        now = self._max_timestamp  # data-relative reference (same fix as get_node_features)
         cutoff_7d = now - self._SECONDS_7D
         corridor_volume_7d = math.log1p(
             sum(e.amount_usd for e in corridor_edges if e.timestamp >= cutoff_7d)
