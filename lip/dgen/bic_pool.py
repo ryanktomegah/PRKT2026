@@ -268,6 +268,86 @@ class BICPool:
             index[curr] = (bics, raw_w)
         return index
 
+    def assign_risk_multipliers(self, rng: np.random.Generator) -> None:
+        """Assign a risk multiplier to every BIC using a 4-tier system.
+
+        Tiers are assigned by sorting BICs alphabetically (deterministic given
+        fixed BIC pool) and assigning tiers by percentile:
+          - Bottom 30%: TIER1 → multiplier = 0.25 (very safe)
+          - 30–80%:     TIER2 → multiplier = 1.0  (baseline)
+          - 80–95%:     TIER3 → multiplier = 5.0  (elevated)
+          - Top 5%:     TIER4 → multiplier = 15.0 (high risk)
+
+        The rng parameter is accepted for API consistency but not used —
+        sort order is purely alphabetical for full determinism.
+
+        TIER4 BICs have ~79% failure rate in RJCT-sampled corpus; TIER1 ~6%.
+        This creates strong discriminative signal for sender_stats.failure_rate_30d
+        in C1.
+        """
+        sorted_bics = sorted(self.all_bics)
+        n = len(sorted_bics)
+        tier1_cutoff = int(n * 0.30)
+        tier2_cutoff = int(n * 0.80)
+        tier3_cutoff = int(n * 0.95)
+
+        multipliers: dict[str, float] = {}
+        for i, bic in enumerate(sorted_bics):
+            if i < tier1_cutoff:
+                multipliers[bic] = 0.25    # TIER1
+            elif i < tier2_cutoff:
+                multipliers[bic] = 1.0     # TIER2
+            elif i < tier3_cutoff:
+                multipliers[bic] = 5.0     # TIER3
+            else:
+                multipliers[bic] = 15.0    # TIER4
+
+        self.risk_multipliers: dict[str, float] = multipliers
+
+    def build_risk_currency_index(
+        self,
+        risk_multipliers: dict[str, float] | None = None,
+    ) -> dict[str, tuple[list[str], np.ndarray]]:
+        """Build {currency: (bic_list, risk_adjusted_weights)} for RJCT sampling.
+
+        Same structure as :meth:`build_currency_index` but multiplies each
+        BIC's hub/spoke weight by its risk multiplier, then renormalises within
+        each currency group.
+
+        Parameters
+        ----------
+        risk_multipliers:
+            Mapping of BIC → multiplier.  If None, uses ``self.risk_multipliers``
+            when it exists, otherwise falls back to uniform (equivalent to
+            :meth:`build_currency_index`).
+        """
+        if risk_multipliers is None:
+            if hasattr(self, "risk_multipliers"):
+                risk_multipliers = self.risk_multipliers
+            else:
+                risk_multipliers = {}
+
+        hub_set = set(self.hub_bics)
+        index: dict[str, tuple[list[str], np.ndarray]] = {}
+        currency_bics: dict[str, list[str]] = {}
+        for bic in self.all_bics:
+            curr = self.get_currency(bic)
+            currency_bics.setdefault(curr, []).append(bic)
+
+        for curr, bics in currency_bics.items():
+            base_w = np.array(
+                [0.60 / self.n_hubs if b in hub_set else 0.40 / self.n_spokes for b in bics],
+                dtype=np.float64,
+            )
+            mult = np.array(
+                [risk_multipliers.get(b, 1.0) for b in bics],
+                dtype=np.float64,
+            )
+            raw_w = base_w * mult
+            raw_w /= raw_w.sum()  # normalise within this currency
+            index[curr] = (bics, raw_w)
+        return index
+
     def sample_bic_pairs_by_corridor(
         self,
         rng: np.random.Generator,

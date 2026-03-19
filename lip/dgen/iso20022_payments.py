@@ -272,6 +272,13 @@ class SynthesisParameters:
             "hub_volume_weight": 0.60,
             "spoke_volume_weight": 0.40,
             "countries_covered": "30+",
+            "risk_tiers": {
+                "TIER1_bottom30pct": "multiplier=0.25 (failure_rate ~6%)",
+                "TIER2_30_80pct": "multiplier=1.0 (failure_rate ~20%, baseline)",
+                "TIER3_80_95pct": "multiplier=5.0 (failure_rate ~56%)",
+                "TIER4_top5pct": "multiplier=15.0 (failure_rate ~79%)",
+            },
+            "note": "Risk tiers assigned by BIC alphabetical order (deterministic). Drives sender_stats.failure_rate discriminative signal for C1.",
         }
     )
 
@@ -382,6 +389,7 @@ def _generate_common_fields(
     seed: int,
     bic_pool: BICPool,
     corridor_weights: np.ndarray | None = None,
+    currency_index: dict | None = None,
 ) -> tuple:
     """Sample fields common to both RJCT and success records.
 
@@ -406,7 +414,8 @@ def _generate_common_fields(
     corridor_idx = rng.choice(len(_CORRIDORS), size=chunk_size, p=weights)
 
     # Sample BIC pairs corridor-aligned
-    currency_index = bic_pool.build_currency_index()
+    if currency_index is None:
+        currency_index = bic_pool.build_currency_index()
     senders: list[str] = [""] * chunk_size
     receivers: list[str] = [""] * chunk_size
     corridors_str: list[str] = [""] * chunk_size
@@ -464,10 +473,11 @@ def _generate_chunk(
     chunk_size: int,
     seed: int,
     bic_pool: BICPool,
+    currency_index: dict | None = None,
 ) -> pd.DataFrame:
     """Generate one chunk of RJCT (failed payment) records — label=1."""
     rng, corridor_idx, senders, receivers, corridors_str, currency_pairs, amounts, ts_iso, rails = (
-        _generate_common_fields(chunk_size, seed, bic_pool, _CORRIDOR_FAILURE_WEIGHTS)
+        _generate_common_fields(chunk_size, seed, bic_pool, _CORRIDOR_FAILURE_WEIGHTS, currency_index)
     )
 
     # Sample rejection codes and classes
@@ -509,6 +519,7 @@ def _generate_success_chunk(
     chunk_size: int,
     seed: int,
     bic_pool: BICPool,
+    currency_index: dict | None = None,
 ) -> pd.DataFrame:
     """Generate one chunk of successful payment records — label=0.
 
@@ -517,7 +528,7 @@ def _generate_success_chunk(
     Rejection fields are null — these payments cleared without error.
     """
     _rng, _corridor_idx, senders, receivers, corridors_str, currency_pairs, amounts, ts_iso, rails = (
-        _generate_common_fields(chunk_size, seed, bic_pool)
+        _generate_common_fields(chunk_size, seed, bic_pool, currency_index=currency_index)
     )
 
     return pd.DataFrame({
@@ -573,18 +584,23 @@ def generate_payments(
     pd.DataFrame with all required output fields, shuffled.
     """
     bic_pool = BICPool()
+    _risk_rng = np.random.default_rng(seed + 777_777)
+    bic_pool.assign_risk_multipliers(_risk_rng)
+    risk_currency_index = bic_pool.build_risk_currency_index()
+    normal_currency_index = bic_pool.build_currency_index()
+
     chunks: list[pd.DataFrame] = []
     n_chunks = (n + chunk_size - 1) // chunk_size  # ceil division
 
-    # ── RJCT chunks (label=1) ──────────────────────────────────────────────
+    # ── RJCT chunks (label=1) — senders drawn from risk-weighted BIC distribution ──
     for i in range(n_chunks):
         start = i * chunk_size
         end = min(start + chunk_size, n)
         c_size = end - start
         c_seed = seed + i * 997  # prime offset for statistical independence
-        chunks.append(_generate_chunk(c_size, c_seed, bic_pool))
+        chunks.append(_generate_chunk(c_size, c_seed, bic_pool, currency_index=risk_currency_index))
 
-    # ── Success chunks (label=0) ───────────────────────────────────────────
+    # ── Success chunks (label=0) — senders drawn from normal hub/spoke weights ──
     if success_multiplier > 0.0:
         n_success = int(n * success_multiplier)
         n_success_chunks = (n_success + chunk_size - 1) // chunk_size
@@ -594,7 +610,7 @@ def generate_payments(
             c_size = end - start
             # Offset by a large prime to avoid any seed overlap with RJCT chunks
             c_seed = seed + 1_000_003 + i * 997
-            chunks.append(_generate_success_chunk(c_size, c_seed, bic_pool))
+            chunks.append(_generate_success_chunk(c_size, c_seed, bic_pool, currency_index=normal_currency_index))
 
     df = pd.concat(chunks, ignore_index=True)
 
