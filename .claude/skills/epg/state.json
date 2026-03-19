@@ -270,13 +270,13 @@
     "notes": "Patent counsel — review spec language about generic codes before filing non-provisional"
   },
   "EPG-23": {
-    "status": "OPEN",
+    "status": "DONE",
     "tier": 4,
     "severity": "MEDIUM",
     "title": "Expired offer log entries are indistinguishable from funded offers",
     "owner": ["NOVA", "REX"],
-    "commit": null,
-    "signoffs": [],
-    "notes": "Relates to GAP-01 resolution — offer delivery mechanism must be built first"
+    "commit": "4a29b43",
+    "signoffs": ["NOVA", "REX", "QUANT"],
+    "notes": "Fixed: LoanOfferExpiry schema (parallel to LoanOfferAcceptance) with OfferExpiryReason enum (TIMEOUT/BANK_REJECTED/SYSTEM_WITHDRAWN). OfferDeliveryService._expiries replaces bare set; on_expire callback receives structured record. class_b_eligible=False pre-wires ARIA retraining data cut for EPG-19 B1 unlock. Pilot conversion metrics now distinguishable: funded / expired / declined."
   }
 }
