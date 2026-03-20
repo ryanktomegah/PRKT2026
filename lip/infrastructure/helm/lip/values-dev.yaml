@@ -1,0 +1,70 @@
+# values-dev.yaml — Development overlay
+# Minimal resources, no GPU, single replicas. Safe for Codespaces / local K8s.
+
+image:
+  registry: ghcr.io/ryanktomegah
+  pullPolicy: Always
+  tag: latest
+
+namespace: lip-dev
+
+components:
+  c1:
+    replicas: 1
+    gpu: false
+    resources:
+      requests: { cpu: "500m", memory: "1Gi" }
+      limits:   { cpu: "1",    memory: "2Gi" }
+
+  c2:
+    replicas: 1
+    resources:
+      requests: { cpu: "250m", memory: "512Mi" }
+      limits:   { cpu: "500m", memory: "1Gi" }
+
+  c3:
+    replicas: 1
+    resources:
+      requests: { cpu: "250m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+
+  c4:
+    replicas: 1
+    gpu: false
+    resources:
+      requests: { cpu: "500m", memory: "2Gi" }
+      limits:   { cpu: "1",    memory: "4Gi" }
+
+  c5:
+    replicas: 1
+    resources:
+      requests: { cpu: "250m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+
+  c6:
+    replicas: 1
+    resources:
+      requests: { cpu: "250m", memory: "512Mi" }
+      limits:   { cpu: "500m", memory: "1Gi" }
+
+  c7:
+    replicas: 1
+    resources:
+      requests: { cpu: "250m", memory: "256Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+
+autoscaling:
+  enabled: false
+
+redis:
+  # Single-node in-cluster Redis (matches docker-compose)
+  mode: standalone
+  serviceType: ClusterIP
+
+redpanda:
+  # Single-node in-cluster Redpanda
+  mode: standalone
+  replicas: 1
+
+secrets:
+  provider: k8s  # plain K8s secrets (no External Secrets Operator in dev)

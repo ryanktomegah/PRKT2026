@@ -127,6 +127,7 @@ class AMLChecker:
         sanctions_screener: Optional[SanctionsScreener] = None,
         anomaly_detector=None,
         entity_name_resolver=_RESOLVER_REQUIRED,
+        redis_client=None,
     ) -> None:
         # EPG-24: require explicit configuration of the name resolver.
         # Callers must either provide a resolver or pass entity_name_resolver=None
@@ -145,6 +146,13 @@ class AMLChecker:
                 "raw entity_id strings. Acceptable in tests; not acceptable in production "
                 "where entity_id is a BIC code."
             )
+        # Wire Redis client into the velocity checker when provided at this level.
+        # This allows the production entrypoint to pass redis_client=create_redis_client()
+        # without requiring callers to reconstruct the VelocityChecker themselves.
+        if redis_client is not None:
+            velocity_checker._redis = redis_client
+            velocity_checker._window._redis = redis_client
+            logger.info("AMLChecker: Redis client wired into VelocityChecker")
         self._velocity = velocity_checker
         if sanctions_screener is not None:
             self._sanctions = sanctions_screener

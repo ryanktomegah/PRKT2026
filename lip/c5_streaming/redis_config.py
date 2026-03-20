@@ -8,8 +8,8 @@ from typing import Dict, Optional
 KEY_SCHEMAS: Dict[str, str] = {
     "corridor_embedding": "lip:embedding:{currency_pair}",
     "uetr_mapping": "lip:uetr_map:{end_to_end_id}",
-    "velocity_counter": "lip:velocity:{entity_id}:{window}",
-    "beneficiary_counter": "lip:beneficiary:{entity_id}:{beneficiary_id}:{window}",
+    "velocity_counter": "lip:velocity:events:{entity_hash}",
+    "beneficiary_counter": "lip:beneficiary:{entity_hash}:{beneficiary_hash}",
     "active_loan": "lip:loan:{loan_id}",
     "salt_current": "lip:salt:current",
     "salt_previous": "lip:salt:previous",

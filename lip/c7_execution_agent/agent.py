@@ -32,6 +32,7 @@ from lip.common.constants import (
 from lip.common.fx_risk_policy import FXRiskConfig
 from lip.common.governing_law import bic_to_jurisdiction, law_for_jurisdiction
 from lip.common.known_entity_registry import KnownEntityRegistry
+from lip.common.redis_factory import create_redis_client
 
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
@@ -156,6 +157,7 @@ class ExecutionAgent:
         offer_delivery: Optional[OfferDeliveryService] = None,
         known_entity_registry: Optional[KnownEntityRegistry] = None,
         fx_risk_config: Optional[FXRiskConfig] = None,
+        redis_client=None,
     ) -> None:
         self.kill_switch = kill_switch
         self.decision_logger = decision_logger
@@ -169,18 +171,24 @@ class ExecutionAgent:
             self.aml_dollar_cap_usd = licensee_context.aml_dollar_cap_usd
             self.aml_count_cap = licensee_context.aml_count_cap
             self.min_loan_amount_usd = licensee_context.min_loan_amount_usd
+            self.deployment_phase = getattr(licensee_context, "deployment_phase", "LICENSOR")
         else:
             self.licensee_id = licensee_id
             self.max_tps = max_tps
             self.aml_dollar_cap_usd = aml_dollar_cap_usd
             self.aml_count_cap = aml_count_cap
             self.min_loan_amount_usd = min_loan_amount_usd
+            self.deployment_phase = "LICENSOR"
 
         self._tps_limiter = _TPSLimiter(max_tps=self.max_tps)
         self.stress_detector = stress_detector
         self.offer_delivery = offer_delivery
         self._known_entity_registry = known_entity_registry
         self._fx_risk_config = fx_risk_config
+        # Redis client for distributed state (kill switch, UETR dedup persistence).
+        # If not injected, attempt to connect via REDIS_URL env var.
+        # Falls back to None (in-memory) when REDIS_URL is absent — safe for tests.
+        self._redis_client = redis_client if redis_client is not None else create_redis_client()
 
     # ── main processing entry point ──────────────────────────────────────────
 
@@ -492,6 +500,7 @@ class ExecutionAgent:
             "swift_remittance_info": swift_msg.remittance_info,
             "governing_law": governing_law,
             "loan_currency": loan_currency,
+            "deployment_phase": self.deployment_phase,
         }
 
     def _requires_human_review(self, payment_context: dict) -> bool:

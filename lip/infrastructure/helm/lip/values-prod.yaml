@@ -1,0 +1,64 @@
+# values-prod.yaml — Production overlay
+# Full replicas, GPU for C1/C4, managed Redis/Kafka (ExternalName services).
+
+image:
+  registry: ghcr.io/ryanktomegah
+  pullPolicy: Always
+  # Never use :latest in prod — override with explicit semver tag at deploy time:
+  #   helm upgrade lip ./lip/infrastructure/helm/lip -f values-prod.yaml --set image.tag=v1.2.0
+
+namespace: lip
+
+components:
+  c1:
+    replicas: 2
+    gpu: true
+    gpuType: nvidia-tesla-t4
+    resources:
+      requests: { cpu: "2", memory: "8Gi", "nvidia.com/gpu": "1" }
+      limits:   { cpu: "4", memory: "16Gi", "nvidia.com/gpu": "1" }
+
+  c2:
+    replicas: 2
+    resources:
+      requests: { cpu: "1", memory: "2Gi" }
+      limits:   { cpu: "2", memory: "4Gi" }
+
+  c3:
+    replicas: 2
+
+  c4:
+    replicas: 1
+    gpu: true
+    gpuType: nvidia-tesla-t4
+    resources:
+      requests: { cpu: "2", memory: "16Gi", "nvidia.com/gpu": "1" }
+      limits:   { cpu: "4", memory: "24Gi", "nvidia.com/gpu": "1" }
+
+  c5:
+    replicas: 2
+
+  c6:
+    replicas: 2
+
+  c7:
+    replicas: 2
+
+autoscaling:
+  enabled: true
+
+redis:
+  # Prod: ExternalName pointing at managed Redis (e.g. GCP Memorystore)
+  mode: external
+  externalHost: ""   # set at deploy time: --set redis.externalHost=<memorystore-ip>
+
+redpanda:
+  # Prod: ExternalName pointing at bank-managed Kafka
+  mode: external
+  externalHost: ""   # set at deploy time: --set redpanda.externalHost=<kafka-bootstrap>
+
+secrets:
+  provider: gcp
+  redisSecretArn: ""    # GCP Secret Manager resource ID
+  licenseSecretArn: ""
+  amlSecretArn: ""

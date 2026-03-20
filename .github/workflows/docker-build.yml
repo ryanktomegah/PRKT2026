@@ -1,0 +1,77 @@
+name: Docker Build & Push
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  ORG: ${{ github.repository_owner }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.component }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: c1
+            dockerfile: lip/infrastructure/docker/Dockerfile.c1
+          - component: c2
+            dockerfile: lip/infrastructure/docker/Dockerfile.c2
+          - component: c3
+            dockerfile: lip/infrastructure/docker/Dockerfile.c3
+          - component: c4
+            dockerfile: lip/infrastructure/docker/Dockerfile.c4
+          - component: c5
+            dockerfile: lip/infrastructure/docker/Dockerfile.c5
+          - component: c6
+            dockerfile: lip/infrastructure/docker/Dockerfile.c6
+          - component: c7
+            dockerfile: lip/infrastructure/docker/Dockerfile.c7
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG }}/lip-${{ matrix.component }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}

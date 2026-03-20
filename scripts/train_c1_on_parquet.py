@@ -271,8 +271,60 @@ def load_parquet_as_records(
     # out_degree for receivers = number of distinct BICs each BIC sends to
     bic_out_deg = s_uniq_recv
 
+    # Windowed failure rates for senders (1d, 7d) — distinct signal for vec[64-66]
+    s_ts_max_ser = s_grp["_ts"].max()
+    df["_s_ts_max"] = df["bic_sender"].map(s_ts_max_ser)
+    df["_s_in_1d"] = df["_ts"] >= (df["_s_ts_max"] - 86400)
+    df["_s_in_7d"] = df["_ts"] >= (df["_s_ts_max"] - 7 * 86400)
+    s_fail_1d = (
+        df[df["_s_in_1d"]].groupby("bic_sender")["label"].mean()
+        .reindex(s_tx_count.index)
+        .fillna(s_fail_rate)
+    )
+    s_fail_7d = (
+        df[df["_s_in_7d"]].groupby("bic_sender")["label"].mean()
+        .reindex(s_tx_count.index)
+        .fillna(s_fail_rate)
+    )
+
+    # Windowed failure rates for receivers (1d, 7d) — distinct signal for vec[67-69]
+    r_ts_max_ser = r_grp["_ts"].max()
+    df["_r_ts_max"] = df["bic_receiver"].map(r_ts_max_ser)
+    df["_r_in_1d"] = df["_ts"] >= (df["_r_ts_max"] - 86400)
+    df["_r_in_7d"] = df["_ts"] >= (df["_r_ts_max"] - 7 * 86400)
+    r_fail_1d = (
+        df[df["_r_in_1d"]].groupby("bic_receiver")["label"].mean()
+        .reindex(r_tx_count.index)
+        .fillna(r_fail_rate)
+    )
+    r_fail_7d = (
+        df[df["_r_in_7d"]].groupby("bic_receiver")["label"].mean()
+        .reindex(r_tx_count.index)
+        .fillna(r_fail_rate)
+    )
+
+    # Consecutive failures per BIC — trailing label=1 streak from most recent tx
+    # vec[70] (sender), vec[72] (receiver) — previously always 0
+    _s_sorted = df[["bic_sender", "_ts", "label"]].sort_values(["bic_sender", "_ts"])
+    s_consec = (
+        _s_sorted.groupby("bic_sender")["label"]
+        .apply(lambda s: int(s.iloc[::-1].cumprod().sum()))
+    )
+    _r_sorted = df[["bic_receiver", "_ts", "label"]].sort_values(["bic_receiver", "_ts"])
+    r_consec = (
+        _r_sorted.groupby("bic_receiver")["label"]
+        .apply(lambda s: int(s.iloc[::-1].cumprod().sum()))
+    )
+
     # Drop temporary columns and convert to dicts for fast lookup
-    df.drop(columns=["_ts", "_c_ts_max", "_c_in_7d", "_c_in_30d"], inplace=True)
+    df.drop(
+        columns=[
+            "_ts", "_c_ts_max", "_c_in_7d", "_c_in_30d",
+            "_s_ts_max", "_s_in_1d", "_s_in_7d",
+            "_r_ts_max", "_r_in_1d", "_r_in_7d",
+        ],
+        inplace=True,
+    )
 
     c_tx_count_d = c_tx_count.to_dict()
     c_avg_d = c_avg.to_dict()
@@ -310,6 +362,13 @@ def load_parquet_as_records(
     r_pct_d = r_pct_large.to_dict()
     r_conc_d = r_curr_conc.to_dict()
     bic_out_d = bic_out_deg.to_dict()
+
+    s_fail_1d_d = s_fail_1d.to_dict()
+    s_fail_7d_d = s_fail_7d.to_dict()
+    r_fail_1d_d = r_fail_1d.to_dict()
+    r_fail_7d_d = r_fail_7d.to_dict()
+    s_consec_d = s_consec.to_dict()
+    r_consec_d = r_consec.to_dict()
 
     logger.info(
         "Stats computed: %d corridors, %d sending BICs, %d receiving BICs",
@@ -410,8 +469,8 @@ def load_parquet_as_records(
         fr = float(s_fail_d.get(b, 0.0))
         return {
             "failure_rate_30d": fr,
-            "failure_rate_7d": fr,
-            "failure_rate_1d": fr,
+            "failure_rate_7d": float(s_fail_7d_d.get(b, fr)),
+            "failure_rate_1d": float(s_fail_1d_d.get(b, fr)),
             "tx_count": int(s_tx_d.get(b, 0)),
             "out_degree": int(s_recv_d.get(b, 0)),
             "in_degree": int(bic_in_d.get(b, 0)),
@@ -422,15 +481,15 @@ def load_parquet_as_records(
             "currency_concentration": float(s_conc_d.get(b, 0.0)),
             "unique_receivers": int(s_recv_d.get(b, 0)),
             "pct_large_tx": float(s_pct_d.get(b, 0.0)),
-            "consecutive_failures": 0,
+            "consecutive_failures": int(s_consec_d.get(b, 0)),
         }
 
     def _r_stats(b: str) -> dict:
         fr = float(r_fail_d.get(b, 0.0))
         return {
             "failure_rate_30d": fr,
-            "failure_rate_7d": fr,
-            "failure_rate_1d": fr,
+            "failure_rate_7d": float(r_fail_7d_d.get(b, fr)),
+            "failure_rate_1d": float(r_fail_1d_d.get(b, fr)),
             "tx_count": int(r_tx_d.get(b, 0)),
             "out_degree": int(bic_out_d.get(b, 0)),
             "in_degree": int(r_send_d.get(b, 0)),
@@ -441,7 +500,7 @@ def load_parquet_as_records(
             "currency_concentration": float(r_conc_d.get(b, 0.0)),
             "unique_senders": int(r_send_d.get(b, 0)),
             "pct_large_tx": float(r_pct_d.get(b, 0.0)),
-            "consecutive_failures": 0,
+            "consecutive_failures": int(r_consec_d.get(b, 0)),
         }
 
     df["corridor_stats"] = df["corridor"].map(_c_stats)

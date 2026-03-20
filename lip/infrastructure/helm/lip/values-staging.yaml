@@ -1,0 +1,57 @@
+# values-staging.yaml — Staging overlay
+# Reduced replicas, shared Redis, GCP-hosted cluster.
+
+image:
+  registry: ghcr.io/ryanktomegah
+  pullPolicy: Always
+
+namespace: lip-staging
+
+components:
+  c1:
+    replicas: 1
+    gpu: true
+    gpuType: nvidia-tesla-t4
+    resources:
+      requests: { cpu: "1", memory: "4Gi", "nvidia.com/gpu": "1" }
+      limits:   { cpu: "2", memory: "8Gi", "nvidia.com/gpu": "1" }
+
+  c2:
+    replicas: 1
+    resources:
+      requests: { cpu: "500m", memory: "1Gi" }
+      limits:   { cpu: "1",    memory: "2Gi" }
+
+  c3:
+    replicas: 1
+
+  c4:
+    replicas: 1
+    gpu: true
+    gpuType: nvidia-tesla-t4
+    resources:
+      requests: { cpu: "1", memory: "8Gi", "nvidia.com/gpu": "1" }
+      limits:   { cpu: "2", memory: "16Gi", "nvidia.com/gpu": "1" }
+
+  c5:
+    replicas: 1
+
+  c6:
+    replicas: 1
+
+  c7:
+    replicas: 1
+
+autoscaling:
+  enabled: false
+
+redis:
+  mode: standalone
+  serviceType: ClusterIP
+
+redpanda:
+  mode: standalone
+  replicas: 1
+
+secrets:
+  provider: gcp

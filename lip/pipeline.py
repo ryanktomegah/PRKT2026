@@ -44,6 +44,7 @@ from lip.c4_dispute_classifier.taxonomy import DisputeClass
 from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.common.business_calendar import add_business_days, currency_to_jurisdiction
 from lip.common.notification_service import NotificationEventType, NotificationService
+from lip.common.redis_factory import create_redis_client
 from lip.common.state_machines import (
     LoanState,
     LoanStateMachine,
@@ -140,6 +141,7 @@ class LIPPipeline:
         threshold: float = FAILURE_PROBABILITY_THRESHOLD,
         global_latency_tracker: Optional[LatencyTracker] = None,
         corridor_rates: Optional[dict] = None,
+        redis_client=None,
     ) -> None:
         self._c1 = c1_engine
         self._c2 = c2_engine
@@ -156,6 +158,10 @@ class LIPPipeline:
         # Keys: "EUR_USD", "GBP_USD", etc.  Values: failure_rate float.
         # Falls back to canonical midpoint (0.035) for unknown corridors.
         self._corridor_rates: dict = corridor_rates or {}
+        # Redis client distributed to components that support it.
+        # If not injected, attempt connection via REDIS_URL env var.
+        # None = in-memory fallback (unit tests, local dev — no behavior change).
+        self._redis_client = redis_client if redis_client is not None else create_redis_client()
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -877,6 +883,7 @@ class LIPPipeline:
                 corridor=f"{event.currency}_USD",
                 funded_at=now_utc,
                 licensee_id=getattr(self._c7, "licensee_id", ""),
+                deployment_phase=loan_offer.get("deployment_phase", "LICENSOR"),
             )
             self._c3.register_loan(loan)
             logger.info(
