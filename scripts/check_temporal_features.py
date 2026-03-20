@@ -43,9 +43,9 @@ def main():
 
     # ── Import training adapter ───────────────────────────────────────────────
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from scripts.train_c1_on_parquet import _adapt_parquet_to_records
+    from scripts.train_c1_on_parquet import load_parquet_as_records
 
-    records = _adapt_parquet_to_records(parquet_path, sample_n=args.sample, seed=42)
+    records = load_parquet_as_records(parquet_path, sample_n=args.sample, seed=42)
     print(f"Adapter returned {len(records)} records")
 
     if len(records) < 100:
@@ -53,13 +53,12 @@ def main():
         sys.exit(1)
 
     # ── Import feature extractor ──────────────────────────────────────────────
-    from lip.c1_failure_classifier.features import FeaturePipeline
+    from lip.c1_failure_classifier.features import TabularFeatureEngineer
 
-    pipeline = FeaturePipeline()
+    eng = TabularFeatureEngineer()
     vecs = []
     for rec in records:
-        result = pipeline.extract(rec)
-        vecs.append(result.tabular)
+        vecs.append(eng.extract(rec))
 
     vecs = np.array(vecs, dtype=np.float32)
     print(f"Feature matrix: {vecs.shape}")
@@ -74,7 +73,7 @@ def main():
     IDX_R_FAIL_7D  = 68
     IDX_R_FAIL_30D = 69
     IDX_S_CONSEC   = 70
-    IDX_R_CONSEC   = 72
+    IDX_R_CONSEC   = 71  # features.py:314 — vec[71]=r_stats consecutive_failures
 
     # ── Check 1: windowed failure rates are not identical ─────────────────────
     failures = []
@@ -118,7 +117,7 @@ def main():
     for i, name in [
         (64, "s_fail_1d"), (65, "s_fail_7d"),  (66, "s_fail_30d"),
         (67, "r_fail_1d"), (68, "r_fail_7d"),  (69, "r_fail_30d"),
-        (70, "s_consec"),  (72, "r_consec"),
+        (70, "s_consec"),  (71, "r_consec"),
     ]:
         col = vecs[:, i]
         finite = col[np.isfinite(col)]
