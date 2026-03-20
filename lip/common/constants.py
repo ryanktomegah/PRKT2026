@@ -10,7 +10,7 @@ FAILURE_RATE_MIDPOINT     = Decimal("0.035")   # 3.5%
 FAILURE_RATE_UPSIDE       = Decimal("0.040")   # 4.0%
 
 # ── Fee parameters ────────────────────────────────────────────────────────────
-FEE_FLOOR_BPS              = 300               # 300 bps annualized floor
+FEE_FLOOR_BPS              = Decimal("300")    # 300 bps annualized floor
 FEE_FLOOR_PER_7DAY_CYCLE   = Decimal("0.000575")  # 0.0575% per 7-day cycle
 
 # ── Latency targets ───────────────────────────────────────────────────────────
@@ -160,8 +160,8 @@ MIN_CASH_FEE_USD            = Decimal("150")      # absolute minimum cash fee pe
 # ── Tiered fee floors by principal (QUANT-controlled) ─────────────────────────
 # Brackets:  < $500K → 500 bps  |  $500K–$2M → 400 bps  |  ≥ $2M → 300 bps
 # The ≥$2M tier uses the canonical FEE_FLOOR_BPS (300); no separate constant needed.
-FEE_FLOOR_TIER_SMALL_BPS   = 500   # principal < MIN_LOAN_AMOUNT_USD
-FEE_FLOOR_TIER_MID_BPS     = 400   # MIN_LOAN_AMOUNT_USD ≤ principal < FEE_TIER_MID_THRESHOLD_USD
+FEE_FLOOR_TIER_SMALL_BPS   = Decimal("500")   # principal < MIN_LOAN_AMOUNT_USD
+FEE_FLOOR_TIER_MID_BPS     = Decimal("400")   # MIN_LOAN_AMOUNT_USD ≤ principal < FEE_TIER_MID_THRESHOLD_USD
 FEE_TIER_MID_THRESHOLD_USD = Decimal("2000000")  # boundary: mid tier → canonical 300 bps floor
 
 # ── Stress regime detection ────────────────────────────────────────────────────

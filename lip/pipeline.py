@@ -510,6 +510,18 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
+            # EPG-11: notify compliance team whenever a compliance hold blocks a bridge.
+            if self._notification is not None:
+                self._notification.notify(
+                    NotificationEventType.COMPLIANCE_HOLD,
+                    uetr=event.uetr,
+                    payload={
+                        "sending_bic": event.sending_bic,
+                        "rejection_code": event.rejection_code,
+                        "rejection_class": payment_context.get("rejection_class"),
+                        "decision_entry_id": decision_entry_id,
+                    },
+                )
             return _record_and_return(result)
 
         # --- Handle C7 HALT (kill switch / KMS) ----------------------------
@@ -533,43 +545,6 @@ class LIPPipeline:
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
             )
-            return _record_and_return(result)
-
-        # --- Handle C7 compliance hold block — distinct outcome for audit trail (EPG-09/10)
-        if c7_status == "COMPLIANCE_HOLD_BLOCKS_BRIDGE":
-            total_ms = (time.perf_counter() - t_start) * 1_000.0
-            result = PipelineResult(
-                outcome="COMPLIANCE_HOLD",
-                uetr=event.uetr,
-                failure_probability=failure_probability,
-                above_threshold=True,
-                shap_top20=shap_top20,
-                dispute_class=dispute_class_str,
-                aml_passed=aml_passed,
-                pd_estimate=pd_estimate,
-                fee_bps=fee_bps,
-                tier=tier,
-                shap_values_c2=shap_values_c2,
-                loan_offer=None,
-                decision_entry_id=decision_entry_id,
-                payment_state=payment_sm.current_state.value,
-                loan_state=loan_sm.current_state.value,
-                payment_state_history=state_history,
-                component_latencies=tracker.get_latest_all(),
-                total_latency_ms=total_ms,
-            )
-            # EPG-11: notify compliance team whenever a compliance hold blocks a bridge.
-            if self._notification is not None:
-                self._notification.notify(
-                    NotificationEventType.COMPLIANCE_HOLD,
-                    uetr=event.uetr,
-                    payload={
-                        "sending_bic": event.sending_bic,
-                        "rejection_code": event.rejection_code,
-                        "rejection_class": payment_context.get("rejection_class"),
-                        "decision_entry_id": decision_entry_id,
-                    },
-                )
             return _record_and_return(result)
 
         # --- Handle C7 human review pending — park, not decline (EPG-26) ----

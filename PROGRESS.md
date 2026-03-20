@@ -536,6 +536,71 @@ Open (legal/contract — not code):
 - CLAUDE.md: full EPIGNOSIS findings documented, governing_law rule added to Key Rules
 - All test mock c6 results updated with `anomaly_flagged=False` where EPG-18 gate was triggering on MagicMock truthy bleed
 
+---
+
+## Session 2026-03-20 — Full Codebase Audit (Logic, Math, Security)
+
+**Baseline**: 1410 passed, 2 failed, 8 skipped, 18 deselected (73.6s).
+**Post-fix**: 1412 passed, 0 failed, 8 skipped, 18 deselected (73.3s).
+**Lint**: 0 ruff errors.
+
+### CRITICAL FIX — Compliance Hold Notification Dead Code (pipeline.py)
+
+**Bug**: `pipeline.py` had two handlers for `c7_status == "COMPLIANCE_HOLD_BLOCKS_BRIDGE"`.
+The first handler (reachable) returned early without calling `self._notification.notify()`.
+The second handler (unreachable dead code) contained the EPG-11 notification logic.
+Result: compliance hold notifications were **never sent**, violating FATF R.18/R.20 and EU AMLD6 Art.10.
+
+**Fix**: Merged notification call into the first handler, deleted the dead second handler entirely.
+Two pre-existing tests (`test_compliance_hold_fires_notification`, `test_compliance_hold_notification_payload`)
+now pass — they were written to catch this exact scenario and were correctly failing.
+
+### Type Consistency Fix — Fee Floor Constants (constants.py)
+
+Changed 3 fee floor constants from `int` to `Decimal` for type consistency:
+- `FEE_FLOOR_BPS`: `300` → `Decimal("300")`
+- `FEE_FLOOR_TIER_SMALL_BPS`: `500` → `Decimal("500")`
+- `FEE_FLOOR_TIER_MID_BPS`: `400` → `Decimal("400")`
+
+All downstream consumers already wrapped in `Decimal(str(...))` or `int(...)` — zero breakage.
+
+### C1 Failure Classifier Audit — PASS (1 hygiene issue)
+
+- **Architecture**: GraphSAGE[384] + TabTransformer[88] → 472 → MLP(256→64→1). Dimensions verified correct.
+- **Threshold**: `InferenceEngine.__init__` defaults to 0.5, but pipeline.py overrides with canonical 0.152 (`FAILURE_PROBABILITY_THRESHOLD`). **Not a deployment bug** — pipeline recomputes `above_threshold` independently. Hygiene issue only for direct `InferenceEngine` callers.
+- **Feature leakage**: No direct leakage. Temporal features (failure_rate_1d/7d/30d) computed from graph builder using `_max_timestamp` (data-relative, not wall-clock). Caller responsible for excluding current payment from stats — documented but not enforced in code.
+- **Calibration**: IsotonicCalibrator fitted on validation set, applied conditionally. Consistent with threshold application.
+- **Docstring**: training.py:285 says `(n_val, 88)` but correct shape is `(n_val, 96)` — documentation-only bug.
+
+### dgen Quality Audit — CONDITIONAL PASS (unstaged changes need test coverage)
+
+**New corridors (8)**: USD/AUD, AUD/USD, USD/HKD, HKD/USD, EUR/SEK, USD/KRW, USD/BRL, USD/MXN.
+All have realistic failure rates and settlement parameters. Channel mixes sum to 1.0.
+
+**Temporal clustering** (`_inject_temporal_clustering`):
+- Only modifies RJCT timestamps; labels never flipped — integrity preserved.
+- 2–3 burst windows per BIC (7–21 days), 30% of RJCT senders.
+- Creates genuine 1d/7d/30d failure rate variation for C1 feature training.
+- **Risk**: burst windows could span train/test split boundaries if temporal splitting is used (current split is stratified random — safe for now).
+- **Missing**: no unit test for temporal clustering. Should add before merging.
+
+**c1_generator.py, c2_generator.py, validator.py**: Clean. Basel III PD calibration correct.
+
+### Infrastructure Audit — 9 action items identified
+
+**Good**: Network policies strict for C4/C7. HPA queue depth thresholds match canonical constants (C1=100, C2/C6=50, C3/C7=30). Resource limits appropriate for ML inference. ESO secret management is best practice.
+
+**Action items** (none blocking current work — all infra hardening for pre-pilot):
+1. Placeholder credentials need templated tokens (values.yaml)
+2. imagePullPolicy should be IfNotPresent (not Always) for production
+3. Pod Security Standards label missing on `lip` namespace
+4. securityContext hardening only on C7 — needs applying to C1–C6
+5. Explicit NetworkPolicy needed for C3/C6
+6. C7 bank-side node selector needs taints/tolerations enforcement
+7. Standalone Redis needs TLS
+8. License refresh interval (24h) should be reduced to 1h
+9. Kafka production TLS/SASL config needs documenting
+
 ### What is NEXT
 
 **Immediate (blocking pre-pilot)**:
