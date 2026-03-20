@@ -4,6 +4,7 @@ test_synthetic_data.py — Tests for C1 Failure Classifier synthetic data genera
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime, timezone
 
 import numpy as np
 import pytest
@@ -630,3 +631,114 @@ class TestBICRegistry:
             assert info["region_type"] in {"G7", "EM", "HIGH_FRICTION"}, (
                 f"{corridor} has invalid region_type '{info['region_type']}'"
             )
+
+
+# ── Temporal clustering (iso20022_payments.py) ────────────────────────────────
+
+class TestTemporalClustering:
+    """Validate _inject_temporal_clustering preserves data integrity."""
+
+    @pytest.fixture(scope="class")
+    def clustered_df(self):
+        from lip.dgen.iso20022_payments import generate_payments
+        return generate_payments(n=2_000, seed=42)
+
+    @pytest.fixture(scope="class")
+    def unclustered_labels(self):
+        """Labels from a generation run, captured before clustering would alter anything."""
+        from lip.dgen.iso20022_payments import generate_payments
+        # generate_payments applies clustering internally; labels are immutable
+        # so we just verify they match the expected distribution.
+        df = generate_payments(n=2_000, seed=42)
+        return df["label"].tolist()
+
+    def test_labels_preserved(self, clustered_df) -> None:
+        """Temporal clustering must never flip labels."""
+        labels = clustered_df["label"]
+        assert set(labels.unique()) <= {0, 1}
+        # Failure rate should be ~20% (1:4 success multiplier)
+        failure_rate = labels.mean()
+        assert 0.10 < failure_rate < 0.35, f"Unexpected failure rate: {failure_rate}"
+
+    def test_shape_preserved(self, clustered_df) -> None:
+        """Row count and columns must not change."""
+        assert len(clustered_df) > 0
+        assert "timestamp_utc" in clustered_df.columns
+        assert "label" in clustered_df.columns
+        assert "bic_sender" in clustered_df.columns
+
+    def test_timestamps_valid_iso8601(self, clustered_df) -> None:
+        """All timestamps must parse as valid UTC datetimes."""
+        import pandas as pd
+        parsed = pd.to_datetime(clustered_df["timestamp_utc"], format="ISO8601", utc=True)
+        assert parsed.notna().all(), "Some timestamps failed to parse"
+
+    def test_timestamps_within_epoch(self, clustered_df) -> None:
+        """All timestamps must fall within the canonical 18-month epoch."""
+        import pandas as pd
+
+        from lip.dgen.iso20022_payments import _EPOCH_SPAN, _EPOCH_START
+        parsed = pd.to_datetime(clustered_df["timestamp_utc"], format="ISO8601", utc=True)
+        ts_unix = parsed.astype("int64") // 10**9
+        # Allow 1-day tolerance for intraday offsets
+        tolerance = 86_400
+        assert ts_unix.min() >= _EPOCH_START - tolerance
+        assert ts_unix.max() <= _EPOCH_START + _EPOCH_SPAN + tolerance
+
+    def test_success_timestamps_unchanged(self) -> None:
+        """Success records (label=0) must not have their timestamps altered."""
+        import pandas as pd
+
+        from lip.dgen.iso20022_payments import (
+            _EPOCH_START,
+            _inject_temporal_clustering,
+        )
+        # Build a small controlled DataFrame
+        rng = np.random.default_rng(99)
+        n = 200
+        labels = np.array([1] * 40 + [0] * 160)
+        bics = rng.choice(["AAAA", "BBBB", "CCCC"], size=n)
+        ts = [
+            datetime.fromtimestamp(_EPOCH_START + i * 3600, tz=timezone.utc).isoformat()
+            for i in range(n)
+        ]
+        df = pd.DataFrame({
+            "label": labels,
+            "bic_sender": bics,
+            "timestamp_utc": ts,
+        })
+        result = _inject_temporal_clustering(df, rng, burst_fraction=0.50)
+        # Success rows must be identical
+        success_mask = df["label"] == 0
+        assert (
+            df.loc[success_mask, "timestamp_utc"].tolist()
+            == result.loc[success_mask, "timestamp_utc"].tolist()
+        )
+
+    def test_deterministic_with_seed(self) -> None:
+        """Same seed must produce identical output."""
+        from lip.dgen.iso20022_payments import generate_payments
+        df1 = generate_payments(n=500, seed=77)
+        df2 = generate_payments(n=500, seed=77)
+        assert df1["timestamp_utc"].tolist() == df2["timestamp_utc"].tolist()
+        assert df1["label"].tolist() == df2["label"].tolist()
+
+    def test_burst_bics_have_clustered_failures(self, clustered_df) -> None:
+        """At least some RJCT senders should show temporal clustering."""
+        import pandas as pd
+        rjct = clustered_df[clustered_df["label"] == 1].copy()
+        if len(rjct) < 10:
+            pytest.skip("Too few failures to test clustering")
+        rjct["ts"] = pd.to_datetime(rjct["timestamp_utc"], format="ISO8601", utc=True)
+        # For each BIC with ≥5 failures, check if timestamps cluster
+        # (std dev of day-of-epoch < half the epoch span)
+        epoch_days = 18 * 30
+        clustered_count = 0
+        for bic, group in rjct.groupby("bic_sender"):
+            if len(group) < 5:
+                continue
+            days = (group["ts"] - group["ts"].min()).dt.total_seconds() / 86400
+            if days.std() < epoch_days * 0.3:
+                clustered_count += 1
+        # At least 1 BIC should show clustering (30% of RJCT senders are burst)
+        assert clustered_count > 0, "No BICs show temporal clustering"

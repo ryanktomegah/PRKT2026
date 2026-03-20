@@ -20,6 +20,10 @@ from .features import TabularFeatureEngineer
 from .graph_builder import BICGraphBuilder
 from .model import ClassifierModel
 
+# F2-optimal threshold (τ* = 0.152) — canonical value from pipeline.py
+# FAILURE_PROBABILITY_THRESHOLD.  Kept as literal to avoid circular import.
+_DEFAULT_THRESHOLD: float = 0.152
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -67,7 +71,7 @@ class InferenceEngine:
         self,
         model: ClassifierModel,
         embedding_pipeline: CorridorEmbeddingPipeline,
-        threshold: float = 0.5,
+        threshold: float = _DEFAULT_THRESHOLD,
     ) -> None:
         self.model = model
         self.embedding_pipeline = embedding_pipeline

@@ -166,7 +166,6 @@ def _make_engine() -> InferenceEngine:
     return InferenceEngine(
         model=create_default_model(),
         embedding_pipeline=CorridorEmbeddingPipeline(),
-        threshold=0.5,
     )
 
 

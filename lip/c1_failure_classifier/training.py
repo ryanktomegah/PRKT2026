@@ -282,7 +282,7 @@ class TrainingPipeline:
         X_train:
             Training feature matrix of shape ``(n_train, 96)``.
         X_val:
-            Validation feature matrix of shape ``(n_val, 88)``.
+            Validation feature matrix of shape ``(n_val, 96)``.
 
         Returns
         -------

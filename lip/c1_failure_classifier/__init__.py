@@ -18,7 +18,7 @@ import logging
 from typing import Optional
 
 from .embeddings import CorridorEmbeddingPipeline
-from .inference import InferenceEngine
+from .inference import _DEFAULT_THRESHOLD, InferenceEngine
 from .model import ClassifierModel, create_default_model
 
 __all__ = [
@@ -34,7 +34,7 @@ def run_inference(
     payment: dict,
     model: Optional[ClassifierModel] = None,
     embedding_pipeline: Optional[CorridorEmbeddingPipeline] = None,
-    threshold: float = 0.5,
+    threshold: float = _DEFAULT_THRESHOLD,
 ) -> dict:
     """Run real-time C1 failure classification on a single payment.
 

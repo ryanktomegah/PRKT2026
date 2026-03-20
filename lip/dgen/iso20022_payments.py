@@ -148,6 +148,23 @@ _CORRIDORS: list[CorridorConfig] = [
                    {"SWIFT": 0.80, "STATISTICAL": 0.20}),
     CorridorConfig("EUR/CHF", 0.02, 0.085, 13.0, 1.4,
                    {"SWIFT": 0.60, "SEPA_INSTANT": 0.30, "STATISTICAL": 0.10}),
+    # Additional corridors — expand BIC pool coverage to 150+ unique institutions
+    CorridorConfig("USD/AUD", 0.03, 0.100, 12.8, 1.5,
+                   {"SWIFT": 0.80, "STATISTICAL": 0.20}),
+    CorridorConfig("AUD/USD", 0.02, 0.100, 12.8, 1.5,
+                   {"SWIFT": 0.80, "STATISTICAL": 0.20}),
+    CorridorConfig("USD/HKD", 0.03, 0.130, 12.9, 1.5,
+                   {"SWIFT": 0.80, "STATISTICAL": 0.20}),
+    CorridorConfig("HKD/USD", 0.02, 0.130, 12.9, 1.5,
+                   {"SWIFT": 0.80, "STATISTICAL": 0.20}),
+    CorridorConfig("EUR/SEK", 0.02, 0.095, 12.7, 1.5,
+                   {"SWIFT": 0.65, "SEPA_INSTANT": 0.25, "STATISTICAL": 0.10}),
+    CorridorConfig("USD/KRW", 0.02, 0.220, 11.8, 1.7,
+                   {"SWIFT": 0.85, "STATISTICAL": 0.15}),
+    CorridorConfig("USD/BRL", 0.02, 0.300, 11.2, 1.9,
+                   {"SWIFT": 0.85, "STATISTICAL": 0.15}),
+    CorridorConfig("USD/MXN", 0.01, 0.190, 11.5, 1.8,
+                   {"SWIFT": 0.70, "FEDNOW": 0.20, "STATISTICAL": 0.10}),
 ]
 
 _CORRIDOR_NAMES = [c.name for c in _CORRIDORS]
@@ -614,10 +631,106 @@ def generate_payments(
 
     df = pd.concat(chunks, ignore_index=True)
 
+    # Inject temporal burst clustering for 30% of RJCT senders — creates genuine
+    # 1d/7d/30d failure rate variation so windowed features carry real signal.
+    _cluster_rng = np.random.default_rng(seed + 999_997)
+    df = _inject_temporal_clustering(df, _cluster_rng)
+
     # Shuffle to interleave RJCT and success records — models must not exploit
     # positional structure (all failures first, all successes last).
     df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
     return df
+
+
+def _inject_temporal_clustering(
+    df: pd.DataFrame,
+    rng: np.random.Generator,
+    burst_fraction: float = 0.30,
+) -> pd.DataFrame:
+    """Concentrate RJCT timestamps for a fraction of BICs into burst windows.
+
+    For ``burst_fraction`` of unique sender BICs, re-samples their RJCT
+    timestamps from 2–3 short windows (7–21 days each) distributed randomly
+    across the 18-month epoch.  Success records and non-burst BICs are left
+    untouched.
+
+    Effect on C1 features:
+      - Burst BICs have high failure_rate_1d / failure_rate_7d inside a window
+        and near-zero outside — creating genuine 1d/7d vs 30d rate divergence.
+      - consecutive_failures spikes during burst windows, returns to 0 outside.
+      - The model can learn to use these signals as leading indicators.
+
+    .. note:: Burst windows are placed uniformly across the 18-month epoch with
+       no constraint on train/test split boundaries.  If a temporal split is used
+       downstream, a burst window may straddle the boundary — this is a known
+       limitation.  Current split strategy (stratified random) is unaffected.
+
+    Parameters
+    ----------
+    burst_fraction:
+        Fraction of unique RJCT-sender BICs to assign a burst profile.
+        Default 0.30 (30%).  Remainder keep their uniform distribution.
+    """
+    original_labels = df["label"].to_numpy().copy()
+
+    rjct_mask = df["label"] == 1
+    rjct_senders = df.loc[rjct_mask, "bic_sender"].unique()
+    if len(rjct_senders) == 0:
+        return df
+
+    n_burst = max(1, int(len(rjct_senders) * burst_fraction))
+    burst_bics = set(rng.choice(rjct_senders, size=n_burst, replace=False).tolist())
+
+    # Parse existing timestamps to unix seconds for arithmetic
+    ts_unix = (
+        pd.to_datetime(df["timestamp_utc"], utc=True).astype("int64") // 10**9
+    ).to_numpy(dtype=np.float64)
+    # Use canonical epoch constants — not data-derived — for reproducibility
+    # and robustness against timestamp outliers.
+    epoch_start = _EPOCH_START
+    epoch_span = float(_EPOCH_SPAN)
+
+    new_ts_unix = ts_unix.copy()
+
+    for bic in burst_bics:
+        bic_mask_arr = rjct_mask.to_numpy() & (df["bic_sender"].to_numpy() == bic)
+        n_failures = int(bic_mask_arr.sum())
+        if n_failures == 0:
+            continue
+
+        # 2–3 burst windows per BIC
+        n_windows = int(rng.integers(2, 4))
+        max_window_dur = 21 * 86400
+        window_starts = rng.uniform(0, epoch_span - max_window_dur, size=n_windows)
+        window_durations = rng.uniform(7 * 86400, max_window_dur, size=n_windows)
+        window_weights = rng.dirichlet(np.ones(n_windows))
+
+        window_choices = rng.choice(n_windows, size=n_failures, p=window_weights)
+        new_ts = np.empty(n_failures, dtype=np.float64)
+        for wi in range(n_windows):
+            wmask = window_choices == wi
+            n_wm = int(wmask.sum())
+            if n_wm == 0:
+                continue
+            new_ts[wmask] = (
+                epoch_start + window_starts[wi]
+                + rng.uniform(0, window_durations[wi], size=n_wm)
+            )
+        new_ts_unix[bic_mask_arr] = new_ts
+
+    # Convert back to ISO 8601 strings
+    new_timestamps = [
+        datetime.fromtimestamp(float(t), tz=timezone.utc).isoformat()
+        for t in new_ts_unix
+    ]
+    result = df.copy()
+    result["timestamp_utc"] = new_timestamps
+
+    # Integrity check: labels must never be altered by timestamp resampling.
+    assert np.array_equal(original_labels, result["label"].to_numpy()), (
+        "BUG: _inject_temporal_clustering corrupted label column"
+    )
+    return result
 
 
 def save_parquet(df: pd.DataFrame, output_path: Path) -> None:
