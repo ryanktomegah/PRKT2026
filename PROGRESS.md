@@ -601,6 +601,21 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 8. License refresh interval (24h) should be reduced to 1h
 9. Kafka production TLS/SASL config needs documenting
 
+### Audit Follow-ups — All Fixed (commit 7ff74dd)
+
+**Post-fix test suite: 1419 passed, 0 failed** (was 1412 after critical fix).
+
+1. **C1 InferenceEngine default threshold**: Changed from 0.5 → 0.152 (τ*). Pipeline always
+   overrode this, but direct callers would silently get the wrong threshold. Added
+   `_DEFAULT_THRESHOLD` constant in inference.py. Updated `run_inference()` in `__init__.py`.
+2. **dgen temporal clustering hardened**: Uses canonical `_EPOCH_START`/`_EPOCH_SPAN` instead of
+   data-derived values. Added label integrity assertion. Documented train/test leakage caveat.
+3. **7 new tests** (`TestTemporalClustering`): labels preserved, shape preserved, timestamps valid,
+   epoch bounds, success timestamps unchanged, determinism, burst detection.
+4. **training.py:285 docstring**: Fixed `(n_val, 88)` → `(n_val, 96)`.
+5. **8 new corridors committed**: USD/AUD, AUD/USD, USD/HKD, HKD/USD, EUR/SEK, USD/KRW, USD/BRL,
+   USD/MXN — all validated with realistic failure rates and settlement parameters.
+
 ### What is NEXT
 
 **Immediate (blocking pre-pilot)**:
@@ -612,3 +627,5 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 4. C1 training on production parquet — check Codespace training status (PID 1118)
 5. C6 Redis Phase 2 — distributed velocity tracking (velocity.py TODO)
 6. Cloud deployment — K8s for pilot bank onboarding
+7. Infrastructure hardening (9 items from audit): PSS labels, securityContext on C1-C6, TLS,
+   imagePullPolicy, NetworkPolicy for C3/C6, C7 taints/tolerations, license refresh interval
