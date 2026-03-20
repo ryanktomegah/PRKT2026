@@ -189,4 +189,138 @@ These additional revenue streams could materially increase total BPI revenue but
 
 ---
 
-*All fee parameters sourced from `lip/common/constants.py`. Phase splits from `lip/common/deployment_phase.py`. Fee formula from `lip/c2_pd_model/fee.py`.*
+## 8. Capital Efficiency Analysis — Phase 2/3 Working Capital
+
+### 8.1 The Self-Liquidating Capital Advantage
+
+Bridge loans repay automatically when the SWIFT UETR settles. Average maturity is ~7 days (base case). This means deployed capital turns over approximately **52× per year** (365/7). BPI does not need the full annual origination volume in cash — only the amount actively deployed at any moment.
+
+```
+Concurrent capital deployed = annual_eligible_volume × (avg_maturity / 365)
+```
+
+### 8.2 Working Capital Requirements by Phase
+
+**Phase 1 (Licensor):** BPI deploys **$0**. Bank funds 100% of every loan. BPI earns 15% IP royalty with zero capital at risk. This is the proof-of-concept phase.
+
+**Phase 2 (Hybrid):** BPI's SPV funds 70% of each loan. The bank continues to fund 30%. Phase 2 does NOT launch across a bank's entire book simultaneously — it begins with 1–2 high-value corridors and expands.
+
+| Scenario | Annual Eligible Volume | Concurrent SPV Capital (70%) | SPV Facility Size Needed |
+|----------|----------------------|------------------------------|--------------------------|
+| Conservative (1 bank, 2% of corridors) | $840M | $11.3M | ~$15M |
+| Conservative (1 bank, 5% of corridors) | $2.1B | $28.2M | ~$35M |
+| Base (1 bank, 2% of corridors) | $2.0B | $26.8M | ~$35M |
+| Base (1 bank, 5% of corridors) | $5.0B | $67.1M | ~$80M |
+
+**Critical insight:** A $15–35M warehouse facility is sufficient for Phase 2 entry on the first bank.
+
+### 8.3 The SPV Leverage Structure — Why BPI's Equity at Risk Is Not 70%
+
+The SPV is not funded by BPI alone. It has a **tiered capital structure** (see `Capital-Partner-Strategy.md`):
+
+```
+SPV Capital Stack (per $700K deployed on a $1M Phase 2 loan):
+├── Senior Lender: 85% = $595K  →  earns SOFR + spread (~7% all-in)
+├── Mezzanine:      0% (simplified for early stage)
+└── BPI First-Loss: 15% = $105K  →  absorbs first losses, earns residual
+```
+
+**BPI's actual equity at risk per loan: $105K, not $700K.** The senior lender provides 85% of the SPV's capital at ~7%. BPI provides the first-loss tranche (15%) which absorbs losses before the senior lender feels any pain. This leverage is what makes the economics work.
+
+### 8.4 Phase 2 Capital Efficiency — SPV-Leveraged Returns
+
+**Per $700K SPV position, cycling 52× per year (base case, $1M loans / 7-day / 400 bps floor):**
+
+| Item | Annual Calculation | Amount |
+|------|-------------------|--------|
+| Fee per loan (BPI's 40%) | $767.12 × 0.40 | $306.85 |
+| Annual fee (52 cycles) | $306.85 × 52 | $15,956 |
+| Senior lender cost | $595K × 7% | $41,650 |
+| **Net to BPI equity** | $15,956 − $41,650 | **−$25,694** |
+| BPI equity at risk | 15% of $700K | $105,000 |
+| **BPI equity ROE** | | **−24.5%** |
+
+**At 400 bps floor pricing, Phase 2 is deeply unprofitable.** But the floor is the minimum — the C2 model risk-prices most loans above the floor.
+
+**Breakeven analysis — what average fee rate does Phase 2 need?**
+
+| Average Fee Rate | Annual BPI Fee (40%, 52 cycles) | Senior Cost | Net to BPI Equity | ROE on $105K |
+|------------------|---------------------------------|-------------|-------------------|--------------|
+| 400 bps | $15,956 | $41,650 | −$25,694 | **−24.5%** |
+| 700 bps | $27,923 | $41,650 | −$13,727 | **−13.1%** |
+| 1,000 bps | $39,890 | $41,650 | −$1,760 | **−1.7%** |
+| 1,100 bps | $43,879 | $41,650 | +$2,229 | **+2.1%** |
+
+**Phase 2 breaks even at ~1,050 bps average.** This is achievable for Class C (21-day) loans and higher-risk corridors, but not for the bulk of the book. **Phase 2 is a strategic investment, not a profit center.**
+
+### 8.5 Phase 3 Capital Efficiency — Where the Economics Transform
+
+At Phase 3, BPI's SPV funds 100% and keeps 75% of fees. Post-securitization, the senior tranche cost drops to ~5%.
+
+**Per $1M SPV position, cycling 52× per year:**
+
+| Item | Annual Calculation | Amount |
+|------|-------------------|--------|
+| Senior tranche | 85% of $1M = $850K at 5% | $42,500 |
+| BPI equity | 15% of $1M | $150,000 |
+
+| Average Fee Rate | Annual BPI Fee (75%, 52 cycles) | Senior Cost | Net to BPI Equity | ROE on $150K |
+|------------------|---------------------------------|-------------|-------------------|--------------|
+| 400 bps | $29,918 | $42,500 | −$12,582 | **−8.4%** |
+| 560 bps | $41,886 | $42,500 | −$614 | **≈ 0% (breakeven)** |
+| 700 bps | $52,794 | $42,500 | +$10,294 | **+6.9%** |
+| 1,000 bps | $74,794 | $42,500 | +$32,294 | **+21.5%** |
+| 1,500 bps | $112,194 | $42,500 | +$69,694 | **+46.5%** |
+
+**Phase 3 breaks even at ~560 bps average.** At the Investor Briefing's demonstrated 706 bps, BPI equity earns **~6.9% ROE** — modest but positive. At higher average rates (achievable through C2 model risk-pricing), returns become compelling.
+
+### 8.6 The Critical Variable: Average Fee Rate Across the Book
+
+The 300 bps floor is the **minimum**. The C2 model's risk-adjusted pricing typically produces higher rates:
+
+- The Investor Briefing example priced at **706 bps** (2.35× the floor)
+- Class C loans (21-day maturity) earn 3× the per-loan fee of Class B at the same rate
+- Higher-risk corridors (emerging markets, specific rejection codes) produce higher model rates
+- The floor exists to prevent underpricing, not to represent average pricing
+
+**If the book averages 700 bps (conservative for a risk-adjusted ML model):**
+
+| Metric | Phase 2 (1 bank, 5% corridors) | Phase 3 (1 bank, full book) |
+|--------|-------------------------------|----------------------------|
+| Loans/year | ~2,625 | ~52,500 |
+| Total annual fee | ~$2.5M | ~$49.2M |
+| BPI share | ~$987K (40%) | ~$36.9M (75%) |
+| Senior lender cost | ~$2.0M | ~$32.7M |
+| **Net to BPI equity** | **−$1.0M** | **+$4.2M** |
+| BPI equity at risk | ~$4.2M | ~$121M |
+| **BPI equity ROE** | **−24%** | **+3.5%** |
+
+**At base case volumes (100,000 loans/year) and 700 bps average, Phase 3:**
+
+| Metric | Full book | 50% penetration |
+|--------|-----------|-----------------|
+| Loans/year | 100,000 | 50,000 |
+| Total annual fee | ~$134.2M | ~$67.1M |
+| BPI share (75%) | ~$100.7M | ~$50.3M |
+| Senior lender cost | ~$81.4M | ~$40.7M |
+| **Net to BPI equity** | **+$19.2M** | **+$9.6M** |
+| BPI equity at risk | ~$288M | ~$144M |
+| **BPI equity ROE** | **+6.7%** | **+6.7%** |
+
+### 8.7 The Path to Profitability
+
+Phase 2/3 capital economics improve through three mechanisms:
+
+1. **Securitization** — 12–18 months of clean SPV performance data qualifies for rated securitization, dropping senior tranche cost from ~7% to ~4–5%. Each 100 bps reduction in senior cost = ~$8.5M/year improvement on the base case full book.
+
+2. **Fee rate optimization** — As the C2 model accumulates real performance data, risk-pricing accuracy improves. Corridors that consistently perform better than modeled can be repriced. The average fee rate across the book is the single most important variable.
+
+3. **Scale** — Fixed costs (SPV administration, compliance, reporting) are spread across more volume. The variable economics (fee rate vs cost of capital) are scale-neutral, but SPV profitability improves with volume because the first-loss tranche percentage can decrease as the track record lengthens.
+
+**Strategic implication:** Phase 2 is a net investment (funded from Phase 1 royalty income + equity capital). Phase 3 at 700+ bps average becomes self-sustaining. The transition from Phase 2 to Phase 3 is the critical inflection where BPI goes from capital-consuming to capital-generating.
+
+**For capital partner pitch purposes:** The capital partner earns 5–7% on the senior tranche regardless of BPI's equity returns — their economics are independent and attractive. See `Capital-Partner-Strategy.md` Section 10.
+
+---
+
+*All fee parameters sourced from `lip/common/constants.py`. Phase splits from `lip/common/deployment_phase.py`. Fee formula from `lip/c2_pd_model/fee.py`. Capital efficiency analysis cross-references `Capital-Partner-Strategy.md`.*
