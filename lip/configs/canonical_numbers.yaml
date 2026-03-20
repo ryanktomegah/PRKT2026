@@ -26,13 +26,13 @@ ml_performance:
   target_auc:   0.850    # GraphSAGE + TabTransformer production target
 
 dispute_classifier:
-  false_negative_rate_current: 0.08   # 8% current FN rate
+  false_negative_rate_current: 0.0    # 0% FN — measured on 100-case negation suite, qwen/qwen3-32b via Groq (2026-03-16)
   false_negative_rate_target:  0.02   # 2% target FN rate
   timeout_fallback_class: "DISPUTE_POSSIBLE"  # conservative on timeout
 
 aml_velocity:
-  dollar_cap_usd: 1_000_000           # per entity per 24hr rolling window
-  count_cap: 100                      # transactions per entity per 24hr
+  dollar_cap_usd: 0                   # 0 = unlimited; set per-licensee via C8 token (EPG-16, 2026-03-18)
+  count_cap: 0                        # 0 = unlimited; set per-licensee via C8 token (EPG-16, 2026-03-18)
   beneficiary_concentration_threshold: 0.80  # >80% to single beneficiary
 
 corridor_embeddings:

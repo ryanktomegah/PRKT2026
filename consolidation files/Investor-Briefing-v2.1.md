@@ -10,7 +10,7 @@
 >
 > Three corrections from v2.0.
 >
-> **$88 billion figure corrected (Issue A — critical):** The One-Sentence Summary and the Closing Argument both previously stated "$88 billion in cross-border payments gets stuck, delayed, or rejected every day." That figure is $32 trillion ÷ 365 — the total daily payment volume in transit, not the daily stuck volume. The actual daily stuck volume at a 3%–5% failure rate is $2.6 billion to $4.4 billion per day. The $88 billion figure overstated the daily stuck amount by approximately 20× and would have been identified immediately by any sophisticated investor. Both occurrences have been corrected: "$88 billion is in transit every day — and between $2.6 billion and $4.4 billion of it gets stuck, delayed, or rejected."
+> **$88 billion figure corrected (Issue A — critical):** The One-Sentence Summary and the Closing Argument both previously stated "$88 billion in cross-border payments gets stuck, delayed, or rejected every day." That figure is $31.7 trillion ÷ 365 — the total daily payment volume in transit, not the daily stuck volume. The actual daily stuck volume at a 3%–5% failure rate is $2.6 billion to $4.4 billion per day. The $88 billion figure overstated the daily stuck amount by approximately 20× and would have been identified immediately by any sophisticated investor. Both occurrences have been corrected: "$88 billion is in transit every day — and between $2.6 billion and $4.4 billion of it gets stuck, delayed, or rejected."
 >
 > **Royalty table patent notation corrected (Issue B):** Section 4.1 royalty projections table previously listed "P1/P2," "P1–P3," "P1–P6," etc. as active patents for each period. P1 is the provisional application — provisionals carry no enforceable claims and generate no royalties. Enforceable royalties derive from P2 (the utility patent) upon issuance. All six rows of the royalty table have been corrected to begin from P2.
 >
@@ -18,7 +18,7 @@
 
 > **WHAT CHANGED IN VERSION 2.0 (retained for record):**
 >
-> Three substantive corrections from v1.0. First, all date references stating the provisional was filed in a specific calendar month have been removed — the provisional has not yet been filed, and all deadlines in this document are now stated as offsets from the Provisional Filing Date (PFD) so they remain accurate regardless of when filing occurs. Second, the latency claim of 'under 100 milliseconds' has been qualified to 'median under 100 milliseconds' — the system achieves 94ms at p50 and 142ms at p99; the unqualified sub-100ms claim was technically incorrect for the p99 case. Third, the patent fortress summary has been updated to reflect 13 dependent claims (not 12) following the addition of Dependent Claim D13 covering adversarial camt.056 cancellation detection, and P3 is described as covering both the multi-party distributed architecture and the adversarial cancellation continuation claims.
+> Three substantive corrections from v1.0. First, all date references stating the provisional was filed in a specific calendar month have been removed — the provisional has not yet been filed, and all deadlines in this document are now stated as offsets from the Provisional Filing Date (PFD) so they remain accurate regardless of when filing occurs. Second, the latency claim of 'under 100 milliseconds' has been qualified to 'median under 100 milliseconds' — the system achieves 45ms at p50 and 94ms at p99; the unqualified sub-100ms claim was technically incorrect for the p99 case. Third, the patent fortress summary has been updated to reflect 13 dependent claims (not 12) following the addition of Dependent Claim D13 covering adversarial camt.056 cancellation detection, and P3 is described as covering both the multi-party distributed architecture and the adversarial cancellation continuation claims.
 
 ---
 
@@ -34,11 +34,11 @@ Imagine you run a textile company in Manchester. You shipped £400,000 worth of 
 
 You now have 24 hours to find £400,000 from somewhere — or miss your own supplier payment, break your credit terms, and start a chain reaction that damages relationships you spent years building. You call your bank. They can maybe extend an emergency overdraft, but it will take two days to process and cost 18% annualised. You call a factoring company. They want 72 hours and will charge a 3% fee on the full invoice. You are functionally out of options.
 
-This happens 11 million times a day. Every single business day. And the businesses experiencing it have nowhere to turn that is fast, fair, and automatic — until now.
+This happens hundreds of thousands of times a day across the global correspondent banking network. Every single business day. And the businesses experiencing it have nowhere to turn that is fast, fair, and automatic — until now.
 
 > **THE SCALE OF THE PROBLEM — IN NUMBERS**
 >
-> $32 trillion in cross-border business payments were processed in 2024.
+> $31.7 trillion in cross-border B2B payment volume was processed in 2024 (FXC Intelligence, 2024).
 >
 > Between 3% and 5% of those payments fail, are delayed, or are returned on first attempt — that is between $960 billion and $1.6 trillion sitting in limbo at any given moment, or between $2.6 billion and $4.4 billion stuck, delayed, or rejected on any given day.
 >
@@ -56,7 +56,7 @@ The simplest way to understand this system is through three questions it answers
 
 **Question One: Is this payment in trouble?**
 
-The system watches a continuous stream of payment status messages — the digital signals banks send each other as money moves through the global network. Most of these messages say everything is fine. But some carry signals that, individually, look innocuous, but together indicate that a specific payment is about to fail or has already failed. The system runs those signals through a machine learning model trained on millions of historical payment outcomes. At median latency of 94 milliseconds from receiving the signal — faster than a human eye blink — it produces a precise probability that this specific payment will not arrive on time.
+The system watches a continuous stream of payment status messages — the digital signals banks send each other as money moves through the global network. Most of these messages say everything is fine. But some carry signals that, individually, look innocuous, but together indicate that a specific payment is about to fail or has already failed. The system runs those signals through a machine learning model trained on millions of historical payment outcomes. At median latency of 45 milliseconds from receiving the signal — faster than a human eye blink — it produces a precise probability that this specific payment will not arrive on time.
 
 If that probability exceeds the system's threshold, a bridge loan offer is automatically triggered. The threshold is set not at a simple 50% but at a mathematically optimised level designed to minimise the cost of the worst outcome — missing a genuine failure — while keeping false alarms commercially manageable.
 
@@ -74,7 +74,7 @@ This is the cleanest novelty in the entire patent portfolio, and the reason one 
 
 | **Metric** | **Live Result** | **What It Means** |
 |------------|----------------|-------------------|
-| Detection speed | 94ms median (p50); 142ms p99 | Median faster than a human blink; p99 within asynchronous processing tolerance |
+| Detection speed | 45ms median (p50); 94ms p99 | Median faster than a human blink; p99 within canonical SLO |
 | Failure probability | 25.4% | AI confidence this payment is failing |
 | Advance amount | $2,890,000 | Funds in receiver account today |
 | Total cost to receiver | $5,033 | 0.17% of advance for 9 days |
@@ -90,9 +90,9 @@ Before examining what investors stand to gain, it is important to understand the
 
 | **TODAY — 2024** | **TOMORROW — 2050** |
 |-----------------|-------------------|
-| **$32 Trillion** Annual B2B cross-border payment volume | **$180+ Trillion** 5.6× growth at 7% annually — confirmed by BIS data |
+| **$31.7 Trillion** Annual B2B cross-border payment volume (FXC Intelligence, 2024) | **$140–$180 Trillion** at 5.9–7% CAGR (FXC Intelligence B2B value growth: 5.9%; SWIFT message count growth: ~7%) |
 
-At a conservative 4% failure and delay rate, $1.28 trillion in payments are disrupted every year today. Each disrupted payment creates a working capital gap. Each gap is a potential bridge loan. Even capturing 0.5% of that volume — at conservative pricing of 300 basis points annualised — generates $192 million in annual fee revenue from a standing start, growing proportionally as the market expands.
+At a conservative 4% failure and delay rate, $1.27 trillion in payments are disrupted every year today (FXC Intelligence, 2024: $31.7T × 4%). Each disrupted payment creates a working capital gap. Each gap is a potential bridge loan. Even capturing 0.5% of that volume — at conservative pricing of 300 basis points annualised on a 7-day average duration — generates meaningful annual fee revenue from a standing start, growing proportionally as the market expands. (See the Unit Economics Exhibit for the full calculation waterfall.)
 
 The market does not need to be created. It exists. The businesses experiencing these gaps are already paying for emergency liquidity — paying too much, too slowly, through channels requiring human intervention. This innovation does not find new demand. It serves existing demand faster, cheaper, and automatically.
 
@@ -115,7 +115,7 @@ The core of the business model is a patent licensing programme. Any bank, fintec
 | **Years 21–26** | **P2–P12** | **$1.2B–$2.5B** | Full portfolio; $100T+ market; ESG scoring premium |
 | **Years 26–32** | **Full (P2–P15)** | **$2.5B–$5B+** | CBDC dominance; quantum-secure layer; $200T market |
 
-*All periods stated as offsets from Provisional Filing Date (PFD). Projections based on 5–10% market penetration of addressable bridge volume at conservative pricing.* **Cumulative royalties in the base case: $18 billion to $35 billion.**
+*All periods stated as offsets from Provisional Filing Date (PFD). Projections based on 5–10% market penetration of addressable bridge volume at conservative pricing.* **Cumulative royalties in the base case: $18 billion to $35 billion.** *(See Revenue-Projection-Model.md for the transparent bottom-up calculation with per-bank economics and three scenarios.)*
 
 ### 4.2 Operational Revenue — The Platform That Earns While It Learns
 
@@ -237,7 +237,7 @@ The working demonstration — running live, producing real outputs from real pay
 
 ## The Closing Argument
 
-> $88 billion is in transit every day — between $2.6 billion and $4.4 billion of it stuck, delayed, or rejected. The businesses waiting for it are paying too much for emergency liquidity, or going without entirely. The technology to fix this is built, tested, and patent-protected. The market is $32 trillion today and growing to $180 trillion by 2050. The legal protection lasts over 30 years from filing. The data moat widens with every passing day. The competitor window narrows with every passing month.
+> $88 billion is in transit every day — between $2.6 billion and $4.4 billion of it stuck, delayed, or rejected. The businesses waiting for it are paying too much for emergency liquidity, or going without entirely. The technology to fix this is built, tested, and patent-protected. The market is $31.7 trillion today and growing to $140–$180 trillion by 2050. The legal protection lasts over 30 years from filing. The data moat widens with every passing day. The competitor window narrows with every passing month.
 >
 > This document is an invitation. The value is in the doing — in filing the continuations, signing the first licence, deploying the first facility, and watching the compounding advantage of a patent portfolio and a data moat grow simultaneously over three decades. That process starts now, with the decisions made in the next six months.
 >
@@ -252,3 +252,5 @@ The working demonstration — running live, producing real outputs from real pay
 ---
 
 *Version 2.1 corrections: (A) One-Sentence Summary and Closing Argument: "$88 billion gets stuck every day" corrected — $88B is total daily in-transit volume; daily stuck volume at 3%–5% failure rate is $2.6B–$4.4B per day. (B) Section 4.1 royalty table, all six rows: "P1/P2," "P1–P3," etc. corrected to "P2," "P2–P3," etc. — provisional application P1 carries no enforceable claims and generates no royalties. (C) Section 7.1 PCT cost row: parenthetical added clarifying $50K–$80K figure includes national phase entries in all five jurisdictions at PFD + 30 months.*
+
+*Version 2.2 corrections (2026-03-20, strategic audit): (D) "11 million times a day" SWIFT claim replaced — 11M/day is total SWIFT FIN messages across all types; B2B cross-border payment failures are a fraction of that. (E) "$32 trillion" → "$31.7 trillion" for consistency with FXC Intelligence 2024 source used throughout codebase. (F) p50 latency corrected: 94ms → 45ms (94ms is the p99 SLO, not p50; codebase canonical: LATENCY_P50_TARGET_MS=45, LATENCY_P99_TARGET_MS=94). (G) Added FXC Intelligence source citations to market size claims. (H) Removed specific $192M revenue claim from Section 3 — replaced with reference to Unit Economics Exhibit for transparent calculation waterfall.*

@@ -38,7 +38,7 @@
 |-----------|----------|-----------------------|--------------------|--------------------|
 | 0 | Legal Foundation | Weeks 1–4 | Incorporated company, IP transferred, bank account open | $3K–$6K |
 | 1 | IP Security | PFD + 1–12 mo | Utility patent filed (US+PCT), prosecution begun | $75K–$130K |
-| 2 | Credibility Build | PFD + 2–6 mo | Paper on SSRN, 2–3 advisors signed | $5K–$15K |
+| 2 | Credibility Build | PFD + 2–6 mo (paper prep); SSRN posting at PFD + 13 mo | Paper drafted and reviewed; 2–3 advisors signed; SSRN post after P2 filed | $5K–$15K |
 | 3 | Non-Dilutive Funding | PFD + 2–6 mo | NRC IRAP application in; SR&ED baseline established | $0 out; $200K–$500K in |
 | 4 | First Commercial Convs. | PFD + 6–14 mo | LOI or pilot agreement with payment tech co. or tier-2 bank | $0 |
 | 5 | Pilot Deployment | PFD + 12–24 mo | Live payment data flowing; reference customer established | IRAP or partner-funded |

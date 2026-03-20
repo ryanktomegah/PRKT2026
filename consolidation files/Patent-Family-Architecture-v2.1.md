@@ -168,7 +168,11 @@ P14 covers the embedding of AI inference capabilities directly into payment netw
 
 ## 3. Royalty Revenue Projection by Portfolio Phase
 
-> **CALCULATION BASIS:** The projections below rest on a defined set of assumptions. Global cross-border B2B payment volume: $31.7 trillion annually (FXC Intelligence, 2024). Payment failure and delay rate: 4.0% (midpoint of STP-derived 3–5% range). Annual disrupted volume: $31.7T × 4% = ~$1.27 trillion. Addressable bridge volume (excluding compliance holds and same-day self-resolution, estimated 50% of disrupted volume): ~$635 billion annually. Conservative market penetration: 5% in Phase 1 → 10% in Phase 2 → 20%+ in Phase 3. Royalty fee structure: 2–3.5 basis points of monitored payment volume, representing a technology licensing fee rather than an interest rate. All projections are internal planning estimates and are not representations to investors. Do not use these figures in investor conversations without a full calculation waterfall disclosure.
+> **CALCULATION BASIS:** The projections below rest on a defined set of assumptions. Global cross-border B2B payment volume: $31.7 trillion annually (FXC Intelligence, 2024). Payment failure and delay rate: 4.0% (midpoint of STP-derived 3–5% range). Annual disrupted volume: $31.7T × 4% = ~$1.27 trillion. Addressable bridge volume (excluding compliance holds and same-day self-resolution, estimated 50% of disrupted volume): ~$635 billion annually.
+>
+> **⚠️ AUDIT NOTE (2026-03-20):** The royalty projections in this table are top-down estimates based on market penetration assumptions. A bottom-up per-bank revenue model has been built in **Revenue-Projection-Model.md** that validates the Year 4–8 range but shows the long-horizon cumulative ($18B–$35B) figure requires aggressive penetration and market growth assumptions. **Use the Revenue-Projection-Model.md for all investor conversations** — it shows transparent per-bank economics and three scenarios (conservative, base, upside). The table below is retained for internal strategic planning only.
+>
+> All projections are internal planning estimates and are not representations to investors. Do not use these figures in investor conversations without a full calculation waterfall disclosure.
 
 | **Phase** | **Active Patents** | **Year Offset** | **Annual Royalty Range** | **Key Revenue Drivers** | **Market Penetration Assumption** |
 |-----------|-------------------|-----------------|--------------------------|------------------------|----------------------------------|
@@ -199,6 +203,8 @@ The $20M–$80M Phase 1 range is derived as follows, so that any party reviewing
 | Annual royalty — optimistic (10% + volume-based growth, 350 bps) | ~$80M at top of Phase 1 range |
 
 > **PORTFOLIO SALE VALUE:** Annual royalty income crosses $1 billion somewhere in the Phase 2 Dominance to Phase 3 Portfolio transition — approximately 16 to 21 years from the foundational filing — based on the penetration assumptions above. The cumulative royalty income between Year 4 and Year 32 in the base case is $18 billion to $35 billion. The IP portfolio sale value at peak annual royalties of $2.5B+ is $12.5 billion to $20 billion at 5x to 8x ARR multiples — a range consistent with comparable IP-led financial technology licensing businesses.
+>
+> **⚠️ AUDIT NOTE (2026-03-20):** The top-down waterfall above treats the entire bridge loan fee as BPI royalty revenue. In the current Phase 1 (Licensor) model, BPI earns 15% of the fee — the bank retains 85%. The bottom-up model in **Revenue-Projection-Model.md** shows: conservative ~$3M/year per bank (Phase 1), base ~$11.5M/year per bank (Phase 1). Phase 2/3 transitions significantly increase BPI's per-bank revenue (2.7× at Phase 2, 5× at Phase 3). The $18M conservative figure in this waterfall roughly corresponds to the total fee (not BPI's share) from a single bank at base assumptions — this should be clearly distinguished in investor communications.
 
 ---
 
