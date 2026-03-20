@@ -17,6 +17,7 @@ from enum import Enum
 from typing import Callable, Dict, List, Optional
 
 from lip.c2_pd_model.fee import compute_loan_fee, compute_platform_royalty
+from lip.common.deployment_phase import DeploymentPhase, get_phase_config
 from lip.common.partial_settlement import PartialSettlementPolicy
 
 from .rejection_taxonomy import RejectionClass
@@ -58,6 +59,7 @@ class ActiveLoan:
     corridor: str
     funded_at: datetime
     licensee_id: str = ""
+    deployment_phase: str = "LICENSOR"
 
 
 class RepaymentTrigger(str, Enum):
@@ -355,16 +357,41 @@ class RepaymentLoop:
             else loan.principal
         )
         fee = compute_loan_fee(effective_principal, Decimal(str(loan.fee_bps)), days_funded)
-        platform_royalty = compute_platform_royalty(fee)
-        net_fee_to_entities = fee - platform_royalty
+
+        # Phase-aware BPI fee share: resolve from loan's deployment phase.
+        # Phase 1 (LICENSOR) → 15% royalty; Phase 2 (HYBRID) → 40%; Phase 3 (FULL_MLO) → 75%.
+        try:
+            phase = DeploymentPhase(loan.deployment_phase)
+        except ValueError:
+            phase = DeploymentPhase.LICENSOR
+        phase_cfg = get_phase_config(phase)
+
+        bpi_fee_share_usd = compute_platform_royalty(fee, royalty_rate=phase_cfg.bpi_fee_share)
+        net_fee_to_entities = fee - bpi_fee_share_usd
+        bank_share_usd = net_fee_to_entities
+
+        # Decompose bank share into capital return + distribution premium (Phase 2/3)
+        from decimal import ROUND_HALF_UP
+        bank_capital_return_usd = (
+            fee * phase_cfg.bank_capital_return_share
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        bank_distribution_premium_usd = bank_share_usd - bank_capital_return_usd
+
         repayment_record = {
             "loan_id": loan.loan_id,
             "uetr": loan.uetr,
             "individual_payment_id": loan.individual_payment_id,
             "principal": str(loan.principal),
             "fee": str(fee),
-            "platform_royalty": str(platform_royalty),
+            # Primary field (replaces platform_royalty semantically for Phase 2/3)
+            "bpi_fee_share_usd": str(bpi_fee_share_usd),
+            # Backward-compat alias — royalty_settlement.py reads this key
+            "platform_royalty": str(bpi_fee_share_usd),
             "net_fee_to_entities": str(net_fee_to_entities),
+            "bank_capital_return_usd": str(bank_capital_return_usd),
+            "bank_distribution_premium_usd": str(bank_distribution_premium_usd),
+            "income_type": phase_cfg.income_type,
+            "deployment_phase": phase.value,
             "licensee_id": loan.licensee_id,
             "fee_bps": loan.fee_bps,
             "settlement_amount": str(settlement_amount),

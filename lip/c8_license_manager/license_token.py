@@ -41,6 +41,10 @@ ALL_COMPONENTS: List[str] = ["C1", "C2", "C3", "C4", "C5", "C6", "C7"]
 # LicenseBootValidator rejects tokens with this sentinel (kill switch engaged).
 _AML_CAP_UNSET: int = -1
 
+# Valid deployment phase values — must match DeploymentPhase enum in deployment_phase.py.
+# Duplicated here as strings to avoid a circular import on the token module.
+_VALID_PHASES: frozenset = frozenset({"LICENSOR", "HYBRID", "FULL_MLO"})
+
 
 @dataclass
 class LicenseToken:
@@ -74,6 +78,7 @@ class LicenseToken:
     aml_dollar_cap_usd: int = 0  # EPG-16: 0 = unlimited; 1M retail default removed
     aml_count_cap: int = 0       # EPG-16: 0 = unlimited; 100 retail default removed
     min_loan_amount_usd: int = 500000
+    deployment_phase: str = "LICENSOR"  # Phase 1=LICENSOR, Phase 2=HYBRID, Phase 3=FULL_MLO
     permitted_components: List[str] = field(default_factory=lambda: list(ALL_COMPONENTS))
     hmac_signature: str = ""
 
@@ -92,6 +97,7 @@ class LicenseToken:
             "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
             "aml_count_cap": self.aml_count_cap,
             "min_loan_amount_usd": self.min_loan_amount_usd,
+            "deployment_phase": self.deployment_phase,
             "permitted_components": sorted(self.permitted_components),
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -111,12 +117,18 @@ class LicenseToken:
             "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
             "aml_count_cap": self.aml_count_cap,
             "min_loan_amount_usd": self.min_loan_amount_usd,
+            "deployment_phase": self.deployment_phase,
             "permitted_components": self.permitted_components,
             "hmac_signature": self.hmac_signature,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "LicenseToken":
+        phase = data.get("deployment_phase", "LICENSOR")
+        if phase not in _VALID_PHASES:
+            raise ValueError(
+                f"Unknown deployment_phase {phase!r} — valid values: {sorted(_VALID_PHASES)}"
+            )
         return cls(
             licensee_id=data["licensee_id"],
             issue_date=data["issue_date"],
@@ -125,6 +137,7 @@ class LicenseToken:
             aml_dollar_cap_usd=int(data["aml_dollar_cap_usd"]),   # EPG-17: required field — no silent default
             aml_count_cap=int(data["aml_count_cap"]),              # EPG-17: required field — no silent default
             min_loan_amount_usd=int(data.get("min_loan_amount_usd", 500000)),
+            deployment_phase=phase,
             permitted_components=list(data.get("permitted_components", ALL_COMPONENTS)),
             hmac_signature=data.get("hmac_signature", ""),
         )
@@ -159,6 +172,7 @@ class LicenseeContext:
     permitted_components: List[str]
     token_expiry: str
     min_loan_amount_usd: int = 500000
+    deployment_phase: str = "LICENSOR"
 
 
 # ── Token signing and verification ───────────────────────────────────────────
@@ -196,6 +210,7 @@ def sign_token(token: LicenseToken, signing_key: bytes) -> LicenseToken:
         aml_dollar_cap_usd=token.aml_dollar_cap_usd,
         aml_count_cap=token.aml_count_cap,
         min_loan_amount_usd=token.min_loan_amount_usd,
+        deployment_phase=token.deployment_phase,
         permitted_components=list(token.permitted_components),
         hmac_signature=sig,
     )

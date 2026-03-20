@@ -19,6 +19,8 @@ class BPIRoyaltyRecord:
     royalty_usd: Decimal
     repaid_at: datetime
     loan_id: str
+    deployment_phase: str = "LICENSOR"  # Phase 1=LICENSOR, Phase 2=HYBRID, Phase 3=FULL_MLO
+    income_type: str = "ROYALTY"        # "ROYALTY" (Phase 1) or "LENDING_REVENUE" (Phase 2/3)
 
 
 @dataclass
@@ -59,7 +61,9 @@ class BPIRoyaltySettlement:
                 licensee_id=licensee_id,
                 royalty_usd=royalty_usd,
                 repaid_at=repaid_at,
-                loan_id=loan_id
+                loan_id=loan_id,
+                deployment_phase=repayment_record.get("deployment_phase", "LICENSOR"),
+                income_type=repayment_record.get("income_type", "ROYALTY"),
             )
 
             with self._lock:

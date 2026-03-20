@@ -100,6 +100,7 @@ class LicenseBootValidator:
             aml_dollar_cap_usd=token.aml_dollar_cap_usd,
             aml_count_cap=token.aml_count_cap,
             min_loan_amount_usd=token.min_loan_amount_usd,
+            deployment_phase=token.deployment_phase,
             permitted_components=token.permitted_components,
             token_expiry=token.expiry_date,
         )

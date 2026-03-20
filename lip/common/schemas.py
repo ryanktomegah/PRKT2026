@@ -817,3 +817,50 @@ class LoanOfferRejection(BaseModel):
         description="Free-text reason for rejection. Required for operational analysis.",
     )
     rejected_at: datetime = Field(..., description="UTC timestamp of rejection.")
+
+
+# ---------------------------------------------------------------------------
+# Fee waterfall allocation schema (Step 5 — reporting / analytics layer)
+# ---------------------------------------------------------------------------
+
+class FeeAllocation(BaseModel):
+    """Entity-level fee allocation for a bridge-loan repayment.
+
+    Captures how the collected fee is split between BPI and the bank across
+    the three deployment phases.  The bank's share is further decomposed into
+    a capital-return component and a distribution-premium component so that
+    the Phase 2 → Phase 3 transition can be negotiated without ambiguity.
+
+    Invariants:
+      bpi_share_usd + bank_share_usd == total_fee_usd
+      bank_capital_return_usd + bank_distribution_premium_usd == bank_share_usd
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    deployment_phase: str = Field(
+        ...,
+        description="Deployment phase: LICENSOR (Phase 1), HYBRID (Phase 2), FULL_MLO (Phase 3).",
+    )
+    income_type: str = Field(
+        ...,
+        description="Income classification: ROYALTY (Phase 1) or LENDING_REVENUE (Phase 2/3).",
+    )
+    total_fee_usd: Decimal = Field(..., description="Total collected fee in USD.")
+    bpi_share_usd: Decimal = Field(..., description="BPI's total take from the fee.")
+    bank_share_usd: Decimal = Field(..., description="Bank's total take from the fee.")
+    bank_capital_return_usd: Decimal = Field(
+        ...,
+        description="Bank's capital-proportional return (30% of fee in Phase 2; 0% in Phase 3).",
+    )
+    bank_distribution_premium_usd: Decimal = Field(
+        ...,
+        description="Bank's origination/compliance premium (30% Phase 2; 25% Phase 3; 85% Phase 1).",
+    )
+    capital_provider_cost_usd: Decimal = Field(
+        default=Decimal("0"),
+        description=(
+            "12% annualized preferred return on deployed capital — reporting line item only; "
+            "does NOT reduce bpi_share_usd or bank_share_usd."
+        ),
+    )
