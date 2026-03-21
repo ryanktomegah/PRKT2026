@@ -667,6 +667,11 @@ def train(
         ece += (mask.sum() / n_val) * abs(avg_conf - avg_acc)
     logger.info("ECE (10-bin): %.4f", ece)
 
+    # ---------- Save F2 threshold to well-known path ----------
+    thresh_path = output / "f2_threshold.txt"
+    thresh_path.write_text(f"{best_thresh:.4f}\n")
+    logger.info("F2 threshold written: %s → %.4f", thresh_path, best_thresh)
+
     # ---------- Save checkpoint ----------
     ckpt_path = output / "c1_model_parquet.pt"
     _torch.save(model.state_dict(), ckpt_path)
@@ -701,13 +706,23 @@ def train(
         json.dump(metrics, fh, indent=2)
     logger.info("Metrics saved: %s", metrics_path)
 
-    print("\n===== C1 Training Complete =====")
-    print(f"  val_AUC      : {val_auc:.4f}")
-    print(f"  F2 threshold : {best_thresh:.3f}  (F2={best_f2:.4f})")
-    print(f"  ECE          : {ece:.4f}")
-    print(f"  elapsed      : {train_elapsed:.1f} s")
-    print(f"  checkpoint   : {ckpt_path}")
-    print(f"  metrics      : {metrics_path}")
+    print("\n═══════════════════════════════════════════════════")
+    print("  C1 TRAINING COMPLETE")
+    print("  ─────────────────────")
+    print(f"  Records:     {len(records):,} (sampled from corpus)")
+    print(f"  Val AUC:     {val_auc:.4f}")
+    print(f"  F2 score:    {best_f2:.4f}")
+    print(f"  F2 threshold: {best_thresh:.4f}")
+    print(f"  ECE:         {ece:.4f}")
+    print(f"  Elapsed:     {train_elapsed:.1f} s")
+    print(f"  Checkpoint:  {ckpt_path}")
+    print(f"  Metrics:     {metrics_path}")
+    print(f"  Threshold:   {thresh_path}")
+    print("")
+    print("  ACTION REQUIRED:")
+    print("  Update lip/pipeline.py line 64:")
+    print(f"    FAILURE_PROBABILITY_THRESHOLD: float = {best_thresh:.4f}")
+    print("═══════════════════════════════════════════════════")
 
 
 # ---------------------------------------------------------------------------

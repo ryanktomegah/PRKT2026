@@ -1,14 +1,28 @@
 name: Train C1 (Full)
 
-# Manual trigger only — full training takes 2-5h, not suitable for every push.
-# Run from: GitHub → Actions → "Train C1 (Full)" → Run workflow
+# Manual trigger only — generates 10M-record corpus via production pipeline,
+# then trains C1 on a 2M sample via train_c1_on_parquet.py.
 #
-# NOTE: artifacts/ is gitignored — corpus is always regenerated fresh here.
+# Runner: ubuntu-latest (7 GB RAM, 2 vCPU, ~14 GB disk)
+# Memory budget:
+#   - 10M parquet generation: ~5.4 GB peak RAM, ~620 MB disk
+#   - 2M training sample: ~2 GB feature matrix + model
+#   - If OOM: reduce n_payments to 1000000 (→ 5M corpus, ~2.7 GB peak)
+#
+# Expected runtime: ~75 min (15 min generation + 60 min training)
 on:
   workflow_dispatch:
     inputs:
+      n_payments:
+        description: "RJCT records to generate (total corpus = n_payments × 5)"
+        required: false
+        default: "2000000"
+      sample_n:
+        description: "Records to sample from corpus for training"
+        required: false
+        default: "2000000"
       n_epochs:
-        description: "Joint training epochs (20 = ~2.5h safe, 50 = ~5.4h risky)"
+        description: "Joint training epochs (20 = ~60 min on 2M samples)"
         required: false
         default: "20"
       seed:
@@ -18,7 +32,7 @@ on:
 
 jobs:
   train-c1:
-    name: C1 Full Training (${{ github.event.inputs.n_epochs }} epochs)
+    name: "C1 Training (n=${{ github.event.inputs.n_payments }}×5, sample=${{ github.event.inputs.sample_n }}, epochs=${{ github.event.inputs.n_epochs }})"
     runs-on: ubuntu-latest
     timeout-minutes: 340   # 5h40m — hard ceiling before GitHub's 6h kill
 
@@ -32,89 +46,107 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip "setuptools>=68" wheel
-          pip install numpy scikit-learn
+          pip install numpy scikit-learn "torch>=2.6.0" lightgbm pyarrow
           cd lip && pip install -e .
 
-      - name: Verify package is importable
+      - name: Verify imports
         run: |
-          PYTHONPATH=. python -c "from lip.c1_failure_classifier.training import TrainingPipeline; print('lip.train_all OK')"
-          PYTHONPATH=. python -c "import lip.train_all; print('lip.train_all importable')"
+          PYTHONPATH=. python -c "
+          from lip.c1_failure_classifier.training import TrainingPipeline
+          from lip.c1_failure_classifier.training_torch import TrainingPipelineTorch
+          from lip.dgen.run_production_pipeline import run_pipeline
+          print('All imports OK')
+          "
 
-      - name: Generate C1 corpus (always — artifacts/ is gitignored)
-        run: |
-          mkdir -p artifacts/synthetic
-          PYTHONPATH=. python -m lip.dgen.generate_all \
-            --output-dir artifacts/synthetic \
-            --components c1 \
-            --seed ${{ github.event.inputs.seed }}
-          ls -lh artifacts/synthetic/c1_corpus_*.json
-
-      - name: Run C1 full training
+      - name: Generate 10M corpus via production pipeline
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
+          python -m lip.dgen.run_production_pipeline \
+            --n-payments ${{ github.event.inputs.n_payments }} \
+            --output-dir artifacts/production_data \
+            --seed ${{ github.event.inputs.seed }}
+          echo "=== Corpus files ==="
+          ls -lh artifacts/production_data/payments_synthetic.parquet
+          ls -lh artifacts/production_data/synthesis_parameters.json
+
+      - name: Train C1 on parquet
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python scripts/train_c1_on_parquet.py \
+            --parquet artifacts/production_data/payments_synthetic.parquet \
+            --sample ${{ github.event.inputs.sample_n }} \
+            --epochs ${{ github.event.inputs.n_epochs }} \
+            --seed ${{ github.event.inputs.seed }} \
+            --output-dir artifacts/c1_trained
+
+      - name: Training summary and baseline comparison
+        run: |
           python - <<'PYEOF'
-          import sys, os, json, pickle, time
+          import json, sys
           from pathlib import Path
-          from lip.c1_failure_classifier.training import TrainingConfig, TrainingPipeline
 
-          n_epochs = int("${{ github.event.inputs.n_epochs }}")
-          seed     = int("${{ github.event.inputs.seed }}")
-          corpus   = f"artifacts/synthetic/c1_corpus_n100000_seed{seed}.json"
-          out_dir  = Path("artifacts/models")
-          out_dir.mkdir(parents=True, exist_ok=True)
+          metrics_path = Path("artifacts/c1_trained/train_metrics_parquet.json")
+          if not metrics_path.exists():
+              print("ERROR: train_metrics_parquet.json not found — training may have failed")
+              sys.exit(1)
 
-          print(f"Loading corpus: {corpus}")
-          with open(corpus) as f:
-              records = json.load(f)
-          print(f"Loaded {len(records)} records  |  epochs={n_epochs}  seed={seed}")
+          m = json.loads(metrics_path.read_text())
 
-          config = TrainingConfig(
-              n_epochs=n_epochs,
-              batch_size=256,
-              learning_rate=1e-3,
-              alpha=0.7,
-              val_split=0.2,
-              random_seed=seed,
-          )
-          t0 = time.time()
-          pipeline = TrainingPipeline(config)
-          model, threshold, emb_pipeline = pipeline.run(records)
-          elapsed = time.time() - t0
+          # Baseline from previous training run (1M samples, 12 corridors, no temporal clustering)
+          baseline_auc = 0.794
+          baseline_f2 = 0.537
+          auc_delta = m["val_auc"] - baseline_auc
+          f2_delta = m["f2_score"] - baseline_f2
 
-          with open(out_dir / "c1_model.pkl", "wb") as f:
-              pickle.dump(model, f)
-          (out_dir / "c1_threshold.txt").write_text(f"{threshold:.6f}\n")
-          with open(out_dir / "c1_embeddings.pkl", "wb") as f:
-              pickle.dump(emb_pipeline, f)
+          # Read threshold from file
+          thresh_path = Path("artifacts/c1_trained/f2_threshold.txt")
+          threshold = thresh_path.read_text().strip() if thresh_path.exists() else str(m["f2_threshold"])
 
-          report = {
-              "component": "C1", "status": "ok",
-              "n_records": len(records), "n_epochs": n_epochs,
-              "threshold": round(float(threshold), 6),
-              "training_seconds": round(elapsed, 2),
-          }
-          with open(out_dir / "c1_training_report.json", "w") as f:
-              json.dump(report, f, indent=2)
+          summary = f"""
+          ═══════════════════════════════════════════════════
+            C1 TRAINING COMPLETE
+            ─────────────────────
+            Records:     {m['n_records']:,} (sampled from {int('${{ github.event.inputs.n_payments }}') * 5:,} corpus)
+            Corridors:   20
+            Val AUC:     {m['val_auc']:.4f} (baseline: {baseline_auc}, Δ={auc_delta:+.4f})
+            F2 score:    {m['f2_score']:.4f} (baseline: {baseline_f2}, Δ={f2_delta:+.4f})
+            F2 threshold: {threshold}
+            ECE:         {m['ece']:.4f}
 
-          print(f"\nDone — threshold={threshold:.4f}  elapsed={elapsed:.0f}s ({elapsed/3600:.2f}h)")
-          print(json.dumps(report, indent=2))
+            ACTION REQUIRED:
+            Update lip/pipeline.py line 64:
+              FAILURE_PROBABILITY_THRESHOLD: float = {threshold}
+          ═══════════════════════════════════════════════════
+          """
+          print(summary)
+
+          if m["val_auc"] < baseline_auc:
+              print("⚠ WARNING: AUC regressed below baseline. Review before deploying.")
           PYEOF
 
       - name: Verify artifacts
         run: |
-          echo "=== Artifacts produced ==="
-          ls -lh artifacts/models/c1_* 2>/dev/null || echo "WARNING: no C1 artifacts found"
-          cat artifacts/models/c1_training_report.json 2>/dev/null
+          echo "=== C1 Trained Artifacts ==="
+          ls -lh artifacts/c1_trained/ 2>/dev/null || echo "WARNING: no artifacts found"
+          echo ""
+          echo "=== Metrics ==="
+          cat artifacts/c1_trained/train_metrics_parquet.json 2>/dev/null
+          echo ""
+          echo "=== F2 Threshold ==="
+          cat artifacts/c1_trained/f2_threshold.txt 2>/dev/null
 
       - name: Upload model artifacts
         uses: actions/upload-artifact@v4
-        if: always()   # upload even if training timed out (partial artifacts useful)
+        if: always()
         with:
-          name: c1-model-${{ github.event.inputs.n_epochs }}epochs-seed${{ github.event.inputs.seed }}
+          name: c1-parquet-n${{ github.event.inputs.n_payments }}-sample${{ github.event.inputs.sample_n }}-ep${{ github.event.inputs.n_epochs }}-seed${{ github.event.inputs.seed }}
           path: |
-            artifacts/models/c1_model.pkl
-            artifacts/models/c1_threshold.txt
-            artifacts/models/c1_embeddings.pkl
-            artifacts/models/c1_training_report.json
+            artifacts/c1_trained/c1_model_parquet.pt
+            artifacts/c1_trained/c1_lgbm_parquet.pkl
+            artifacts/c1_trained/train_metrics_parquet.json
+            artifacts/c1_trained/f2_threshold.txt
+            artifacts/production_data/synthesis_parameters.json
+            artifacts/production_data/data_card.json
           retention-days: 30
