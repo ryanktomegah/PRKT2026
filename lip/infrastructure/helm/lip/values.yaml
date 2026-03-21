@@ -3,9 +3,10 @@
 
 image:
   registry: gcr.io/lip-prod
-  pullPolicy: Always
-  # Override per component: image.c1.tag, image.c2.tag, etc.
-  tag: latest
+  pullPolicy: IfNotPresent
+  # DEPLOY: Always set an explicit version tag (e.g. --set image.tag=v1.2.3).
+  # Deploying with "latest" is blocked by CI validation in production.
+  tag: ""
 
 namespace: lip
 

@@ -1,11 +1,24 @@
 # redpanda-statefulset.yaml — Redpanda (Kafka-compatible) for LIP event streaming
 #
-# Dev/staging: single-node Redpanda StatefulSet
+# Dev/staging: single-node Redpanda StatefulSet (--mode=dev-container, no TLS)
 # Prod: ExternalName Service pointing at bank-managed Kafka
 #
 # Select mode via Helm values:
 #   redpanda.mode: standalone  → deploys this StatefulSet + ClusterIP Service
 #   redpanda.mode: external    → deploys ExternalName Service only
+#
+# PRODUCTION KAFKA CONFIGURATION (required for bank pilot):
+#   The bank's Kafka cluster must be configured with:
+#     - TLS: KAFKA_SECURITY_PROTOCOL=SSL (or SASL_SSL)
+#     - SASL: SCRAM-SHA-512 recommended (SASL_MECHANISM=SCRAM-SHA-512)
+#     - ACLs: LIP service account needs read/write on lip.* topics only
+#     - Certificates: CA cert, client cert, client key mounted as secrets
+#   C5 StatefulSet already sets KAFKA_SECURITY_PROTOCOL=SSL (see c5-deployment.yaml:124).
+#   When connecting to external Kafka, ensure all producers/consumers use the same
+#   TLS config via environment variables:
+#     KAFKA_BOOTSTRAP_SERVERS, KAFKA_SECURITY_PROTOCOL, KAFKA_SSL_CAFILE,
+#     KAFKA_SSL_CERTFILE, KAFKA_SSL_KEYFILE, KAFKA_SASL_MECHANISM, KAFKA_SASL_USERNAME
+#   These should be sourced from External Secrets Operator (lip/kafka secret).
 #
 ---
 apiVersion: apps/v1

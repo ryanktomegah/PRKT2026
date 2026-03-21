@@ -22,10 +22,15 @@ spec:
       nodeSelector:
         # Bank-side container — dedicated node pool
         lip/node-type: bank-container
+      tolerations:
+        - key: lip/bank-container
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       containers:
         - name: c7-agent
           image: lip/c7-execution-agent:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never  # Bank-side: pre-pulled images only (zero outbound)
           ports:
             - containerPort: 8080
               name: http

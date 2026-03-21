@@ -33,7 +33,7 @@ spec:
       containers:
         - name: c4-dispute
           image: lip/c4-dispute:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
@@ -77,6 +77,12 @@ spec:
               port: 8080
             initialDelaySeconds: 45
             periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      automountServiceAccountToken: false
       volumes:
         - name: model-store
           persistentVolumeClaim:

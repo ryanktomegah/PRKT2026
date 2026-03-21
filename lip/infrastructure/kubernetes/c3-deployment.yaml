@@ -23,7 +23,7 @@ spec:
       containers:
         - name: c3-repayment
           image: lip/c3-repayment:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
@@ -66,6 +66,12 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service

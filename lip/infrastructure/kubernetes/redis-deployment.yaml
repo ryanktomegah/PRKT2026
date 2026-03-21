@@ -7,6 +7,11 @@
 #   redis.mode: standalone   → deploys this Deployment + ClusterIP Service
 #   redis.mode: external     → deploys ExternalName Service only (no Deployment)
 #
+# TLS: standalone Redis listens on port 6380 with TLS when lip-redis-tls-secret
+# is provisioned. Without the TLS secret, falls back to port 6379 (plaintext).
+# Production MUST use TLS — either managed Redis (GCP Memorystore TLS) or
+# standalone with cert-manager-issued certificates.
+#
 # For dev/staging (standalone mode):
 ---
 apiVersion: apps/v1
@@ -32,8 +37,8 @@ spec:
         - name: redis
           image: redis:7.2-alpine
           ports:
-            - containerPort: 6379
-              name: redis
+            - containerPort: 6380
+              name: redis-tls
           args:
             - redis-server
             - --requirepass
@@ -42,12 +47,25 @@ spec:
             - ""          # disable persistence in dev/staging (stateless)
             - --loglevel
             - warning
+            # TLS configuration — requires lip-redis-tls-secret with tls.crt, tls.key, ca.crt
+            - --tls-port
+            - "6380"
+            - --tls-cert-file
+            - /tls/tls.crt
+            - --tls-key-file
+            - /tls/tls.key
+            - --tls-ca-cert-file
+            - /tls/ca.crt
           env:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: lip-redis-secret
                   key: password
+          volumeMounts:
+            - name: redis-tls
+              mountPath: /tls
+              readOnly: true
           resources:
             requests:
               cpu: "250m"
@@ -57,14 +75,24 @@ spec:
               memory: "512Mi"
           livenessProbe:
             exec:
-              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+              command: ["redis-cli", "--tls", "--cert", "/tls/tls.crt", "--key", "/tls/tls.key", "--cacert", "/tls/ca.crt", "-p", "6380", "-a", "$(REDIS_PASSWORD)", "ping"]
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             exec:
-              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+              command: ["redis-cli", "--tls", "--cert", "/tls/tls.crt", "--key", "/tls/tls.key", "--cacert", "/tls/ca.crt", "-p", "6380", "-a", "$(REDIS_PASSWORD)", "ping"]
             initialDelaySeconds: 5
             periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: redis-tls
+          secret:
+            secretName: lip-redis-tls-secret
+            optional: false
 ---
 apiVersion: v1
 kind: Service
@@ -78,7 +106,7 @@ spec:
   selector:
     app: lip-redis
   ports:
-    - name: redis
-      port: 6379
-      targetPort: 6379
+    - name: redis-tls
+      port: 6380
+      targetPort: 6380
   type: ClusterIP

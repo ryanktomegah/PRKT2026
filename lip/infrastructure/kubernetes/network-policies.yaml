@@ -1,3 +1,16 @@
+# Namespace definition with Pod Security Standards (PSS)
+# Enforces restricted profile: no root, no privilege escalation, no host namespaces.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lip
+  labels:
+    name: lip
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
 # Network Policies — Zero outbound for C4 (Dispute Classifier) and C7 (Execution Agent)
 # Architecture Spec: Bank-side containers must have zero outbound network access
 ---
@@ -91,6 +104,96 @@ spec:
         - namespaceSelector:
             matchLabels:
               name: lip
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# C3 Repayment Engine — internal + Redis egress only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lip-c3-internal-only
+  namespace: lip
+spec:
+  podSelector:
+    matchLabels:
+      component: c3-repayment-engine
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow inbound from orchestrator / pipeline components
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow Redis for UETR deduplication + settlement state
+    - to:
+        - podSelector:
+            matchLabels:
+              app: lip-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 6380
+    # Allow intra-namespace for component communication
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# C6 AML Velocity — internal + Redis egress only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lip-c6-internal-only
+  namespace: lip
+spec:
+  podSelector:
+    matchLabels:
+      component: c6-aml-velocity
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow inbound from orchestrator / pipeline components
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow Redis for velocity windows + salt state
+    - to:
+        - podSelector:
+            matchLabels:
+              app: lip-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 6380
+    # Allow intra-namespace for component communication
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: lip
+    # Allow DNS resolution
     - to:
         - namespaceSelector: {}
       ports:

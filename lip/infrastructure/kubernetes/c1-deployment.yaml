@@ -28,7 +28,7 @@ spec:
       containers:
         - name: c1-inference
           image: lip/c1-inference:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
               name: http
@@ -71,6 +71,12 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      automountServiceAccountToken: false
       volumes:
         - name: model-store
           persistentVolumeClaim:

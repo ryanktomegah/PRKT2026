@@ -24,7 +24,7 @@ spec:
       containers:
         - name: c6-aml
           image: lip/c6-aml:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
@@ -77,6 +77,12 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service
