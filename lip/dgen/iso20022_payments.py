@@ -691,6 +691,7 @@ def _inject_temporal_clustering(
     epoch_span = float(_EPOCH_SPAN)
 
     new_ts_unix = ts_unix.copy()
+    modified_mask = np.zeros(len(df), dtype=bool)
 
     for bic in burst_bics:
         bic_mask_arr = rjct_mask.to_numpy() & (df["bic_sender"].to_numpy() == bic)
@@ -717,13 +718,17 @@ def _inject_temporal_clustering(
                 + rng.uniform(0, window_durations[wi], size=n_wm)
             )
         new_ts_unix[bic_mask_arr] = new_ts
+        modified_mask |= bic_mask_arr
 
-    # Convert back to ISO 8601 strings
-    new_timestamps = [
-        datetime.fromtimestamp(float(t), tz=timezone.utc).isoformat(timespec="milliseconds")
-        for t in new_ts_unix
-    ]
+    # Only reconvert timestamps that were actually modified — preserve original
+    # strings for unmodified rows to avoid format changes (e.g. dropping .000).
     result = df.copy()
+    modified_indices = np.where(modified_mask)[0]
+    new_timestamps = result["timestamp_utc"].to_numpy().copy()
+    for i in modified_indices:
+        new_timestamps[i] = datetime.fromtimestamp(
+            float(new_ts_unix[i]), tz=timezone.utc
+        ).isoformat(timespec="milliseconds")
     result["timestamp_utc"] = new_timestamps
 
     # Integrity check: labels must never be altered by timestamp resampling.
