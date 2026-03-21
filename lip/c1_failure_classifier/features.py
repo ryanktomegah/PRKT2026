@@ -209,7 +209,11 @@ class TabularFeatureEngineer:
         vec = np.zeros(TABULAR_FEATURE_DIM, dtype=np.float64)
 
         amount_usd: float = float(payment.get("amount_usd", 0.0))
-        timestamp: float = float(payment.get("timestamp", 0.0))
+        ts_raw = payment.get("timestamp", 0.0)
+        if isinstance(ts_raw, str):
+            timestamp = datetime.datetime.fromisoformat(ts_raw).timestamp()
+        else:
+            timestamp = float(ts_raw)
         currency_pair: str = str(payment.get("currency_pair", "UNKNOWN"))
         s_stats: dict = payment.get("sender_stats", {})
         r_stats: dict = payment.get("receiver_stats", {})
