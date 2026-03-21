@@ -32,7 +32,7 @@ COPY lip/ ./lip/
 RUN mkdir -p /app/models
 
 # Non-root user
-RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app
 USER lipuser
 
 # Bank container: NO outbound ports; only inbound from C7

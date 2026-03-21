@@ -28,7 +28,7 @@ WORKDIR /app
 RUN mkdir -p /models
 
 # Non-root user for security
-RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app /models
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app /models
 USER lipuser
 
 # FastAPI inference server

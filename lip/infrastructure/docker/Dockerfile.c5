@@ -28,7 +28,7 @@ RUN python3.11 -m pip install --no-cache-dir -e .
 WORKDIR /app
 
 # Non-root user
-RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app
 USER lipuser
 
 # Kafka + Redis config via environment

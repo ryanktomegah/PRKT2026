@@ -46,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip "setuptools>=68" wheel
-          pip install numpy scikit-learn "torch>=2.6.0" lightgbm pyarrow
+          pip install numpy scikit-learn "torch>=2.6.0" lightgbm pyarrow mlflow
           cd lip && pip install -e .
 
       - name: Verify imports

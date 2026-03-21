@@ -30,7 +30,7 @@ WORKDIR /app
 RUN mkdir -p /data/sanctions /models
 
 # Non-root user for security — AML service handles sensitive data
-RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app /data /models
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app /data /models
 USER lipuser
 
 # AML velocity salt sourced from environment (never hard-coded)

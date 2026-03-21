@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -e .
 WORKDIR /app
 
 # Non-root user for security
-RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app
 USER lipuser
 
 # Settlement handler listens on Kafka; no inbound HTTP port

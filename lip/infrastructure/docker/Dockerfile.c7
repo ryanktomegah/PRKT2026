@@ -32,7 +32,7 @@ COPY lip/ ./lip/
 RUN mkdir -p /data/decision-log && chmod 700 /data/decision-log
 
 # Non-root user
-RUN useradd -m -u 1000 lipuser && chown -R lipuser:lipuser /app /data
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app /data
 USER lipuser
 
 EXPOSE 8080 9090
