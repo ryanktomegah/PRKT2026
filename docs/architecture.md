@@ -11,7 +11,7 @@ For each payment event received from C5:
 Step 1 — C1 (Failure Classifier)
   Input:  NormalizedEvent → payment_dict
   Output: failure_probability, above_threshold, shap_top20
-  Gate:   if failure_probability ≤ τ* (0.152) → return BELOW_THRESHOLD (fast path)
+  Gate:   if failure_probability ≤ τ* (0.110) → return BELOW_THRESHOLD (fast path)
 
 Step 2 — C4 ∥ C6 (parallel, ThreadPoolExecutor max_workers=2)
   C4: DisputeClassifier.classify(rejection_code, narrative, amount, currency, counterparty)
@@ -103,7 +103,7 @@ OFFER_PENDING
 
 | Constant | Value | File | Significance |
 |----------|-------|------|-------------|
-| `τ*` (failure threshold) | **0.152** | `constants.py` | F2-optimal decision gate |
+| `τ*` (failure threshold) | **0.110** | `pipeline.py` | F2-optimal decision gate (calibrated) |
 | Fee floor | **300 bps** annualised | `constants.py` | Minimum bridge loan fee |
 | Latency SLO (p99) | **≤ 94 ms** | `constants.py` | End-to-end pipeline SLO |
 | UETR TTL buffer | **45 days** | `constants.py` | Beyond maturity deduplication |

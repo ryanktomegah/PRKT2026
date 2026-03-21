@@ -16,7 +16,7 @@ Perform a rigorous code review of `$ARGUMENTS` (a file path or component name li
 - Latency SLO: ≤ 94ms — no test should assert a different bound
 - UETR TTL: 45 days
 - Stress multiplier: 3.0
-- Threshold τ*: 0.152
+- Threshold τ*: 0.110
 - Flag any deviation from these values.
 
 ### 2. Data contracts

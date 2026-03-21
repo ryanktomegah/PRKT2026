@@ -50,7 +50,7 @@ C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
 
 | Parameter | Default | Source |
 |-----------|---------|--------|
-| `threshold` | `0.152` | `FAILURE_PROBABILITY_THRESHOLD` in `pipeline.py` |
+| `threshold` | `0.110` | `FAILURE_PROBABILITY_THRESHOLD` in `pipeline.py` |
 | `graphsage_k_train` | `10` | `GRAPHSAGE_K_TRAIN` in `constants.py` |
 | `graphsage_k_infer` | `5` | `GRAPHSAGE_K_INFER` in `constants.py` |
 | `asymmetric_bce_alpha` | `0.7` | `ASYMMETRIC_BCE_ALPHA` in `constants.py` |
@@ -61,7 +61,7 @@ C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
 
 | Constant | Value | Significance |
 |----------|-------|-------------|
-| `τ*` | **0.152** | F2-optimal decision threshold — **QUANT sign-off required to change** |
+| `τ*` | **0.110** | F2-optimal decision threshold (calibrated) — **QUANT sign-off required to change** |
 | `GRAPHSAGE_OUTPUT_DIM` | 384 | GraphSAGE output dimension |
 | `TABTRANSFORMER_OUTPUT_DIM` | 88 | TabTransformer output dimension |
 | `COMBINED_INPUT_DIM` | 472 | `384 + 88` — ensemble head input size |
@@ -71,7 +71,7 @@ C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
 
 | Metric | XGBoost Baseline | Synthetic (2K) | Target | Real-World Est. |
 |--------|-----------------|----------------|--------|-----------------|
-| AUC | 0.739 | **0.9998** | **0.850** | 0.82–0.88 (ARIA) |
+| AUC | 0.739 | **0.8871** (10M corpus) | **0.850** | 0.82–0.88 (ARIA) |
 | Active features | 33/88 | **78/88** | 88/88 | — |
 | P99 latency | ~45 ms (C1 share) | — | ≤ 94 ms (full pipeline) | Within SLO |
 

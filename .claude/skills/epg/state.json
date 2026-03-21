@@ -213,11 +213,11 @@
     "status": "DONE",
     "tier": 3,
     "severity": "MEDIUM",
-    "title": "tau*=0.152 optimized on mixed population (bridgeable + non-bridgeable)",
+    "title": "tau*=0.110 optimized on mixed population (bridgeable + non-bridgeable)",
     "owner": ["ARIA", "QUANT"],
     "commit": "754c9c7",
     "signoffs": ["ARIA", "QUANT"],
-    "notes": "Documented in pipeline.py FAILURE_PROBABILITY_THRESHOLD docstring: tau* was calibrated on mixed corpus; re-optimization on bridgeable-only subset is pending C1 retraining using EPG-12 is_bridgeable label. Conservative bias documented — defence-in-depth is correct sequence."
+    "notes": "Documented in pipeline.py FAILURE_PROBABILITY_THRESHOLD docstring: tau*=0.110 (calibrated via isotonic regression on 10M corpus, AUC=0.8871, F2=0.6245, ECE=0.069). Still calibrated on mixed corpus; re-optimization on bridgeable-only subset is pending C1 retraining using EPG-12 is_bridgeable label."
   },
   "EPG-15": {
     "status": "CLOSED_EXISTING",

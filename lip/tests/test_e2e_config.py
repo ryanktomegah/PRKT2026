@@ -68,7 +68,7 @@ class TestCanonicalNumbers:
 
     def test_threshold_tau_star_present(self):
         data = _load_yaml("canonical_numbers.yaml")
-        # The threshold τ* = 0.152 may be in decision_thresholds or similar
+        # The threshold τ* = 0.110 may be in decision_thresholds or similar
         # Check it's present in some form
         assert data is not None
 

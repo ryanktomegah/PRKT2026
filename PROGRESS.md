@@ -332,7 +332,7 @@ Net gain this session: +21 stress regime tests, +7 from untracked test files.
 
 | Constant | Value |
 |----------|-------|
-| τ* (failure threshold) | 0.152 |
+| τ* (failure threshold) | 0.110 (calibrated, 2026-03-21) |
 | Fee floor | 300 bps |
 | Latency SLO | ≤ 94ms p99 |
 | UETR TTL buffer | 45 days |
@@ -567,7 +567,7 @@ All downstream consumers already wrapped in `Decimal(str(...))` or `int(...)` �
 ### C1 Failure Classifier Audit — PASS (1 hygiene issue)
 
 - **Architecture**: GraphSAGE[384] + TabTransformer[88] → 472 → MLP(256→64→1). Dimensions verified correct.
-- **Threshold**: `InferenceEngine.__init__` defaults to 0.5, but pipeline.py overrides with canonical 0.152 (`FAILURE_PROBABILITY_THRESHOLD`). **Not a deployment bug** — pipeline recomputes `above_threshold` independently. Hygiene issue only for direct `InferenceEngine` callers.
+- **Threshold**: `InferenceEngine.__init__` defaults to 0.110 (τ*, calibrated), matching `FAILURE_PROBABILITY_THRESHOLD` in pipeline.py. Pipeline recomputes `above_threshold` independently.
 - **Feature leakage**: No direct leakage. Temporal features (failure_rate_1d/7d/30d) computed from graph builder using `_max_timestamp` (data-relative, not wall-clock). Caller responsible for excluding current payment from stats — documented but not enforced in code.
 - **Calibration**: IsotonicCalibrator fitted on validation set, applied conditionally. Consistent with threshold application.
 - **Docstring**: training.py:285 says `(n_val, 88)` but correct shape is `(n_val, 96)` — documentation-only bug.
@@ -605,7 +605,7 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 
 **Post-fix test suite: 1419 passed, 0 failed** (was 1412 after critical fix).
 
-1. **C1 InferenceEngine default threshold**: Changed from 0.5 → 0.152 (τ*). Pipeline always
+1. **C1 InferenceEngine default threshold**: Changed from 0.5 → 0.110 (τ*, calibrated). Pipeline always
    overrode this, but direct callers would silently get the wrong threshold. Added
    `_DEFAULT_THRESHOLD` constant in inference.py. Updated `run_inference()` in `__init__.py`.
 2. **dgen temporal clustering hardened**: Uses canonical `_EPOCH_START`/`_EPOCH_SPAN` instead of

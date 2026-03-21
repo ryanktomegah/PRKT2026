@@ -107,8 +107,8 @@ jobs:
           m = json.loads(metrics_path.read_text())
 
           # Baseline from previous training run (1M samples, 12 corridors, no temporal clustering)
-          baseline_auc = 0.794
-          baseline_f2 = 0.537
+          baseline_auc = 0.8871
+          baseline_f2 = 0.6245
           auc_delta = m["val_auc"] - baseline_auc
           f2_delta = m["f2_score"] - baseline_f2
 

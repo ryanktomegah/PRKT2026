@@ -509,7 +509,7 @@ class TestScenario8FeeArithmetic:
         assert result.loan_offer["fee_bps"] == 400         # tiered floor: mid tier
 
     def test_below_threshold_skips_fee_computation(self):
-        pipeline = _make_pipeline(failure_probability=0.05)  # below 0.152
+        pipeline = _make_pipeline(failure_probability=0.05)  # below 0.110
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
         assert result.outcome == "BELOW_THRESHOLD"

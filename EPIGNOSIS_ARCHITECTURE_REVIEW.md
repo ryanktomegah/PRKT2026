@@ -80,7 +80,7 @@ transactions, bears all credit risk, and maintains all regulatory relationships.
 | Component | Role | Hard Gate? |
 |-----------|------|-----------|
 | C5 | Kafka streaming ingestion, ISO 20022 normalization | Pre-pipeline |
-| C1 | ML failure classifier (GraphSAGE + TabTransformer + LightGBM) | Yes — τ*=0.152 |
+| C1 | ML failure classifier (GraphSAGE + TabTransformer + LightGBM) | Yes — τ*=0.110 |
 | C4 | LLM dispute classifier (Qwen3-32b via Groq) | Yes — hard block on dispute |
 | C6 | AML gate: sanctions + velocity + anomaly | Yes — hard block on AML |
 | C2 | Structural PD + LGD + fee pricing (Merton/KMV, Damodaran, Altman Z') | No — pricing only |
@@ -104,7 +104,7 @@ sign-off):**
 
 | Constant | Value | Significance |
 |----------|-------|-------------|
-| Failure threshold τ* | 0.152 | F2-optimal gate — tuned to minimize false negatives |
+| Failure threshold τ* | 0.110 | F2-optimal gate (calibrated) — tuned to minimize false negatives |
 | Fee floor | 300 bps annualized | Minimum economically viable bridge loan fee |
 | Latency SLO | ≤ 94ms end-to-end | Architecture Spec v1.2 |
 | UETR TTL buffer | 45 days | Deduplication window beyond maximum maturity |
@@ -677,7 +677,7 @@ payments with `DNOR`, `MS03`, `CNOR`, and other compliance-adjacent codes, label
 
 **The τ* threshold alignment issue:**
 
-C1's threshold τ*=0.152 was optimized using the F2 metric (FBETA_BETA=2 in `constants.py`),
+C1's threshold τ*=0.110 was optimized using the F2 metric (FBETA_BETA=2 in `constants.py`),
 which weights false negatives more heavily than false positives. The rationale is that missing
 a real failure (failing to offer a bridge) is more costly than incorrectly identifying one.
 
@@ -695,7 +695,7 @@ This means:
 1. Computational resources are wasted on payments that should be short-circuited at entry
 2. The C2 fee calculation exists in the decision log for a payment that was blocked for
    compliance reasons — a potential audit trail confusion point
-3. The τ*=0.152 threshold, having been optimized to catch these payments, is inherently
+3. The τ*=0.110 threshold, having been optimized to catch these payments, is inherently
    "polluted" by compliance-hold examples that inflate the apparent recall
 
 **The deeper issue — what C1 actually measures:**
@@ -718,7 +718,7 @@ failure." The label used is simply "did this payment fail?" — which is true fo
    bridgeable failures from compliance-hold failures. Rejection codes in the BLOCK class and
    the proposed expanded compliance hold set should be labeled differently from Class A/B/C
    bridgeable failures.
-2. **QUANT:** Re-evaluate τ*=0.152 once the training corpus is relabeled. The optimal
+2. **QUANT:** Re-evaluate τ*=0.110 once the training corpus is relabeled. The optimal
    threshold on a clean "bridgeable failures only" corpus may differ from the current value.
 3. **ARIA:** Document this labeling gap in the C1 model card under SR 11-7 requirements.
    The model card should state that C1 AUC was measured on a corpus that includes non-
@@ -1056,7 +1056,7 @@ failure — including compliance holds and disputed transactions that should nev
 
 The result: C1 is tuned to be maximally sensitive, and then the system relies on C4, C6, and
 C7 to filter out the things C1 should not have flagged in the first place. This is correct
-architecturally (defense-in-depth), but it means C1's τ*=0.152 threshold is calibrated on
+architecturally (defense-in-depth), but it means C1's τ*=0.110 threshold is calibrated on
 a mixed population, and its "failure rate" statistics include non-bridgeable events.
 
 **The AUC gap this creates:**
@@ -1593,7 +1593,7 @@ All issues identified in this review, consolidated for tracking and assignment.
 | EPG-10 | No distinct PipelineResult outcome for compliance hold blocks — 3 other statuses also fall through | 3 | CRITICAL | NOVA | **ESCALATED** |
 | EPG-11 | Compliance hold blocks don't trigger compliance team notification | 3 | HIGH | REX + FORGE | **ESCALATED** |
 | EPG-12 | C1 trained on all failures including non-bridgeable ones | 4 | MEDIUM | ARIA + DGEN | Open |
-| EPG-13 | τ*=0.152 optimized on mixed population (bridgeable + non-bridgeable) | 4 | MEDIUM | ARIA + QUANT | Open |
+| EPG-13 | τ*=0.110 optimized on mixed population (bridgeable + non-bridgeable) | 4 | MEDIUM | ARIA + QUANT | Open |
 | EPG-14 | sending_bic is the bank, not the end customer — MRFA and PD are misaligned | 5 | HIGH | REX + ARIA | Open |
 | EPG-15 | Thin-file C2 fires on institutional BICs with public credit data | 5 | MEDIUM | ARIA | Open |
 | EPG-16 | Default AML dollar cap $1M inoperable for correspondent banking | 6 | MEDIUM | CIPHER + NOVA | Open |

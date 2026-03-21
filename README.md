@@ -26,7 +26,7 @@ pacs.002 stream
 │ Streaming│    │ Failure  │    │ Engine   │
 │ (Kafka)  │    │ Classifier│   │          │
 └─────────┘    └─────────┘    └────┬─────┘
-                                   │ τ* > 0.152
+                                   │ τ* > 0.110
                           ┌────────┼────────┐
                           ▼        ▼        ▼
                      ┌────────┐ ┌──────┐ ┌──────┐
@@ -84,7 +84,7 @@ C8 License Manager — HMAC token enforcement (cross-cutting)
 
 | Parameter | Value | Reference |
 |-----------|-------|-----------|
-| Failure threshold (τ*) | 0.152 | Architecture Spec v1.2 §3 |
+| Failure threshold (τ*) | 0.110 | F2-optimal, calibrated (2026-03-21) |
 | Fee floor | 300 bps annualized | Canonical Numbers |
 | Latency SLO | ≤ 94ms end-to-end | Architecture Spec v1.2 |
 | UETR TTL buffer | 45 days | Canonical Numbers |

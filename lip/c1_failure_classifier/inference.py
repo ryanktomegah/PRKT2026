@@ -20,10 +20,10 @@ from .features import TabularFeatureEngineer
 from .graph_builder import BICGraphBuilder
 from .model import ClassifierModel
 
-# F2-optimal threshold (τ* = 0.360) — calibrated from 10M corpus retraining
-# (2M sample, 20 corridors, isotonic calibration). Kept as literal to avoid
-# circular import with pipeline.py.
-_DEFAULT_THRESHOLD: float = 0.360
+# F2-optimal threshold (τ* = 0.110) — calibrated from 10M corpus retraining
+# (2M sample, 20 corridors, isotonic calibration, ECE=0.069). Kept as literal
+# to avoid circular import with pipeline.py.
+_DEFAULT_THRESHOLD: float = 0.110
 
 logger = logging.getLogger(__name__)
 

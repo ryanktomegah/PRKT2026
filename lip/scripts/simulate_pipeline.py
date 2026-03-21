@@ -49,7 +49,7 @@ from lip.pipeline import FAILURE_PROBABILITY_THRESHOLD, LIPPipeline
 # Internal constants
 # ---------------------------------------------------------------------------
 
-_THRESHOLD: float = FAILURE_PROBABILITY_THRESHOLD  # τ* = 0.152  (Spec v1.2 §3)
+_THRESHOLD: float = FAILURE_PROBABILITY_THRESHOLD  # τ* = 0.110  (calibrated, 2026-03-21)
 _SALT: bytes = b"sim_salt________32bytes_________"    # 32-byte sim salt for C6
 _HMAC_KEY: bytes = b"sim_hmac________32bytes_________"  # 32-byte sim key for C7
 _FEE_FLOOR: int = int(FEE_FLOOR_BPS)  # 300 bps
@@ -82,7 +82,7 @@ class _SamplingC1Engine:
 
     Beta(0.5, 14) has mean ≈ 3.4%, producing a right-skewed distribution
     that matches BIS CPMI SWIFT failure-rate estimates (~3–5% of messages).
-    Most payments fall below τ*=0.152, but a realistic long tail triggers
+    Most payments fall below τ*=0.110, but a realistic long tail triggers
     the bridge-loan offer path.
     """
 

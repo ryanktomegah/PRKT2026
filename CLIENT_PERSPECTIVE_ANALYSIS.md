@@ -301,7 +301,7 @@ zero revenue from deployed instances until this is built.
 
 **What happens inside LIP (87ms total):**
 - C5: NormalizedEvent created. UETR: `550e8400-e29b-41d4-a716-446655440000`.
-- C1: failure_probability = 0.19 (above τ*=0.152). Proceed.
+- C1: failure_probability = 0.19 (above τ*=0.110). Proceed.
 - C4 ∥ C6: NOT_DISPUTE, AML passes.
 - C2: Tier 1 (Commerzbank is enrolled with full credit profile). PD = 0.09, LGD = 0.60.
   fee_bps = max(0.09 × 0.60 × 10,000, 300) = 540.
@@ -382,7 +382,7 @@ spiked to 21% as multiple institutions hit liquidity constraints simultaneously.
 **What LIP's current pipeline does:**
 - C1 sees `corridor_failure_rate = 0.21` as input — significantly above its training
   distribution mean of 0.035. C1 outputs high failure_probability for nearly all payments.
-- Nearly every USD_EUR payment above τ*=0.152 receives a bridge offer.
+- Nearly every USD_EUR payment above τ*=0.110 receives a bridge offer.
 - C6's AML velocity tracker sees a surge of offers going to the same large entities
   (JPMorgan, Deutsche Bank, BNP Paribas). These are the largest participants in the
   corridor — and they hit the $1M/entity/24h cap within minutes.
@@ -405,7 +405,7 @@ If corridor_failure_rate_1h > 3.0 × corridor_failure_rate_30d_baseline:
     STRESS_REGIME = True for this corridor
 
 When STRESS_REGIME is active:
-    - C1 threshold: τ* rises from 0.152 → 0.25 (only bridge very-high-confidence failures)
+    - C1 threshold: τ* rises from 0.110 → 0.25 (only bridge very-high-confidence failures)
     - Any offer > licensee-configured threshold (default $10M) → PENDING_HUMAN_REVIEW
     - All decision log entries stamped: stress_regime=True, corridor=USD_EUR
 

@@ -34,8 +34,8 @@ from lip.pipeline import LIPPipeline
 _SALT = b"e2e_test_salt___32bytes_________"
 _HMAC_KEY = b"e2e_test_hmac___32bytes_________"
 
-# τ* = 0.152 from Architecture Spec v1.2 Section 3
-THRESHOLD = 0.152
+# τ* = 0.110 from C1 retraining (10M corpus, isotonic calibration, 2026-03-21)
+THRESHOLD = 0.110
 
 # High / low probability values for tests
 PROB_ABOVE = 0.80   # clearly above threshold

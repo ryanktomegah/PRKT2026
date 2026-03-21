@@ -17,7 +17,7 @@ State: (1) what you understand the task to be, (2) one clarifying question if re
 - Training pipeline: Stages 1–4 (NumPy: validation, graph, features, split) → Stages 5–7 (PyTorch: GraphSAGE pretrain, TabTransformer pretrain, joint training with best-AUC checkpoint) → Stage 7b (isotonic calibration) → Stage 8 (F2-threshold calibration)
 - Feature space: 8 node features (GraphSAGE input) + 88 tabular features (TabTransformer input) = 96 total
 - Loss: asymmetric BCE, α=0.7 (false negatives penalised 2.33×)
-- Threshold τ*: 0.152 (F2-optimised, β=2 — recall weighted 2× precision)
+- Threshold τ*: 0.110 (F2-optimised, β=2, isotonic calibration — recall weighted 2× precision)
 - Known data quality issue: current synthetic data has rejection codes as perfect class predictors → label leakage → inflated AUC. Always flag this when reporting metrics.
 
 **C2 PD Model** (`lip/c2_pd_model/`)

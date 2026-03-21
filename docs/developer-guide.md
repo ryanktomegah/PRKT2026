@@ -67,7 +67,7 @@ The following constants are **locked** and may only be changed with explicit QUA
 
 | Constant | Value | File | Impact of Change |
 |----------|-------|------|-----------------|
-| `FAILURE_PROBABILITY_THRESHOLD` (τ*) | **0.152** | `pipeline.py`, `constants.py` | Directly changes which payments are offered bridge loans |
+| `FAILURE_PROBABILITY_THRESHOLD` (τ*) | **0.110** | `pipeline.py` | Directly changes which payments are offered bridge loans |
 | `FEE_FLOOR_BPS` | **300** | `constants.py` | Changes minimum revenue per loan |
 | `LATENCY_SLO_MS` | **94 ms** | `constants.py` | Changes the SLO contract with deploying banks |
 | `UETR_TTL_BUFFER_DAYS` | **45** | `constants.py` | Changes UETR deduplication window |

@@ -355,7 +355,7 @@ def _write_report(results: dict, output_path: str) -> None:
         "- Warm path: remaining events (steady-state, used for SLO verdict)",
         "- Events: 1,000 synthetic ISO 20022 RJCT events with randomised BIC/currency/rejection-code",
         "- UETR uniqueness: guaranteed per event (UUID from seed); no RETRY_BLOCKED events",
-        "- Failure probability set to 0.80 (above τ*=0.152) → all warm events reach C7",
+        "- Failure probability set to 0.80 (above τ*=0.110) → all warm events reach C7",
         "- VelocityChecker: in-memory Redis mock (no network I/O)",
         "- DecisionLogger: in-memory HMAC (no disk I/O)",
         "",

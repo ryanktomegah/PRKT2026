@@ -20,7 +20,7 @@ Restate the financial formula or constant change being requested. Verify it agai
 - Latency SLO: ≤ 94ms (p99)
 - Stress regime multiplier: 3.0
 - Platform royalty: 15% of fee_repaid_usd
-- Threshold τ*: 0.152 (F2-optimised)
+- Threshold τ*: 0.110 (F2-optimised, calibrated)
 
 **Fee Formula** (`lip/c2_pd_model/fee.py`)
 ```

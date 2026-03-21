@@ -30,7 +30,7 @@ All monetary amounts use `Decimal` for precision. All timestamps are timezone-aw
 | `shap_top20` | `list[dict]` | Top-20 SHAP contributions (`feature`, `value`, `shap_value`) |
 | `corridor_embedding_used` | `bool` | Whether corridor embedding was applied |
 | `inference_latency_ms` | `float` | Wall-clock inference time |
-| `threshold_used` | `float [0,1]` | F2-optimal threshold applied (τ* = 0.152) |
+| `threshold_used` | `float [0,1]` | F2-optimal threshold applied (τ* = 0.110, calibrated) |
 | `above_threshold` | `bool` | `True` when `failure_probability >= threshold_used` |
 | `model_version` | `str` | Model artefact version tag |
 | `inference_timestamp` | `datetime UTC` | Inference timestamp |

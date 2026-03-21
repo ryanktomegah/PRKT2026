@@ -42,7 +42,7 @@ class PipelineResult:
     failure_probability:
         C1 predicted failure probability in [0, 1].
     above_threshold:
-        ``True`` when ``failure_probability > FAILURE_PROBABILITY_THRESHOLD`` (τ* = 0.152).
+        ``True`` when ``failure_probability > FAILURE_PROBABILITY_THRESHOLD`` (τ* = 0.110).
     shap_top20:
         Top-20 SHAP feature attributions from C1.
     dispute_class:

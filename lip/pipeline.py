@@ -7,7 +7,7 @@ Algorithm 1: End-to-End Pipeline Processing Loop
 For each payment event:
   1. C5 normalizes the raw event (done by caller; accepts NormalizedEvent)
   2. C1 extracts features + predicts failure_probability
-  3. If failure_probability > threshold (τ* = 0.152):
+  3. If failure_probability > threshold (τ* = 0.110):
      a. C4 checks for dispute (hard_block check)
      b. C6 checks AML velocity (hard_block check)
      c. C2 computes PD + fee_bps (annualized, 300bps floor)
@@ -61,14 +61,15 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-FAILURE_PROBABILITY_THRESHOLD: float = 0.360
+FAILURE_PROBABILITY_THRESHOLD: float = 0.110
 """τ* — Architecture Spec v1.2 Section 3 decision threshold.
 
 Updated 2026-03-21 from C1 retraining on 10M corpus (2M sample, 20 corridors,
-temporal burst clustering, per-BIC risk tiers). F2-optimal threshold = 0.36,
-Val AUC = 0.885, F2 = 0.622. Previous value was 0.152 (stale from pre-BLOCK-filter
-training on 1M samples, 12 corridors). BLOCK-class rejection codes are now filtered
-before training, so τ* is calibrated on bridgeable events only.
+temporal burst clustering, per-BIC risk tiers) with isotonic calibration.
+Calibrated F2-optimal threshold = 0.110, Val AUC = 0.8871, F2 = 0.6245,
+ECE = 0.0687 (post-calibration). Previous value was 0.360 (uncalibrated).
+BLOCK-class rejection codes are filtered before training, so τ* is calibrated
+on bridgeable events only.
 """
 
 _DISPUTE_BLOCK_CLASSES = frozenset({
