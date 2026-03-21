@@ -41,7 +41,7 @@ All three models are High risk under SR 11-7 classification criteria: they are u
 |---|---|
 | Model ID | M-01 |
 | Component | C1 |
-| Version at documentation | C1v1.0.0 (pre-production; version assigned at first training run) |
+| Version at documentation | C1v1.0.0 (pre-production; version assigned at first training run) [UPDATED 2026-03-21: C1v1.1.0 — TRAINED. See docs/c1-model-card.md] |
 | Model family | Graph Neural Network (GraphSAGE) + TabTransformer, binary classification head |
 | Primary output | `failure_probability` — float [0.0, 1.0] per individual UETR-keyed payment event |
 | Operating threshold | F2-optimal threshold determined at training time; documented in model artifact `modelcard.md` |
@@ -102,6 +102,8 @@ This is not a portfolio-level forecasting model. It operates on individual payme
 
 **Threshold setting:** Operating threshold is set using F2-weighted optimization, reflecting asymmetric cost of errors: false negatives (missed failure, no bridge offered — missed revenue) are penalized twice as heavily as false positives (bridge offered when payment would have settled — capital deployed at minor opportunity cost, but bridge loan generates revenue if accepted).
 
+[ACTUAL 2026-03-21: Isotonic calibration (PAVA) added post-training. LightGBM 50/50 ensemble with PyTorch neural. ECE reduced from 0.1867 to 0.0687.]
+
 ### 3.3 Training Data
 
 | Field | Value |
@@ -109,7 +111,7 @@ This is not a portfolio-level forecasting model. It operates on individual payme
 | Data type | Historical ISO 20022 pacs.002 payment status events with settlement outcome labels |
 | Label definition | Positive (failure): no settlement signal received within maturity window (3/7/21 days per rejection class). Negative (not failure): settlement confirmed via any of 5 signal channels |
 | Expected label noise | 1–3% (settlement signals received but not captured due to Kafka gaps or parsing errors are mislabeled as failures) |
-| Minimum training size | To be determined at Phase 1 build; minimum 50,000 labeled events required for reliable GNN graph construction |
+| Minimum training size | To be determined at Phase 1 build; minimum 50,000 labeled events required for reliable GNN graph construction [ACTUAL 2026-03-21: 2M sample from 10M corpus. Full provenance: docs/c1-training-data-card.md] |
 | Train/validation/test split | 70/15/15 chronological split. Out-of-time (OOT) test set = most recent 15% of data by date. Random split is prohibited — it leaks temporal patterns |
 | Data provenance | Documented in model artifact `modelcard.md` at training time: source, date range, volume, label distribution |
 | Data residency | Training data processed within Bridgepoint infrastructure (Zone A). No raw borrower identity data. UETR and BIC codes only |
@@ -130,7 +132,7 @@ All inputs are sourced from the `ClassifyRequest` gRPC schema (Architecture Spec
 
 ### 3.5 Outputs
 
-- `failure_probability` — float [0.0, 1.0]; primary model output
+- `failure_probability` — float [0.0, 1.0]; primary model output [ACTUAL τ* = 0.110 (calibrated probability scale, isotonic regression)]
 - `threshold_exceeded` — bool; convenience flag for Decision Engine
 - `shap_values` — list of top-20 feature contributions (GradientExplainer, PyTorch); logged in `DecisionLogEntry` per EU AI Act Art.13
 - `model_version` — semantic version string (e.g., C1v1.0.0); logged for audit trail
@@ -148,7 +150,7 @@ These limitations are structural, not implementation defects. They are disclosed
 
 4. **Cold-start corridors.** New BIC-pair corridors with no history use currency-pair mean embeddings. Performance on new corridors is expected to be lower than established corridors. The four-tier bootstrap protocol (Architecture Spec §11.4) manages capital risk during this period.
 
-5. **Pre-training AUC estimate.** ARIA's honest pre-training estimate: **AUC 0.82–0.88**. The target of 0.85 is achievable but not guaranteed. A hard ceiling near 0.88–0.90 likely exists for this problem domain given irreducible noise in payment network events.
+5. **Pre-training AUC estimate.** ARIA's honest pre-training estimate: **AUC 0.82–0.88**. The target of 0.85 is achievable but not guaranteed. A hard ceiling near 0.88–0.90 likely exists for this problem domain given irreducible noise in payment network events. [RESULT 2026-03-21: Val AUC = 0.8871 achieved, within honest ceiling. F2 = 0.6245, ECE = 0.0687.]
 
 ### 3.7 Failure Modes
 

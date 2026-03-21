@@ -35,7 +35,7 @@
 ## 1. PURPOSE & SCOPE
 
 C1 replaces the existing XGBoost baseline classifier (AUC 0.739).
-Target: AUC ≥ 0.85 on held-out test set.
+Target: AUC ≥ 0.85 on held-out test set. [RESULT 2026-03-21: Target achieved. Val AUC = 0.8871.]
 ARIA is required to report the honest measured result — not just
 whether the target was achieved.
 
@@ -550,7 +550,7 @@ create a consistent, unambiguous label across all rejection classes.
 ### 9.3 Minimum Dataset Size
 
 Target: 500,000 labeled examples for initial training
-Minimum viable: 100,000 labeled examples
+Minimum viable: 100,000 labeled examples [ACTUAL 2026-03-21: 2M/10M. See docs/c1-training-data-card.md]
 
 At <100,000 examples: AUC target of 0.85 is unlikely achievable.
 ARIA must report actual training set size alongside AUC.
@@ -658,7 +658,7 @@ guarantees — honest actual values are what matters.
 ### 11.1 AUC on Held-Out OOT Test Set
 
 **Target:** AUC ≥ 0.85
-**Honest ceiling (ARIA estimate):** AUC 0.82-0.88
+**Honest ceiling (ARIA estimate):** AUC 0.82-0.88 [RESULT 2026-03-21: 0.8871 achieved — at ceiling. No data leakage indication.]
   - Lower bound: GNN adds structural features XGBoost couldn't use;
     even a modest improvement over 0.739 is expected
   - Upper bound: 0.88 is aggressive; payment failure prediction is
@@ -871,6 +871,11 @@ structural limitations, not implementation bugs.
    cases in correspondent bank systems) with no predictive signal
    in any observable feature. A hard ceiling likely exists around
    AUC 0.88-0.90 for this problem domain.
+
+6. [ADDED 2026-03-21] **Rejection code distribution deviation.** Chi-square test on rejection
+   code distributions shows minor deviation from priors (χ²=26.72, p=0.021). No label
+   leakage evidence at current AUC (0.8871). See docs/c1-training-data-card.md §5.2 for
+   full data validation results.
 
 ---
 

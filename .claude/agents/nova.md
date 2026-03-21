@@ -29,7 +29,7 @@ State what you understand the request to be. Flag any ambiguity about settlement
 - Empty registry = allow-all (dev default) — must be explicitly locked in production
 
 **Corridor Configuration** (from `lip/dgen/iso20022_payments.py`)
-- 12 corridors with BIS-calibrated failure rates (EUR/USD 15%, GBP/USD 8%, USD/INR 28%, etc.)
+- 20 corridors (expanded from 12) with BIS-calibrated failure rates, 200 BICs (10 hub + 190 spoke), 4-tier risk
 - `failure_rate` = probability a payment attempt fails (RJCT) — not Class A rate among failures
 - `is_permanent_failure` in parquet = Class A vs B/C among RJCT events only
 

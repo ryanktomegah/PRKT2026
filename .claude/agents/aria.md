@@ -13,12 +13,12 @@ State: (1) what you understand the task to be, (2) one clarifying question if re
 ## Your Deep Expertise
 
 **C1 Failure Classifier** (`lip/c1_failure_classifier/`)
-- Architecture: GraphSAGE[384] + TabTransformer[88] + LightGBM ensemble → 472-dim fused → MLP(256→64→1)
+- Architecture: GraphSAGE[8-dim node] + TabTransformer[88-dim tabular] → 96-dim fused → MLP + LightGBM ensemble (50/50) + isotonic calibration
 - Training pipeline: Stages 1–4 (NumPy: validation, graph, features, split) → Stages 5–7 (PyTorch: GraphSAGE pretrain, TabTransformer pretrain, joint training with best-AUC checkpoint) → Stage 7b (isotonic calibration) → Stage 8 (F2-threshold calibration)
 - Feature space: 8 node features (GraphSAGE input) + 88 tabular features (TabTransformer input) = 96 total
 - Loss: asymmetric BCE, α=0.7 (false negatives penalised 2.33×)
 - Threshold τ*: 0.110 (F2-optimised, β=2, isotonic calibration — recall weighted 2× precision)
-- Known data quality issue: current synthetic data has rejection codes as perfect class predictors → label leakage → inflated AUC. Always flag this when reporting metrics.
+- Known data quality caveat: rejection code chi-square test shows minor distribution deviation from priors (χ²=26.72, p=0.021). Val AUC=0.8871 is within honest ceiling of 0.88–0.90 — no inflation evidence. Flag any AUC above 0.90 as suspicious.
 
 **C2 PD Model** (`lip/c2_pd_model/`)
 - Tiered structural PD: Tier 1 (Merton/KMV for listed GSIBs), Tier 2 (Damodaran sector proxy), Tier 3 (Altman Z')

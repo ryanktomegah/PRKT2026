@@ -12,9 +12,9 @@
 | Kill switch | `KillSwitch.activate()` halts all new offers without code changes | `c7_execution_agent/kill_switch.py` |
 | Decision audit trail | `DecisionLogEntry` with HMAC-SHA256 integrity, 7-year Kafka retention | `common/schemas.py` |
 | Performance monitoring | P99 latency, AUC drift, queue depth tracked and alerted | `infrastructure/monitoring/` |
-| Documentation | Model cards in component READMEs + this compliance pack | `lip/c*/README.md` |
+| Documentation | Model cards (`docs/c1-model-card.md`), training data cards (`docs/c1-training-data-card.md`), component READMEs, SR 11-7 Pack v1.0 | `docs/`, `lip/c*/README.md` |
 
-**C1 AUC status** (2026-03-11): Synthetic-data AUC gap resolved — 0.9998 achieved via stats enrichment (commit `f38f0dc`). Real-world production target (0.850) pending pilot with anonymised SWIFT data under QUANT sign-off. See `docs/data-pipeline.md` for details.
+**C1 model status** (2026-03-21): Retrained on 10M synthetic corpus (2M sample, 20 corridors, temporal burst clustering, per-BIC risk tiers). Val AUC = 0.8871, F2 = 0.6245, ECE = 0.0687 (post-isotonic calibration). Calibrated threshold τ* = 0.110. Full model card: `docs/c1-model-card.md`. Training data card: `docs/c1-training-data-card.md`. Real-world production target (0.850 AUC) pending pilot with anonymised SWIFT data under QUANT sign-off.
 
 ---
 
@@ -34,9 +34,9 @@ LIP processes payment failure predictions that inform credit decisions — class
 
 | Requirement | Implementation |
 |-------------|---------------|
-| System documentation | This docs/ suite + component READMEs |
+| System documentation | This docs/ suite + component READMEs + `docs/c1-model-card.md` + `docs/c1-training-data-card.md` |
 | Intended purpose | Automated bridge lending for SWIFT payment failures |
-| Model limitations | AUC gap, C4 FN rate documented in READMEs and `constants.py` |
+| Model limitations | Documented in `docs/c1-model-card.md` §6 (7 limitations) and component READMEs |
 | SHAP explanations | `ClassifyResponse.shap_top20` — top-20 feature contributions per prediction |
 
 ### Article 14 — Human Oversight

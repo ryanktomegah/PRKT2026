@@ -23,7 +23,7 @@
 - **Records**: 10,000
 - **Corpus tag**: `SYNTHETIC_CORPUS_C1`
 - **All labels = 1 (RJCT)**: True
-- **Corridor count**: 12
+- **Corridor count**: 12 [UPDATE 2026-03-21: Now 20 corridors in production 10M corpus. See docs/c1-model-card.md]
 - **Temporal span**: 539.9 days (target: ~540)
 - **Corridor rate max abs error**: 0.0 (target: <0.001)
 
@@ -36,7 +36,9 @@
 | BLOCK | 0.050 | ~5% |
 | C | 0.151 | ~15% |
 
-> **Not measured**: C1 ML inference (GraphSAGE/TabTransformer). Trained AUC=0.9998 on 2K synthetic samples (commit `f38f0dc`). Estimated real-world AUC: 0.82–0.88 (requires SWIFT pilot data).
+> [UPDATE 2026-03-21: Production model retrained on 10M corpus (2M sample). Val AUC = 0.8871, 20 corridors, F2 = 0.6245, ECE = 0.0687. PoC metrics below are from 2026-03-15 prototype run on 2K synthetic samples with 12 corridors. See docs/c1-model-card.md for current results.]
+>
+> **Not measured (at PoC time)**: C1 ML inference (GraphSAGE/TabTransformer). PoC-era AUC=0.9998 on 2K synthetic samples (commit `f38f0dc`). That metric was inflated due to insufficient feature variation.
 
 ---
 
@@ -109,7 +111,7 @@
 
 | Item | Reason | Reference |
 |------|--------|-----------|
-| C1 ML inference AUC | Requires trained model artifacts | Commit `f38f0dc` (AUC=0.9998 synthetic) |
+| C1 ML inference AUC | Requires trained model artifacts | [UPDATE 2026-03-21: Production Val AUC = 0.8871. PoC-era commit `f38f0dc` AUC=0.9998 was inflated on 2K samples. See docs/c1-model-card.md] |
 | C2 PD calibration | Requires real default history | QUANT sign-off pending |
 | C3 repayment accuracy | Requires live UETR settlement tracking | Phase 2 |
 | C4 negation handling | MockLLMBackend has no negation awareness | P6 (Groq API) |

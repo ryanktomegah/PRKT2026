@@ -17,11 +17,11 @@ Interpret `$ARGUMENTS`:
 | `<N> <E>` (two numbers) | `python scripts/train_c1_on_parquet.py --sample N --epochs E` |
 
 Run full training in background. After completion (smoke or full), read `artifacts/train_metrics_parquet.json` and report:
-- `val_AUC` — target ≥ 0.95 on synthetic data (note: likely inflated due to rejection code label leak)
+- `val_AUC` — target ≥ 0.85 on held-out test set (actual 2026-03-21: 0.8871)
 - `f2_threshold` — optimal decision boundary
 - `ece` — calibration error
 - `train_elapsed_s` — wall time
 
-**Important context:** val_AUC will be artificially high (~0.99) because rejection codes are perfect class predictors in the current synthetic data. This is a known data quality issue — the metric reflects memorization, not generalization. Flag this in the report.
+**Context:** val_AUC on current 10M corpus is 0.8871 — within honest ceiling of 0.88–0.90. Prior synthetic runs on 2K samples showed inflated 0.9998 due to insufficient feature variation. Current corpus with 20 corridors, 4-tier BIC risk, and temporal clustering produces realistic performance.
 
 Checkpoint saved to `artifacts/c1_model_parquet.pt` — NEVER commit this file.

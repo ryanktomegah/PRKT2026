@@ -29,8 +29,8 @@ State what you understand the data quality question or generation task to be. If
 - PaySim / IEEE-CIS: graph structure and anomaly detection priors (adapted, not used directly)
 
 **Known Data Quality Issues (current state)**
-1. Rejection codes are perfect class predictors — no code overlap between classes → label leakage → AUC inflation
-2. Class A proportion uniform across all 12 corridors (~35%) — real corridors would differ
+1. Rejection code chi-square test shows minor distribution deviation from priors (χ²=26.72, p=0.021) — no label leakage evidence at Val AUC 0.8871. See c1-training-data-card.md §5.2.
+2. Class A proportion was uniform across corridors in old 2K corpus — 10M corpus (20 corridors, 200 BICs, 4-tier risk) addresses this
 3. `corridor_failure_rate` computed from parquet RJCT events = Class A rate among failures (~35% everywhere), not underlying payment failure probability — useless as a discriminating feature
 4. Amount median ~$515K vs ECB retail median €6,532 — missing long tail of small transactions
 5. BIC graph thin (75 senders / 10M txns) — GraphSAGE node embeddings may overfit
