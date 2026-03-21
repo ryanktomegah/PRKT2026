@@ -470,7 +470,7 @@ def _generate_common_fields(
     day_base = (day_offsets // 86_400) * 86_400
     ts_unix = _EPOCH_START + day_base + intraday_secs
     ts_iso = [
-        datetime.fromtimestamp(t, tz=timezone.utc).isoformat()
+        datetime.fromtimestamp(t, tz=timezone.utc).isoformat(timespec="milliseconds")
         for t in ts_unix
     ]
 
@@ -720,7 +720,7 @@ def _inject_temporal_clustering(
 
     # Convert back to ISO 8601 strings
     new_timestamps = [
-        datetime.fromtimestamp(float(t), tz=timezone.utc).isoformat()
+        datetime.fromtimestamp(float(t), tz=timezone.utc).isoformat(timespec="milliseconds")
         for t in new_ts_unix
     ]
     result = df.copy()
