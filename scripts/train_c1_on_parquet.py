@@ -653,19 +653,47 @@ def train(
             best_f2, best_thresh = f2, float(thresh)
     logger.info("F2-optimal threshold: %.3f  (F2=%.4f)", best_thresh, best_f2)
 
-    # ECE (10-bin calibration error)
-    n_bins = 10
-    bin_boundaries = np.linspace(0.0, 1.0, n_bins + 1)
-    ece = 0.0
-    n_val = len(y_val)
-    for i in range(n_bins):
-        mask = (scores >= bin_boundaries[i]) & (scores < bin_boundaries[i + 1])
-        if mask.sum() == 0:
-            continue
-        avg_conf = scores[mask].mean()
-        avg_acc = y_val[mask].mean()
-        ece += (mask.sum() / n_val) * abs(avg_conf - avg_acc)
-    logger.info("ECE (10-bin): %.4f", ece)
+    # ECE (10-bin calibration error) — PRE-calibration
+    from lip.c1_failure_classifier.calibration import IsotonicCalibrator, compute_ece
+
+    ece_pre = compute_ece(scores, y_val)
+    logger.info("ECE pre-calibration (10-bin): %.4f", ece_pre)
+
+    # ---------- Isotonic calibration (stage 7b) ----------
+    # Split val set: first 60% for calibrator fitting, last 40% for ECE eval.
+    # This prevents overfitting the calibrator to the same data used to measure ECE.
+    n_cal = int(len(y_val) * 0.6)
+    cal_scores, eval_scores = scores[:n_cal], scores[n_cal:]
+    cal_labels, eval_labels = y_val[:n_cal], y_val[n_cal:]
+
+    calibrator = IsotonicCalibrator()
+    calibrator.fit(cal_scores, cal_labels)
+
+    # Measure ECE improvement on held-out eval portion
+    calibrated_eval = calibrator.predict(eval_scores)
+    ece_post = compute_ece(calibrated_eval, eval_labels)
+    logger.info("ECE post-calibration (10-bin): %.4f (was %.4f)", ece_post, ece_pre)
+
+    # Re-compute F2 threshold on calibrated scores (full val set)
+    calibrated_all = calibrator.predict(scores)
+    best_f2_cal, best_thresh_cal = 0.0, 0.5
+    for thresh in np.linspace(0.05, 0.95, 91):
+        preds = (calibrated_all >= thresh).astype(int)
+        tp = float(np.sum((preds == 1) & (y_val == 1)))
+        fp = float(np.sum((preds == 1) & (y_val == 0)))
+        fn = float(np.sum((preds == 0) & (y_val == 1)))
+        prec = tp / (tp + fp + 1e-9)
+        rec = tp / (tp + fn + 1e-9)
+        f2 = (5 * prec * rec) / (4 * prec + rec + 1e-9)
+        if f2 > best_f2_cal:
+            best_f2_cal, best_thresh_cal = f2, float(thresh)
+    logger.info(
+        "F2 threshold (calibrated): %.3f (F2=%.4f) vs raw: %.3f (F2=%.4f)",
+        best_thresh_cal, best_f2_cal, best_thresh, best_f2,
+    )
+    # Use calibrated threshold as the deployment threshold
+    best_thresh = best_thresh_cal
+    best_f2 = best_f2_cal
 
     # ---------- Save F2 threshold to well-known path ----------
     thresh_path = output / "f2_threshold.txt"
@@ -679,12 +707,26 @@ def train(
 
     # Save LightGBM separately — torch.save(state_dict) only saves PyTorch
     # parameters; model.lgbm_model is a sklearn object and must be pickled.
+    import pickle
+
     if hasattr(model, "lgbm_model") and model.lgbm_model is not None:
-        import pickle
         lgbm_path = output / "c1_lgbm_parquet.pkl"
         with open(lgbm_path, "wb") as fh:
             pickle.dump(model.lgbm_model, fh)
         logger.info("LightGBM checkpoint saved: %s", lgbm_path)
+
+    # ---------- Save calibrator (isotonic) ----------
+    calibrator_path = output / "c1_calibrator.pkl"
+    with open(calibrator_path, "wb") as fh:
+        pickle.dump(calibrator, fh)
+    logger.info("Calibrator saved: %s", calibrator_path)
+
+    # ---------- Save StandardScaler ----------
+    if pipeline.feature_scaler is not None:
+        scaler_path = output / "c1_scaler.pkl"
+        with open(scaler_path, "wb") as fh:
+            pickle.dump(pipeline.feature_scaler, fh)
+        logger.info("StandardScaler saved: %s", scaler_path)
 
     # ---------- Save metrics ----------
     metrics = {
@@ -693,7 +735,9 @@ def train(
         "val_auc_lgbm": round(val_auc_lgbm, 6) if lgbm_scores is not None else None,
         "f2_threshold": round(best_thresh, 4),
         "f2_score": round(best_f2, 6),
-        "ece": round(ece, 6),
+        "ece_pre_calibration": round(ece_pre, 6),
+        "ece_post_calibration": round(ece_post, 6),
+        "ece": round(ece_post, 6),
         "n_records": len(records),
         "n_epochs": n_epochs,
         "train_elapsed_s": round(train_elapsed, 1),
@@ -712,10 +756,12 @@ def train(
     print(f"  Records:     {len(records):,} (sampled from corpus)")
     print(f"  Val AUC:     {val_auc:.4f}")
     print(f"  F2 score:    {best_f2:.4f}")
-    print(f"  F2 threshold: {best_thresh:.4f}")
-    print(f"  ECE:         {ece:.4f}")
+    print(f"  F2 threshold: {best_thresh:.4f} (calibrated)")
+    print(f"  ECE pre:     {ece_pre:.4f}")
+    print(f"  ECE post:    {ece_post:.4f}")
     print(f"  Elapsed:     {train_elapsed:.1f} s")
     print(f"  Checkpoint:  {ckpt_path}")
+    print(f"  Calibrator:  {calibrator_path}")
     print(f"  Metrics:     {metrics_path}")
     print(f"  Threshold:   {thresh_path}")
     print("")

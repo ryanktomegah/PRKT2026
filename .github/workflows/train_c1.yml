@@ -125,7 +125,8 @@ jobs:
             Val AUC:     {m['val_auc']:.4f} (baseline: {baseline_auc}, Δ={auc_delta:+.4f})
             F2 score:    {m['f2_score']:.4f} (baseline: {baseline_f2}, Δ={f2_delta:+.4f})
             F2 threshold: {threshold}
-            ECE:         {m['ece']:.4f}
+            ECE pre:     {m.get('ece_pre_calibration', 'N/A')}
+            ECE post:    {m.get('ece_post_calibration', m['ece']):.4f}
 
             ACTION REQUIRED:
             Update lip/pipeline.py line 64:
@@ -157,6 +158,8 @@ jobs:
           path: |
             artifacts/c1_trained/c1_model_parquet.pt
             artifacts/c1_trained/c1_lgbm_parquet.pkl
+            artifacts/c1_trained/c1_calibrator.pkl
+            artifacts/c1_trained/c1_scaler.pkl
             artifacts/c1_trained/train_metrics_parquet.json
             artifacts/c1_trained/f2_threshold.txt
             artifacts/production_data/synthesis_parameters.json

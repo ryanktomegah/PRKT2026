@@ -470,6 +470,11 @@ class ClassifierModel:
             import pickle
             with open(os.path.join(path, "lgbm.pkl"), "wb") as f:
                 pickle.dump(self.lgbm_model, f)
+        # Persist calibrator state so it survives save/load cycle
+        if self.calibrator._is_fitted:
+            import pickle
+            with open(os.path.join(path, "calibrator.pkl"), "wb") as f:
+                pickle.dump(self.calibrator, f)
         logger.info("ClassifierModel saved to %s", path)
 
     def load(self, path: str) -> None:
@@ -489,6 +494,13 @@ class ClassifierModel:
             import pickle
             with open(lgbm_path, "rb") as f:
                 self.lgbm_model = pickle.load(f)
+        # Restore calibrator if previously saved
+        cal_path = os.path.join(path, "calibrator.pkl")
+        if os.path.exists(cal_path):
+            import pickle
+            with open(cal_path, "rb") as f:
+                self.calibrator = pickle.load(f)
+            logger.info("Calibrator loaded (fitted=%s)", self.calibrator._is_fitted)
         logger.info("ClassifierModel loaded from %s", path)
 
     def save_weights(self, npz_path: str) -> None:
