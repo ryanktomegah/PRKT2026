@@ -24,7 +24,7 @@ RUN python3.11 -m pip install --no-cache-dir \
 # Copy LIP package (streaming module + event normalizer)
 COPY lip/ ./lip/
 WORKDIR /app/lip
-RUN python3.11 -m pip install --no-cache-dir "setuptools>=68" && python3.11 -m pip install --no-cache-dir -e .
+RUN python3.11 -m pip install --no-cache-dir .
 WORKDIR /app
 
 # Non-root user

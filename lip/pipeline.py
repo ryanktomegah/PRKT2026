@@ -61,16 +61,14 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-FAILURE_PROBABILITY_THRESHOLD: float = 0.152
+FAILURE_PROBABILITY_THRESHOLD: float = 0.360
 """τ* — Architecture Spec v1.2 Section 3 decision threshold.
 
-NOTE (EPG-13/ARIA): τ* = 0.152 was optimised on the full C1 synthetic corpus,
-which includes both bridgeable (Class A/B/C) and non-bridgeable (BLOCK) failure
-events.  Optimisation on the bridgeable-only subset (enabled by the EPG-12/22
-``is_bridgeable`` corpus label) is pending C1 retraining.  Until then, τ* is
-conservatively biased: higher recall on the mixed population means some
-non-bridgeable events pass the threshold gate and are later blocked by C7
-taxonomy — the correct defence-in-depth sequence, but suboptimal in latency.
+Updated 2026-03-21 from C1 retraining on 10M corpus (2M sample, 20 corridors,
+temporal burst clustering, per-BIC risk tiers). F2-optimal threshold = 0.36,
+Val AUC = 0.885, F2 = 0.622. Previous value was 0.152 (stale from pre-BLOCK-filter
+training on 1M samples, 12 corridors). BLOCK-class rejection codes are now filtered
+before training, so τ* is calibrated on bridgeable events only.
 """
 
 _DISPUTE_BLOCK_CLASSES = frozenset({
