@@ -616,6 +616,19 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 5. **8 new corridors committed**: USD/AUD, AUD/USD, USD/HKD, HKD/USD, EUR/SEK, USD/KRW, USD/BRL,
    USD/MXN — all validated with realistic failure rates and settlement parameters.
 
+### Infrastructure Hardening — All 9 Items Fixed (commit 221158b)
+
+1. **securityContext on C1–C6**: runAsNonRoot, runAsUser=1000, readOnlyRootFilesystem, no privilege escalation. Consistent with C7.
+2. **imagePullPolicy**: C1–C6 → IfNotPresent; C7 → Never (bank-side, pre-pulled).
+3. **PSS namespace labels**: `pod-security.kubernetes.io/enforce: restricted` on `lip` namespace.
+4. **C7 taints/tolerations**: `lip/bank-container=true:NoSchedule` toleration added.
+5. **NetworkPolicy for C3/C6**: explicit ingress (lip ns, 8080) + egress (Redis 6379/6380, intra-ns, DNS).
+6. **Redis TLS**: standalone Redis now serves on port 6380 with TLS cert/key/CA. Probes updated.
+7. **License refresh**: 24h → 1h.
+8. **Secrets placeholders**: ACCOUNT_ID → `<AWS_ACCOUNT_ID>`; deadbeef → `openssl rand -hex 32`.
+9. **Helm values**: pullPolicy → IfNotPresent, tag → "" (requires explicit version at deploy).
+10. **Redpanda docs**: production Kafka TLS/SASL configuration documented in header comments.
+
 ### What is NEXT
 
 **Immediate (blocking pre-pilot)**:
@@ -626,6 +639,4 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 **Engineering (when legal is underway)**:
 4. C1 training on production parquet — check Codespace training status (PID 1118)
 5. C6 Redis Phase 2 — distributed velocity tracking (velocity.py TODO)
-6. Cloud deployment — K8s for pilot bank onboarding
-7. Infrastructure hardening (9 items from audit): PSS labels, securityContext on C1-C6, TLS,
-   imagePullPolicy, NetworkPolicy for C3/C6, C7 taints/tolerations, license refresh interval
+6. Cloud deployment — K8s manifests now hardened; ready for pilot bank onboarding
