@@ -40,7 +40,7 @@ def execution_agent():
 @pytest.fixture
 def pipeline(velocity_checker, execution_agent):
     c1 = MagicMock()
-    c1.predict.return_value = {"failure_probability": 0.2, "above_threshold": True}
+    c1.predict.return_value = {"failure_probability": 0.5, "above_threshold": True}
     c2 = MagicMock()
     c2.predict.return_value = {"pd_score": 0.05, "fee_bps": 300, "tier": 3}
     c4 = MagicMock()
@@ -104,7 +104,7 @@ class TestGap02AmlCaps:
         vc = VelocityChecker(salt=_SALT)
 
         c1 = MagicMock()
-        c1.predict.return_value = {"failure_probability": 0.2, "above_threshold": True}
+        c1.predict.return_value = {"failure_probability": 0.5, "above_threshold": True}
         c2 = MagicMock()
         c4 = MagicMock()
         c4.classify.return_value = {"dispute_class": "NOT_DISPUTE"}

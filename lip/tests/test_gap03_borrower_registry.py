@@ -74,7 +74,7 @@ def test_pipeline_borrower_unregistered():
     )
 
     pipeline = LIPPipeline(
-        c1_engine=MagicMock(return_value={"failure_probability": 0.2, "above_threshold": True}),
+        c1_engine=MagicMock(return_value={"failure_probability": 0.5, "above_threshold": True}),
         c2_engine=c2_mock,
         c4_classifier=MagicMock(classify=MagicMock(return_value={"dispute_class": "NOT_DISPUTE"})),
         c6_checker=MagicMock(check=MagicMock(return_value=MagicMock(passed=True, anomaly_flagged=False))),

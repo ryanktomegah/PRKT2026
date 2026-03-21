@@ -63,7 +63,7 @@ def test_pipeline_respects_licensee_caps():
 
     # 3. Setup Pipeline
     pipeline = LIPPipeline(
-        c1_engine=MagicMock(return_value={"failure_probability": 0.2, "above_threshold": True}),
+        c1_engine=MagicMock(return_value={"failure_probability": 0.5, "above_threshold": True}),
         c2_engine=MagicMock(return_value={"pd_score": 0.05, "fee_bps": 300}),
         c4_classifier=MagicMock(classify=MagicMock(return_value={"dispute_class": "NOT_DISPUTE"})),
         c6_checker=checker,
