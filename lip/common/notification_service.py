@@ -19,14 +19,19 @@ Design:
 """
 from __future__ import annotations
 
+import json as _json
 import logging
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+_REDIS_KEY_PREFIX = "lip:notification:"
+_REDIS_TTL_SECONDS = 30 * 24 * 3600  # 30 days
 
 
 # ---------------------------------------------------------------------------
@@ -119,10 +124,77 @@ class NotificationService:
         self,
         webhook_url: Optional[str] = None,
         delivery_callback: Optional[Callable[[NotificationRecord], None]] = None,
+        redis_client: Any = None,
+        async_delivery: bool = False,
     ) -> None:
         self._webhook_url = webhook_url
         self._delivery_callback = delivery_callback
+        self._redis = redis_client
+        self._async_delivery = async_delivery
+        self._executor: Optional[ThreadPoolExecutor] = (
+            ThreadPoolExecutor(max_workers=4, thread_name_prefix="notif-delivery")
+            if async_delivery
+            else None
+        )
         self._records: Dict[str, NotificationRecord] = {}
+        # Load from Redis on init
+        if self._redis is not None:
+            self._load_from_redis()
+
+    def _load_from_redis(self) -> None:
+        try:
+            cursor = 0
+            count = 0
+            while True:
+                cursor, keys = self._redis.scan(
+                    cursor, match=f"{_REDIS_KEY_PREFIX}*", count=100,
+                )
+                for key in keys:
+                    val = self._redis.get(key)
+                    if val is None:
+                        continue
+                    data = _json.loads(val.decode() if isinstance(val, bytes) else val)
+                    record = NotificationRecord(
+                        notification_id=data["notification_id"],
+                        event_type=NotificationEventType(data["event_type"]),
+                        uetr=data["uetr"],
+                        licensee_id=data.get("licensee_id", ""),
+                        payload=data.get("payload", {}),
+                        created_at=datetime.fromisoformat(data["created_at"]),
+                        delivered=data.get("delivered", False),
+                    )
+                    self._records[record.notification_id] = record
+                    count += 1
+                if cursor == 0:
+                    break
+            if count:
+                logger.info("Loaded %d notifications from Redis", count)
+        except Exception as exc:
+            logger.warning("Failed to load notifications from Redis: %s", exc)
+
+    def _persist_to_redis(self, record: NotificationRecord) -> None:
+        if self._redis is None:
+            return
+        try:
+            data = _json.dumps({
+                "notification_id": record.notification_id,
+                "event_type": record.event_type.value,
+                "uetr": record.uetr,
+                "licensee_id": record.licensee_id,
+                "payload": record.payload,
+                "created_at": record.created_at.isoformat(),
+                "delivered": record.delivered,
+            })
+            key = f"{_REDIS_KEY_PREFIX}{record.notification_id}"
+            self._redis.set(key, data.encode(), ex=_REDIS_TTL_SECONDS)
+        except Exception as exc:
+            logger.warning("Redis persist failed for notification %s: %s", record.notification_id, exc)
+
+    def shutdown(self) -> None:
+        """Gracefully shut down the async delivery executor."""
+        if self._executor is not None:
+            self._executor.shutdown(wait=True, cancel_futures=False)
+            self._executor = None
 
     # ── Core notification dispatch ────────────────────────────────────────────
 
@@ -164,20 +236,41 @@ class NotificationService:
             record.notification_id, event_type.value, uetr, licensee_id,
         )
 
+        # Write-through to Redis
+        self._persist_to_redis(record)
+
         if self._delivery_callback is not None:
-            try:
-                self._delivery_callback(record)
-                record.delivered = True
-                logger.debug(
-                    "Notification delivered: id=%s", record.notification_id
-                )
-            except Exception as exc:
-                logger.warning(
-                    "Notification delivery failed: id=%s error=%s",
-                    record.notification_id, exc,
-                )
+            if self._async_delivery and self._executor is not None:
+                self._executor.submit(self._deliver_async, record)
+            else:
+                try:
+                    self._delivery_callback(record)
+                    record.delivered = True
+                    self._persist_to_redis(record)
+                    logger.debug(
+                        "Notification delivered: id=%s", record.notification_id
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Notification delivery failed: id=%s error=%s",
+                        record.notification_id, exc,
+                    )
 
         return record
+
+    def _deliver_async(self, record: NotificationRecord) -> None:
+        """Async delivery wrapper — runs in thread pool."""
+        try:
+            if self._delivery_callback is not None:
+                self._delivery_callback(record)
+                record.delivered = True
+                self._persist_to_redis(record)
+                logger.debug("Async notification delivered: id=%s", record.notification_id)
+        except Exception as exc:
+            logger.warning(
+                "Async notification delivery failed: id=%s error=%s",
+                record.notification_id, exc,
+            )
 
     # ── Query ─────────────────────────────────────────────────────────────────
 

@@ -55,6 +55,8 @@ class AlertEvent(str, Enum):
     LATENCY_P99_EXCEEDED = "latency_p99_exceeded"
     QUEUE_DEPTH_HIGH = "queue_depth_high"
     SALT_ROTATION_DUE = "salt_rotation_due"
+    FX_BLOCK_RATE_HIGH = "fx_block_rate_high"
+    SHORTFALL_RATE_HIGH = "shortfall_rate_high"
 
 
 @dataclass
@@ -249,4 +251,35 @@ class AlertManager:
             summary=f"Inference queue depth {depth} exceeds HPA scale-out threshold {threshold}",
             details={"queue_depth": depth, "hpa_threshold": threshold},
             component="c5",
+        ))
+
+    def alert_fx_block_rate(self, corridor: str, block_rate: float, threshold: float = 0.20) -> None:
+        """Send a WARNING alert when FX block rate exceeds threshold in a corridor.
+
+        Args:
+            corridor: Corridor identifier (e.g., ``'USD_EUR'``).
+            block_rate: Fraction of payments blocked by FX policy in the window.
+            threshold: Alert threshold (default 20%).
+        """
+        self._alerter.send(Alert(
+            event=AlertEvent.FX_BLOCK_RATE_HIGH,
+            severity=AlertSeverity.WARNING,
+            summary=f"FX block rate {block_rate:.1%} in corridor {corridor} exceeds {threshold:.0%}",
+            details={"corridor": corridor, "block_rate": block_rate, "threshold": threshold},
+            component="c7",
+        ))
+
+    def alert_shortfall_rate(self, rate: float, threshold: float = 0.05) -> None:
+        """Send a WARNING alert when partial settlement rate exceeds threshold.
+
+        Args:
+            rate: Fraction of settlements that were partial in the window.
+            threshold: Alert threshold (default 5%).
+        """
+        self._alerter.send(Alert(
+            event=AlertEvent.SHORTFALL_RATE_HIGH,
+            severity=AlertSeverity.WARNING,
+            summary=f"Partial settlement rate {rate:.1%} exceeds {threshold:.0%} threshold",
+            details={"rate": rate, "threshold": threshold},
+            component="c3",
         ))

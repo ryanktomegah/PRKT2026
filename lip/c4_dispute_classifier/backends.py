@@ -22,7 +22,16 @@ import logging
 import os
 from typing import Optional
 
+from lip.common.circuit_breaker import CircuitBreaker
+
 logger = logging.getLogger(__name__)
+
+# Shared circuit breaker for all OpenAI-compatible API calls (GAP-19)
+_api_circuit_breaker = CircuitBreaker(
+    failure_threshold=5,
+    recovery_timeout_seconds=60.0,
+    name="c4_llm_api",
+)
 
 # Default models for known free providers
 _GITHUB_MODELS_DEFAULT = "Mistral-7B-Instruct"
@@ -80,6 +89,9 @@ class OpenAICompatibleBackend:
         """
         Call the remote API and return the generated text.
 
+        GAP-19: Wrapped with circuit breaker. On circuit open, raises
+        CircuitOpenError; DisputeClassifier falls back to DISPUTE_POSSIBLE.
+
         Args:
             system_prompt: System instruction string.
             user_prompt:   User-facing payment details string.
@@ -91,30 +103,33 @@ class OpenAICompatibleBackend:
 
         Raises:
             TimeoutError: If the API call exceeds the timeout.
+            CircuitOpenError: If the circuit breaker is open after repeated failures.
             Exception:    Other API errors (network, auth) propagate to DisputeClassifier
                           which falls back to DISPUTE_POSSIBLE.
         """
         effective_timeout = min(timeout, self._timeout)
-        try:
-            response = self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                max_tokens=max_tokens,
-                timeout=effective_timeout,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as exc:
-            # openai SDK wraps httpx.TimeoutException as APITimeoutError.
-            # We catch by name to avoid importing httpx (optional dependency).
-            exc_type = type(exc).__name__
-            if "Timeout" in exc_type or "timeout" in exc_type.lower():
-                raise TimeoutError(
-                    f"OpenAICompatibleBackend: request timed out after {effective_timeout}s"
-                ) from exc
-            raise
+
+        def _do_call():
+            try:
+                response = self._client.chat.completions.create(
+                    model=self._model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    max_tokens=max_tokens,
+                    timeout=effective_timeout,
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as exc:
+                exc_type = type(exc).__name__
+                if "Timeout" in exc_type or "timeout" in exc_type.lower():
+                    raise TimeoutError(
+                        f"OpenAICompatibleBackend: request timed out after {effective_timeout}s"
+                    ) from exc
+                raise
+
+        return _api_circuit_breaker.call(_do_call)
 
 
 def create_backend(backend_type: Optional[str] = None):

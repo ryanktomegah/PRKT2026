@@ -170,3 +170,13 @@ FEE_TIER_MID_THRESHOLD_USD = Decimal("2000000")  # boundary: mid tier → canoni
 # corridor-level settlement failure spikes. See P3 design in plan file.
 STRESS_REGIME_MULTIPLIER = 3.0   # 1h failure rate must exceed 24h baseline by this factor
 STRESS_REGIME_MIN_TXNS   = 20    # minimum 1h transaction count for a valid stress signal
+
+# ── Partial settlement threshold (QUANT sign-off required) ──────────────────
+# Below this fraction of principal, a partial settlement is treated as noise
+# regardless of policy. Default: 10%.
+PARTIAL_SETTLEMENT_MIN_PCT = Decimal("0.10")  # QUANT sign-off: 2026-03-21
+
+# ── Amount validation tolerance (QUANT sign-off required) ───────────────────
+# GAP-17: loan_amount vs original_payment_amount_usd comparison tolerance.
+# Covers FX rounding in cross-currency corridors.
+AMOUNT_VALIDATION_TOLERANCE_USD = Decimal("0.01")  # QUANT sign-off: 2026-03-21

@@ -20,6 +20,17 @@ METRIC_REPAYMENT_COUNT = "lip_repayments_total"
 METRIC_DEGRADED_MODE = "lip_degraded_mode"
 METRIC_KILL_SWITCH = "lip_kill_switch_active"
 
+# GAP operational metrics
+METRIC_FX_BLOCK_RATE = "lip_fx_block_rate"
+METRIC_PARTIAL_SETTLEMENT_RATE = "lip_partial_settlement_rate"
+METRIC_SHORTFALL_TOTAL_USD = "lip_shortfall_total_usd"
+METRIC_BORROWER_ENROLLMENTS = "lip_borrower_enrollments_total"
+METRIC_NOTIFICATIONS = "lip_notifications_total"
+METRIC_HUMAN_OVERRIDE_REQUESTS = "lip_human_override_requests_total"
+METRIC_HUMAN_OVERRIDE_EXPIRED = "lip_human_override_expired_total"
+METRIC_ROYALTY_COLLECTED_USD = "lip_royalty_collected_usd"
+METRIC_KAFKA_PRODUCER_ERRORS = "lip_kafka_producer_errors"
+
 
 @dataclass
 class LatencyTracker:
@@ -230,6 +241,30 @@ class PrometheusMetricsCollector:
             is_active: ``True`` when the kill switch is engaged.
         """
         self._gauges[METRIC_KILL_SWITCH] = 1.0 if is_active else 0.0
+
+    def add_gauge(self, metric: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+        """Set a named gauge metric to an absolute value.
+
+        Args:
+            metric: Prometheus metric name.
+            value: Gauge value.
+            labels: Optional label dict.
+        """
+        key = metric + str(sorted((labels or {}).items()))
+        self._gauges[key] = value
+
+    def get_gauge(self, metric: str, labels: Optional[Dict[str, str]] = None) -> float:
+        """Return the current value of a named gauge metric.
+
+        Args:
+            metric: Prometheus metric name.
+            labels: Optional label dict.
+
+        Returns:
+            Gauge value (0.0 if never set).
+        """
+        key = metric + str(sorted((labels or {}).items()))
+        return self._gauges.get(key, 0.0)
 
     # ── push ─────────────────────────────────────────────────────────────────
 

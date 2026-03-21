@@ -159,11 +159,127 @@ class RegulatoryReporter:
 
     Records are held in memory and surfaced via the admin router for the BPI
     compliance team to submit to the appropriate competent authority.
+
+    Parameters
+    ----------
+    redis_client:
+        Optional Redis client. When provided, records are written through
+        to Redis with TTL for restart recovery. 90-day TTL; external
+        archival handles 7-year retention.
     """
 
-    def __init__(self) -> None:
+    _DORA_KEY_PREFIX = "lip:dora:"
+    _SR117_KEY_PREFIX = "lip:sr117:"
+    _REDIS_TTL_SECONDS = 90 * 24 * 3600  # 90 days
+
+    def __init__(self, redis_client=None) -> None:
+        self._redis = redis_client
         self._dora_events: Dict[str, DORAAuditEvent] = {}
         self._sr117_reports: Dict[str, SR117ModelValidationReport] = {}
+        if self._redis is not None:
+            self._load_from_redis()
+
+    def _load_from_redis(self) -> None:
+        import json
+        try:
+            # Load DORA events
+            cursor = 0
+            while True:
+                cursor, keys = self._redis.scan(cursor, match=f"{self._DORA_KEY_PREFIX}*", count=100)
+                for key in keys:
+                    val = self._redis.get(key)
+                    if val is None:
+                        continue
+                    d = json.loads(val.decode() if isinstance(val, bytes) else val)
+                    event = DORAAuditEvent(
+                        incident_id=d["incident_id"],
+                        uetr=d.get("uetr"),
+                        event_type=d["event_type"],
+                        severity=DORASeverity(d["severity"]),
+                        description=d["description"],
+                        occurred_at=datetime.fromisoformat(d["occurred_at"]),
+                        reported_at=datetime.fromisoformat(d["reported_at"]),
+                        threshold_hours=d["threshold_hours"],
+                        is_reportable=d["is_reportable"],
+                    )
+                    self._dora_events[event.incident_id] = event
+                if cursor == 0:
+                    break
+            # Load SR 11-7 reports
+            cursor = 0
+            while True:
+                cursor, keys = self._redis.scan(cursor, match=f"{self._SR117_KEY_PREFIX}*", count=100)
+                for key in keys:
+                    val = self._redis.get(key)
+                    if val is None:
+                        continue
+                    d = json.loads(val.decode() if isinstance(val, bytes) else val)
+                    report = SR117ModelValidationReport(
+                        report_id=d["report_id"],
+                        model_id=d["model_id"],
+                        component=d["component"],
+                        validation_date=datetime.fromisoformat(d["validation_date"]),
+                        auc_score=d["auc_score"],
+                        feature_count=d["feature_count"],
+                        passes_validation=d["passes_validation"],
+                        notes=d.get("notes", ""),
+                    )
+                    self._sr117_reports[report.report_id] = report
+                if cursor == 0:
+                    break
+            logger.info(
+                "Loaded %d DORA events and %d SR 11-7 reports from Redis",
+                len(self._dora_events), len(self._sr117_reports),
+            )
+        except Exception as exc:
+            logger.warning("Failed to load regulatory records from Redis: %s", exc)
+
+    def _persist_dora_event(self, event: DORAAuditEvent) -> None:
+        if self._redis is None:
+            return
+        import json
+        try:
+            data = json.dumps({
+                "incident_id": event.incident_id,
+                "uetr": event.uetr,
+                "event_type": event.event_type,
+                "severity": event.severity.value,
+                "description": event.description,
+                "occurred_at": event.occurred_at.isoformat(),
+                "reported_at": event.reported_at.isoformat(),
+                "threshold_hours": event.threshold_hours,
+                "is_reportable": event.is_reportable,
+            })
+            self._redis.set(
+                f"{self._DORA_KEY_PREFIX}{event.incident_id}",
+                data.encode(),
+                ex=self._REDIS_TTL_SECONDS,
+            )
+        except Exception as exc:
+            logger.warning("Redis persist failed for DORA event %s: %s", event.incident_id, exc)
+
+    def _persist_sr117_report(self, report: SR117ModelValidationReport) -> None:
+        if self._redis is None:
+            return
+        import json
+        try:
+            data = json.dumps({
+                "report_id": report.report_id,
+                "model_id": report.model_id,
+                "component": report.component,
+                "validation_date": report.validation_date.isoformat(),
+                "auc_score": report.auc_score,
+                "feature_count": report.feature_count,
+                "passes_validation": report.passes_validation,
+                "notes": report.notes,
+            })
+            self._redis.set(
+                f"{self._SR117_KEY_PREFIX}{report.report_id}",
+                data.encode(),
+                ex=self._REDIS_TTL_SECONDS,
+            )
+        except Exception as exc:
+            logger.warning("Redis persist failed for SR 11-7 report %s: %s", report.report_id, exc)
 
     # ── DORA ─────────────────────────────────────────────────────────────────
 
@@ -212,6 +328,7 @@ class RegulatoryReporter:
             is_reportable=severity in (DORASeverity.MAJOR, DORASeverity.SIGNIFICANT),
         )
         self._dora_events[event.incident_id] = event
+        self._persist_dora_event(event)
         logger.info(
             "DORA event created: id=%s type=%s severity=%s reportable=%s",
             event.incident_id, event_type, severity.value, event.is_reportable,
@@ -276,6 +393,7 @@ class RegulatoryReporter:
             notes=notes,
         )
         self._sr117_reports[report.report_id] = report
+        self._persist_sr117_report(report)
         logger.info(
             "SR 11-7 report created: id=%s model=%s component=%s auc=%.4f passes=%s",
             report.report_id, model_id, component, auc_score, passes,

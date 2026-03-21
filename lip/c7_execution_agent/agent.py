@@ -23,6 +23,7 @@ from lip.c8_license_manager.license_token import LicenseeContext
 from lip.common.borrower_registry import BorrowerRegistry
 from lip.common.business_calendar import currency_to_jurisdiction
 from lip.common.constants import (
+    AMOUNT_VALIDATION_TOLERANCE_USD,
     MIN_CASH_FEE_USD,
     MIN_LOAN_AMOUNT_CLASS_A_USD,
     MIN_LOAN_AMOUNT_CLASS_B_USD,
@@ -455,7 +456,7 @@ class ExecutionAgent:
         # GAP-17: Validate that the loan amount equals the original payment
         # amount the receiver is owed. ±$0.01 tolerance covers FX rounding.
         original_amt = Decimal(str(payment_context.get("original_payment_amount_usd", loan_amount)))
-        if abs(loan_amount - original_amt) > Decimal("0.01"):
+        if abs(loan_amount - original_amt) > AMOUNT_VALIDATION_TOLERANCE_USD:
             logger.error(
                 "LOAN_AMOUNT_MISMATCH: loan_amount=%s original_payment_amount_usd=%s uetr=%s",
                 loan_amount,

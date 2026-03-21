@@ -26,6 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from lip.common.constants import PARTIAL_SETTLEMENT_MIN_PCT
+
 
 class PartialSettlementPolicy(str, Enum):
     """Policy governing RepaymentLoop behaviour on partial settlements."""
@@ -53,4 +55,4 @@ class PartialSettlementConfig:
     """
 
     policy: PartialSettlementPolicy = PartialSettlementPolicy.REQUIRE_FULL
-    minimum_partial_pct: float = 0.10
+    minimum_partial_pct: float = float(PARTIAL_SETTLEMENT_MIN_PCT)

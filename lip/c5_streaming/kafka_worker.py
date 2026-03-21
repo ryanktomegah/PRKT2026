@@ -27,12 +27,17 @@ import json
 import logging
 import os
 import signal
+import time
 from typing import Any, Callable, Optional
 
 from lip.c5_streaming.event_normalizer import EventNormalizer, NormalizedEvent
 from lip.c5_streaming.kafka_config import KafkaConfig, KafkaTopic
 
 logger = logging.getLogger(__name__)
+
+# DLQ retry configuration (GAP-20)
+_DLQ_MAX_RETRIES = 3
+_DLQ_BACKOFF_BASE_MS = 100  # exponential: 100ms, 200ms, 400ms
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +66,7 @@ class PaymentEventWorker:
         pipeline_fn: Callable[[NormalizedEvent], dict],
         group_id: str = "lip-c5-worker",
         dry_run: bool = False,
+        metrics_collector: Any = None,
     ) -> None:
         self._config = kafka_config
         self._pipeline_fn = pipeline_fn
@@ -72,6 +78,8 @@ class PaymentEventWorker:
         self._producer: Any = None
         self._processed = 0
         self._errors = 0
+        self._produce_errors = 0
+        self._metrics = metrics_collector
 
     # ── Kafka client builders ────────────────────────────────────────────────
 
@@ -173,13 +181,9 @@ class PaymentEventWorker:
 
             if not self._dry_run and self._producer is not None:
                 out_topic = KafkaTopic.FAILURE_PREDICTIONS.value
-                self._producer.produce(
-                    out_topic,
-                    key=event.uetr.encode("utf-8"),
-                    value=json.dumps(result, default=str).encode("utf-8"),
-                )
-                # Non-blocking poll to trigger delivery callbacks
-                self._producer.poll(0)
+                key_bytes = event.uetr.encode("utf-8")
+                value_bytes = json.dumps(result, default=str).encode("utf-8")
+                self._produce_with_retry(out_topic, key_bytes, value_bytes)
 
             self._processed += 1
 
@@ -198,6 +202,59 @@ class PaymentEventWorker:
             )
             self._route_dead_letter(msg)
             self._errors += 1
+
+    def _produce_with_retry(
+        self,
+        topic: str,
+        key: bytes,
+        value: bytes,
+    ) -> None:
+        """Produce a message with exponential backoff retry (GAP-20).
+
+        On failure after all retries, routes to dead-letter topic and
+        increments the kafka producer error metric.
+        """
+        last_exc: Optional[Exception] = None
+        for attempt in range(_DLQ_MAX_RETRIES):
+            try:
+                self._producer.produce(
+                    topic,
+                    key=key,
+                    value=value,
+                )
+                self._producer.poll(0)
+                return
+            except Exception as exc:
+                last_exc = exc
+                backoff_ms = _DLQ_BACKOFF_BASE_MS * (2 ** attempt)
+                logger.warning(
+                    "Kafka produce failed (attempt %d/%d, backoff %dms): %s",
+                    attempt + 1, _DLQ_MAX_RETRIES, backoff_ms, exc,
+                )
+                time.sleep(backoff_ms / 1000.0)
+
+        # All retries exhausted — route to DLQ
+        self._produce_errors += 1
+        if self._metrics is not None:
+            try:
+                from lip.infrastructure.monitoring.metrics import METRIC_KAFKA_PRODUCER_ERRORS
+                self._metrics.increment(METRIC_KAFKA_PRODUCER_ERRORS)
+            except Exception:
+                pass
+        logger.error(
+            "Kafka produce failed after %d retries — routing to DLQ: %s",
+            _DLQ_MAX_RETRIES, last_exc,
+        )
+        try:
+            self._producer.produce(
+                KafkaTopic.DEAD_LETTER.value,
+                key=key,
+                value=value,
+                headers={"source-topic": topic, "error": str(last_exc)[:200]},
+            )
+            self._producer.poll(0)
+        except Exception:
+            logger.exception("Failed to route to dead-letter topic after produce failure")
 
     def _route_dead_letter(self, msg: Any) -> None:
         """Forward a failed message to the dead-letter topic for operator review."""
@@ -222,6 +279,7 @@ class PaymentEventWorker:
         return {
             "processed": self._processed,
             "errors": self._errors,
+            "produce_errors": self._produce_errors,
             "group_id": self._group_id,
             "dry_run": self._dry_run,
         }

@@ -128,9 +128,14 @@ class BPIAdminService:
 # ---------------------------------------------------------------------------
 
 try:
-    from fastapi import APIRouter
+    from fastapi import APIRouter, Depends, Query
+    from fastapi.responses import PlainTextResponse
 
-    def make_admin_router(admin_service: BPIAdminService) -> APIRouter:
+    def make_admin_router(
+        admin_service: BPIAdminService,
+        regulatory_reporter: Any = None,
+        auth_dependency: Any = None,
+    ) -> APIRouter:
         """Create a FastAPI APIRouter pre-bound to a ``BPIAdminService`` instance.
 
         Usage::
@@ -140,11 +145,14 @@ try:
 
         Args:
             admin_service: Configured :class:`BPIAdminService` instance.
+            regulatory_reporter: Optional :class:`RegulatoryReporter` for export endpoints.
+            auth_dependency: Optional FastAPI dependency for HMAC auth.
 
         Returns:
-            :class:`~fastapi.APIRouter` with three endpoints.
+            :class:`~fastapi.APIRouter` with admin and export endpoints.
         """
-        router = APIRouter(tags=["admin"])
+        deps = [Depends(auth_dependency)] if auth_dependency else []
+        router = APIRouter(tags=["admin"], dependencies=deps)
 
         @router.get("/platform/summary")
         def platform_summary() -> Dict:
@@ -165,6 +173,43 @@ try:
                 "active_loan_count": stats.active_loan_count,
                 "total_principal_usd": str(stats.total_principal_usd),
             }
+
+        # ── Regulatory export endpoints (GAP-14) ──────────────────────────
+        if regulatory_reporter is not None:
+            from lip.common.regulatory_export import (
+                export_dora_events_csv,
+                export_dora_events_json,
+                export_sr117_reports_csv,
+                export_sr117_reports_json,
+            )
+
+            @router.get("/regulatory/dora/export")
+            def export_dora(fmt: str = Query("json", alias="format")):
+                """Export DORA audit events as CSV or JSON."""
+                events = regulatory_reporter.get_all_dora_events()
+                if fmt == "csv":
+                    return PlainTextResponse(
+                        export_dora_events_csv(events),
+                        media_type="text/csv",
+                    )
+                return PlainTextResponse(
+                    export_dora_events_json(events),
+                    media_type="application/json",
+                )
+
+            @router.get("/regulatory/sr117/export")
+            def export_sr117(fmt: str = Query("json", alias="format")):
+                """Export SR 11-7 model validation reports as CSV or JSON."""
+                reports = regulatory_reporter.get_sr117_reports()
+                if fmt == "csv":
+                    return PlainTextResponse(
+                        export_sr117_reports_csv(reports),
+                        media_type="text/csv",
+                    )
+                return PlainTextResponse(
+                    export_sr117_reports_json(reports),
+                    media_type="application/json",
+                )
 
         return router
 

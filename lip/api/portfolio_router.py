@@ -257,9 +257,12 @@ class KnownEntityManager:
 # ---------------------------------------------------------------------------
 
 try:
-    from fastapi import APIRouter
+    from fastapi import APIRouter, Depends
 
-    def make_portfolio_router(reporter: PortfolioReporter) -> APIRouter:
+    def make_portfolio_router(
+        reporter: PortfolioReporter,
+        auth_dependency=None,
+    ) -> APIRouter:
         """Create a FastAPI APIRouter pre-bound to a ``PortfolioReporter`` instance.
 
         Usage::
@@ -269,11 +272,13 @@ try:
 
         Args:
             reporter: Configured :class:`PortfolioReporter` instance.
+            auth_dependency: Optional FastAPI dependency for HMAC auth.
 
         Returns:
             :class:`~fastapi.APIRouter` with three endpoints.
         """
-        router = APIRouter(tags=["portfolio"])
+        deps = [Depends(auth_dependency)] if auth_dependency else []
+        router = APIRouter(tags=["portfolio"], dependencies=deps)
 
         @router.get("/loans")
         def loans() -> List[Dict]:
@@ -292,7 +297,7 @@ try:
 
         return router
 
-    def make_known_entities_router(manager: KnownEntityManager) -> APIRouter:
+    def make_known_entities_router(manager: KnownEntityManager, auth_dependency=None) -> APIRouter:
         """Create a FastAPI APIRouter for known-entity tier-override administration.
 
         Usage::
@@ -308,7 +313,8 @@ try:
         Returns:
             :class:`~fastapi.APIRouter` with list, register, and delete endpoints.
         """
-        router = APIRouter(tags=["known-entities"])
+        deps = [Depends(auth_dependency)] if auth_dependency else []
+        router = APIRouter(tags=["known-entities"], dependencies=deps)
 
         @router.get("")
         def list_entities() -> List[Dict]:
