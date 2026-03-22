@@ -89,5 +89,5 @@ try:
             resp = client.get("/protected", headers={"Authorization": "HMAC-SHA256 0:bad"})
             assert resp.status_code == 401
 
-except ImportError:
-    pass
+except (ImportError, RuntimeError):
+    pass  # httpx not installed — skip HTTP integration tests

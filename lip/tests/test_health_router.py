@@ -103,5 +103,5 @@ try:
             assert resp.status_code == 503
             assert resp.json()["checks"]["kill_switch"] is False
 
-except ImportError:
-    pass  # FastAPI not installed — skip HTTP tests
+except (ImportError, RuntimeError):
+    pass  # httpx not installed — skip HTTP integration tests

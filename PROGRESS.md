@@ -319,12 +319,13 @@ Net gain this session: +21 stress regime tests, +7 from untracked test files.
 4. ✅ **Stress Regime Detector** — `StressRegimeDetector` in C5 (corridor_failure_rate_1h > 3× baseline)
    - New `lip/c5_streaming/stress_regime_detector.py`
    - Integrated into `ExecutionAgent` to mandate human review during stress
-5. ⚠️ **GAP-04** — Redis-ready `UETRTracker` with 30-min TTL (PARTIAL: UETR-only; vulnerable to manual retries)
+5. ✅ **GAP-04** — Redis-ready `UETRTracker` with 30-min TTL + tuple-based dedup (FULL FIX 2026-03-22)
    - Updated `lip/common/uetr_tracker.py` with rolling window cleanup
-   - **TODO**: Implement tuple-based deduplication for new UETRs (GAP-04 full fix)
+   - Tuple-based dedup wired into pipeline.py: context (sending_bic, receiving_bic, amount, currency) passed to is_retry() and record()
+   - 4 new integration tests in test_gap04_retry_detection.py (manual retry, FX tolerance, different sender, different amount)
 6. **GAP-05** — `BPIRoyaltySettlement` monthly batch mechanism
    - New `lip/common/royalty_settlement.py`; triggered from C3 repayment callback
-7. **GAP-17** — `original_payment_amount_usd` in NormalizedEvent + validation in `_build_loan_offer` (Partially done, needs final verification)
+7. **GAP-17** — `original_payment_amount_usd` in NormalizedEvent + validation in `_build_loan_offer` (DONE)
 
 ---
 
@@ -631,12 +632,17 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 
 ### What is NEXT
 
-**Immediate (blocking pre-pilot)**:
+**Immediate (blocking pre-pilot — all are legal/contractual, not engineering)**:
 1. Legal counsel engagement — MRFA explicit B2B framing + unconditional repayment clause (EPG-14)
 2. BPI License Agreement — compliance hold register API clause (EPG-19), AML screen disclosure (EPG-14)
-3. C2 model card — B2B PD framing documentation (EPG-14, Tier 3)
+3. Patent filing — provisional patent (EPG-20/21), clean-room re-implementation
+4. Bridgeability Certification API warranties — three warranties for pilot bank LOI (EPG-04/05)
 
-**Engineering (when legal is underway)**:
-4. C1 training on production parquet — check Codespace training status (PID 1118)
-5. C6 Redis Phase 2 — distributed velocity tracking (velocity.py TODO)
-6. Cloud deployment — K8s manifests now hardened; ready for pilot bank onboarding
+**Engineering — ALL COMPLETE as of 2026-03-22:**
+- ~~C2 model card~~ → DONE (docs/c2-model-card.md, B2B PD framing, EPG-14 Tier 3)
+- ~~C6 Redis Phase 2~~ → DONE (atomic Lua script, TOCTOU-safe, multi-instance K8s)
+- ~~GAP-04 tuple-based dedup~~ → DONE (pipeline.py context wired, 4 new tests)
+- ~~C1/C2 temporal OOT split~~ → DONE (chronological split in training pipelines)
+- ~~C4 docstrings/manifests~~ → DONE (Groq reality documented, dual-mode K8s)
+- ~~CI httpx dependency~~ → DONE (added to requirements-ml.txt + pyproject.toml)
+- Cloud deployment — K8s manifests hardened; ready for pilot bank onboarding

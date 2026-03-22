@@ -30,6 +30,9 @@ on:
         required: false
         default: "42"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   train-c1:
     name: "C1 Training (n=${{ github.event.inputs.n_payments }}×5, sample=${{ github.event.inputs.sample_n }}, epochs=${{ github.event.inputs.n_epochs }})"

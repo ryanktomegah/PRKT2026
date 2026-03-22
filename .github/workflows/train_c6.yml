@@ -16,6 +16,9 @@ on:
         required: false
         default: "42"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   train-c6:
     name: C6 Full Training (contamination=${{ github.event.inputs.contamination }})

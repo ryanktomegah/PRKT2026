@@ -26,6 +26,9 @@ on:
         required: false
         default: "42"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   generate-c4-corpus:
     name: C4 Corpus Generation (${{ github.event.inputs.n_records }} records)
