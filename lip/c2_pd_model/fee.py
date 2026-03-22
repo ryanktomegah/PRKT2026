@@ -15,24 +15,14 @@ Three-entity role mapping:
 from decimal import ROUND_HALF_UP, Decimal
 
 from lip.common.constants import (
+    FEE_FLOOR_BPS,
+    FEE_FLOOR_PER_7DAY_CYCLE,  # noqa: F401 — re-exported for test consumers
     FEE_FLOOR_TIER_MID_BPS,
     FEE_FLOOR_TIER_SMALL_BPS,
     FEE_TIER_MID_THRESHOLD_USD,
     MIN_LOAN_AMOUNT_USD,
+    PLATFORM_ROYALTY_RATE,
 )
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-# 300 bps annualized floor  (C2 Spec Section 9)
-FEE_FLOOR_BPS: Decimal = Decimal("300")
-
-# 300 bps annualized over a 7-day cycle as a decimal multiplier:
-#   300 / 10000 * 7 / 365 = 0.000575342...
-#   Expressed as a percentage: ≈ 0.0575% per 7-day cycle.
-#   The value stored here is the DECIMAL (not percentage) representation.
-FEE_FLOOR_PER_7DAY_CYCLE: Decimal = Decimal("0.000575")
 
 _DAYS_IN_YEAR: Decimal = Decimal("365")
 _BPS_DIVISOR: Decimal = Decimal("10000")
@@ -137,12 +127,9 @@ def compute_loan_fee(
     return fee.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-_ROYALTY_DEFAULT: Decimal = Decimal("0.15")
-
-
 def compute_platform_royalty(
     fee_amount_usd: Decimal,
-    royalty_rate: Decimal = _ROYALTY_DEFAULT,
+    royalty_rate: Decimal = PLATFORM_ROYALTY_RATE,
 ) -> Decimal:
     """Compute the BPI technology licensor's royalty from a collected loan fee.
 
@@ -160,8 +147,8 @@ def compute_platform_royalty(
         :func:`compute_loan_fee`).
     royalty_rate:
         Fraction of *fee_amount_usd* that flows to BPI as a technology license fee.
-        Defaults to 15% (``_ROYALTY_DEFAULT``).  Pass an explicit value to
-        override for testing or future rate adjustments.
+        Defaults to 15% (``PLATFORM_ROYALTY_RATE`` from constants.py).  Pass an
+        explicit value to override for testing or future rate adjustments.
 
     Returns
     -------
