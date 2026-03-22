@@ -1,13 +1,15 @@
 """
 C4 Dispute Classifier — LLM-based dispute classification
-Bank-side container (zero outbound network) with GPTQ quantized model
+
+Pluggable backend: Groq API (qwen/qwen3-32b, validated) for dev/staging,
+or future GPTQ local model for bank-side zero-outbound deployment.
+Note: zero-outbound applies to C7 (execution agent) today; C4 requires
+outbound for Groq API until local GPTQ backend is implemented.
 
 Three-entity role mapping:
   MLO  — Money Lending Organisation
   MIPLO — Money In / Payment Lending Organisation
   ELO  — Execution Lending Organisation (bank-side agent, C7)
-
-Architecture Spec: Zero outbound for C4 container
 """
 from .model import DisputeClassifier, classify_dispute
 from .prefilter import PreFilter, apply_prefilter

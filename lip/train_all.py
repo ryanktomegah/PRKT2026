@@ -383,10 +383,9 @@ def _build_model_card(
                 "No backtesting on live SWIFT pacs.002 rejection corpus (data sourcing in progress)",
             ],
             "oot_validation": {
-                "method": "18-month temporal split via lip.dgen: train on t=0..12 months, validate on t=13..18",
-                "components_with_oot": ["C2", "C6"],
-                "components_without_oot": ["C1"],
-                "c1_note": "Synthetic data has no time axis; temporal split not yet implemented for C1",
+                "method": "18-month temporal split via lip.dgen: sorted by timestamp, most recent fraction → val/test",
+                "components_with_oot": ["C1", "C2", "C6"],
+                "components_without_oot": [],
             },
             "challenger_models": {
                 "c1_baseline": "XGBoost tabular-only — AUC=0.739 (prototype benchmark)",

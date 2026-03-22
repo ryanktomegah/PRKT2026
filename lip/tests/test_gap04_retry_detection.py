@@ -79,9 +79,32 @@ class TestGap04RetryDetection:
         # We can verify by looking at the outcome in the tracker
         assert uetr_tracker.get_outcome(uetr) == "FUNDED"
 
-    def test_different_uetrs_not_blocked(self, pipeline):
-        p1 = pipeline.process(_make_event("uetr-a"))
-        p2 = pipeline.process(_make_event("uetr-b"))
+    def test_different_payments_not_blocked(self, pipeline):
+        """Genuinely different payments (different amounts) should not be blocked."""
+        event_a = NormalizedEvent(
+            uetr="uetr-a",
+            individual_payment_id="pid-a",
+            sending_bic="SENDER",
+            receiving_bic="RECEIVER",
+            amount=Decimal("10000"),
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="CURR",
+        )
+        event_b = NormalizedEvent(
+            uetr="uetr-b",
+            individual_payment_id="pid-b",
+            sending_bic="SENDER",
+            receiving_bic="RECEIVER",
+            amount=Decimal("50000"),  # different amount — not a retry
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="CURR",
+        )
+        p1 = pipeline.process(event_a)
+        p2 = pipeline.process(event_b)
 
         assert p1.outcome == "FUNDED"
         assert p2.outcome == "FUNDED"
@@ -98,3 +121,131 @@ class TestGap04RetryDetection:
         # Retry should still be blocked even if original was DECLINED
         result = pipeline.process(_make_event(uetr))
         assert result.outcome == "RETRY_BLOCKED"
+
+
+class TestGap04TupleBasedRetryDetection:
+    """GAP-04 full fix: detect manual retries with NEW UETRs but same payment details."""
+
+    def test_new_uetr_same_payment_details_blocked(self, pipeline, uetr_tracker):
+        """Manual retry: new UETR, same (sending_bic, receiving_bic, amount, currency)."""
+        event1 = NormalizedEvent(
+            uetr="uetr-original-001",
+            individual_payment_id="pid-1",
+            sending_bic="DEUTDEFF",
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("1000000"),
+            currency="EUR",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="CURR",
+        )
+        event2 = NormalizedEvent(
+            uetr="uetr-manual-retry-001",  # NEW UETR
+            individual_payment_id="pid-2",
+            sending_bic="DEUTDEFF",          # same sender
+            receiving_bic="BNPAFRPP",        # same receiver
+            amount=Decimal("1000000"),       # same amount
+            currency="EUR",                  # same currency
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="CURR",
+        )
+
+        result1 = pipeline.process(event1)
+        assert result1.outcome == "FUNDED"
+
+        result2 = pipeline.process(event2)
+        assert result2.outcome == "RETRY_BLOCKED"
+
+    def test_new_uetr_same_details_fx_tolerance(self, pipeline, uetr_tracker):
+        """Manual retry with FX rounding: amount differs by < 0.01%."""
+        event1 = NormalizedEvent(
+            uetr="uetr-fx-001",
+            individual_payment_id="pid-1",
+            sending_bic="DEUTDEFF",
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("1000000.00"),
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="AC01",
+        )
+        event2 = NormalizedEvent(
+            uetr="uetr-fx-002",               # NEW UETR
+            individual_payment_id="pid-2",
+            sending_bic="DEUTDEFF",
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("1000050.00"),      # +0.005% — within 0.01% tolerance
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="AC01",
+        )
+
+        result1 = pipeline.process(event1)
+        assert result1.outcome == "FUNDED"
+
+        result2 = pipeline.process(event2)
+        assert result2.outcome == "RETRY_BLOCKED"
+
+    def test_different_sender_not_blocked(self, pipeline, uetr_tracker):
+        """Different sending_bic should NOT be blocked as retry."""
+        event1 = NormalizedEvent(
+            uetr="uetr-diff-sender-001",
+            individual_payment_id="pid-1",
+            sending_bic="DEUTDEFF",
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("500000"),
+            currency="EUR",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="CURR",
+        )
+        event2 = NormalizedEvent(
+            uetr="uetr-diff-sender-002",
+            individual_payment_id="pid-2",
+            sending_bic="COBADEFF",            # DIFFERENT sender
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("500000"),
+            currency="EUR",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="CURR",
+        )
+
+        result1 = pipeline.process(event1)
+        assert result1.outcome == "FUNDED"
+
+        result2 = pipeline.process(event2)
+        assert result2.outcome == "FUNDED"  # different sender — not a retry
+
+    def test_different_amount_beyond_tolerance_not_blocked(self, pipeline, uetr_tracker):
+        """Amount difference > 0.01% should NOT be blocked."""
+        event1 = NormalizedEvent(
+            uetr="uetr-amt-001",
+            individual_payment_id="pid-1",
+            sending_bic="DEUTDEFF",
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("1000000"),
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="AC01",
+        )
+        event2 = NormalizedEvent(
+            uetr="uetr-amt-002",
+            individual_payment_id="pid-2",
+            sending_bic="DEUTDEFF",
+            receiving_bic="BNPAFRPP",
+            amount=Decimal("1001000"),          # +0.1% — BEYOND tolerance
+            currency="USD",
+            timestamp=datetime.now(tz=timezone.utc),
+            rail="SWIFT",
+            rejection_code="AC01",
+        )
+
+        result1 = pipeline.process(event1)
+        assert result1.outcome == "FUNDED"
+
+        result2 = pipeline.process(event2)
+        assert result2.outcome == "FUNDED"  # amount too different — not a retry

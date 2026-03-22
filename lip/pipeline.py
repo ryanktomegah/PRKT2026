@@ -203,7 +203,15 @@ class LIPPipeline:
         tracker = LatencyTracker()
 
         # --- GAP-04: Retry Detection ---------------------------------------
-        if self._uetr_tracker.is_retry(event.uetr):
+        # Build payment context for tuple-based dedup (detects manual retries
+        # with NEW UETRs but same underlying payment details).
+        _retry_context = {
+            "sending_bic": event.sending_bic,
+            "receiving_bic": event.receiving_bic,
+            "amount": event.amount,
+            "currency": event.currency,
+        }
+        if self._uetr_tracker.is_retry(event.uetr, context=_retry_context):
             logger.warning("Retry detected: uetr=%s - blocking to prevent double-funding", event.uetr)
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             return PipelineResult(
@@ -230,7 +238,7 @@ class LIPPipeline:
                 event.uetr, event.rejection_code,
             )
             entry_id = self._log_block(event, 0.0, "dispute_blocked")
-            self._uetr_tracker.record(event.uetr, "DISPUTE_BLOCKED")
+            self._uetr_tracker.record(event.uetr, "DISPUTE_BLOCKED", context=_retry_context)
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             return PipelineResult(
                 outcome="DISPUTE_BLOCKED",
@@ -272,7 +280,7 @@ class LIPPipeline:
             state_history.append(payment_sm.current_state.value)
 
         def _record_and_return(res: PipelineResult) -> PipelineResult:
-            self._uetr_tracker.record(res.uetr, res.outcome)
+            self._uetr_tracker.record(res.uetr, res.outcome, context=_retry_context)
             self._record_global(tracker, res.total_latency_ms)
             return res
 

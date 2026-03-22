@@ -197,9 +197,17 @@ class PDTrainingPipeline:
     # ------------------------------------------------------------------
 
     def stage4_train_val_test_split(
-        self, X: np.ndarray, y: np.ndarray
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        timestamps: Optional[np.ndarray] = None,
     ) -> Tuple[np.ndarray, ...]:
-        """Stratified-ish split into train, validation, and test sets.
+        """Split data into train, validation, and test sets.
+
+        When ``timestamps`` are provided, performs a chronological (OOT) split:
+        data is sorted by time, the most recent ``test_split`` fraction becomes
+        the test set, and the next ``val_split`` fraction becomes validation.
+        Otherwise falls back to random permutation (backward-compatible).
 
         Parameters
         ----------
@@ -207,20 +215,30 @@ class PDTrainingPipeline:
             Feature matrix.
         y:
             Label vector.
+        timestamps:
+            Optional array of Unix timestamps parallel to X and y.
+            When provided, enables chronological OOT split.
 
         Returns
         -------
         Tuple of (X_train, X_val, X_test, y_train, y_val, y_test)
         """
         n = len(y)
-        idx = self._rng.permutation(n)
+
+        if timestamps is not None and len(timestamps) == n:
+            # Chronological OOT: sort by time, most recent → test, next → val
+            idx = np.argsort(timestamps)
+            logger.info("Stage 4: chronological OOT split enabled (timestamps provided)")
+        else:
+            idx = self._rng.permutation(n)
 
         n_test = max(1, int(n * self.config.test_split))
         n_val = max(1, int((n - n_test) * self.config.val_split))
 
-        test_idx = idx[:n_test]
-        val_idx = idx[n_test: n_test + n_val]
-        train_idx = idx[n_test + n_val:]
+        # Chronological order: [oldest ... train ... | val | test ... newest]
+        train_idx = idx[: n - n_val - n_test]
+        val_idx = idx[n - n_val - n_test: n - n_test]
+        test_idx = idx[n - n_test:]
 
         logger.info(
             "Stage 4 split: train=%d, val=%d, test=%d",
@@ -545,8 +563,11 @@ class PDTrainingPipeline:
         logger.info("PDTrainingPipeline.run() — %d records.", len(data))
 
         X, y = self.stage1_data_prep(data)
+        # Extract timestamps for chronological OOT split (SR 11-7 compliance).
+        # C2 generator produces 18-month temporal span with 'timestamp' field.
+        timestamps = np.array([float(r.get("timestamp", 0.0)) for r in data])
         X_train, X_val, X_test, y_train, y_val, y_test = (
-            self.stage4_train_val_test_split(X, y)
+            self.stage4_train_val_test_split(X, y, timestamps=timestamps)
         )
 
         best_params = self.stage5_hyperparameter_search(X_train, y_train)

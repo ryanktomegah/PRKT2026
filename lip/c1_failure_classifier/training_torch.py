@@ -435,7 +435,8 @@ class TrainingPipelineTorch:
         validated = numpy_pipeline.stage1_data_validation(records)
         graph = numpy_pipeline.stage2_graph_construction(validated)
         X, y, bics = numpy_pipeline.stage3_feature_extraction(validated, graph)
-        X_train, X_val, y_train, y_val, bic_train, bic_val = numpy_pipeline.stage4_train_val_split(X, y, bics)
+        timestamps = np.array([float(r.get("timestamp_unix", 0.0)) for r in validated])
+        X_train, X_val, y_train, y_val, bic_train, bic_val = numpy_pipeline.stage4_train_val_split(X, y, bics, timestamps)
         logger.info("Stages 1–4 complete in %.3f s", time.perf_counter() - t0)
 
         t0 = time.perf_counter()

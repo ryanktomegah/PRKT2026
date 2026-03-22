@@ -1,28 +1,45 @@
 # C4 Dispute Classifier — LLM Inference Deployment
-# Quantized Mistral-7B / QLoRA fine-tuned for dispute classification.
-# GPU required for model inference (T4 minimum); zero outbound per
-# network-policies.yaml (bank-side, air-gapped at inference time).
 #
-# Note: Model weights must be built via train_c4.yml workflow and placed
-# in the model store before this deployment is ready.
+# TWO DEPLOYMENT MODES:
+#
+#   1. GROQ API (current validated path):
+#      - Backend: qwen/qwen3-32b via Groq cloud API
+#      - No GPU required, no model-store volume needed
+#      - Requires outbound HTTPS to api.groq.com
+#      - Set env: LIP_C4_BACKEND=groq, GROQ_API_KEY=<key>
+#      - Use: c4-deployment-groq (below, after the --- separator)
+#
+#   2. LOCAL GPTQ (future bank-side, zero-outbound):
+#      - Quantized model baked into container image
+#      - GPU required (T4 minimum); zero outbound per network-policies.yaml
+#      - Model weights must be built via train_c4.yml workflow
+#      - Use: c4-deployment-gptq (this manifest, first document)
+#
+# For pilot bank demo: use Groq mode.
+# For production bank-side deployment: use GPTQ mode once implemented.
+#
+# --- GPTQ MODE (future bank-side, GPU required) ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: lip-c4-dispute
+  name: lip-c4-dispute-gptq
   namespace: lip
   labels:
     app: lip-c4-dispute
     component: c4-dispute-classifier
+    mode: gptq
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: lip-c4-dispute
+      mode: gptq
   template:
     metadata:
       labels:
         app: lip-c4-dispute
         component: c4-dispute-classifier
+        mode: gptq
     spec:
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-tesla-t4
@@ -51,6 +68,8 @@ spec:
           env:
             - name: LIP_COMPONENT
               value: c4
+            - name: LIP_C4_BACKEND
+              value: local_gptq
             - name: LIP_LICENSE_TOKEN_JSON
               valueFrom:
                 secretKeyRef:
@@ -69,7 +88,7 @@ spec:
             httpGet:
               path: /health/live
               port: 8080
-            initialDelaySeconds: 60   # LLM load takes longer
+            initialDelaySeconds: 60
             periodSeconds: 15
           readinessProbe:
             httpGet:
@@ -87,6 +106,85 @@ spec:
         - name: model-store
           persistentVolumeClaim:
             claimName: lip-model-store-pvc
+---
+# --- GROQ API MODE (current validated path, no GPU) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lip-c4-dispute
+  namespace: lip
+  labels:
+    app: lip-c4-dispute
+    component: c4-dispute-classifier
+    mode: groq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lip-c4-dispute
+  template:
+    metadata:
+      labels:
+        app: lip-c4-dispute
+        component: c4-dispute-classifier
+        mode: groq
+    spec:
+      containers:
+        - name: c4-dispute
+          image: lip/c4-dispute:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8082
+              name: metrics
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          env:
+            - name: LIP_COMPONENT
+              value: c4
+            - name: LIP_C4_BACKEND
+              value: groq
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lip-groq-secret
+                  key: api_key
+            - name: LIP_C4_MODEL
+              value: qwen/qwen3-32b
+            - name: LIP_LICENSE_TOKEN_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: token_json
+            - name: LIP_LICENSE_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: lip-license-secret
+                  key: key_hex
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service

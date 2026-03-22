@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from decimal import Decimal
 
 from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c6_aml_velocity.velocity import VelocityChecker
@@ -162,8 +163,14 @@ class TestPipelineLatency:
         global_tracker = LatencyTracker()
         pipeline = _build_pipeline(global_tracker=global_tracker)
 
-        for _ in range(5):
-            event = make_event(rejection_code="CURR", uetr=str(uuid.uuid4()))
+        # Vary amount per iteration so tuple-based dedup (GAP-04) doesn't
+        # flag identical (bic, bic, amount, currency) as manual retries.
+        for i in range(5):
+            event = make_event(
+                rejection_code="CURR",
+                uetr=str(uuid.uuid4()),
+                amount=Decimal(str(1_000_000 + i * 100_000)),
+            )
             pipeline.process(event)
 
         assert global_tracker.sample_count("total") == 5

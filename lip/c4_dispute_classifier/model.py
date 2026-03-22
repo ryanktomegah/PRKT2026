@@ -1,7 +1,8 @@
 """
 model.py — LLM dispute classification
 C4 Spec Sections 6-7: Logit-constrained 4-class output, timeout safety
-Architecture: GPTQ quantized model, bank-side container, zero outbound
+Backend: pluggable — Groq API (qwen/qwen3-32b, validated) or future local
+GPTQ model for bank-side zero-outbound deployment.
 """
 import logging
 import os

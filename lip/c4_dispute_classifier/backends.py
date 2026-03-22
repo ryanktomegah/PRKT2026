@@ -1,8 +1,9 @@
 """
 backends.py — Pluggable LLM backends for C4 Dispute Classifier.
 
-Production: GPTQ quantized model baked into container (zero-outbound, bank-side).
-Dev/staging: OpenAICompatibleBackend via env var (GitHub Models, Groq, etc.).
+Current validated backend: Groq API (qwen/qwen3-32b) — requires outbound.
+Future bank-side: GPTQ quantized local model (zero-outbound, GPU required).
+Dev/staging/production: OpenAICompatibleBackend via env var.
 
 Backend selection via LIP_C4_BACKEND env var:
   mock          — MockLLMBackend (default for tests/CI, no credentials needed)

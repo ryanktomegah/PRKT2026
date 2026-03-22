@@ -307,9 +307,18 @@ class TrainingPipeline:
     # ------------------------------------------------------------------
 
     def stage4_train_val_split(
-        self, X: np.ndarray, y: np.ndarray, bics: Optional[List[str]] = None
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        bics: Optional[List[str]] = None,
+        timestamps: Optional[np.ndarray] = None,
     ) -> Tuple:
-        """Randomly split data into train and validation sets.
+        """Split data into train and validation sets.
+
+        When ``timestamps`` are provided, performs a chronological (OOT) split:
+        the most recent ``val_split`` fraction becomes the validation set.
+        Otherwise falls back to random permutation (backward-compatible for
+        tests that don't supply timestamps).
 
         Parameters
         ----------
@@ -321,6 +330,9 @@ class TrainingPipeline:
             Optional list of sending BIC codes (parallel to X and y).
             When provided, the return tuple includes ``bic_train`` and
             ``bic_val`` as the 5th and 6th elements.
+        timestamps:
+            Optional array of Unix timestamps parallel to X and y.
+            When provided, enables chronological OOT validation split.
 
         Returns
         -------
@@ -331,9 +343,16 @@ class TrainingPipeline:
         """
         n = len(y)
         n_val = max(1, int(n * self.config.val_split))
-        indices = self._rng.permutation(n)
-        val_idx = indices[:n_val]
-        train_idx = indices[n_val:]
+
+        if timestamps is not None and len(timestamps) == n:
+            # Chronological OOT split: sort by time, most recent → val
+            indices = np.argsort(timestamps)
+            logger.info("stage4: chronological OOT split enabled (timestamps provided)")
+        else:
+            indices = self._rng.permutation(n)
+
+        train_idx = indices[: n - n_val]
+        val_idx = indices[n - n_val:]
 
         X_train, X_val = X[train_idx], X[val_idx]
         y_train, y_val = y[train_idx], y[val_idx]
@@ -854,7 +873,12 @@ class TrainingPipeline:
         validated = _run_stage("stage1_data_validation", self.stage1_data_validation, data)
         graph = _run_stage("stage2_graph_construction", self.stage2_graph_construction, validated)
         X, y, bics = _run_stage("stage3_feature_extraction", self.stage3_feature_extraction, validated, graph)
-        X_train, X_val, y_train, y_val, _bic_train, _bic_val = _run_stage("stage4_train_val_split", self.stage4_train_val_split, X, y, bics)
+        # Extract timestamps for chronological OOT split (SR 11-7 compliance).
+        # C1 generator produces timestamp_unix over 18-month span.
+        timestamps = np.array([float(r.get("timestamp_unix", 0.0)) for r in validated])
+        X_train, X_val, y_train, y_val, _bic_train, _bic_val = _run_stage(
+            "stage4_train_val_split", self.stage4_train_val_split, X, y, bics, timestamps
+        )
         lgbm_model = _run_stage("stage5b_lightgbm_pretrain", self.stage5b_lightgbm_pretrain, X_train[:, 8:], y_train)
         graphsage = _run_stage("stage5_graphsage_pretrain", self.stage5_graphsage_pretrain, X_train, y_train)
         tabtransformer = _run_stage("stage6_tabtransformer_pretrain", self.stage6_tabtransformer_pretrain, X_train, y_train)
