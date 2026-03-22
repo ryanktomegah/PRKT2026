@@ -347,9 +347,35 @@ LIP processes payment failure predictions that inform credit decisions — class
 |------|------|------|--------|
 | Model Developer | ARIA | 2026-03-21 | Trained and validated |
 | Regulatory Review | REX | 2026-03-21 | Model card issued |
-| Financial Math | QUANT | Pending | Fee impact review pending |
+| Financial Math | QUANT | 2026-03-21 | **Signed off** — fee impact review complete (see §12.1) |
 | Security Review | CIPHER | N/A | No AML/security scope in C1 |
 | Bank MRM | Pending | — | Pre-pilot; awaiting bank engagement |
+
+### 12.1 QUANT Fee Impact Review — Sign-Off Record
+
+**Reviewer:** QUANT (Financial Math authority)
+**Date:** 2026-03-21
+**Scope:** All canonical fee constants as defined in `lip/common/constants.py` as they interact with C1 threshold behaviour and the three-phase deployment model.
+
+**Findings:**
+
+1. **Threshold τ* = 0.110 — economic direction confirmed.** F2-weighting (β=2) is the correct asymmetric loss function. False negatives (missed failures) produce zero revenue. False positives (offered on payments that settle early) produce pro-rated fee income — they do not produce losses. The fee floor structure does not require adjustment for C1 false-positive behaviour; C3 repayment engine handles pro-rated fee calculation from `funded_at` timestamps.
+
+2. **Fee floor arithmetic — verified correct.** 300 bps annualised floor, tiered to 400 bps for $500K–$2M and 500 bps below $500K (sub-minimum, blocked by class-aware loan minimums). All class-aware minimum loan amounts produce cash fees above `MIN_CASH_FEE_USD = $150` at their tier rate and maturity: Class A $493, Class B $536, Class C $1,151.
+
+3. **`FEE_FLOOR_PER_7DAY_CYCLE = 0.000575` — verified.** Correct truncation of 300/10000 × 7/365 = 0.0005753. Delta of $0.34 per $1M per cycle is operationally negligible. Acceptable.
+
+4. **Phase fee shares — sums verified 100%, decomposition internally consistent.**
+   - Phase 1: 15% BPI (royalty) + 85% bank = 100%. `PLATFORM_ROYALTY_RATE` and `PHASE_1_BPI_FEE_SHARE` are confirmed equal.
+   - Phase 2: 40% BPI + 30% bank capital return + 30% bank distribution premium = 100%.
+   - Phase 3: 75% BPI + 0% bank capital return + 25% bank distribution premium = 100%.
+
+5. **Distribution premium compression (Phase 2 → Phase 3): 30% → 25% — flagged and approved.** The 5-point compression is intentional: in Phase 3, BPI assumes full lending operations management, earning an operational premium that partially displaces the bank's distribution premium. This is a negotiating position, not an arithmetic artefact. Bank legal teams will notice it in Phase 3 negotiations. BPI's counter-position: the bank's distribution value does not include operational management costs, which BPI absorbs entirely in Phase 3.
+
+**Decision: APPROVED.** All fee constants are arithmetically correct and economically justified. No changes required. The canonical constants table in `constants.py` is signed off as of this date.
+
+> *QUANT — Financial Math authority, LIP Platform*
+> *2026-03-21 — Final authority. No further review required for these constants unless values change.*
 
 ---
 
