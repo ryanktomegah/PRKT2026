@@ -65,8 +65,15 @@ try:
 
         # Settlement / repayment
         handler_registry = SettlementHandlerRegistry.create_default()
-        settlement_monitor = SettlementMonitor(handler_registry=handler_registry)
-        repayment_loop = RepaymentLoop(monitor=settlement_monitor)
+        settlement_monitor = SettlementMonitor(
+            handler_registry=handler_registry,
+            uetr_mapping={},        # populated at runtime when C3 connects
+            corridor_buffer={},     # populated at runtime when C3 connects
+        )
+        repayment_loop = RepaymentLoop(
+            monitor=settlement_monitor,
+            repayment_callback=lambda event: logger.info("Repayment event: %s", event),
+        )
 
         # Service layers
         admin_service = BPIAdminService(repayment_loop=repayment_loop)
@@ -144,5 +151,5 @@ except ImportError:
     logger.debug("FastAPI not installed — HTTP application not available")
     app = None  # type: ignore[assignment]
 
-    def create_app():
+    def create_app():  # type: ignore[misc]
         raise ImportError("FastAPI is required for the HTTP application")
