@@ -78,12 +78,12 @@ class TestSimulationScript:
         )
 
     def test_royalty_math(self) -> None:
-        """BPI royalty must be within 1% of 15% of total fee revenue."""
+        """BPI royalty must be within 1% of 30% of total fee revenue."""
         result = _run()
         assert result.returncode == 0
 
         fee_m = re.search(r"Total fee USD:\s+\$([0-9,]+\.\d{2})", result.stdout)
-        roy_m = re.search(r"BPI royalty \(15%\):\s+\$([0-9,]+\.\d{2})", result.stdout)
+        roy_m = re.search(r"BPI royalty \(30%\):\s+\$([0-9,]+\.\d{2})", result.stdout)
 
         if fee_m is None or roy_m is None:
             # No funded loans — royalty math trivially satisfied
@@ -96,8 +96,8 @@ class TestSimulationScript:
             return
 
         ratio = float(bpi_royalty / total_fee)
-        assert abs(ratio - 0.15) < 0.01, (
-            f"Royalty ratio {ratio:.4f} deviates from 0.15 by more than 1%.\n"
+        assert abs(ratio - 0.30) < 0.01, (
+            f"Royalty ratio {ratio:.4f} deviates from 0.30 by more than 1%.\n"
             f"total_fee={total_fee}, bpi_royalty={bpi_royalty}"
         )
 
@@ -108,7 +108,7 @@ class TestSimulationScript:
 
         checks = [
             "Fee floor (≥300 bps)",
-            "Royalty (15% of fee)",
+            "Royalty (30% of fee)",
             "Kill switch fail-safe",
             "UETR present all loans",
         ]

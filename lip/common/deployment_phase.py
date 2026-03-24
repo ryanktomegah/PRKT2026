@@ -2,7 +2,7 @@
 deployment_phase.py — BPI deployment phase model and fee waterfall logic.
 
 Three deployment phases with different capital structures and income classifications:
-  Phase 1 (LICENSOR): Bank funds 100%.  BPI earns 15% IP royalty.
+  Phase 1 (LICENSOR): Bank funds 100%.  BPI earns 30% IP royalty.
   Phase 2 (HYBRID):   30% bank / 70% BPI capital.  BPI earns 40% co-lending return.
   Phase 3 (FULL_MLO): BPI funds 100%.  BPI earns 75% gross lending revenue.
 
@@ -86,28 +86,28 @@ class FeeWaterfall:
 # Phase config registry
 # ---------------------------------------------------------------------------
 
-_LICENSOR_BANK_SHARE = Decimal("1") - PHASE_1_BPI_FEE_SHARE  # 0.85
+_LICENSOR_BANK_SHARE = Decimal("1") - PHASE_1_BPI_FEE_SHARE  # 0.70
 
 _PHASE_CONFIGS: dict[DeploymentPhase, PhaseFeeConfig] = {
     DeploymentPhase.LICENSOR: PhaseFeeConfig(
         bpi_fee_share=PHASE_1_BPI_FEE_SHARE,
         bank_fee_share=_LICENSOR_BANK_SHARE,
         income_type=PHASE_1_INCOME_TYPE,
-        # Phase 1: bank keeps full 85% as their own fee; no capital-return split applies.
+        # Phase 1: bank keeps full 70% as their own fee; no capital-return split applies.
         # bank_capital_return == 0; bank_distribution_premium == bank_fee_share.
         bank_capital_return_share=Decimal("0"),
         bank_distribution_premium_share=_LICENSOR_BANK_SHARE,
     ),
     DeploymentPhase.HYBRID: PhaseFeeConfig(
         bpi_fee_share=PHASE_2_BPI_FEE_SHARE,
-        bank_fee_share=Decimal("1") - PHASE_2_BPI_FEE_SHARE,  # 0.60
+        bank_fee_share=Decimal("1") - PHASE_2_BPI_FEE_SHARE,  # 0.45
         income_type=PHASE_2_INCOME_TYPE,
         bank_capital_return_share=PHASE_2_BANK_CAPITAL_RETURN,
         bank_distribution_premium_share=PHASE_2_BANK_DISTRIBUTION_PREMIUM,
     ),
     DeploymentPhase.FULL_MLO: PhaseFeeConfig(
         bpi_fee_share=PHASE_3_BPI_FEE_SHARE,
-        bank_fee_share=Decimal("1") - PHASE_3_BPI_FEE_SHARE,  # 0.25
+        bank_fee_share=Decimal("1") - PHASE_3_BPI_FEE_SHARE,  # 0.20
         income_type=PHASE_3_INCOME_TYPE,
         bank_capital_return_share=PHASE_3_BANK_CAPITAL_RETURN,
         bank_distribution_premium_share=PHASE_3_BANK_DISTRIBUTION_PREMIUM,

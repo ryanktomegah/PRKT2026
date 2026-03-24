@@ -162,25 +162,25 @@ class TestFeeEdgeCases:
 
 
 class TestPlatformRoyalty:
-    """QUANT verification of platform royalty arithmetic (15% of fee collected)."""
+    """QUANT verification of platform royalty arithmetic (30% of fee collected)."""
 
     def test_standard_floor_fee_7day(self):
-        """$1M, 7d, 300 bps → fee $575.34 → royalty $86.30, net $489.04."""
+        """$1M, 7d, 300 bps → fee $575.34 → royalty $172.60, net $402.74."""
         fee = compute_loan_fee(Decimal("1000000"), Decimal("300"), 7)
         assert fee == Decimal("575.34")
         royalty = compute_platform_royalty(fee)
-        assert royalty == Decimal("86.30")
+        assert royalty == Decimal("172.60")
         net = fee - royalty
-        assert net == Decimal("489.04")
+        assert net == Decimal("402.74")
 
     def test_standard_floor_fee_100k_7day(self):
-        """$100K, 7d, 300 bps → fee $57.53 → royalty $8.63, net $48.90."""
+        """$100K, 7d, 300 bps → fee $57.53 → royalty $17.26, net $40.27."""
         fee = compute_loan_fee(Decimal("100000"), Decimal("300"), 7)
         assert fee == Decimal("57.53")
         royalty = compute_platform_royalty(fee)
-        assert royalty == Decimal("8.63")
+        assert royalty == Decimal("17.26")
         net = fee - royalty
-        assert net == Decimal("48.90")
+        assert net == Decimal("40.27")
 
     def test_zero_fee_yields_zero_royalty(self):
         """Zero fee (0-day loan) → zero royalty."""
@@ -190,7 +190,7 @@ class TestPlatformRoyalty:
         assert royalty == Decimal("0.00")
 
     def test_custom_royalty_rate(self):
-        """Custom 20% rate overrides the default 15%."""
+        """Custom 20% rate overrides the default 30%."""
         fee = compute_loan_fee(Decimal("1000000"), Decimal("300"), 7)
         royalty = compute_platform_royalty(fee, royalty_rate=Decimal("0.20"))
         assert royalty == Decimal("115.07")
