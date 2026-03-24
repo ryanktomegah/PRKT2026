@@ -855,7 +855,7 @@ class FeeAllocation(BaseModel):
     )
     bank_distribution_premium_usd: Decimal = Field(
         ...,
-        description="Bank's origination/compliance premium (30% Phase 2; 25% Phase 3; 85% Phase 1).",
+        description="Bank's origination/compliance premium (15% Phase 2; 20% Phase 3; 70% Phase 1).",
     )
     capital_provider_cost_usd: Decimal = Field(
         default=Decimal("0"),

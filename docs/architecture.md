@@ -53,7 +53,7 @@ Step 5 — C3 Registration (if FUNDED)
 | Money In/Payment Lending Organisation | **MIPLO** | BPI technology platform operator |
 | Execution Lending Organisation | **ELO** | Bank-side agent (implemented by C7) |
 
-**Business model**: MIPLO (BPI) earns a **15% technology licensor royalty** on `fee_repaid_usd`. MLO/MIPLO/ELO split the remaining 85%.
+**Business model**: MIPLO (BPI) earns a **30% technology licensor royalty** on `fee_repaid_usd`. MLO/MIPLO/ELO split the remaining 70%.
 
 ## State Machines
 
@@ -107,7 +107,7 @@ OFFER_PENDING
 | Fee floor | **300 bps** annualised | `constants.py` | Minimum bridge loan fee |
 | Latency SLO (p99) | **≤ 94 ms** | `constants.py` | End-to-end pipeline SLO |
 | UETR TTL buffer | **45 days** | `constants.py` | Beyond maturity deduplication |
-| Platform royalty | **15%** of fee | `constants.py` | BPI technology licensor share |
+| Platform royalty | **30%** of fee | `constants.py` | BPI technology licensor share |
 | Salt rotation | **365 days** | `constants.py` | AML entity hash rotation |
 | Salt overlap | **30 days** | `constants.py` | Dual-salt transition window |
 | Decision log retention | **7 years** | `constants.py` | SR 11-7 / EU AI Act retention |

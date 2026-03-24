@@ -359,7 +359,7 @@ class RepaymentLoop:
         fee = compute_loan_fee(effective_principal, Decimal(str(loan.fee_bps)), days_funded)
 
         # Phase-aware BPI fee share: resolve from loan's deployment phase.
-        # Phase 1 (LICENSOR) → 15% royalty; Phase 2 (HYBRID) → 40%; Phase 3 (FULL_MLO) → 75%.
+        # Phase 1 (LICENSOR) → 30% royalty; Phase 2 (HYBRID) → 55%; Phase 3 (FULL_MLO) → 80%.
         try:
             phase = DeploymentPhase(loan.deployment_phase)
         except ValueError:

@@ -108,7 +108,7 @@ sign-off):**
 | Fee floor | 300 bps annualized | Minimum economically viable bridge loan fee |
 | Latency SLO | ≤ 94ms end-to-end | Architecture Spec v1.2 |
 | UETR TTL buffer | 45 days | Deduplication window beyond maximum maturity |
-| Platform royalty | 15% of fee | BPI technology licensor share |
+| Platform royalty | 30% of fee | BPI technology licensor share |
 | AML dollar cap | $1M/entity/24h | Per-entity rolling velocity cap |
 | AML count cap | 100 txns/entity/24h | Per-entity transaction count cap |
 | CLASS_A maturity | 3 days | Routing/account errors |

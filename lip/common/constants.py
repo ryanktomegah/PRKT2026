@@ -91,25 +91,25 @@ MATURITY_BLOCK_DAYS = 0                   # BLOCK rejection class: no bridge loa
 CORRIDOR_BUFFER_WINDOW_DAYS = 90          # rolling window for corridor risk / embedding lookback
 
 # ── Platform royalty (BPI technology licensor fee) ────────────────────────────
-PLATFORM_ROYALTY_RATE = Decimal("0.15")   # 15% of fee_repaid_usd → BPI technology licensor
+PLATFORM_ROYALTY_RATE = Decimal("0.30")   # 30% of fee_repaid_usd → BPI technology licensor
 
 # ── Deployment phase fee shares (QUANT authority — do not change without sign-off) ─────────
-# Phase 1 (Licensor): bank funds 100%, BPI earns IP royalty — 15% of fee
-PHASE_1_BPI_FEE_SHARE              = Decimal("0.15")   # == PLATFORM_ROYALTY_RATE (backward compat)
+# Phase 1 (Licensor): bank funds 100%, BPI earns IP royalty — 30% of fee
+PHASE_1_BPI_FEE_SHARE              = Decimal("0.30")   # == PLATFORM_ROYALTY_RATE (backward compat)
 PHASE_1_INCOME_TYPE                = "ROYALTY"
 
-# Phase 2 (Hybrid): 30% bank / 70% BPI capital. BPI earns co-lending return — 40% of fee
-# Bank's 60% decomposes into capital return (30%) + distribution premium (30%)
-PHASE_2_BPI_FEE_SHARE              = Decimal("0.40")
+# Phase 2 (Hybrid): 30% bank / 70% BPI capital. BPI earns co-lending return — 55% of fee
+# Bank's 45% decomposes into capital return (30%) + distribution premium (15%)
+PHASE_2_BPI_FEE_SHARE              = Decimal("0.55")
 PHASE_2_BANK_CAPITAL_RETURN        = Decimal("0.30")   # proportional to bank's 30% capital
-PHASE_2_BANK_DISTRIBUTION_PREMIUM  = Decimal("0.30")   # origination, compliance, correspondent
+PHASE_2_BANK_DISTRIBUTION_PREMIUM  = Decimal("0.15")   # origination, compliance, correspondent
 PHASE_2_INCOME_TYPE                = "LENDING_REVENUE"
 
-# Phase 3 (Full MLO): BPI funds 100%. BPI earns gross lending revenue — 75% of fee
-# Bank contributes 0% capital → capital return drops to 0%; keeps distribution premium 25%
-PHASE_3_BPI_FEE_SHARE              = Decimal("0.75")
+# Phase 3 (Full MLO): BPI funds 100%. BPI earns gross lending revenue — 80% of fee
+# Bank contributes 0% capital → capital return drops to 0%; keeps distribution premium 20%
+PHASE_3_BPI_FEE_SHARE              = Decimal("0.80")
 PHASE_3_BANK_CAPITAL_RETURN        = Decimal("0")      # bank contributes 0% capital
-PHASE_3_BANK_DISTRIBUTION_PREMIUM  = Decimal("0.25")   # origination/compliance value
+PHASE_3_BANK_DISTRIBUTION_PREMIUM  = Decimal("0.20")   # origination/compliance value
 PHASE_3_INCOME_TYPE                = "LENDING_REVENUE"
 
 # ── Salt rotation ─────────────────────────────────────────────────────────────

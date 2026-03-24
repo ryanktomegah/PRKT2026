@@ -147,7 +147,7 @@ def compute_platform_royalty(
         :func:`compute_loan_fee`).
     royalty_rate:
         Fraction of *fee_amount_usd* that flows to BPI as a technology license fee.
-        Defaults to 15% (``PLATFORM_ROYALTY_RATE`` from constants.py).  Pass an
+        Defaults to 30% (``PLATFORM_ROYALTY_RATE`` from constants.py).  Pass an
         explicit value to override for testing or future rate adjustments.
 
     Returns

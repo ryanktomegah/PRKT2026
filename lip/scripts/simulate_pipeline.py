@@ -303,8 +303,8 @@ def _print_report(
     print(f"  Total fee USD:             {_usd(total_fee):>15}")
     print(f"  Avg fee per loan:          {_usd(avg_fee):>15}")
     print(f"  Median fee per loan:       {_usd(med_fee):>15}")
-    print(f"  BPI royalty (15%):         {_usd(total_royalty):>15}")
-    print(f"  Bank revenue (85%):        {_usd(total_bank):>15}")
+    print(f"  BPI royalty (30%):         {_usd(total_royalty):>15}")
+    print(f"  Bank revenue (70%):        {_usd(total_bank):>15}")
     print()
     if fee_bps_list:
         print("FEE DISTRIBUTION (bps)")
@@ -323,7 +323,7 @@ def _print_report(
     print()
     print("INTEGRITY CHECKS")
     print(f"  Fee floor (≥300 bps):     {floor_ok}")
-    print(f"  Royalty (15% of fee):     {royal_ok}")
+    print(f"  Royalty (30% of fee):     {royal_ok}")
     print(f"  Kill switch fail-safe:    {ks_ok}")
     print(f"  UETR present all loans:   {uetr_ok}")
     print()
@@ -412,12 +412,12 @@ def run_simulation(n: int, seed: int) -> int:
             fee_usd_list.append(fee_usd)
             royalty_usd_list.append(royalty)
 
-    # Royalty integrity: sum(royalties) ≈ 15% of sum(fees), within 1%
+    # Royalty integrity: sum(royalties) ≈ 30% of sum(fees), within 1%
     total_fee    = sum(fee_usd_list, Decimal("0"))
     total_royalty = sum(royalty_usd_list, Decimal("0"))
     if total_fee > Decimal("0"):
         royalty_ratio = float(total_royalty / total_fee)
-        royalty_ok    = abs(royalty_ratio - 0.15) < 0.01
+        royalty_ok    = abs(royalty_ratio - 0.30) < 0.01
     else:
         royalty_ok = True  # no loans → trivially satisfied
 

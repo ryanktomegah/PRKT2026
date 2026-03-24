@@ -134,9 +134,9 @@ This is a **time-proportionate annualised rate**. Do NOT apply fee_bps as a flat
 
 | Phase | BPI Share | Bank Share | Income Type |
 |-------|-----------|------------|-------------|
-| Phase 1 (Licensor) | 15% (royalty) | 85% | ROYALTY |
-| Phase 2 (Hybrid) | 40% | 30% capital return + 30% distribution premium | LENDING_REVENUE |
-| Phase 3 (Full MLO) | 75% | 0% capital return + 25% distribution premium | LENDING_REVENUE |
+| Phase 1 (Licensor) | 30% (royalty) | 70% | ROYALTY |
+| Phase 2 (Hybrid) | 55% | 30% capital return + 15% distribution premium | LENDING_REVENUE |
+| Phase 3 (Full MLO) | 80% | 0% capital return + 20% distribution premium | LENDING_REVENUE |
 
 ---
 

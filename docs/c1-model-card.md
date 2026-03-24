@@ -366,11 +366,11 @@ LIP processes payment failure predictions that inform credit decisions — class
 3. **`FEE_FLOOR_PER_7DAY_CYCLE = 0.000575` — verified.** Correct truncation of 300/10000 × 7/365 = 0.0005753. Delta of $0.34 per $1M per cycle is operationally negligible. Acceptable.
 
 4. **Phase fee shares — sums verified 100%, decomposition internally consistent.**
-   - Phase 1: 15% BPI (royalty) + 85% bank = 100%. `PLATFORM_ROYALTY_RATE` and `PHASE_1_BPI_FEE_SHARE` are confirmed equal.
-   - Phase 2: 40% BPI + 30% bank capital return + 30% bank distribution premium = 100%.
-   - Phase 3: 75% BPI + 0% bank capital return + 25% bank distribution premium = 100%.
+   - Phase 1: 30% BPI (royalty) + 70% bank = 100%. `PLATFORM_ROYALTY_RATE` and `PHASE_1_BPI_FEE_SHARE` are confirmed equal.
+   - Phase 2: 55% BPI + 30% bank capital return + 15% bank distribution premium = 100%.
+   - Phase 3: 80% BPI + 0% bank capital return + 20% bank distribution premium = 100%.
 
-5. **Distribution premium compression (Phase 2 → Phase 3): 30% → 25% — flagged and approved.** The 5-point compression is intentional: in Phase 3, BPI assumes full lending operations management, earning an operational premium that partially displaces the bank's distribution premium. This is a negotiating position, not an arithmetic artefact. Bank legal teams will notice it in Phase 3 negotiations. BPI's counter-position: the bank's distribution value does not include operational management costs, which BPI absorbs entirely in Phase 3.
+5. **Distribution premium compression (Phase 2 → Phase 3): 15% → 20% — flagged and approved.** In Phase 3, the bank's distribution premium slightly increases from 15% to 20% because BPI assumes full capital risk and the bank's distribution/origination value is the sole remaining contribution. The even 25pp step progression (30→55→80) simplifies negotiation positioning across phases.
 
 6. **Settlement P95 targets — verified against BIS/SWIFT GPI benchmarks.**
    - Class A: 7.05h (BIS target 7.0h) — conservative +0.7% buffer. Acceptable.

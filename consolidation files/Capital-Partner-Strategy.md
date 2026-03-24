@@ -14,7 +14,7 @@
 
 ### Phase 1 Requires Zero BPI Capital
 
-In Phase 1 (Licensor), BPI licenses the C1–C8 platform to a bank. The bank funds 100% of every bridge loan. BPI earns 15% of total fee revenue as an IP royalty. BPI's capital requirement: **$0**.
+In Phase 1 (Licensor), BPI licenses the C1–C8 platform to a bank. The bank funds 100% of every bridge loan. BPI earns 30% of total fee revenue as an IP royalty. BPI's capital requirement: **$0**.
 
 This is the proof period. Phase 1 exists to:
 - Demonstrate that the platform works in production (real SWIFT traffic, real UETR settlement)
@@ -24,7 +24,7 @@ This is the proof period. Phase 1 exists to:
 
 ### Phase 2 Changes Everything
 
-In Phase 2 (Hybrid), BPI co-funds 70% of each bridge loan alongside the bank's 30%. BPI's fee share jumps from 15% to 40%. Per bank, revenue multiplies **2.7×** — from $3.0M to $8.05M (conservative) or from $11.5M to $30.7M (base). *(Revenue-Projection-Model.md §2.2–2.3)*
+In Phase 2 (Hybrid), BPI co-funds 70% of each bridge loan alongside the bank's 30%. BPI's fee share jumps from 30% to 55%. Per bank, revenue multiplies **1.8×** compared to Phase 1. *(Revenue-Projection-Model.md §2.2–2.3)*
 
 But BPI now needs capital to deploy. The transition from Phase 1 to Phase 2 is the critical inflection point: BPI must secure a capital facility before it can capture the revenue uplift.
 

@@ -86,9 +86,9 @@ The total fee from Section 4 is split between BPI and the bank according to the 
 
 | Phase | BPI Share | Bank Share | Bank Breakdown | Income Classification |
 |-------|-----------|------------|----------------|----------------------|
-| **Phase 1 (Licensor)** | 15% | 85% | 85% retained by bank (bank funds 100% of capital) | **IP Royalty** |
-| **Phase 2 (Hybrid)** | 40% | 60% | 30% capital return + 30% distribution premium | **Lending Revenue** |
-| **Phase 3 (Full MLO)** | 75% | 25% | 0% capital return + 25% distribution premium | **Lending Revenue** |
+| **Phase 1 (Licensor)** | 30% | 70% | 70% retained by bank (bank funds 100% of capital) | **IP Royalty** |
+| **Phase 2 (Hybrid)** | 55% | 45% | 30% capital return + 15% distribution premium | **Lending Revenue** |
+| **Phase 3 (Full MLO)** | 80% | 20% | 0% capital return + 20% distribution premium | **Lending Revenue** |
 
 **Tax note:** Phase 1 income is classified as IP royalty (relevant for SR&ED, HST treatment). Phase 2/3 income is lending revenue — different Canadian tax treatment applies.
 
@@ -98,9 +98,9 @@ Total fee: $1,000,000 × 0.04 × 7/365 = **$767.12**
 
 | Phase | BPI Earns | Bank Earns | Bank Capital Return | Bank Distribution Premium |
 |-------|-----------|------------|--------------------|--------------------------|
-| Phase 1 | $115.07 | $652.05 | N/A | N/A |
-| Phase 2 | $306.85 | $460.27 | $230.14 | $230.14 |
-| Phase 3 | $575.34 | $191.78 | $0.00 | $191.78 |
+| Phase 1 | $230.14 | $536.98 | N/A | N/A |
+| Phase 2 | $421.92 | $345.20 | $230.14 | $115.06 |
+| Phase 3 | $613.70 | $153.42 | $0.00 | $153.42 |
 
 ### 5.3 Phase Split on a $2.89M / 9-day / ~706 bps Loan (Investor Briefing example)
 
@@ -108,9 +108,9 @@ Total fee: **$5,033**
 
 | Phase | BPI Earns | Bank Earns |
 |-------|-----------|------------|
-| Phase 1 | $754.95 | $4,278.05 |
-| Phase 2 | $2,013.20 | $3,019.80 |
-| Phase 3 | $3,774.75 | $1,258.25 |
+| Phase 1 | $1,509.90 | $3,523.10 |
+| Phase 2 | $2,768.15 | $2,264.85 |
+| Phase 3 | $4,026.40 | $1,006.60 |
 
 ---
 

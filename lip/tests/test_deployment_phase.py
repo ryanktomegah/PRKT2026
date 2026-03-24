@@ -71,9 +71,9 @@ class TestPhaseFeeConfigInvariants:
         cfg = get_phase_config(DeploymentPhase.FULL_MLO)
         assert cfg.bank_capital_return_share == _dec("0")
 
-    def test_phase3_bank_distribution_premium_is_twenty_five_pct(self) -> None:
+    def test_phase3_bank_distribution_premium_is_twenty_pct(self) -> None:
         cfg = get_phase_config(DeploymentPhase.FULL_MLO)
-        assert cfg.bank_distribution_premium_share == _dec("0.25")
+        assert cfg.bank_distribution_premium_share == _dec("0.20")
 
 
 # ---------------------------------------------------------------------------
@@ -96,40 +96,40 @@ class TestComputeFeeWaterfall:
         wf = compute_fee_waterfall(_dec("767.00"), DeploymentPhase.LICENSOR)
         assert wf.income_type == "ROYALTY"
 
-    def test_phase2_bpi_share_40pct(self) -> None:
+    def test_phase2_bpi_share_55pct(self) -> None:
         fee = _dec("767.00")
         wf = compute_fee_waterfall(fee, DeploymentPhase.HYBRID)
-        # 767 * 0.40 = 306.80
-        assert wf.bpi_share_usd == _dec("306.80"), f"Got {wf.bpi_share_usd}"
+        # 767 * 0.55 = 421.85
+        assert wf.bpi_share_usd == _dec("421.85"), f"Got {wf.bpi_share_usd}"
 
-    def test_phase2_bank_share_60pct(self) -> None:
+    def test_phase2_bank_share_45pct(self) -> None:
         fee = _dec("767.00")
         wf = compute_fee_waterfall(fee, DeploymentPhase.HYBRID)
-        # 767 - 306.80 = 460.20
-        assert wf.bank_share_usd == _dec("460.20"), f"Got {wf.bank_share_usd}"
+        # 767 - 421.85 = 345.15
+        assert wf.bank_share_usd == _dec("345.15"), f"Got {wf.bank_share_usd}"
 
     def test_phase2_bank_decomposition(self) -> None:
         fee = _dec("767.00")
         wf = compute_fee_waterfall(fee, DeploymentPhase.HYBRID)
-        # capital_return = 767 * 0.30 = 230.10; distribution_premium = 460.20 - 230.10 = 230.10
+        # capital_return = 767 * 0.30 = 230.10; distribution_premium = 345.15 - 230.10 = 115.05
         assert wf.bank_capital_return_usd == _dec("230.10"), f"Got {wf.bank_capital_return_usd}"
-        assert wf.bank_distribution_premium_usd == _dec("230.10"), f"Got {wf.bank_distribution_premium_usd}"
+        assert wf.bank_distribution_premium_usd == _dec("115.05"), f"Got {wf.bank_distribution_premium_usd}"
 
     def test_phase2_income_type(self) -> None:
         wf = compute_fee_waterfall(_dec("767.00"), DeploymentPhase.HYBRID)
         assert wf.income_type == "LENDING_REVENUE"
 
-    def test_phase3_bpi_share_75pct(self) -> None:
+    def test_phase3_bpi_share_80pct(self) -> None:
         fee = _dec("767.00")
         wf = compute_fee_waterfall(fee, DeploymentPhase.FULL_MLO)
-        # 767 * 0.75 = 575.25
-        assert wf.bpi_share_usd == _dec("575.25"), f"Got {wf.bpi_share_usd}"
+        # 767 * 0.80 = 613.60
+        assert wf.bpi_share_usd == _dec("613.60"), f"Got {wf.bpi_share_usd}"
 
-    def test_phase3_bank_share_25pct(self) -> None:
+    def test_phase3_bank_share_20pct(self) -> None:
         fee = _dec("767.00")
         wf = compute_fee_waterfall(fee, DeploymentPhase.FULL_MLO)
-        # 767 - 575.25 = 191.75
-        assert wf.bank_share_usd == _dec("191.75"), f"Got {wf.bank_share_usd}"
+        # 767 - 613.60 = 153.40
+        assert wf.bank_share_usd == _dec("153.40"), f"Got {wf.bank_share_usd}"
 
     def test_phase3_bank_capital_return_zero(self) -> None:
         fee = _dec("767.00")
@@ -139,8 +139,8 @@ class TestComputeFeeWaterfall:
     def test_phase3_bank_distribution_premium(self) -> None:
         fee = _dec("767.00")
         wf = compute_fee_waterfall(fee, DeploymentPhase.FULL_MLO)
-        # bank_share = 191.75; capital_return = 0; so distribution_premium = 191.75
-        assert wf.bank_distribution_premium_usd == _dec("191.75"), f"Got {wf.bank_distribution_premium_usd}"
+        # bank_share = 153.40; capital_return = 0; so distribution_premium = 153.40
+        assert wf.bank_distribution_premium_usd == _dec("153.40"), f"Got {wf.bank_distribution_premium_usd}"
 
     def test_phase3_income_type(self) -> None:
         wf = compute_fee_waterfall(_dec("767.00"), DeploymentPhase.FULL_MLO)

@@ -56,7 +56,7 @@ C8's `licensee_id` is used as a namespace seed for C6's `SaltRotationManager`. D
 | Constant | Value | Significance |
 |----------|-------|-------------|
 | `SALT_ROTATION_DAYS` | 365 | Salt lifecycle tied to license renewal cycle |
-| `PLATFORM_ROYALTY_RATE` | 0.15 | Royalty rate embedded in license terms |
+| `PLATFORM_ROYALTY_RATE` | 0.30 | Royalty rate embedded in license terms |
 
 ## Spec References
 
