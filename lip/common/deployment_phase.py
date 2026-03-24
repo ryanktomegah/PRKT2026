@@ -3,12 +3,12 @@ deployment_phase.py — BPI deployment phase model and fee waterfall logic.
 
 Three deployment phases with different capital structures and income classifications:
   Phase 1 (LICENSOR): Bank funds 100%.  BPI earns 30% IP royalty.
-  Phase 2 (HYBRID):   30% bank / 70% BPI capital.  BPI earns 40% co-lending return.
-  Phase 3 (FULL_MLO): BPI funds 100%.  BPI earns 75% gross lending revenue.
+  Phase 2 (HYBRID):   30% bank / 70% BPI capital.  BPI earns 55% co-lending return.
+  Phase 3 (FULL_MLO): BPI funds 100%.  BPI earns 80% gross lending revenue.
 
 Bank fee decomposition (Phase 2/3) prevents negotiation traps at transition:
-  Phase 2 bank share:  30% capital return  +  30% distribution premium  =  60%
-  Phase 3 bank share:   0% capital return  +  25% distribution premium  =  25%
+  Phase 2 bank share:  30% capital return  +  15% distribution premium  =  45%
+  Phase 3 bank share:   0% capital return  +  20% distribution premium  =  20%
 
 Invariants (enforced by get_phase_config):
   bpi_fee_share + bank_fee_share == 1

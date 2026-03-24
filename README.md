@@ -7,7 +7,7 @@
 
 Patent-backed real-time payment failure detection and automated bridge lending system.
 
-**Technology licensor model**: Banks deploy LIP against their SWIFT payment streams. BPI earns 15% royalty on bridge loan fees collected.
+**Technology licensor model**: Banks deploy LIP against their SWIFT payment streams. BPI earns 30% royalty on bridge loan fees collected.
 
 **Patent moat**: JPMorgan US7089207B1 covers Tier 1 (listed counterparties) only. LIP's Tier 2+3 coverage of **private counterparties** (via Damodaran industry-beta and Altman Z' thin-file models) is the core patent contribution and primary competitive differentiator.
 
@@ -88,7 +88,7 @@ C8 License Manager — HMAC token enforcement (cross-cutting)
 | Fee floor | 300 bps annualized | Canonical Numbers |
 | Latency SLO | ≤ 94ms end-to-end | Architecture Spec v1.2 |
 | UETR TTL buffer | 45 days | Canonical Numbers |
-| Platform royalty | 15% of fee collected | Business Model |
+| Platform royalty | 30% of fee collected | Business Model |
 
 ## Development
 

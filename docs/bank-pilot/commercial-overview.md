@@ -22,13 +22,13 @@ The bank deploys LIP on its own infrastructure using a technology license from B
 |-----------|-------|
 | **BPI role** | Technology licensor (IP provider) |
 | **Bank role** | Capital provider, originator, operator |
-| **BPI revenue share** | 15% royalty on bridge loan fees |
-| **Bank revenue share** | 85% of bridge loan fees |
+| **BPI revenue share** | 30% royalty on bridge loan fees |
+| **Bank revenue share** | 70% of bridge loan fees |
 | **BPI balance sheet exposure** | None |
 | **Revenue classification** | Royalty income (IP licensing) |
 | **Fee floor** | 300 basis points annualised |
 
-**Phase 1 is the pilot engagement.** The bank funds all bridge loans from its own balance sheet, retains 85% of fee revenue, and pays BPI a 15% technology royalty. BPI has zero balance sheet exposure — pure licensing revenue.
+**Phase 1 is the pilot engagement.** The bank funds all bridge loans from its own balance sheet, retains 70% of fee revenue, and pays BPI a 30% technology royalty. BPI has zero balance sheet exposure — pure licensing revenue.
 
 ---
 
@@ -40,8 +40,8 @@ BPI co-funds bridge loans alongside the bank's capital.
 |-----------|-------|
 | **BPI role** | Co-lender + technology provider |
 | **Bank role** | Co-lender, originator |
-| **BPI revenue share** | 40% of bridge loan fees |
-| **Bank revenue share** | 60% of bridge loan fees |
+| **BPI revenue share** | 55% of bridge loan fees |
+| **Bank revenue share** | 45% of bridge loan fees |
 | **BPI balance sheet exposure** | Proportional to co-funding share |
 | **Revenue classification** | Lending revenue (not royalty) |
 
@@ -57,8 +57,8 @@ BPI manages the full lending stack. The bank provides origination and distributi
 |-----------|-------|
 | **BPI role** | Full-stack lending operator (MLO) |
 | **Bank role** | Originator, distribution channel |
-| **BPI revenue share** | 75% of bridge loan fees |
-| **Bank revenue share** | 25% of bridge loan fees |
+| **BPI revenue share** | 80% of bridge loan fees |
+| **Bank revenue share** | 20% of bridge loan fees |
 | **BPI balance sheet exposure** | Full |
 | **Revenue classification** | Lending revenue |
 
@@ -74,9 +74,9 @@ Bridge loan fees are decomposed into two components:
 
 | Phase | Capital Return | Distribution Premium | Total BPI Share |
 |-------|---------------|---------------------|----------------|
-| Phase 1 | 0% (bank funds) | 15% royalty | 15% |
-| Phase 2 | ~25% (pro-rata) | ~15% | 40% |
-| Phase 3 | ~60% (full funding) | ~15% | 75% |
+| Phase 1 | 0% (bank funds) | 30% royalty | 30% |
+| Phase 2 | ~40% (pro-rata) | ~15% | 55% |
+| Phase 3 | ~65% (full funding) | ~15% | 80% |
 
 This decomposition is critical for Phase 3 negotiations: the distribution premium remains stable across phases because the bank's distribution value doesn't change. What changes is who provides capital. Separating these components prevents a bank from arguing that the Phase 3 split should be lower because "they're still providing the same distribution" — the premium already accounts for that.
 

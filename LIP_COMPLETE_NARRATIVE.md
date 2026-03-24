@@ -16,9 +16,9 @@ The entire decision — detect failure, classify it, estimate credit risk, price
 
 Bridgepoint Intelligence (BPI) is a technology licensor, not a bank. BPI does not hold loans on its balance sheet in Phase 1. The model has three phases:
 
-- **Phase 1 (current — Licensor):** The bank funds 100% of bridge capital. BPI earns a 15% royalty on the fee collected. On a $5M bridge at 300 bps for 7 days, the fee is $2,877 and BPI receives $431.
-- **Phase 2 (Hybrid):** BPI puts up 70% of capital. BPI earns 40% of fee. The bank retains 60%, split between capital return and distribution premium for its origination and compliance infrastructure.
-- **Phase 3 (Full MLO):** BPI funds 100%. BPI earns 75% of fee. Bank keeps 25% as distribution premium only.
+- **Phase 1 (current — Licensor):** The bank funds 100% of bridge capital. BPI earns a 30% royalty on the fee collected. On a $5M bridge at 300 bps for 7 days, the fee is $2,877 and BPI receives $863.
+- **Phase 2 (Hybrid):** BPI puts up 70% of capital. BPI earns 55% of fee. The bank retains 45%, split between capital return and distribution premium for its origination and compliance infrastructure.
+- **Phase 3 (Full MLO):** BPI funds 100%. BPI earns 80% of fee. Bank keeps 20% as distribution premium only.
 
 Phase 1 revenue is royalty income. Phase 2 and 3 revenue is lending revenue. This distinction has real tax and legal consequences — the fee decomposition must explicitly show "capital return + distribution premium" before Phase 3 negotiations begin, or the bank loses leverage in renegotiation.
 

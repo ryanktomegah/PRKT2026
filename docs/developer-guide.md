@@ -71,7 +71,7 @@ The following constants are **locked** and may only be changed with explicit QUA
 | `FEE_FLOOR_BPS` | **300** | `constants.py` | Changes minimum revenue per loan |
 | `LATENCY_SLO_MS` | **94 ms** | `constants.py` | Changes the SLO contract with deploying banks |
 | `UETR_TTL_BUFFER_DAYS` | **45** | `constants.py` | Changes UETR deduplication window |
-| `PLATFORM_ROYALTY_RATE` | **0.15** | `constants.py` | Changes BPI revenue share |
+| `PLATFORM_ROYALTY_RATE` | **0.30** | `constants.py` | Changes BPI revenue share |
 | `SALT_ROTATION_DAYS` | **365** | `constants.py` | Changes AML privacy protection lifetime |
 | `SALT_ROTATION_OVERLAP_DAYS` | **30** | `constants.py` | Changes transition window for re-hashing |
 

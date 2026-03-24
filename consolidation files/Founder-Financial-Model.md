@@ -12,7 +12,7 @@ All revenue figures sourced from and cross-referenced against [Revenue-Projectio
 
 Most fintechs must raise capital before they can generate their first dollar of revenue. BPI does not.
 
-**Phase 1 (Licensor model)** means the partner bank funds 100% of bridge loans. BPI earns a **15% royalty on pure IP licensing** — no warehouse facility, no lending license, no balance-sheet risk.
+**Phase 1 (Licensor model)** means the partner bank funds 100% of bridge loans. BPI earns a **30% royalty on pure IP licensing** — no warehouse facility, no lending license, no balance-sheet risk.
 
 What this means in practice:
 

@@ -46,15 +46,15 @@ C3 runs **after** Algorithm 1 completes — it manages the funded loan lifecycle
 |-------|-------------|
 | `principal_repaid_usd` | Principal component repaid |
 | `fee_repaid_usd` | Fee component repaid |
-| `platform_royalty_usd` | `15% × fee_repaid_usd` → BPI |
-| `net_fee_to_entities_usd` | `85% × fee_repaid_usd` → MLO/MIPLO/ELO |
+| `platform_royalty_usd` | `30% × fee_repaid_usd` → BPI |
+| `net_fee_to_entities_usd` | `70% × fee_repaid_usd` → MLO/MIPLO/ELO |
 | `repayment_type` | `'FULL'`, `'BUFFER'`, or `'DEFAULT'` |
 
 ## Canonical Constants Used
 
 | Constant | Value | Significance |
 |----------|-------|-------------|
-| `PLATFORM_ROYALTY_RATE` | **0.15** | 15% of `fee_repaid_usd` to BPI — **QUANT sign-off required** |
+| `PLATFORM_ROYALTY_RATE` | **0.30** | 30% of `fee_repaid_usd` to BPI — **QUANT sign-off required** |
 | `UETR_TTL_BUFFER_DAYS` | **45** | Buffer beyond maturity for UETR deduplication — **QUANT sign-off required** |
 | `CORRIDOR_BUFFER_WINDOW_DAYS` | 90 | Rolling window for corridor risk lookback |
 | `MATURITY_CLASS_A_DAYS` | 3 | Rejection Class A maturity |
