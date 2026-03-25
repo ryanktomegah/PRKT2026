@@ -1,6 +1,8 @@
 # COMPETITIVE LANDSCAPE ANALYSIS
 ## Adjacent Players, Differentiation, and Patent Defensibility
-### VERSION 1.0 | Bridgepoint Intelligence Inc. | 2026-03-20
+### VERSION 1.1 | Bridgepoint Intelligence Inc. | 2026-03-25
+
+> **VERSION 1.1 CHANGE LOG:** Section 5 added — The Network Data Moat. Quantifies the data advantage that compounds with each bank deployment and explains why patent expiry does not end BPI's competitive advantage.
 
 ---
 
@@ -128,4 +130,71 @@ The competitive threat is not from existing products — it is from **internal R
 
 ---
 
-*Sources: SWIFT Annual Review 2024, SWIFT gpi factsheets, JPMorgan Kinexys press release (Oct 2024), Thoma Bravo/Bottomline portfolio page, USPTO Patent US11532040B2, Ripple Q4 2024 XRP Markets Report, SAP press release on Taulia acquisition, FXC Intelligence 2024, FSB 2024 G20 Cross-Border Payments KPI Report, BIS CPMI reports, McKinsey Global Payments Report 2024, company product documentation. Updated 2026-03-20.*
+---
+
+## 5. The Network Data Moat — Beyond Patent Protection
+
+The patent fortress (Section 6 of Investor-Briefing-v2.1.md) is Layer 1 of BPI's competitive protection. The data moat is Layer 2 — and unlike the patents, it never expires.
+
+### 5.1 Why Multi-Bank Data Is Qualitatively Different
+
+LIP's three ML components — C1 (failure classifier), C2 (PD pricing model), and C4 (dispute classifier) — all improve with training data volume and diversity. A single-bank deployment sees one bank's payment patterns, one set of corridors, one jurisdiction's compliance behaviour. A five-bank deployment sees five independent failure pattern distributions. A fifteen-bank deployment has population-level calibration across geographies, currencies, and counterparty types.
+
+This is not a quantitative improvement. It is a qualitative shift in what the models can learn:
+
+- **C1 classifier:** Rejection code distributions vary by corridor and bank. A model trained on Deutsche Bank's EUR→INR failures learns different patterns than one trained on RBC's CAD→USD failures. Multi-bank training produces a model that generalises — not just memorises.
+- **C2 pricing model:** Each settled loan is a labelled training example. More banks = more corridors = better corridor-specific PD calibration. The model stops pricing by analogy and starts pricing by evidence.
+- **C4 dispute classifier:** Dispute patterns are highly bank-specific. Volume is required to learn them.
+
+### 5.2 The Moat Threshold Ladder
+
+| Bank Count | Data State | Moat Level | Estimated Competitor Catch-Up Time |
+|------------|-----------|-----------|-------------------------------------|
+| 1 bank | Single-corridor calibration | Minimal | 12–18 months with equivalent bank access |
+| 5 banks | Multi-corridor, multi-jurisdiction | Moderate | 2–3 years |
+| 15 banks | Comprehensive corridor coverage | Strong | 5–7 years |
+| 30+ banks | Population-level calibration | Permanent | Cannot be replicated without equivalent deployment history |
+
+**The 5-bank threshold is the inflection point.** At 5 banks, BPI's models produce measurably better risk pricing than any competitor starting from scratch — regardless of engineering resources or capital. This is the self-sustaining flywheel trigger.
+
+### 5.3 The Data Competitor Design-Around Cannot Buy
+
+A competitor reading the published patent specification learns the architecture. They do not learn:
+
+- Calibrated C1 model weights built from live SWIFT telemetry across multiple banks and corridors
+- Bank-pair performance histories (which originator/correspondent combinations produce which failure patterns)
+- Private-company credit calibrations built from real trade finance outcomes (not synthetic proxies)
+- Corridor-specific PD curves validated against actual UETR settlement outcomes
+
+None of this can be purchased. SWIFT does not sell labelled outcome data. Banks will not share proprietary failure patterns with a new entrant. The only way to build it is to deploy, live, at scale, over years.
+
+**A competitor starting Year 5 post-PFD is building BPI's Year 1 model — without BPI's Year 5 data.**
+
+### 5.4 Competitor Data Deficit Estimates
+
+| Competitor | Data Disadvantage | Practical Implication |
+|------------|------------------|----------------------|
+| JPMorgan internal R&D | Kinexys data covers JPMorgan's own book only — single-bank | Excellent at JPMorgan corridors; blind to all others |
+| Bottomline Technologies | Aggregate cash-flow forecasting data; no individual UETR-level outcome labels | Wrong data type — cannot train payment-level classifiers |
+| Finastra / new entrant | No live deployment = no labelled outcome data | Must start from synthetic data; 3–5 year gap before production-quality |
+| SWIFT itself | Has the telemetry data but not the labelled bridge loan outcome data | Could partner with BPI (see Section 2.1 of Distribution-Channel-Strategy.md) — unlikely to compete |
+
+### 5.5 The Annual Failure Rate Report as Moat Accelerator
+
+BPI should publish anonymised, aggregated cross-border payment failure benchmarks annually beginning one year after first pilot bank goes live. Content: failure rates by corridor class, rejection code distribution, settlement timing benchmarks — all aggregated across the BPI deployment base, with no bank-identifiable information.
+
+Strategic purposes:
+1. **Positions BPI as industry authority** on payment failure data — the same role McKinsey's Global Payments Report plays for market sizing
+2. **Creates public pressure** on non-adopters: "Your bank's failure rate is above industry median" is a sales argument that requires no BPI representative in the room
+3. **Demonstrates data quality** to prospective banks without disclosing proprietary details — the existence of multi-bank aggregate data proves the platform is deployed at scale
+4. **Generates earned media and conference invitations** at zero marginal cost
+
+The report is produced from data BPI already holds. The marginal cost is editorial. The strategic value compounds annually.
+
+*CIPHER governance: anonymisation methodology requires CIPHER sign-off before any publication. REX governance: regulatory implications of publishing cross-bank failure data must be reviewed for GDPR, PIPEDA, and banking secrecy obligations.*
+
+*For the full quantified data moat analysis, see [Network-Data-Moat-Strategy.md](Network-Data-Moat-Strategy.md) (forthcoming). Cross-reference: Investor-Briefing-v2.1.md §5.2 (data moat narrative), Capital-Partner-Strategy.md §11 (moat as distribution accelerator).*
+
+---
+
+*Sources: SWIFT Annual Review 2024, SWIFT gpi factsheets, JPMorgan Kinexys press release (Oct 2024), Thoma Bravo/Bottomline portfolio page, USPTO Patent US11532040B2, Ripple Q4 2024 XRP Markets Report, SAP press release on Taulia acquisition, FXC Intelligence 2024, FSB 2024 G20 Cross-Border Payments KPI Report, BIS CPMI reports, McKinsey Global Payments Report 2024, company product documentation. Updated 2026-03-25.*

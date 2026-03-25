@@ -1,6 +1,8 @@
 # CAPITAL PARTNER STRATEGY
 ## Warehouse Facility, SPV Architecture, and the Path to Securitization
-### VERSION 1.0 | Bridgepoint Intelligence Inc. | 2026-03-20
+### VERSION 1.1 | Bridgepoint Intelligence Inc. | 2026-03-25
+
+> **VERSION 1.1 CHANGE LOG:** Section 4 calculations corrected to use Phase 2 = 55% BPI share (was 40%) and Phase 3 = 80% (was 75%), consistent with Unit-Economics-Exhibit.md §5.1. Section 11 added: Capital Partner as Distribution Channel. Cross-references to Revenue-Projection-Model.md updated to v1.1 figures.
 
 ---
 
@@ -24,7 +26,7 @@ This is the proof period. Phase 1 exists to:
 
 ### Phase 2 Changes Everything
 
-In Phase 2 (Hybrid), BPI co-funds 70% of each bridge loan alongside the bank's 30%. BPI's fee share jumps from 30% to 55%. Per bank, revenue multiplies **1.8×** compared to Phase 1. *(Revenue-Projection-Model.md §2.2–2.3)*
+In Phase 2 (Hybrid), BPI co-funds 70% of each bridge loan alongside the bank's 30%. BPI's fee share jumps from 30% to 55%. Per bank, revenue multiplies **1.8×** compared to Phase 1 (conservative: $6.0M → $11.1M). *(Revenue-Projection-Model.md v1.1 §2.2–2.3)*
 
 But BPI now needs capital to deploy. The transition from Phase 1 to Phase 2 is the critical inflection point: BPI must secure a capital facility before it can capture the revenue uplift.
 
@@ -138,10 +140,10 @@ Let us calculate honestly, using the validated numbers from Revenue-Projection-M
 | Concurrent capital deployed | $1.4B × (7/365) = **$26.8M** | |
 | BPI's 70% share | **$18.8M** | Phase 2 co-funding ratio |
 | Total fee revenue | 1,750 × $383.56 = **$671K** | Fee per loan from Revenue-Projection-Model.md §2.2 |
-| BPI's 40% share | **$268K** | Phase 2 fee split |
+| BPI's **55%** share | **$369K** | Phase 2 fee split |
 | Capital partner cost at 12% preferred | $18.8M × 12% = **$2.26M** | Blended warehouse cost |
 
-**Result: BPI earns $268K against $2.26M in capital costs. This is deeply underwater.** A mid-tier bank does not generate enough fee volume to justify the capital deployment. This is why Phase 2 does not start with mid-tier banks.
+**Result: BPI earns $369K against $2.26M in capital costs. This is deeply underwater.** A mid-tier bank does not generate enough fee volume to justify the capital deployment. This is why Phase 2 does not start with mid-tier banks.
 
 #### Scenario B: Conservative Tier 1 Bank — Full Book
 
@@ -164,10 +166,10 @@ Phase 2 starts with 1–2 corridors, not the full book. Assume 2% of eligible vo
 | BPI's 70% share | **$11.3M** |
 | Loans in corridor | $840M ÷ $800K = **1,050/year** |
 | Total fee | 1,050 × $383.56 = **$403K** |
-| BPI's 40% | **$161K** |
+| BPI's **55%** | **$222K** |
 | Capital cost (12% on $11.3M) | **$1.36M** |
 
-**Result: Still underwater. BPI earns $161K against $1.36M capital cost.**
+**Result: Still underwater. BPI earns $222K against $1.36M capital cost.**
 
 ### The Breakeven Math — Why Phase 2 Economics Are Structurally Challenging
 
@@ -178,19 +180,19 @@ On a single $1M bridge loan, funded 70% by BPI ($700K deployed), at 400 bps annu
 | Item | Calculation | Result |
 |------|-------------|--------|
 | Total fee | $1M × (400/10,000) × (7/365) | $767.12 |
-| BPI's 40% share | $767.12 × 0.40 | $306.85 |
-| Annualized per $700K deployed | $306.85 × 52 turns | $15,956/year |
-| Effective yield on BPI capital | $15,956 ÷ $700,000 | **2.28%** |
+| BPI's **55%** share | $767.12 × 0.55 | $421.92 |
+| Annualized per $700K deployed | $421.92 × 52 turns | $21,940/year |
+| Effective yield on BPI capital | $21,940 ÷ $700,000 | **3.13%** |
 | Capital cost (blended warehouse) | | **~12%** |
 | **Gap** | | **-9.72%** |
 
-BPI's fee income on deployed capital yields 2.28% annually. The warehouse costs 12%. The gap is approximately 9.7 percentage points. To close this gap through fee rates alone, BPI would need average rates of ~2,100 bps — seven times the floor. That is not realistic.
+BPI's fee income on deployed capital yields 3.13% annually. The warehouse costs 12%. The gap is approximately 8.9 percentage points. To close this gap through fee rates alone, BPI would need average rates of ~1,350 bps — still above typical pricing. **Phase 2 is a strategic investment, not a standalone profit center** — see Revenue-Projection-Model.md §8.4 for the full breakeven analysis (Phase 2 breaks even at ~770 bps average with the 55% share).
 
 ### So Why Does Phase 2 Exist?
 
 Phase 2 is a **strategic investment**, not a standalone profit center. Its value lies in three things:
 
-1. **Revenue multiplier.** BPI's total revenue per bank jumps 2.7× even though capital returns are negative on a spread basis. The absolute dollars ($8.05M vs $3.0M conservative) fund operations, hiring, and platform expansion.
+1. **Revenue multiplier.** BPI's total revenue per bank jumps 1.8× even though capital returns are negative on a spread basis. The absolute dollars ($11.1M vs $6.0M conservative) fund operations, hiring, and platform expansion.
 
 2. **Performance data for securitization.** The 12–18 months of Phase 2 warehouse data is the raw material for a rated securitization (Section 9). Clean data → rated deal → cost of capital drops from 12% to 5–6% → Phase 3 becomes highly profitable.
 
@@ -202,7 +204,7 @@ Phase 2 is a **strategic investment**, not a standalone profit center. Its value
 
 BPI does not fund the full 70% from its own balance sheet. The SPV has a tiered capital structure (Section 3): the senior lender provides 85% of the SPV's capital at ~7%, and BPI contributes only the **15% first-loss equity tranche**. On a $15M facility, BPI's equity at risk is ~$2.25M, not $15M.
 
-This leverage amplifies both returns and losses on BPI's equity. For detailed breakeven analysis at various fee rates, see [Revenue-Projection-Model.md §8.4–8.6](Revenue-Projection-Model.md). Key finding: at the 300–400 bps fee floor, Phase 2 is capital-negative even with leverage. At the C2 model's typical risk-adjusted rates (600–800+ bps), Phase 3 with securitized capital (5% senior cost) reaches breakeven at ~560 bps average and becomes profitable above that.
+This leverage amplifies both returns and losses on BPI's equity. For detailed breakeven analysis at various fee rates, see [Revenue-Projection-Model.md §8.4–8.6](Revenue-Projection-Model.md). Key finding: at the 300–400 bps fee floor, Phase 2 is capital-negative even with leverage. At the C2 model's typical risk-adjusted rates (600–800+ bps), Phase 3 with securitized capital (5% senior cost) reaches breakeven at ~530 bps average and becomes profitable above that (delivering ~8.9% ROE at the Investor Briefing's demonstrated 706 bps).
 
 ---
 
@@ -391,13 +393,73 @@ Average bridge loan duration. Self-liquidating against SWIFT UETR settlement con
 
 Hardcoded fee floor, enforced at the code level by the QUANT-controlled pricing engine. Not a guideline, not a suggestion — a `min()` function in production code that cannot be overridden without a code change, a test suite update, and QUANT sign-off. Tiered floors go higher for smaller principals (400–500 bps). *(Unit-Economics-Exhibit.md §2)*
 
-### 4. $3M+
+### 4. $6M+
 
-BPI's annual revenue from the first Phase 1 pilot (conservative, single Tier 1 bank). Proven before BPI asks for capital. The capital partner is not funding a hypothesis — they are scaling a proven revenue stream. *(Revenue-Projection-Model.md §2.2)*
+BPI's annual revenue from the first Phase 1 pilot (conservative, single Tier 1 bank). Proven before BPI asks for capital. The capital partner is not funding a hypothesis — they are scaling a proven revenue stream. *(Revenue-Projection-Model.md v1.1 §2.2)*
 
 ### 5. 12–18 Months
 
 Time from warehouse close to securitization-ready. Clean performance data enables a rated deal, cost of capital collapses from ~12% to ~5–6%, and the capital partner gets a clean exit. This is the timeline for the capital partner's deployment — not a 5-year lockup, not a venture-style 10-year fund. Short-duration capital for short-duration assets.
+
+---
+
+## 11. Capital Partner as Distribution Channel
+
+### 11.1 The Distribution Insight
+
+Most capital partners are valued for one thing: capital. BPI should value them for two: capital **and distribution**.
+
+A BlackRock, Apollo, CDPQ, or Ares does not just bring a warehouse facility. They bring a relationship network built over decades of institutional lending. Their relationship managers have regular conversations with bank treasury, ALM, and structured finance departments at exactly the institutions BPI needs to onboard. A warm introduction from a capital partner that is already in the door costs BPI nothing — and compresses an 18-month bank sales cycle by months.
+
+### 11.2 Why the Capital Partner Co-Sells Willingly
+
+The incentive alignment is structural, not contractual:
+
+- The capital partner earns on **deployed capital**. An idle facility earns only the commitment fee (25–50 bps). Deployed capital earns SOFR + 200–350 bps.
+- Every new bank BPI onboards means more loans originated, more capital deployed, more fee income for the capital partner's senior tranche.
+- The capital partner's AUM grows with BPI's volume. Their fund-level returns improve with every new bank. They have a direct financial interest in BPI's commercial success — more than any fee arrangement could replicate.
+
+**The capital partner's natural incentive is to introduce BPI to every bank relationship they have.**
+
+### 11.3 Structuring the Co-Sell Arrangement
+
+BPI should make the distribution incentive explicit in the warehouse agreement. Recommended structure:
+
+| Mechanism | Structure | Rationale |
+|-----------|-----------|-----------|
+| Referral recognition | Acknowledge capital partner introductions that convert to signed bank LOIs | Creates transparency without cash cost |
+| Facility expansion preference | Capital partner gets first right on next tranche expansion when BPI adds bank #2, #3 | Rewards co-selling with more AUM opportunity |
+| Data sharing | BPI shares anonymised portfolio performance data quarterly with capital partner | Helps capital partner support their own LP reporting; deepens relationship |
+| Non-exclusivity | Distribution is non-exclusive — BPI retains freedom to source banks independently or through other channels | Prevents single-channel dependency |
+
+**Do not pay per-referral cash fees.** This creates regulatory complications (finder's fees, broker-dealer licensing) and misaligns incentives. The facility expansion preference and AUM growth are the right instruments.
+
+### 11.4 Target Capital Partners with Distribution Capability
+
+Not all capital partners bring equivalent distribution value. Prioritise by bank relationship depth:
+
+| Tier | Examples | Bank Relationship Depth | Distribution Value |
+|------|----------|------------------------|--------------------|
+| **Tier 1** | BlackRock Credit, Apollo Global, Ares Management | Relationships with 50+ global banks; regular co-lending on structured deals | Highest — can open doors at RBC, TD, Deutsche Bank, HSBC |
+| **Tier 2** | CDPQ, OMERS Infrastructure, BCI | Deep relationships with Canadian Big 5; government mandate makes them credible co-investors | High for Canadian market; moderate for global |
+| **Tier 3** | Fiera Private Debt, RP Investment Advisors | Strong Canadian mid-market relationships | Good for Tier 2 Canadian banks; limited global reach |
+| **Tier 4** | Family offices, specialty credit funds | Variable; relationship-dependent | Opportunistic |
+
+**Recommendation for first capital partner:** Prioritise Tier 1 or Tier 2 for distribution value, not just lowest cost of capital. A facility at SOFR + 250 bps from a Tier 1 partner with five RBC relationships is worth more than SOFR + 200 bps from a Tier 4 partner with none.
+
+### 11.5 The Multiplier Effect on Bank Onboarding
+
+The baseline Revenue-Projection-Model.md trajectory (2 banks/year from Year 3) assumes bank-by-bank sales only. With a Tier 1 capital partner actively co-selling:
+
+| Scenario | Without Capital Partner Distribution | With Active Capital Partner Distribution |
+|----------|--------------------------------------|------------------------------------------|
+| Year 3–5 bank onboarding | 2 banks | 3–4 banks |
+| Year 5–8 bank onboarding | 5 banks | 8–10 banks |
+| Year 10 steady state | 15 banks | 20–25 banks |
+
+The revenue impact at 20–25 banks vs 15 (Phase 3, base case) is ~$400M–$600M additional annual revenue. The distribution value of a well-chosen capital partner can exceed the value of the capital itself.
+
+*Cross-reference: Distribution-Channel-Strategy.md Section 4 for the full three-channel distribution analysis (SWIFT partnership + regulatory tailwind + capital partner).*
 
 ---
 

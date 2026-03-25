@@ -165,6 +165,19 @@ The patent protects the architecture. But the system's actual performance advant
 
 Every month the platform operates, the models improve. Every month a competitor delays building, they fall further behind — not in features, but in **accuracy**. A system trained on 10 million payments prices risk better than one trained on 10,000. The gap compounds relentlessly. A competitor starting from scratch using the published patent specification four years after deployment will produce a system that performs measurably worse than this platform's first-year version. By year nine, that performance gap is, in practical terms, insurmountable without acquiring the platform outright — which is one of the intended exit pathways.
 
+**The data moat has quantifiable thresholds:**
+
+| Deployment Scale | Data State | Competitor Catch-Up Time |
+|-----------------|-----------|--------------------------|
+| 1 bank live | Single-corridor calibration | 12–18 months with equivalent bank access |
+| 5 banks live | Multi-corridor, multi-jurisdiction — qualitatively better models | 2–3 years |
+| 15 banks live | Comprehensive corridor coverage — best-in-class across all rejection classes | 5–7 years |
+| 30+ banks live | Population-level calibration | Cannot be replicated without equivalent deployment history |
+
+The 5-bank threshold is the flywheel trigger: once BPI's models are demonstrably more accurate than a new entrant's, prospective banks prefer BPI not just for the patent protection, but for the performance advantage. Each bank that adopts LIP improves the platform for every other bank — creating a network effect that compounds the legal moat with a practical moat that never expires.
+
+*For the full data moat analysis including competitor data deficit estimates and the Annual Failure Rate Report strategy, see [Competitive-Landscape-Analysis.md §5](Competitive-Landscape-Analysis.md).*
+
 ### 5.3 The Quantified Cost of a 12-Month Delay
 
 | **What Is Foregone** | **Value Lost** | **Why It Cannot Be Recovered** |
@@ -254,3 +267,5 @@ The working demonstration — running live, producing real outputs from real pay
 *Version 2.1 corrections: (A) One-Sentence Summary and Closing Argument: "$88 billion gets stuck every day" corrected — $88B is total daily in-transit volume; daily stuck volume at 3%–5% failure rate is $2.6B–$4.4B per day. (B) Section 4.1 royalty table, all six rows: "P1/P2," "P1–P3," etc. corrected to "P2," "P2–P3," etc. — provisional application P1 carries no enforceable claims and generates no royalties. (C) Section 7.1 PCT cost row: parenthetical added clarifying $50K–$80K figure includes national phase entries in all five jurisdictions at PFD + 30 months.*
 
 *Version 2.2 corrections (2026-03-20, strategic audit): (D) "11 million times a day" SWIFT claim replaced — 11M/day is total SWIFT FIN messages across all types; B2B cross-border payment failures are a fraction of that. (E) "$32 trillion" → "$31.7 trillion" for consistency with FXC Intelligence 2024 source used throughout codebase. (F) p50 latency corrected: 94ms → 45ms (94ms is the p99 SLO, not p50; codebase canonical: LATENCY_P50_TARGET_MS=45, LATENCY_P99_TARGET_MS=94). (G) Added FXC Intelligence source citations to market size claims. (H) Removed specific $192M revenue claim from Section 3 — replaced with reference to Unit Economics Exhibit for transparent calculation waterfall.*
+
+*Version 2.3 additions (2026-03-25): (I) Section 5.2 enhanced with quantified data moat threshold table (1/5/15/30 bank ladder with competitor catch-up estimates) and flywheel mechanism explanation. Cross-reference added to Competitive-Landscape-Analysis.md §5 for full data moat analysis.*

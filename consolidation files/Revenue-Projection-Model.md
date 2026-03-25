@@ -1,10 +1,12 @@
 # REVENUE PROJECTION MODEL
 ## Bottom-Up Bridge Loan Revenue by Deployment Phase
-### VERSION 1.0 | Bridgepoint Intelligence Inc. | 2026-03-20
+### VERSION 1.1 | Bridgepoint Intelligence Inc. | 2026-03-25
 
 ---
 
 > **PURPOSE:** This document replaces the top-down royalty projections in Patent-Family-Architecture-v2.1.md Section 3 with a transparent bottom-up model. Every assumption is stated, every calculation is shown, and three scenarios (conservative, base, upside) are provided. All figures are internal planning estimates only.
+
+> **VERSION 1.1 CHANGE LOG:** Fee shares corrected to align with Unit-Economics-Exhibit.md (canonical source). Phase 1 corrected from 15% to 30%, Phase 2 from 40% to 55%, Phase 3 from 75% to 80%. All revenue tables and capital efficiency analyses recalculated accordingly. Phase multipliers updated: Phase 1→2 is 1.8× (was 2.7×); Phase 2→3 is 1.5× (was 1.9×). See Unit-Economics-Exhibit.md §5 for the authoritative phase split table and income classification.
 
 ---
 
@@ -18,7 +20,7 @@
 | Payment failure/delay rate (midpoint) | 4.0% | STP-derived estimate; BIS/SWIFT GPI range 3–5% |
 | Annual disrupted volume | ~$1.27 trillion | $31.7T × 4% |
 | Addressable bridge volume (excl. compliance holds, same-day resolution) | ~$635 billion | 50% of disrupted volume |
-| Market CAGR | 7% | SWIFT annual traffic growth; BIS CPMI data |
+| Market CAGR | 5.9% | FXC Intelligence B2B value growth 2024–2032 |
 
 ### 1.2 Per-Bank Assumptions
 
@@ -35,9 +37,11 @@
 
 | Phase | BPI Fee Share | Capital Source | Earliest Start |
 |-------|-------------|----------------|----------------|
-| Phase 1 (Licensor) | 15% | Bank funds 100% | Year 1 (pilot) |
-| Phase 2 (Hybrid) | 40% | 30% bank / 70% BPI | Year 3–4 (requires BPI capital facility) |
-| Phase 3 (Full MLO) | 75% | BPI funds 100% | Year 5–7 (requires lending license + treasury) |
+| Phase 1 (Licensor) | **30%** | Bank funds 100% | Year 1 (pilot) |
+| Phase 2 (Hybrid) | **55%** | 30% bank / 70% BPI | Year 3–4 (requires BPI capital facility) |
+| Phase 3 (Full MLO) | **80%** | BPI funds 100% | Year 5–7 (requires lending license + treasury) |
+
+*Source of record: Unit-Economics-Exhibit.md §5.1. Phase 1 income is IP royalty; Phase 2/3 is lending revenue — different tax treatment applies.*
 
 ---
 
@@ -60,9 +64,9 @@ BPI revenue = total_fee × bpi_fee_share
 | Number of loans | $42B / $800K | 52,500 loans/year |
 | Fee per loan | $800K × (350/10,000) × (5/365) | $383.56 |
 | Total fee revenue | 52,500 × $383.56 | **$20.1M/year** |
-| BPI revenue (Phase 1, 15%) | $20.1M × 0.15 | **$3.02M/year** |
-| BPI revenue (Phase 2, 40%) | $20.1M × 0.40 | **$8.05M/year** |
-| BPI revenue (Phase 3, 75%) | $20.1M × 0.75 | **$15.1M/year** |
+| BPI revenue (Phase 1, **30%**) | $20.1M × 0.30 | **$6.0M/year** |
+| BPI revenue (Phase 2, **55%**) | $20.1M × 0.55 | **$11.1M/year** |
+| BPI revenue (Phase 3, **80%**) | $20.1M × 0.80 | **$16.1M/year** |
 
 ### 2.3 Single Tier 1 Bank — Base Scenario (Phase 1)
 
@@ -72,9 +76,9 @@ BPI revenue = total_fee × bpi_fee_share
 | Number of loans | $100B / $1M | 100,000 loans/year |
 | Fee per loan | $1M × (400/10,000) × (7/365) | $767.12 |
 | Total fee revenue | 100,000 × $767.12 | **$76.7M/year** |
-| BPI revenue (Phase 1, 15%) | $76.7M × 0.15 | **$11.5M/year** |
-| BPI revenue (Phase 2, 40%) | $76.7M × 0.40 | **$30.7M/year** |
-| BPI revenue (Phase 3, 75%) | $76.7M × 0.75 | **$57.5M/year** |
+| BPI revenue (Phase 1, **30%**) | $76.7M × 0.30 | **$23.0M/year** |
+| BPI revenue (Phase 2, **55%**) | $76.7M × 0.55 | **$42.2M/year** |
+| BPI revenue (Phase 3, **80%**) | $76.7M × 0.80 | **$61.4M/year** |
 
 ### 2.4 Single Tier 1 Bank — Upside Scenario (Phase 1)
 
@@ -84,9 +88,9 @@ BPI revenue = total_fee × bpi_fee_share
 | Number of loans | $216B / $1.5M | 144,000 loans/year |
 | Fee per loan | $1.5M × (450/10,000) × (10/365) | $1,849.32 |
 | Total fee revenue | 144,000 × $1,849.32 | **$266.3M/year** |
-| BPI revenue (Phase 1, 15%) | $266.3M × 0.15 | **$39.9M/year** |
-| BPI revenue (Phase 2, 40%) | $266.3M × 0.40 | **$106.5M/year** |
-| BPI revenue (Phase 3, 75%) | $266.3M × 0.75 | **$199.7M/year** |
+| BPI revenue (Phase 1, **30%**) | $266.3M × 0.30 | **$79.9M/year** |
+| BPI revenue (Phase 2, **55%**) | $266.3M × 0.55 | **$146.5M/year** |
+| BPI revenue (Phase 3, **80%**) | $266.3M × 0.80 | **$213.0M/year** |
 
 ---
 
@@ -108,36 +112,36 @@ BPI revenue = total_fee × bpi_fee_share
 
 | Year | Banks | Phase | Per-Bank BPI Rev | Total BPI Revenue |
 |------|-------|-------|-----------------|-------------------|
-| 3 | 1 | Phase 1 | $3.0M | **$3.0M** |
-| 4 | 2 | Phase 1 | $3.0M | **$6.0M** |
-| 5 | 3 | Phase 1/2 mix | $4.7M avg | **$14.1M** |
-| 6 | 5 | Phase 2 | $8.1M | **$40.3M** |
-| 7 | 7 | Phase 2 | $8.1M | **$56.4M** |
-| 8 | 10 | Phase 2/3 mix | $10.5M avg | **$105M** |
-| 10 | 15 | Phase 3 | $15.1M | **$226M** |
+| 3 | 1 | Phase 1 | $6.0M | **$6.0M** |
+| 4 | 2 | Phase 1 | $6.0M | **$12.0M** |
+| 5 | 3 | Phase 1/2 mix | $7.7M avg | **$23.1M** |
+| 6 | 5 | Phase 2 | $11.1M | **$55.3M** |
+| 7 | 7 | Phase 2 | $11.1M | **$77.4M** |
+| 8 | 10 | Phase 2/3 mix | $12.6M avg | **$126M** |
+| 10 | 15 | Phase 3 | $16.1M | **$241M** |
 
 ### 3.3 Base Scenario — BPI Annual Revenue
 
 | Year | Banks | Phase | Per-Bank BPI Rev | Total BPI Revenue |
 |------|-------|-------|-----------------|-------------------|
-| 3 | 1 | Phase 1 | $11.5M | **$11.5M** |
-| 4 | 2 | Phase 1 | $11.5M | **$23.0M** |
-| 5 | 3 | Phase 1/2 mix | $17.8M avg | **$53.4M** |
-| 6 | 5 | Phase 2 | $30.7M | **$153M** |
-| 7 | 8 | Phase 2 | $30.7M | **$245M** |
-| 8 | 10 | Phase 2/3 mix | $40.0M avg | **$400M** |
-| 10 | 15 | Phase 3 | $57.5M | **$863M** |
+| 3 | 1 | Phase 1 | $23.0M | **$23.0M** |
+| 4 | 2 | Phase 1 | $23.0M | **$46.0M** |
+| 5 | 3 | Phase 1/2 mix | $29.4M avg | **$88.3M** |
+| 6 | 5 | Phase 2 | $42.2M | **$211M** |
+| 7 | 8 | Phase 2 | $42.2M | **$338M** |
+| 8 | 10 | Phase 2/3 mix | $48.0M avg | **$480M** |
+| 10 | 15 | Phase 3 | $61.4M | **$921M** |
 
 ### 3.4 Upside Scenario — BPI Annual Revenue
 
 | Year | Banks | Phase | Per-Bank BPI Rev | Total BPI Revenue |
 |------|-------|-------|-----------------|-------------------|
-| 3 | 1 | Phase 1 | $39.9M | **$39.9M** |
-| 4 | 3 | Phase 1 | $39.9M | **$120M** |
-| 5 | 5 | Phase 2 | $106.5M | **$533M** |
-| 6 | 7 | Phase 2 | $106.5M | **$746M** |
-| 7 | 10 | Phase 2/3 mix | $140M avg | **$1.4B** |
-| 8 | 15 | Phase 3 | $199.7M | **$3.0B** |
+| 3 | 1 | Phase 1 | $79.9M | **$79.9M** |
+| 4 | 3 | Phase 1 | $79.9M | **$240M** |
+| 5 | 5 | Phase 2 | $146.5M | **$733M** |
+| 6 | 7 | Phase 2 | $146.5M | **$1.03B** |
+| 7 | 10 | Phase 2/3 mix | $166.5M avg | **$1.66B** |
+| 8 | 15 | Phase 3 | $213.0M | **$3.20B** |
 
 ---
 
@@ -145,9 +149,9 @@ BPI revenue = total_fee × bpi_fee_share
 
 | Scenario | Cumulative BPI Revenue | Phase 3 Steady-State (Year 10) |
 |----------|----------------------|-------------------------------|
-| **Conservative** | ~$450M | ~$226M/year |
-| **Base** | ~$1.75B | ~$863M/year |
-| **Upside** | ~$5.8B | ~$3.0B/year |
+| **Conservative** | ~$725M | ~$241M/year |
+| **Base** | ~$2.8B | ~$921M/year |
+| **Upside** | ~$6.9B (Y3–Y8) | ~$3.2B/year |
 
 ---
 
@@ -157,8 +161,8 @@ The Patent-Family-Architecture-v2.1.md projected $18B–$35B in cumulative royal
 
 | Metric | Prior Projection | Bottom-Up (Base) | Ratio |
 |--------|-----------------|-------------------|-------|
-| Year 4–8 annual revenue | $20M–$80M | $23M–$400M | Overlapping range (lower end matches; upper end exceeds due to Phase 2/3 transition) |
-| Cumulative Years 3–10 | ~$2B (implied from table) | ~$1.75B | Comparable |
+| Year 4–8 annual revenue | $20M–$80M | $46M–$480M | Overlapping range (lower end matches; upper end exceeds due to Phase 2/3 transition) |
+| Cumulative Years 3–10 | ~$2B (implied from table) | ~$2.8B | Comparable |
 | Cumulative Years 3–32 | $18B–$35B (claimed) | Depends on Year 10+ growth | See note below |
 
 **Note on long-horizon projections:** The prior $18B–$35B cumulative figure extrapolated to Year 32 using assumptions about market growth to $200T+ and 20% penetration. This bottom-up model does not project beyond Year 10 because assumptions about bank onboarding rates, market growth, and regulatory evolution beyond that horizon are speculative. For internal planning, use the Year 10 steady-state figure and apply market CAGR growth conservatively.
@@ -169,9 +173,9 @@ The Patent-Family-Architecture-v2.1.md projected $18B–$35B in cumulative royal
 
 The model is most sensitive to:
 
-1. **Number of banks onboarded** — each Tier 1 bank is worth $3M–$40M/year to BPI depending on scenario and phase
+1. **Number of banks onboarded** — each Tier 1 bank is worth $6M–$80M/year to BPI depending on scenario and phase
 2. **Average principal** — every $100K increase in average principal adds ~$38–$77 per loan in fee
-3. **Deployment phase** — Phase 1→2 transition multiplies BPI revenue 2.7× per bank; Phase 2→3 adds another 1.9×
+3. **Deployment phase** — Phase 1→2 transition multiplies BPI revenue **1.8×** per bank; Phase 2→3 adds another **1.5×**
 4. **Fee rate** — C2 model's risk-adjusted rate matters more than the floor; most loans price above 300 bps
 
 The model is least sensitive to: maturity duration (most loans are 5–10 days regardless of class) and failure rate (range is narrow: 3–5%).
@@ -201,7 +205,7 @@ Concurrent capital deployed = annual_eligible_volume × (avg_maturity / 365)
 
 ### 8.2 Working Capital Requirements by Phase
 
-**Phase 1 (Licensor):** BPI deploys **$0**. Bank funds 100% of every loan. BPI earns 15% IP royalty with zero capital at risk. This is the proof-of-concept phase.
+**Phase 1 (Licensor):** BPI deploys **$0**. Bank funds 100% of every loan. BPI earns **30%** IP royalty with zero capital at risk. This is the proof-of-concept phase.
 
 **Phase 2 (Hybrid):** BPI's SPV funds 70% of each loan. The bank continues to fund 30%. Phase 2 does NOT launch across a bank's entire book simultaneously — it begins with 1–2 high-value corridors and expands.
 
@@ -233,29 +237,29 @@ SPV Capital Stack (per $700K deployed on a $1M Phase 2 loan):
 
 | Item | Annual Calculation | Amount |
 |------|-------------------|--------|
-| Fee per loan (BPI's 40%) | $767.12 × 0.40 | $306.85 |
-| Annual fee (52 cycles) | $306.85 × 52 | $15,956 |
+| Fee per loan (BPI's **55%**) | $767.12 × 0.55 | $421.92 |
+| Annual fee (52 cycles) | $421.92 × 52 | $21,940 |
 | Senior lender cost | $595K × 7% | $41,650 |
-| **Net to BPI equity** | $15,956 − $41,650 | **−$25,694** |
+| **Net to BPI equity** | $21,940 − $41,650 | **−$19,710** |
 | BPI equity at risk | 15% of $700K | $105,000 |
-| **BPI equity ROE** | | **−24.5%** |
+| **BPI equity ROE** | | **−18.8%** |
 
 **At 400 bps floor pricing, Phase 2 is deeply unprofitable.** But the floor is the minimum — the C2 model risk-prices most loans above the floor.
 
 **Breakeven analysis — what average fee rate does Phase 2 need?**
 
-| Average Fee Rate | Annual BPI Fee (40%, 52 cycles) | Senior Cost | Net to BPI Equity | ROE on $105K |
+| Average Fee Rate | Annual BPI Fee (55%, 52 cycles) | Senior Cost | Net to BPI Equity | ROE on $105K |
 |------------------|---------------------------------|-------------|-------------------|--------------|
-| 400 bps | $15,956 | $41,650 | −$25,694 | **−24.5%** |
-| 700 bps | $27,923 | $41,650 | −$13,727 | **−13.1%** |
-| 1,000 bps | $39,890 | $41,650 | −$1,760 | **−1.7%** |
-| 1,100 bps | $43,879 | $41,650 | +$2,229 | **+2.1%** |
+| 400 bps | $21,940 | $41,650 | −$19,710 | **−18.8%** |
+| 700 bps | $38,395 | $41,650 | −$3,255 | **−3.1%** |
+| 800 bps | $43,880 | $41,650 | +$2,230 | **+2.1%** |
+| 1,000 bps | $54,849 | $41,650 | +$13,199 | **+12.6%** |
 
-**Phase 2 breaks even at ~1,050 bps average.** This is achievable for Class C (21-day) loans and higher-risk corridors, but not for the bulk of the book. **Phase 2 is a strategic investment, not a profit center.**
+**Phase 2 breaks even at ~770 bps average.** This is achievable for Class C (21-day) loans and higher-risk corridors, but not for the bulk of the book. **Phase 2 is a strategic investment, not a profit center.**
 
 ### 8.5 Phase 3 Capital Efficiency — Where the Economics Transform
 
-At Phase 3, BPI's SPV funds 100% and keeps 75% of fees. Post-securitization, the senior tranche cost drops to ~5%.
+At Phase 3, BPI's SPV funds 100% and keeps **80%** of fees. Post-securitization, the senior tranche cost drops to ~5%.
 
 **Per $1M SPV position, cycling 52× per year:**
 
@@ -264,15 +268,15 @@ At Phase 3, BPI's SPV funds 100% and keeps 75% of fees. Post-securitization, the
 | Senior tranche | 85% of $1M = $850K at 5% | $42,500 |
 | BPI equity | 15% of $1M | $150,000 |
 
-| Average Fee Rate | Annual BPI Fee (75%, 52 cycles) | Senior Cost | Net to BPI Equity | ROE on $150K |
+| Average Fee Rate | Annual BPI Fee (80%, 52 cycles) | Senior Cost | Net to BPI Equity | ROE on $150K |
 |------------------|---------------------------------|-------------|-------------------|--------------|
-| 400 bps | $29,918 | $42,500 | −$12,582 | **−8.4%** |
-| 560 bps | $41,886 | $42,500 | −$614 | **≈ 0% (breakeven)** |
-| 700 bps | $52,794 | $42,500 | +$10,294 | **+6.9%** |
-| 1,000 bps | $74,794 | $42,500 | +$32,294 | **+21.5%** |
-| 1,500 bps | $112,194 | $42,500 | +$69,694 | **+46.5%** |
+| 400 bps | $31,912 | $42,500 | −$10,588 | **−7.1%** |
+| 530 bps | $42,317 | $42,500 | −$183 | **≈ 0% (breakeven)** |
+| 700 bps | $55,846 | $42,500 | +$13,346 | **+8.9%** |
+| 1,000 bps | $79,781 | $42,500 | +$37,281 | **+24.9%** |
+| 1,500 bps | $119,671 | $42,500 | +$77,171 | **+51.4%** |
 
-**Phase 3 breaks even at ~560 bps average.** At the Investor Briefing's demonstrated 706 bps, BPI equity earns **~6.9% ROE** — modest but positive. At higher average rates (achievable through C2 model risk-pricing), returns become compelling.
+**Phase 3 breaks even at ~530 bps average.** At the Investor Briefing's demonstrated 706 bps, BPI equity earns **~8.9% ROE** — solid for a short-duration lending product. At higher average rates (achievable through C2 model risk-pricing), returns become compelling.
 
 ### 8.6 The Critical Variable: Average Fee Rate Across the Book
 
@@ -289,11 +293,11 @@ The 300 bps floor is the **minimum**. The C2 model's risk-adjusted pricing typic
 |--------|-------------------------------|----------------------------|
 | Loans/year | ~2,625 | ~52,500 |
 | Total annual fee | ~$2.5M | ~$49.2M |
-| BPI share | ~$987K (40%) | ~$36.9M (75%) |
+| BPI share | ~$1.4M (**55%**) | ~$39.4M (**80%**) |
 | Senior lender cost | ~$2.0M | ~$32.7M |
-| **Net to BPI equity** | **−$1.0M** | **+$4.2M** |
+| **Net to BPI equity** | **−$0.6M** | **+$6.7M** |
 | BPI equity at risk | ~$4.2M | ~$121M |
-| **BPI equity ROE** | **−24%** | **+3.5%** |
+| **BPI equity ROE** | **−14%** | **+5.5%** |
 
 **At base case volumes (100,000 loans/year) and 700 bps average, Phase 3:**
 
@@ -301,11 +305,11 @@ The 300 bps floor is the **minimum**. The C2 model's risk-adjusted pricing typic
 |--------|-----------|-----------------|
 | Loans/year | 100,000 | 50,000 |
 | Total annual fee | ~$134.2M | ~$67.1M |
-| BPI share (75%) | ~$100.7M | ~$50.3M |
+| BPI share (**80%**) | ~$107.4M | ~$53.7M |
 | Senior lender cost | ~$81.4M | ~$40.7M |
-| **Net to BPI equity** | **+$19.2M** | **+$9.6M** |
+| **Net to BPI equity** | **+$25.9M** | **+$13.0M** |
 | BPI equity at risk | ~$288M | ~$144M |
-| **BPI equity ROE** | **+6.7%** | **+6.7%** |
+| **BPI equity ROE** | **+9.0%** | **+9.0%** |
 
 ### 8.7 The Path to Profitability
 
@@ -323,4 +327,4 @@ Phase 2/3 capital economics improve through three mechanisms:
 
 ---
 
-*All fee parameters sourced from `lip/common/constants.py`. Phase splits from `lip/common/deployment_phase.py`. Fee formula from `lip/c2_pd_model/fee.py`. Capital efficiency analysis cross-references `Capital-Partner-Strategy.md`.*
+*All fee parameters sourced from `lip/common/constants.py`. Phase splits from `lip/common/deployment_phase.py` and `Unit-Economics-Exhibit.md §5.1` (canonical). Fee formula from `lip/c2_pd_model/fee.py`. Capital efficiency analysis cross-references `Capital-Partner-Strategy.md`.*
