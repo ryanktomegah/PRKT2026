@@ -380,7 +380,7 @@ def generate_sr117_report(
             "Synthetic data generated from BIS/SWIFT GPI calibrated distributions. "
             "See model card for detailed caveats."
         ),
-        feature_count=metrics.get("feature_count", 0),
+        feature_count=int(metrics.get("feature_count", 0)),
         missing_data_treatment="Features with missing values imputed to corridor-level medians.",
         drift_detection_method=drift_config.get("method", "ADWIN"),
         drift_features_count=drift_config.get("features_count", 0),

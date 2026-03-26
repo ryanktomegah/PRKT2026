@@ -15,7 +15,7 @@ recommendation for production monitoring.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ class FeatureDriftMonitor:
 
         # Try real ADWIN, fall back to in-memory approximation
         ADWIN = _try_import_river_adwin()
-        self._detectors: Dict[str, object] = {}
+        self._detectors: Dict[str, Any] = {}
         self._using_river = ADWIN is not None
 
         for name in self._feature_names:

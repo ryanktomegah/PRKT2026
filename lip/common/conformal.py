@@ -118,7 +118,8 @@ class ConformalPredictor:
             raise RuntimeError(
                 "ConformalPredictor is not calibrated — call calibrate() first"
             )
-        q = self._quantile  # type: ignore[assignment]
+        assert self._quantile is not None  # guaranteed by is_calibrated check above
+        q = self._quantile
         lower = point_prediction - q
         upper = point_prediction + q
         return ConformalInterval(
