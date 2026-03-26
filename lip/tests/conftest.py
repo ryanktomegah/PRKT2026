@@ -231,6 +231,12 @@ def pipeline(
 
 
 # ---------------------------------------------------------------------------
+# Deterministic test identifiers — stable UETRs for snapshot-based assertions
+# ---------------------------------------------------------------------------
+
+STABLE_UETR = "20010627-1979-4966-a1b2-c3d4e5f60718"
+
+# ---------------------------------------------------------------------------
 # Event factory helpers
 # ---------------------------------------------------------------------------
 
@@ -238,9 +244,9 @@ def make_event(
     uetr: Optional[str] = None,
     rejection_code: str = "CURR",      # CLASS_B → 7-day maturity
     narrative: Optional[str] = None,
-    amount: Decimal = Decimal("1000000"),
+    amount: Decimal = Decimal("1979066.27"),
     currency: str = "USD",
-    sending_bic: str = "AAAAGB2LXXX",
+    sending_bic: str = "TGMHGB01XX",
     receiving_bic: str = "BBBBDE2LXXX",
     rail: str = "SWIFT",
 ) -> NormalizedEvent:

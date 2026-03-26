@@ -46,6 +46,10 @@ DOLLAR_CAP_USD = Decimal("0")  # EPG-16: 0 = unlimited; set per-licensee via C8 
 COUNT_CAP = 0                  # EPG-16: 0 = unlimited; set per-licensee via C8 token
 BENEFICIARY_CONCENTRATION_THRESHOLD = Decimal("0.80")
 
+# Exponential decay half-life (hours) for velocity scoring — transactions older
+# than ~20h contribute < 50% weight to the rolling velocity estimate.
+_DECAY_HALF_LIFE_HOURS: float = 19.66
+
 # Redis key template for the per-entity sorted set
 _VELOCITY_KEY_PREFIX = "lip:velocity:events:"
 

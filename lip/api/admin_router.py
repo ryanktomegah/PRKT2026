@@ -135,6 +135,7 @@ try:
         admin_service: BPIAdminService,
         regulatory_reporter: Any = None,
         auth_dependency: Any = None,
+        risk_engine: Any = None,
     ) -> APIRouter:
         """Create a FastAPI APIRouter pre-bound to a ``BPIAdminService`` instance.
 
@@ -210,6 +211,56 @@ try:
                     export_sr117_reports_json(reports),
                     media_type="application/json",
                 )
+
+        # ── Stress testing endpoints (Phase 2.6) ──────────────────────────
+        if risk_engine is not None:
+            @router.post("/stress-test")
+            def run_stress_test(num_simulations: int = 1000) -> Dict:
+                """Run Monte Carlo VaR stress test on current portfolio."""
+                import json as _json
+
+                from lip.risk.stress_testing import (
+                    export_var_report_json,
+                    generate_daily_var_report,
+                )
+                from lip.risk.var_monte_carlo import (
+                    MCPosition,
+                )
+
+                positions = [
+                    MCPosition(
+                        loan_id=pos.loan_id,
+                        principal=float(pos.principal),
+                        pd=pos.pd,
+                        lgd=pos.lgd,
+                        corridor=pos.corridor,
+                        rejection_class=pos.rejection_class,
+                    )
+                    for pos in risk_engine.positions
+                ]
+                report = generate_daily_var_report(positions, num_simulations=num_simulations)
+                return _json.loads(export_var_report_json(report))
+
+        # ── Model card generation endpoint (Phase 2.7) ────────────────────
+        @router.post("/model-card")
+        def generate_model_card_endpoint(
+            component: str = "C1",
+        ) -> Dict:
+            """Generate a regulatory model card for the specified component."""
+            import json as _json
+
+            from lip.compliance.model_card_generator import (
+                export_model_card_json,
+                generate_model_card,
+            )
+
+            card = generate_model_card(
+                component=component,
+                model_metadata={"component": component},
+                training_results={"is_synthetic": True},
+                evaluation_results={"metrics": {}},
+            )
+            return _json.loads(export_model_card_json(card))
 
         return router
 

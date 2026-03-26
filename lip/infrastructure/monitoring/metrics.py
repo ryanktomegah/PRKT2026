@@ -1,6 +1,14 @@
 """
 metrics.py — Prometheus metrics for LIP.
-Tracks: inference latency p50/p99, queue depth, AUC drift.
+Tracks: inference latency p50/p99, queue depth, AUC drift, feature drift.
+
+When ``prometheus_client`` is installed, metrics are registered in the default
+Prometheus CollectorRegistry and exposed via ``generate_latest()`` for scraping.
+The ``/metrics`` HTTP endpoint is wired in ``api/app.py``.
+
+When ``prometheus_client`` is NOT installed (e.g. unit tests), all metrics are
+tracked in-memory with the same API surface — zero behavioural difference from
+the caller's perspective.
 """
 import logging
 from collections import deque
@@ -30,6 +38,18 @@ METRIC_HUMAN_OVERRIDE_REQUESTS = "lip_human_override_requests_total"
 METRIC_HUMAN_OVERRIDE_EXPIRED = "lip_human_override_expired_total"
 METRIC_ROYALTY_COLLECTED_USD = "lip_royalty_collected_usd"
 METRIC_KAFKA_PRODUCER_ERRORS = "lip_kafka_producer_errors"
+
+# Drift detection metrics (SR 11-7 ongoing monitoring)
+METRIC_FEATURE_DRIFT = "lip_feature_drift_detected"
+METRIC_FEATURE_DRIFT_MAGNITUDE = "lip_feature_drift_magnitude"
+
+# Portfolio risk metrics
+METRIC_PORTFOLIO_VAR_99 = "lip_portfolio_var_99_usd"
+METRIC_PORTFOLIO_CONCENTRATION_HHI = "lip_portfolio_concentration_hhi"
+
+# Conformal prediction metrics
+METRIC_CONFORMAL_COVERAGE = "lip_conformal_coverage"
+METRIC_CONFORMAL_INTERVAL_WIDTH = "lip_conformal_interval_width"
 
 
 @dataclass
@@ -97,9 +117,13 @@ class PrometheusMetricsCollector:
     def __init__(self, push_gateway: Optional[str] = None):
         """Initialise the collector, optionally with a Prometheus push gateway.
 
-        Attempts to import ``prometheus_client``; falls back to in-memory
-        counters and gauges when the library is not installed (e.g., in
-        unit tests).
+        When ``prometheus_client`` is installed, registers real Histogram,
+        Gauge, and Counter instruments in the default CollectorRegistry.
+        These are scraped by Prometheus via the ``/metrics`` HTTP endpoint
+        (see ``api/app.py``).
+
+        Falls back to in-memory counters and gauges when the library is not
+        installed (e.g., in unit tests).
 
         Args:
             push_gateway: Optional ``host:port`` of the Prometheus
@@ -111,9 +135,56 @@ class PrometheusMetricsCollector:
         self._counters: Dict[str, int] = {}
         self._gauges: Dict[str, float] = {}
         self._prom_available = False
+        self._prom_histogram = None
+        self._prom_gauges: Dict[str, object] = {}
+        self._prom_counters: Dict[str, object] = {}
         try:
-            import prometheus_client  # noqa: F401
+            import prometheus_client as prom
             self._prom_available = True
+            # Real Prometheus instruments — scraped via /metrics
+            self._prom_histogram = prom.Histogram(
+                "lip_inference_latency_seconds",
+                "C1/C2 inference latency",
+                ["component"],
+                buckets=[0.005, 0.010, 0.025, 0.045, 0.050, 0.075, 0.094, 0.100, 0.250, 0.500],
+            )
+            self._prom_gauges["auc"] = prom.Gauge(
+                "lip_model_auc", "Model AUC by component", ["component"],
+            )
+            self._prom_gauges["queue_depth"] = prom.Gauge(
+                "lip_queue_depth", "Kafka consumer queue depth",
+            )
+            self._prom_gauges["degraded_mode"] = prom.Gauge(
+                "lip_degraded_mode_active", "1 if any component is degraded",
+            )
+            self._prom_gauges["kill_switch"] = prom.Gauge(
+                "lip_kill_switch_active_gauge", "1 if kill switch is engaged",
+            )
+            self._prom_gauges["drift_magnitude"] = prom.Gauge(
+                "lip_feature_drift_magnitude_gauge", "Latest drift magnitude", ["feature"],
+            )
+            self._prom_gauges["var_99"] = prom.Gauge(
+                "lip_portfolio_var_99", "99th percentile Value at Risk in USD",
+            )
+            self._prom_gauges["hhi"] = prom.Gauge(
+                "lip_portfolio_hhi", "Herfindahl-Hirschman Index by dimension", ["dimension"],
+            )
+            self._prom_gauges["conformal_coverage"] = prom.Gauge(
+                "lip_conformal_coverage_gauge", "Conformal prediction coverage", ["component"],
+            )
+            self._prom_gauges["conformal_width"] = prom.Gauge(
+                "lip_conformal_interval_width_gauge", "Conformal interval width", ["component"],
+            )
+            self._prom_counters["drift"] = prom.Counter(
+                "lip_feature_drift_total", "Drift events detected", ["feature"],
+            )
+            self._prom_counters["loan_offers"] = prom.Counter(
+                "lip_loan_offers_counter", "Total loan offers generated",
+            )
+            self._prom_counters["repayments"] = prom.Counter(
+                "lip_repayments_counter", "Total repayments processed",
+            )
+            logger.info("prometheus_client wired — real metrics registered in default registry")
         except ImportError:
             logger.debug("prometheus_client not installed; using in-memory metrics")
 
@@ -122,14 +193,16 @@ class PrometheusMetricsCollector:
     def record_inference_latency(self, latency_ms: float, component: str = "c1") -> None:
         """Record an inference latency sample and warn if it exceeds the SLO.
 
-        Logs a warning when ``latency_ms > 94`` to surface SLO breaches in
-        the application log before a PagerDuty alert fires.
+        When ``prometheus_client`` is available, also pushes the observation
+        to the real Histogram (in seconds, per Prometheus convention).
 
         Args:
             latency_ms: Observed inference time in milliseconds.
             component: Short component identifier (default ``'c1'``).
         """
         self._inference_latency.record(latency_ms)
+        if self._prom_histogram is not None:
+            self._prom_histogram.labels(component=component).observe(latency_ms / 1000.0)
         if latency_ms > 94:
             logger.warning("P99 latency threshold exceeded: %.1fms component=%s", latency_ms, component)
 
@@ -180,6 +253,8 @@ class PrometheusMetricsCollector:
             component: Short component identifier (default ``'c1'``).
         """
         self._gauges[f"{METRIC_AUC}_{component}"] = auc
+        if "auc" in self._prom_gauges:
+            self._prom_gauges["auc"].labels(component=component).set(auc)
         if auc < 0.80:
             logger.warning("AUC drift alert: %.3f below 0.80 threshold", auc)
 
@@ -291,6 +366,26 @@ class PrometheusMetricsCollector:
         except Exception as exc:
             logger.error("Failed to push metrics: %s", exc)
             return False
+
+    def generate_latest(self) -> bytes:
+        """Return Prometheus exposition format for the ``/metrics`` endpoint.
+
+        When ``prometheus_client`` is installed, delegates to the library's
+        ``generate_latest()`` function which serialises all registered
+        instruments.  Returns an empty bytes object when the library is
+        not available.
+
+        Returns:
+            Prometheus text exposition format as bytes.
+        """
+        if not self._prom_available:
+            return b""
+        try:
+            from prometheus_client import generate_latest
+            return generate_latest()
+        except Exception as exc:
+            logger.error("Failed to generate Prometheus metrics: %s", exc)
+            return b""
 
     def snapshot(self) -> dict:
         """Return a snapshot of all current metrics."""

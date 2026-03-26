@@ -180,3 +180,33 @@ PARTIAL_SETTLEMENT_MIN_PCT = Decimal("0.10")  # QUANT sign-off: 2026-03-21
 # GAP-17: loan_amount vs original_payment_amount_usd comparison tolerance.
 # Covers FX rounding in cross-currency corridors.
 AMOUNT_VALIDATION_TOLERANCE_USD = Decimal("0.01")  # QUANT sign-off: 2026-03-21
+
+# ── Conformal prediction (QUANT sign-off required) ─────────────────────────
+# Default coverage level for split conformal prediction intervals.
+# 90% = 1 in 10 observations may fall outside the interval.
+CONFORMAL_COVERAGE_LEVEL = 0.90
+# Fee uncertainty scaling factor: wider interval → higher fee (economically correct).
+# adjusted_fee = baseline_fee * (1 + interval_width * UNCERTAINTY_SCALE_FACTOR)
+CONFORMAL_UNCERTAINTY_SCALE_FACTOR = 0.5  # QUANT sign-off: 2026-03-26
+
+# ── Portfolio risk thresholds (QUANT sign-off required) ─────────────────────
+# HHI concentration limit (2500 = highly concentrated per DOJ/FTC guidelines)
+PORTFOLIO_MAX_HHI = Decimal("2500")
+# Single-name exposure limit (25% of total portfolio)
+PORTFOLIO_MAX_SINGLE_NAME_PCT = Decimal("0.25")
+# VaR confidence level
+PORTFOLIO_VAR_CONFIDENCE = 0.99
+# VaR horizon in days
+PORTFOLIO_VAR_HORIZON_DAYS = 10
+
+# ── Settlement time prediction (QUANT sign-off required) ───────────────────
+# Safety margin applied to predicted settlement time for dynamic maturity
+SETTLEMENT_SAFETY_MARGIN = 1.5
+# Minimum dynamic maturity in hours
+SETTLEMENT_MIN_MATURITY_HOURS = 12.0
+
+# ── Cancellation detection (CIPHER sign-off required) ──────────────────────
+# Window after funding within which a camt.056 recall is flagged as suspicious
+CANCELLATION_SUSPICION_WINDOW_SECONDS = 300  # 5 minutes
+# Sender recall frequency threshold (per 24h) for behavioral alert
+CANCELLATION_SENDER_RECALL_THRESHOLD = 3

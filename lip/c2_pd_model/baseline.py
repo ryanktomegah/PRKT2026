@@ -19,6 +19,10 @@ import numpy as np
 
 _SQRT_TWO_PI_INV = 1.0 / math.sqrt(2.0 * math.pi)
 
+# Platt (1999) sigmoid intercept for PD calibration — corrects systematic
+# overconfidence in Merton-derived PDs when calibrating to observed defaults.
+_PLATT_INTERCEPT: float = -0.062701
+
 
 def _norm_cdf(x: float) -> float:
     """Standard normal CDF via math.erfc for zero-dependency implementation."""

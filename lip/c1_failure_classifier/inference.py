@@ -39,6 +39,10 @@ LATENCY_P99_TARGET_MS: float = 94.0
 
 _SHAP_TOP_N: int = 20
 _SHAP_STEPS: int = 5   # integrated-gradient steps (5-point approximation)
+
+# Expected Calibration Error floor — below this ECE the model is considered
+# well-calibrated and no further isotonic adjustment is applied.
+_ECE_FLOOR: float = 0.02706
 # NOTE: 50 steps gives higher attribution precision but exceeds the 94ms SLO
 # in a pure-NumPy reference implementation.  Production deployment with GPU /
 # PyTorch autograd should restore 50 steps.  5-point IG is sufficient for

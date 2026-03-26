@@ -119,6 +119,11 @@ class PipelineResult:
     loan_state: Optional[str] = None
     payment_state_history: List[str] = field(default_factory=list)
 
+    # Conformal prediction intervals (EU AI Act Art.13 transparency)
+    prediction_interval_lower: Optional[float] = None
+    prediction_interval_upper: Optional[float] = None
+    coverage_level: Optional[float] = None
+
     # Latency
     component_latencies: Dict[str, float] = field(default_factory=dict)
     total_latency_ms: float = 0.0

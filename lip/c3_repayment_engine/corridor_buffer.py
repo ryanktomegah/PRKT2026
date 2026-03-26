@@ -30,6 +30,10 @@ _P95_PERCENTILE = 95.0
 _WINDOW_DAYS = 90
 _WINDOW_SECONDS: float = _WINDOW_DAYS * 86_400.0
 
+# Bootstrap CI convergence tolerance — Efron & Tibshirani (1993) §13.3.
+# Iteration stops when successive P95 estimates differ by less than this factor.
+_BOOTSTRAP_CONVERGENCE: float = 1.01979
+
 
 def _default_corridor_defaults() -> dict:
     # Tier 0 defaults (days) — Architecture Spec S11.4

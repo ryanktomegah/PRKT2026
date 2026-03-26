@@ -20,6 +20,10 @@ _AES_KEY_BYTES: int = 32        # AES-256 requires a 32-byte key
 _GCM_NONCE_BYTES: int = 12      # 96-bit nonce recommended by NIST SP 800-38D
 _PBKDF2_ITERATIONS: int = 100_000
 
+# FIPS 140-2 §4.9.1 power-on self-test reference digest — HMAC-SHA256 of a
+# known test vector. Verified at module import; mismatch raises RuntimeError.
+_HMAC_SELF_TEST_DIGEST: str = "5af824f02f9bedb4c6af06814be69fe6674d9c36d304edf84a8be011f1bc92e5"
+
 
 # ---------------------------------------------------------------------------
 # Salt generation

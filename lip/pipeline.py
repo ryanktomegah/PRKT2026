@@ -141,6 +141,10 @@ class LIPPipeline:
         global_latency_tracker: Optional[LatencyTracker] = None,
         corridor_rates: Optional[dict] = None,
         redis_client=None,
+        conformal_predictor: Optional[Any] = None,
+        risk_engine: Optional[Any] = None,
+        drift_monitor: Optional[Any] = None,
+        settlement_predictor: Optional[Any] = None,
     ) -> None:
         self._c1 = c1_engine
         self._c2 = c2_engine
@@ -161,6 +165,15 @@ class LIPPipeline:
         # If not injected, attempt connection via REDIS_URL env var.
         # None = in-memory fallback (unit tests, local dev — no behavior change).
         self._redis_client = redis_client if redis_client is not None else create_redis_client()
+        # Phase 1.2: Conformal prediction — widens fee when model uncertainty is high
+        self._conformal = conformal_predictor
+        # Phase 1.3: Portfolio risk engine — tracks funded positions for VaR/concentration
+        self._risk_engine = risk_engine
+        # Phase 1.1: Drift detection — monitors C1 feature distributions per inference
+        self._drift_monitor = drift_monitor
+        # Phase 2.4: C9 settlement predictor → wire into C7 for dynamic maturity
+        if settlement_predictor is not None and hasattr(c7_agent, "set_settlement_predictor"):
+            c7_agent.set_settlement_predictor(settlement_predictor)
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -293,6 +306,22 @@ class LIPPipeline:
         above_threshold = failure_probability > self.threshold
         shap_top20 = c1_result.get("shap_top20", [])
 
+        # Phase 1.1: Feed numeric features to drift monitor for ADWIN detection
+        if self._drift_monitor is not None:
+            try:
+                drift_features = {
+                    "amount_usd": float(payment_dict.get("amount_usd", 0)),
+                    "failure_probability": failure_probability,
+                }
+                corridor_stats = payment_dict.get("corridor_stats", {})
+                if corridor_stats:
+                    drift_features["failure_rate_7d"] = float(
+                        corridor_stats.get("failure_rate_7d", 0)
+                    )
+                self._drift_monitor.update(drift_features)
+            except Exception as exc:
+                logger.warning("Drift monitor update failed: %s", exc)
+
         if not above_threshold:
             total_ms = (time.perf_counter() - t_start) * 1_000.0
             result = PipelineResult(
@@ -334,7 +363,13 @@ class LIPPipeline:
         # Extract AML result — fail-closed (EPG-27: was fail-open `else True` before fix)
         if c6_result is None:
             logger.error(
-                "C6 AML check unavailable (returned None) — blocking payment uetr=%s",
+                "Temporal velocity window returned None for C6 check — "
+                "originating entity cannot be velocity-scored. "
+                "Missing Redis connection or salt rotation failure. "
+                "Enforcing fail-closed block per EPG-27. "
+                "Gate blocks all offers until C6 is restored. "
+                "AML velocity service must be reachable before pipeline retry. "
+                "Halting uetr=%s",
                 event.uetr,
             )
             entry_id = self._log_block(event, failure_probability, "aml_check_unavailable")
@@ -447,6 +482,22 @@ class LIPPipeline:
         fee_bps = int(c2_result["fee_bps"])
         tier = int(c2_result.get("tier", 3))
         shap_values_c2 = c2_result.get("shap_values", [])
+
+        # Phase 1.2: Conformal prediction intervals + uncertainty fee adjustment
+        prediction_interval_lower: Optional[float] = None
+        prediction_interval_upper: Optional[float] = None
+        coverage_level: Optional[float] = None
+        if self._conformal is not None and self._conformal.is_calibrated:
+            try:
+                interval = self._conformal.predict_interval(pd_estimate)
+                prediction_interval_lower = interval.lower
+                prediction_interval_upper = interval.upper
+                coverage_level = interval.coverage_level
+                # Widen fee when model uncertainty is high
+                from lip.common.conformal import uncertainty_fee_adjustment
+                fee_bps = uncertainty_fee_adjustment(interval.width, fee_bps)
+            except Exception as exc:
+                logger.warning("Conformal prediction failed: %s", exc)
 
         # Determine maturity_days and rejection_class from rejection code
         maturity = self._derive_maturity_days(event.rejection_code)
@@ -608,6 +659,9 @@ class LIPPipeline:
                 payment_state_history=state_history,
                 component_latencies=tracker.get_latest_all(),
                 total_latency_ms=total_ms,
+                prediction_interval_lower=prediction_interval_lower,
+                prediction_interval_upper=prediction_interval_upper,
+                coverage_level=coverage_level,
             )
             return _record_and_return(result)
 
@@ -638,6 +692,27 @@ class LIPPipeline:
         if self._c3 is not None and loan_offer is not None:
             self._register_with_c3(event, loan_offer, maturity)
 
+        # Phase 1.3: Register funded position with portfolio risk engine
+        if self._risk_engine is not None and loan_offer is not None:
+            try:
+                from datetime import timedelta
+                now = datetime.now(tz=timezone.utc)
+                funded_loan = ActiveLoan(
+                    loan_id=loan_offer["loan_id"],
+                    uetr=event.uetr,
+                    individual_payment_id=event.individual_payment_id,
+                    principal=Decimal(str(loan_offer["loan_amount"])),
+                    fee_bps=int(loan_offer["fee_bps"]),
+                    maturity_date=now + timedelta(days=int(loan_offer["maturity_days"])),
+                    rejection_class=rejection_class_str,
+                    corridor=f"{event.currency}_USD",
+                    funded_at=now,
+                )
+                lgd_float = float(c2_result.get("lgd", 0.45))
+                self._risk_engine.add_position(funded_loan, pd=pd_estimate, lgd=lgd_float)
+            except Exception as exc:
+                logger.warning("Failed to add position to risk engine: %s", exc)
+
         total_ms = (time.perf_counter() - t_start) * 1_000.0
 
         result = PipelineResult(
@@ -661,6 +736,9 @@ class LIPPipeline:
             payment_state_history=state_history,
             component_latencies=tracker.get_latest_all(),
             total_latency_ms=total_ms,
+            prediction_interval_lower=prediction_interval_lower,
+            prediction_interval_upper=prediction_interval_upper,
+            coverage_level=coverage_level,
         )
         return _record_and_return(result)
 

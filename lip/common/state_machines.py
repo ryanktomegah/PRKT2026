@@ -96,6 +96,7 @@ class PaymentState(str, enum.Enum):
     BRIDGE_OFFERED     = "BRIDGE_OFFERED"
     FUNDED             = "FUNDED"
     REPAYMENT_PENDING  = "REPAYMENT_PENDING"
+    CANCELLATION_ALERT = "CANCELLATION_ALERT"
     # ── Terminal states ──────────────────────────────────────────────────────
     REPAID             = "REPAID"
     BUFFER_REPAID      = "BUFFER_REPAID"
@@ -129,11 +130,20 @@ _PAYMENT_TRANSITIONS: Final[dict[PaymentState, frozenset[PaymentState]]] = {
         PaymentState.BUFFER_REPAID,
         PaymentState.DEFAULTED,
         PaymentState.REPAYMENT_PENDING,
+        PaymentState.CANCELLATION_ALERT,
     }),
     PaymentState.REPAYMENT_PENDING: frozenset({
         PaymentState.REPAID,
         PaymentState.BUFFER_REPAID,
         PaymentState.DEFAULTED,
+    }),
+    # CANCELLATION_ALERT: payment under review due to camt.056/pacs.004 recall.
+    # Can resolve to REPAID (recall dismissed), DEFAULTED (confirmed loss),
+    # or remain under review (human decision pending).
+    PaymentState.CANCELLATION_ALERT: frozenset({
+        PaymentState.REPAID,
+        PaymentState.DEFAULTED,
+        PaymentState.FUNDED,  # alert dismissed, return to funded state
     }),
     # Terminal states — no outgoing transitions
     PaymentState.REPAID:          frozenset(),

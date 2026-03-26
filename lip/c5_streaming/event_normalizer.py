@@ -158,7 +158,46 @@ def _safe_datetime(value) -> datetime:
 
 
 class EventNormalizer:
-    """Normalizes payment events from all supported rails to NormalizedEvent."""
+    """Normalizes payment events from all supported rails to NormalizedEvent.
+
+    Optionally accepts a :class:`~lip.c5_streaming.cancellation_detector.CancellationDetector`
+    for handling camt.056 (payment recall) and pacs.004 (payment return) messages.
+    """
+
+    def __init__(self, cancellation_detector=None) -> None:
+        self._cancellation_detector = cancellation_detector
+
+    def process_cancellation(self, message_type: str, msg: dict) -> list:
+        """Process a camt.056 or pacs.004 cancellation/return message.
+
+        Parameters
+        ----------
+        message_type:
+            ``"CAMT056"`` or ``"PACS004"``.
+        msg:
+            Raw ISO 20022 message dict.
+
+        Returns
+        -------
+        list
+            List of :class:`~lip.c5_streaming.cancellation_detector.CancellationAlert`
+            objects. Empty if no detector is configured.
+        """
+        if self._cancellation_detector is None:
+            logger.warning("Cancellation message received but no detector configured")
+            return []
+
+        from lip.c5_streaming.cancellation_detector import normalize_camt056, normalize_pacs004
+
+        if message_type.upper() == "CAMT056":
+            event = normalize_camt056(msg)
+        elif message_type.upper() == "PACS004":
+            event = normalize_pacs004(msg)
+        else:
+            logger.warning("Unknown cancellation message type: %s", message_type)
+            return []
+
+        return self._cancellation_detector.process_cancellation(event)
 
     def normalize_swift(self, msg: dict) -> NormalizedEvent:
         """Parse SWIFT pacs.002 / camt.054 message."""

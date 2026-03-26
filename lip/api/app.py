@@ -38,6 +38,7 @@ try:
     from lip.common.redis_factory import create_redis_client
     from lip.common.regulatory_reporter import RegulatoryReporter
     from lip.common.royalty_settlement import BPIRoyaltySettlement
+    from lip.infrastructure.monitoring.metrics import PrometheusMetricsCollector
 
     # Shared state for shutdown coordination
     _shutdown_hooks: list = []
@@ -75,11 +76,19 @@ try:
             repayment_callback=lambda event: logger.info("Repayment event: %s", event),
         )
 
+        # Risk engine (portfolio VaR + concentration)
+        from lip.risk.portfolio_risk import PortfolioRiskEngine
+        risk_engine = PortfolioRiskEngine()
+
+        # Metrics collector for /metrics Prometheus scraping endpoint
+        metrics_collector = PrometheusMetricsCollector()
+
         # Service layers
         admin_service = BPIAdminService(repayment_loop=repayment_loop)
         portfolio_reporter = PortfolioReporter(
             repayment_loop=repayment_loop,
             royalty_settlement=royalty_settlement,
+            risk_engine=risk_engine,
         )
         known_entity_manager = KnownEntityManager(registry=known_entity_registry)
 
@@ -130,6 +139,7 @@ try:
                 admin_service,
                 regulatory_reporter=regulatory_reporter,
                 auth_dependency=auth_dep,
+                risk_engine=risk_engine,
             ),
             prefix="/admin",
         )
@@ -141,6 +151,14 @@ try:
             make_known_entities_router(known_entity_manager, auth_dependency=auth_dep),
             prefix="/known-entities",
         )
+
+        # Prometheus /metrics scraping endpoint — no auth required
+        from fastapi.responses import PlainTextResponse
+
+        @application.get("/metrics", response_class=PlainTextResponse)
+        def prometheus_metrics():
+            """Prometheus-compatible metrics scraping endpoint."""
+            return metrics_collector.generate_latest()
 
         return application
 

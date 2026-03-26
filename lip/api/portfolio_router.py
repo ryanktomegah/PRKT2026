@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from lip.c2_pd_model.tier_assignment import Tier
 from lip.common.known_entity_registry import KnownEntityRegistry
+from lip.risk.portfolio_risk import PortfolioRiskEngine
 
 
 def _tier_from_fee_bps(fee_bps: int) -> int:
@@ -57,10 +58,12 @@ class PortfolioReporter:
         repayment_loop: Any,
         royalty_settlement: Optional[Any] = None,
         licensee_id: Optional[str] = None,
+        risk_engine: Optional[PortfolioRiskEngine] = None,
     ) -> None:
         self._loop = repayment_loop
         self._royalty = royalty_settlement
         self._licensee_id = licensee_id
+        self._risk_engine = risk_engine
 
     def _get_loans(self):
         """Return active loans, optionally filtered by licensee."""
@@ -196,6 +199,29 @@ class PortfolioReporter:
             "estimated_annualised_yield_bps": estimated_yield_bps,
         }
 
+    # ── GET /portfolio/risk ─────────────────────────────────────────────────
+
+    def get_risk(self) -> Dict:
+        """Portfolio risk summary: VaR, concentration, stress test results.
+
+        Delegates to ``PortfolioRiskEngine`` when configured. Returns
+        empty risk snapshot if no engine is wired.
+
+        Returns:
+            Dict with keys: var, corridor_concentration, bic_concentration,
+            position_count, total_exposure.
+        """
+        if self._risk_engine is None:
+            return {
+                "var": {"var_99": "0", "var_95": "0", "expected_loss": "0",
+                        "total_exposure": "0", "position_count": 0},
+                "corridor_concentration": {"hhi": "0", "is_within_limits": True, "breaches": []},
+                "bic_concentration": {"hhi": "0", "is_within_limits": True, "breaches": []},
+                "position_count": 0,
+                "total_exposure": "0",
+            }
+        return self._risk_engine.get_risk_summary()
+
 
 # ---------------------------------------------------------------------------
 # KnownEntityManager — GAP-11: known entity tier-override administration
@@ -294,6 +320,11 @@ try:
         def yield_report() -> Dict:
             """Cumulative and estimated annualised yield on active book."""
             return reporter.get_yield()
+
+        @router.get("/risk")
+        def risk_report() -> Dict:
+            """Portfolio risk: VaR, concentration limits, and position count."""
+            return reporter.get_risk()
 
         return router
 

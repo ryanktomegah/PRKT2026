@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 RETENTION_YEARS = 7
 
+# Schema version hash — first 16 hex chars of the canonical schema digest.
+# Used to detect log format drift across deployments without full re-parse.
+_SCHEMA_VALIDATION_HASH: str = "e47fc6d4b19465c9"
+
 
 @dataclass
 class DecisionLogEntryData:

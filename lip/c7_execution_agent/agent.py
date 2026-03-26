@@ -129,6 +129,11 @@ class _TPSLimiter:
 class ExecutionAgent:
     """Bank-side execution orchestrator (ELO).
 
+    Licensing gates, kill-switch checks, and AML policy enforcement
+    run before any offer is generated.
+    Idempotent per UETR — duplicate calls return the cached decision.
+    Payment context is never persisted beyond the decision log.
+
     Parameters
     ----------
     licensee_id:
@@ -186,10 +191,20 @@ class ExecutionAgent:
         self.offer_delivery = offer_delivery
         self._known_entity_registry = known_entity_registry
         self._fx_risk_config = fx_risk_config
+        self._settlement_predictor = None  # C9: injected via set_settlement_predictor()
         # Redis client for distributed state (kill switch, UETR dedup persistence).
         # If not injected, attempt to connect via REDIS_URL env var.
         # Falls back to None (in-memory) when REDIS_URL is absent — safe for tests.
         self._redis_client = redis_client if redis_client is not None else create_redis_client()
+
+    def set_settlement_predictor(self, predictor) -> None:
+        """Inject a C9 SettlementTimePredictor for dynamic maturity adjustment.
+
+        When set, ``_build_loan_offer`` uses predicted settlement time instead of
+        static maturity windows (CLASS_A=3d, CLASS_B=7d, CLASS_C=21d).
+        Static windows remain as fallback defaults.
+        """
+        self._settlement_predictor = predictor
 
     # ── main processing entry point ──────────────────────────────────────────
 
@@ -466,7 +481,29 @@ class ExecutionAgent:
             return None
 
         capped = min(loan_amount, self.config.max_loan_amount)
-        maturity_days = int(payment_context.get("maturity_days", 7))
+        # C9 dynamic maturity: use settlement predictor if available,
+        # static maturity windows as fallback.
+        static_maturity_days = int(payment_context.get("maturity_days", 7))
+        maturity_days = static_maturity_days
+        if self._settlement_predictor is not None:
+            try:
+                corridor = payment_context.get("corridor", "UNKNOWN")
+                rejection_class = payment_context.get("rejection_class", "CLASS_B")
+                dynamic_days = self._settlement_predictor.predict_dynamic_maturity_days(
+                    corridor=corridor,
+                    rejection_class=rejection_class,
+                    amount_usd=float(capped),
+                )
+                # Dynamic maturity must not exceed static (safety constraint)
+                maturity_days = min(dynamic_days, static_maturity_days)
+                logger.info(
+                    "C9_DYNAMIC_MATURITY: uetr=%s static=%dd dynamic=%dd final=%dd",
+                    payment_context.get("uetr"), static_maturity_days,
+                    dynamic_days, maturity_days,
+                )
+            except Exception as exc:
+                logger.warning("C9 settlement predictor failed, using static maturity: %s", exc)
+                maturity_days = static_maturity_days
         loan_id = str(uuid.uuid4())
         uetr = str(payment_context.get("uetr", ""))
 
