@@ -23,6 +23,13 @@ This document consolidates findings from seven independent strategic audits of B
 
 **Current Status:** P1 provisional filing target = **this week** (March 2026). P2 utility application hard deadline = March 2027 (PFD+12 months).
 
+**Commercial Execution:** The full go-to-market playbook — WHO to call, WHEN, WHAT to say, and HOW to progress from cold introduction to signed LOI — is in **`GTM-Strategy-v1.0.md`** (created March 26, 2026). Key GTM milestones that intersect with this action plan:
+- **SIBOS 2026 speaking application:** Due April-May 2026. SIBOS dates: September 28 – October 1, Miami Beach. This is the single highest-leverage GTM action.
+- **First LOI target:** Month 9 from Provisional Filing Date (PFD). Gate for pre-seed capital raise ($1.5M).
+- **P2 utility filing:** PFD + 12 months (hard deadline). Aligned with GTM calendar Month 11-12.
+- **Capital raise:** Pre-seed ($1.5M) triggered by signed LOI; Seed ($4M) triggered by first royalty payment at Month 18.
+- **Phase 1 fee split:** GTM uses 30% BPI / 70% bank (consistent with Unit Economics Exhibit). Revenue Projection Model §1.3 states 15% — QUANT resolution required before first bank LOI.
+
 ---
 
 ## GATE A: CRITICAL FIXES (Must Complete Before P2 Filing or First Bank LOI)
