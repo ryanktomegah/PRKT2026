@@ -1,0 +1,717 @@
+# IP Risk Pre-Counsel Analysis — REVISED (Worst-Case Fact Pattern)
+
+**Date:** March 23, 2026
+**Subject:** Pre-counsel structured risk identification — RBC employment IP assignment
+**Revision Note:** This revision incorporates the founder's confirmation that **all ideation and development occurred during the RBC employment period.** There is NO pre-employment conception evidence because there was NO pre-employment conception. This is the honest fact pattern.
+**Status:** DRAFT — NOT LEGAL ADVICE
+
+---
+
+> **This document is a structured risk identification exercise, not legal advice. Its sole purpose is to prepare the founder for an informed conversation with qualified Canadian IP and employment counsel.**
+
+---
+
+## CRITICAL FACT UPDATE
+
+The prior analysis (v1) treated pre-employment conception as "unassessed" — a critical unknown that could break either way. **The founder has now confirmed:**
+
+- The BPI concept was conceived **during** the RBC employment period
+- All ideation, design, architecture, and development occurred **after** January 12, 2026
+- There is **no pre-employment evidence** because there is **no pre-employment conception**
+- The git history accurately reflects reality — everything was created during employment
+
+**This eliminates the single strongest defence** (prior conception) and means the RBC clause's "conceived … during your employment" trigger is **definitively satisfied on the facts.**
+
+The remaining defences are narrower but not zero. This analysis is rebuilt from this foundation.
+
+---
+
+## SECTION 1 — REVISED FACT RECONSTRUCTION
+
+### 1.1 Corrected Timeline
+
+| # | Date | Event | Status |
+|---|------|-------|--------|
+| 1 | January 12, 2026 | Founder begins RBC employment (Credit Mgmt Resolution Officer, retail banking) | CONFIRMED |
+| 2 | January 12, 2026 | Founder signs RBC offer letter with broad IP assignment clause | CONFIRMED |
+| 3 | Post-Jan 12, 2026 | **BPI concept is first conceived** — cross-border payment bridging idea originates during the employment period | **CONFIRMED by founder** |
+| 4 | Jan–Mar 2026 | All ideation, architecture design, ML model design, pricing logic design occurs | CONFIRMED |
+| 5 | Jan–Mar 2026 | All code development occurs — personal equipment, personal time, personal accounts | CLAIMED (no independent verification) |
+| 6 | Jan–Mar 2026 | No RBC equipment, network, data, or systems used | CLAIMED |
+| 7 | Jan–Mar 2026 | No discussion with any RBC employee | CLAIMED |
+| 8 | Jan–Mar 2026 | No outside business activity approval sought | CONFIRMED |
+| 9 | Jan–Mar 2026 | No disclosure of BPI to RBC as clause requires | CONFIRMED (breach) |
+| 10 | March 23, 2026 | Founder still employed at RBC. Has not resigned. | CONFIRMED |
+| 11 | March 23, 2026 | Prototype: 1,476 tests, 7 Docker images, ML pipeline, SWIFT integration, full CI/CD | CONFIRMED |
+| 12 | Not yet | IP lawyer engagement, patent filing, incorporation, fundraising, resignation | NOT STARTED |
+
+### 1.2 What This Timeline Means
+
+An adversary reads this timeline and concludes:
+
+> "An RBC employee, bound by a broad IP assignment clause, conceived an idea for a financial technology product during his employment at a bank, developed it over 10 weeks while employed, never disclosed it to his employer as contractually required, and now wants to patent it, incorporate a company around it, raise money on it, and sell it to banks — including RBC itself."
+
+**This is the narrative the founder must overcome.** It is simple, factual, and damning. Every defence must be measured against it.
+
+### 1.3 Remaining Defences (Ranked by Strength)
+
+With pre-employment conception eliminated, the remaining defences are:
+
+| # | Defence | Strength | Why It Matters | Why It May Fail |
+|---|---------|----------|---------------|-----------------|
+| 1 | **Clause unconscionability / unenforceability** | MODERATE | If the clause is struck down or read down by a court, RBC has no contractual claim. This is now the PRIMARY defence. | No direct Canadian precedent. Courts enforce employment contracts. The unconscionability threshold is high. |
+| 2 | **Unrelated role / Comstock factors** | MODERATE | Retail credit ≠ cross-border payments. Not hired to invent. No fiduciary obligation to innovate. | RBC is a bank. BPI targets banks. The "unrelated" argument weakens at the corporate level. |
+| 3 | **Personal time / personal equipment** | SUPPORTING | Strengthens the unconscionability argument. Shows no employer benefit or resource contribution. | The clause explicitly does not require employer resources. This is a supporting fact, not an independent defence. |
+| 4 | **Public information only** | SUPPORTING | All inputs were publicly available (BIS, SWIFT, ISO 20022). No RBC trade secrets. | The clause covers "anything you conceive" — the origin of the inputs doesn't matter if the output was conceived during employment. |
+| 5 | **AI-generated code** | WEAK/NOVEL | Portions generated by AI may not be "conceived" by the founder. Novel argument, untested. | The founder directed the AI. "Ford model" means the founder is the architect. Courts will likely attribute AI-assisted work to the human director. |
+
+### 1.4 Revised Follow-Up Questions (Priority Order)
+
+The questions shift. Pre-employment evidence questions are eliminated. The focus is now on strengthening the remaining defences.
+
+1. **Do you have the complete, unredacted text of your RBC offer letter — every page?** Are there additional clauses: non-compete, non-solicitation, garden leave, OBA, confidentiality schedule, severability?
+
+2. **Did you sign ANY document at RBC onboarding beyond the offer letter?** Invention assignment form, code of conduct acknowledgment, IT policy, NDA, etc.?
+
+3. **What is your exact RBC work schedule?** Fixed shifts? What hours? Can we prove every git commit was outside work hours?
+
+4. **Has anyone at RBC ever seen you code or know you have programming skills?** If your role is purely non-technical and no one knows you code, this supports "unrelated to duties."
+
+5. **Have you ever accessed ANY RBC internal system related to payments, SWIFT, correspondent banking, or cross-border transactions?** Even a training module, wiki page, or onboarding document?
+
+6. **Does your personal laptop have ANY RBC software?** VPN client, MDM, monitoring software, email client?
+
+7. **Have you ever used your personal phone for BPI work while on RBC premises?** Checking GitHub, reading CI alerts, etc.?
+
+8. **What is your annual RBC compensation?** Relevant to whether the clause had adequate consideration.
+
+9. **Does RBC have an outside business activity policy?** Have you read it?
+
+10. **What was your professional background before RBC?** Any fintech, payments, or software development experience? (This matters for showing the skills existed independently of RBC.)
+
+11. **Have you ever had any conversation — even casual — with an RBC colleague about fintech, payments, or side projects?**
+
+12. **What are the cloud account details (AWS/GCP) used for development?** Can we pull access logs showing only personal device connections?
+
+---
+
+## SECTION 2 — REVISED IP CLAIM MAP
+
+The risk levels shift upward with confirmed employment-period conception.
+
+| # | Asset | RBC Claim Strength | Risk Level (v1) | **Risk Level (Revised)** | Key Change |
+|---|-------|--------------------|------------------|--------------------------|------------|
+| 1 | Source code | Strong — created during employment, clause covers "create" | HIGH | **VERY HIGH** | No prior-conception defence |
+| 2 | Architecture / design docs | Strong — "written documents" explicitly covered | HIGH | **VERY HIGH** | Conceived AND documented during employment |
+| 3 | ML models / methodology | Strong — "technologies" covered | HIGH | **VERY HIGH** | Methodology conceived during employment |
+| 4 | Pricing logic / fee constants | Strong — "create or produce" | HIGH | **VERY HIGH** | All business logic originated during employment |
+| 5 | **Patentable inventions** | **Very strong — "conceive" is the exact trigger** | HIGH | **EXTREME** | This is now the critical risk. The inventions were "conceived during employment" per the clause's exact language. Clean-room does NOT fix this. |
+| 6 | Trade secrets / know-how | Strong — taxonomy "created" during employment | MEDIUM-HIGH | **HIGH** | No argument that knowledge predates employment |
+| 7 | Brand / domain | Weak — stretch to cover a business name | LOW-MEDIUM | **LOW-MEDIUM** | Unchanged |
+| 8 | Clean-room reimplementation | Moderate — same inventor, same concepts | MEDIUM | **HIGH** | Implementing employment-period inventions in new code doesn't address patent ownership |
+| 9 | Future derived patents | Strong — "improvements" clause | MEDIUM-HIGH | **HIGH** | All improvements trace back to employment-period conception |
+| 10 | Investor materials | Moderate — "written documents, presentations" | MEDIUM | **MEDIUM-HIGH** | Describe commercialization of claimed IP |
+| 11 | Academic/research work | Moderate | LOW-MEDIUM | **MEDIUM** | Research conducted during employment |
+| 12 | Data compilations | Moderate — "create or produce" | MEDIUM | **MEDIUM-HIGH** | All compilation work during employment |
+
+### The Patent Problem Is Now Central
+
+**This cannot be overstated:** The inventions were conceived during employment. The clause assigns "anything you conceive … during your employment." A clean-room code rewrite addresses *copyright* (the expression) but does NOT address *patent ownership* (the invention). You cannot clean-room an idea out of your own head.
+
+This means:
+- Filing a patent may be filing on RBC's claimed property
+- The patent itself becomes evidence of what was "conceived during employment"
+- The 15-patent portfolio strategy may be fundamentally compromised
+
+**The patent strategy must be reassessed with counsel.** The question is no longer "can I patent this?" but "who owns the patent if I do?"
+
+---
+
+## SECTION 3 — REVISED EMPLOYMENT AGREEMENT ANALYSIS
+
+### The Clause (Unchanged)
+
+> *"Anything you conceive, create or produce, whether alone or jointly with others, during your employment in this role or any other you might have later, as well as any improvements or contributions you make, including written documents, drawings, presentations and technologies (collectively, the Work Product), will be the property of Royal Bank of Canada (the Bank)."*
+
+> *"You must promptly and fully disclose Work Product to your Employer."*
+
+### Revised Analysis Under Confirmed Facts
+
+**Under the literal clause:** RBC owns everything. Every element of BPI — code, inventions, models, documents, strategy — was "conceived, created, or produced during employment." The clause is satisfied on its face. There is no ambiguity.
+
+**The ONLY remaining question is enforceability.**
+
+### Enforceability Analysis — The Sole Remaining Defence
+
+The founder's entire legal position now rests on ONE argument: **the clause is unenforceable as applied to this fact pattern.**
+
+Here is that argument, presented as strongly as possible:
+
+**The Unconscionability Argument:**
+
+1. **Gross disproportion.** The clause purports to assign ALL creative output of an employee — in any field, for any purpose, on any time, with any resources — in exchange for a salary that compensates only for job duties during work hours. A retail credit officer's salary of $X/year was not consideration for an unlimited assignment of the employee's entire inventive capacity. The disproportion between what was bargained for (credit management services) and what was taken (all IP in all fields) is unconscionable.
+
+2. **Absence of informed consent.** The clause is buried in a standard offer letter. There was no negotiation. No separate consideration was paid for the IP assignment. The founder was not advised to seek legal counsel before signing. RBC, as the vastly more powerful party, imposed a term of adhesion.
+
+3. **Absurd scope.** If enforced as written, the clause means that every one of RBC's ~80,000 employees — tellers, branch managers, HR staff, cafeteria workers — has assigned to RBC any novel, song, artwork, mobile app, recipe, game, or invention they create during their employment, even on vacation, even having nothing to do with banking. This cannot be the law.
+
+4. **Public policy.** Enforcing blanket IP assignment clauses deters innovation, restricts labour mobility, and creates a chilling effect on personal creative activity. Canadian public policy, as expressed in the *Competition Act* (anti-restrictive practices), the *Copyright Act* (author's rights), and the common-law freedom to contract principle (which includes freedom FROM unconscionable contracts), militates against enforcement.
+
+5. **Restrictive covenant principles.** Under *Shafron v. KRG Insurance Brokers* (SCC 2009), restrictive covenants in employment must be reasonable in scope, duration, and geographic reach. While *Shafron* addressed non-competes, the principle of reading restrictions strictly against the drafter applies. The RBC clause is maximally broad (all IP), unlimited in scope (any field), and co-extensive with employment (indefinite duration). By *Shafron* principles, it should be read down or struck.
+
+6. **The Comstock factors.** Even though *Comstock Canada v. Electec Ltd.* (ONCA 1991) addresses the common-law default (not contractual override), the factors inform the reasonableness analysis:
+   - **Not hired to invent:** The founder was hired for retail credit management. Zero expectation of inventive output.
+   - **No employer resources:** Personal time, personal equipment, personal accounts.
+   - **Unrelated to duties:** Cross-border payment bridging has no connection to retail credit.
+   - **No fiduciary obligation to innovate:** The duty of a credit officer does not include product development.
+
+**The Counter-Argument (RBC's Position):**
+
+1. **Freedom of contract.** The founder is an educated adult who signed a clear, unambiguous clause. Canadian law respects contractual autonomy. Unconscionability requires more than a bad bargain — it requires proof that the party could not protect their own interests (*Uber Technologies Inc. v. Heller*, SCC 2020).
+
+2. **Adequate consideration.** The employment itself — salary, benefits, pension, career development — is sufficient consideration for the IP clause. No separate consideration is required for individual contract terms.
+
+3. **Standard banking practice.** Schedule I banks routinely include broad IP clauses. This is industry practice, not a rogue term. Courts are reluctant to strike industry-standard provisions.
+
+4. **The founder knew what they were doing.** The founder is sophisticated enough to build a complex fintech platform with AI tools. They understood (or should have understood) the clause. The "unsophisticated party" element of unconscionability does not apply.
+
+5. **No case striking a blanket IP clause.** The founder cannot point to a single Canadian case where a blanket IP assignment clause was struck down or read down in the banking context. The argument is theoretical, not precedented.
+
+### Honest Probability Assessment
+
+| Outcome | Probability | Implication |
+|---------|------------|-------------|
+| Clause enforced as written — RBC owns all BPI IP | **25–35%** | Catastrophic. Venture must be restructured or abandoned. |
+| Clause read down to "course of employment" or "related to business" — BPI falls outside | **30–40%** | Favourable. BPI is outside the narrowed scope (different role, different domain). Strongest practical outcome. |
+| Clause struck as unconscionable in its entirety | **10–15%** | Very favourable but unlikely — courts prefer to read down rather than void. |
+| Negotiated resolution (RBC agrees to release for consideration) | **15–25%** | Middle ground. May involve payment, royalty, or other conditions. |
+
+**Net assessment:** There is a **40–55% probability** of a favourable outcome (clause read down or struck) and a **25–35% probability** of an unfavourable outcome (clause enforced). The remaining **15–25%** is negotiated resolution.
+
+**This is not comfortable territory for taking investor money.** But it is not hopeless.
+
+---
+
+## SECTION 4 — REVISED LEGAL DEEP DIVE
+
+### The Five Questions That Now Matter Most
+
+With pre-employment conception eliminated, the 14 original questions collapse into five that are dispositive:
+
+#### Question 1 (Critical): Is the clause enforceable as applied?
+
+**Short answer:** Uncertain — genuinely 50/50. This is the question the lawyer must answer. Everything else follows from it.
+
+**Full analysis:**
+
+The clause is textually clear: "anything you conceive, create or produce … during your employment." The founder conceived and created BPI during employment. The literal test is met.
+
+The enforceability challenge rests on unconscionability. Under *Uber v. Heller* (SCC 2020), unconscionability requires: (1) an inequality of bargaining power, and (2) a resulting improvident bargain. Element (1) is present — RBC is a $200B+ institution; the founder was a job applicant. Element (2) is the battleground — is it "improvident" to assign all personal creative output for a retail credit salary?
+
+The argument is strong but untested. No Canadian court has addressed this exact question. The lawyer's opinion on enforceability is worth more than this entire document.
+
+**What the lawyer must assess:**
+- Whether *Uber v. Heller* unconscionability doctrine applies to IP assignment (not just arbitration clauses)
+- Whether *Shafron* restrictive-covenant principles extend to IP assignment
+- Whether any BC or Federal Court decision addresses blanket IP clauses
+- Whether the *Comstock* factors inform the enforceability analysis even when a contract exists
+- The practical question: would a BC Superior Court judge, looking at a retail credit officer's side project built on weekends, enforce RBC's claim to a cross-border payment platform?
+
+#### Question 2 (Critical): Does the clause capture patent rights to the inventions?
+
+**Short answer:** Almost certainly yes. "Conceive" is patent language. The inventions were conceived during employment. If the clause is enforceable, the inventions belong to RBC — not just the code.
+
+**Full analysis:**
+
+The word "conceive" in patent law means to form a definite and permanent idea of the complete and operative invention. The RBC clause uses this exact word. If the founder conceived the bridging methodology, two-step classification, and auto-settlement approach during employment, the clause assigns these inventions to RBC.
+
+This means:
+- A patent filed by the founder may be filed on RBC's claimed invention
+- Clean-room reimplementation does NOT solve the patent problem
+- The patent specification would document the exact inventions RBC claims
+- RBC could demand assignment of any patent application
+
+**This is the most dangerous aspect of the revised analysis.** Copyright can be addressed by rewriting code. Patent ownership cannot be addressed by rewriting code — the invention is the same regardless of implementation.
+
+**What the lawyer must assess:**
+- Whether "conceive" in a general employment clause has the same legal effect as "conceive" in a specific patent assignment agreement
+- Whether patent assignment requires separate, specific language (some jurisdictions require this)
+- Whether a Canadian court would read the clause as assigning patent rights or only copyright
+- Whether filing a patent on an employment-period invention creates a public admission that strengthens RBC's claim
+
+#### Question 3 (Critical): What does the disclosure obligation breach mean?
+
+**Short answer:** It is an independent contractual breach that creates three problems: (1) potential disciplinary termination (for cause, affecting notice/severance), (2) evidence of consciousness of the clause (founder knew about it and chose not to comply), and (3) a narrative of concealment that undermines good faith.
+
+**Full analysis:**
+
+The clause states: "You must promptly and fully disclose Work Product to your Employer."
+
+The founder has not disclosed. This breach exists independently of the IP ownership question. Even if the IP clause is struck down, the disclosure obligation may survive (if severable). More practically:
+
+1. **Termination risk:** If RBC discovers BPI while the founder is employed, the disclosure breach provides grounds for termination for cause. This eliminates notice period pay and severance.
+
+2. **Consciousness evidence:** In any IP dispute, RBC will argue: "He knew about the disclosure obligation — it's in the same paragraph. He chose to hide the project. This shows he knew RBC had a claim."
+
+3. **Good faith narrative:** The founder's best argument rests on good faith — personal time, personal equipment, unrelated role. The concealment undermines this. A court would ask: "If you genuinely believed this was your personal project with no connection to RBC, why did you hide it?"
+
+**The strategic question for counsel:** Should the founder disclose BPI to RBC before resigning, after resigning, or never? Each option has consequences:
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Disclose before resigning** | Complies with clause; demonstrates good faith; may enable negotiated release | Triggers RBC legal review while you have no leverage; could result in immediate termination |
+| **Disclose upon resigning** | Complies (arguably) with clause; pairs disclosure with departure | Same risk but with resignation as context |
+| **Never disclose** | Avoids triggering RBC response; practical reality is they may never discover | Compounds the breach; if discovered later, the concealment becomes the story |
+
+**This is a question for counsel — not for self-assessment.**
+
+#### Question 4 (Critical): Does clean-room help at all given employment-period conception?
+
+**Short answer:** Yes, partially — but much less than in the v1 analysis. Clean-room addresses copyright (code expression) but NOT patent (inventive concept). Given that the inventions were conceived during employment, clean-room reduces maybe 40% of the risk, not 80%.
+
+**Revised clean-room value assessment:**
+
+| IP Type | Clean-Room Value | Reason |
+|---------|-----------------|--------|
+| Source code copyright | **HIGH** — new expression, new copyright | Post-resignation code is genuinely new work |
+| Architecture / design | **MODERATE** — new docs, but same concepts | Documentation may differ but describes same system |
+| ML model implementation | **HIGH** — new training, new weights | Implementation is independent even if methodology is same |
+| **Patentable inventions** | **NONE** — same inventor, same concepts | **You cannot clean-room an idea out of existence** |
+| Trade secrets / know-how | **LOW** — knowledge stays in founder's head | The know-how was assembled during employment |
+| Business strategy / models | **LOW** — describe same business opportunity | Opportunity was identified during employment |
+
+**The revised clean-room calculus:** Clean-room is still worth doing (it addresses copyright, which is the most concretely enforceable claim), but it is NOT a silver bullet. The patent problem remains.
+
+#### Question 5 (Critical): Is there a path to filing a patent that is defensible?
+
+**Short answer:** This is the hardest question. Three possible approaches, all with significant risk:
+
+**Approach A — File on employment-period inventions, challenge clause enforceability:**
+
+File the patent as planned. If RBC claims ownership, defend on the basis that the clause is unenforceable. This is the "bet on the enforceability challenge" approach.
+
+- **Pro:** Fastest path to priority date. If the clause is struck down, the patent is clean.
+- **Con:** If the clause is enforced, the patent application becomes RBC's property. The patent specification documents exactly what was "conceived during employment."
+- **Risk level:** HIGH
+
+**Approach B — File post-resignation on modified/evolved inventions:**
+
+After resignation, continue to develop the inventive concepts. File patents on the post-resignation *improvements* and *extensions*, not on the core employment-period inventions. The post-resignation inventive work is outside the clause (employment has ended).
+
+- **Pro:** Post-resignation inventions are clearly outside the "during employment" clause.
+- **Con:** The core invention may still underlie the improvements. RBC could argue the improvements are derivative. The narrower claims may be less valuable.
+- **Risk level:** MODERATE
+
+**Approach C — File on genuinely new inventions post-resignation:**
+
+After resignation, use the domain expertise to develop genuinely NEW inventions — not reimplementations of employment-period ideas, but new approaches to the same market opportunity. File patents on these.
+
+- **Pro:** Clean chain of title. No employment-period conception.
+- **Con:** Requires genuine new inventive work. May take months. The founder may unconsciously recreate the same inventions. The resulting patents may be weaker.
+- **Risk level:** LOW-MODERATE, but slowest path
+
+**Recommendation for counsel:** The lawyer needs to advise on whether Approach B or C is feasible and whether the distinction between "improvement of employment-period invention" and "genuinely new invention" can be maintained credibly.
+
+---
+
+## SECTION 5 — REVISED CLEAN-ROOM STRATEGY
+
+### 5.1 Should Clean-Room Be the Default?
+
+**Yes, but with a critical caveat:** Clean-room is necessary but NOT sufficient. It addresses copyright. The patent problem requires a separate strategy (see Section 4, Question 5).
+
+### 5.2 Modified Strategy: Clean-Room + Invention Evolution
+
+Given employment-period conception, the strategy must have TWO tracks:
+
+**Track 1 — Code Clean-Room (addresses copyright):**
+Standard clean-room protocol. Quarantine PRKT2026. Write functional specification. Reimplement in a new codebase post-resignation. This track follows the protocol in v1 Section 5.
+
+**Track 2 — Invention Evolution (addresses patent):**
+Post-resignation, the founder deliberately evolves the inventive concepts. The goal is to develop patentable improvements or alternative approaches that are:
+- Conceived post-resignation (outside the clause)
+- Documented with rigorous contemporaneous records
+- Distinguishable from the employment-period inventions
+
+This is the harder track. It requires the founder to go beyond reimplementation and actually innovate further — which they are capable of, given the domain expertise, but which must be genuine and documented.
+
+### 5.3 Revised 45-Day Execution Plan
+
+| Day | Track 1 (Code) | Track 2 (Inventions) |
+|-----|----------------|---------------------|
+| 0 | Resign. Forensic preserve PRKT2026. | Resign. |
+| 1–5 | Write functional specification from quarantined materials. | **Cooling-off period.** No inventive work. Document that no invention activity is occurring. |
+| 5–10 | Counsel reviews specification. | **Domain research sprint.** Read new BIS publications, SWIFT updates, academic papers published since PRKT2026 was built. Document everything. |
+| 10–25 | Clean-room implementation (AI-hybrid or contractor). | **Inventive evolution.** Develop new approaches, improvements, alternatives to the employment-period methods. Keep detailed invention notebooks. Every idea must be dated, sourced, and documented. |
+| 25–35 | Integration testing. | Identify patentable claims that are DISTINCT from employment-period inventions. |
+| 35–40 | Similarity analysis (old vs. new code). | Counsel reviews: are the new inventive claims distinguishable? |
+| 40–45 | Counsel sign-off on code clean-room. | Counsel sign-off on patent claims. Patent application drafted from POST-RESIGNATION inventive work. |
+
+### 5.4 The Solo Founder Problem — Revised
+
+The solo founder problem is now worse because it applies to BOTH tracks:
+- **Track 1:** The founder wrote the original code and will influence the new code. (Addressed by AI-hybrid approach — AI implements from specification.)
+- **Track 2:** The founder conceived the original inventions and will develop the "new" ones. (Much harder to address. The same mind produces similar ideas.)
+
+**Mitigation for Track 2:**
+
+1. **Documented divergence.** The founder must identify specific ways the new inventive work differs from the employment-period work. Not cosmetic differences — genuine substantive evolution.
+2. **New inputs.** The post-resignation inventive work should explicitly incorporate new information (publications, standards updates, market data) that was not available during the employment period.
+3. **Third-party review.** A patent agent should compare the employment-period inventive concepts (as documented in PRKT2026) against the post-resignation claims and confirm they are distinguishable.
+4. **Honest assessment.** If the patent agent cannot distinguish the post-resignation work from the employment-period work, the founder must accept that the original inventions may be encumbered and the patent strategy must be restructured around genuinely new claims.
+
+---
+
+## SECTION 6 — REVISED FUNDRAISING IMPACT
+
+### 6.1 Can You Raise Money?
+
+**Not yet.** The revised fact pattern makes pre-counsel fundraising even more indefensible than in v1:
+
+- The inventions were conceived during employment (**confirmed, not "possible"**)
+- The clause literally applies (**no ambiguity, only an enforceability question**)
+- No lawyer has opined (**the $5K–$10K has not been spent**)
+- The disclosure obligation was breached (**independent liability**)
+
+**Taking friends' and family's money under these conditions, without a legal opinion, is ethically wrong.** Full stop.
+
+### 6.2 Revised Disclosure (After Legal Opinion)
+
+Once counsel has opined, the disclosure must be brutally honest. Here is the revised candid version:
+
+> **Section 2.2 — Intellectual Property Assignment Risk — CRITICAL**
+>
+> **This is the most material risk facing the Company.**
+>
+> The founder conceived and developed all of BPI's technology while employed at the Royal Bank of Canada ("RBC"). The founder's RBC offer letter assigns to RBC:
+>
+> > *"Anything you conceive, create or produce, whether alone or jointly with others, during your employment…"*
+>
+> **On its face, this clause assigns all of BPI's intellectual property — including the underlying inventions — to RBC.**
+>
+> The Company's IP counsel has reviewed the clause and opines that [INSERT OPINION]. Based on this opinion, the Company has [TAKEN THE FOLLOWING STEPS: e.g., conducted a clean-room reimplementation, developed post-resignation inventive improvements, obtained a release from RBC, etc.].
+>
+> **Residual risks:**
+> - RBC has not been notified and may assert a claim if it discovers BPI
+> - Under the BC *Limitation Act*, RBC has up to 15 years to bring a claim
+> - If RBC asserts a claim, the enforceability of the clause is untested in Canadian courts
+> - A clean-room reimplementation addresses code copyright but does not fully address patent ownership of inventions conceived during employment
+>
+> **The founder's commitment:** The IP risk was assessed by qualified counsel before any investment was accepted. The legal opinion is available for investor review upon request.
+
+### 6.3 Revised Valuation Impact
+
+| Scenario | Defensible Valuation Cap |
+|----------|------------------------|
+| Counsel opinion: clause unenforceable + successful clean-room | $1.5M–$2.0M |
+| Counsel opinion: uncertain + clean-room + post-resignation patent claims | $1.0M–$1.5M |
+| Counsel opinion: uncertain + no clean-room | **Do not raise** |
+| Counsel opinion: clause likely enforceable | **Do not raise until resolved** |
+
+---
+
+## SECTION 7 — REVISED DECISION MATRIX
+
+### Paths (Revised)
+
+| Path | Sequence |
+|------|----------|
+| **A** | Raise F&F now → lawyer later |
+| **B** | Lawyer first (self-funded) → raise F&F → patent → incorporate |
+| **E** | Lawyer first → clean-room + invention evolution → raise → patent → incorporate |
+| **F** | Abandon PRKT2026 → resign → start completely fresh → raise → patent |
+| **G** (NEW) | Lawyer first → negotiate release from RBC → raise → patent → incorporate |
+| **H** (NEW) | Lawyer first → clean-room + patent ONLY on post-resignation innovations → raise → incorporate |
+
+### Scoring (1–10)
+
+| Criterion (Weight) | A | B | E | F | G | H |
+|--------------------|---|---|---|---|---|---|
+| Legal risk minimization (25%) | 1 | 4 | 7 | 10 | 8 | 8 |
+| Financing credibility (20%) | 2 | 5 | 7 | 6 | 9 | 7 |
+| Speed to fundraise (15%) | 9 | 6 | 4 | 2 | 3 | 5 |
+| Cash efficiency (10%) | 8 | 5 | 4 | 2 | 3 | 5 |
+| Ethical defensibility (15%) | 1 | 5 | 8 | 9 | 9 | 8 |
+| Diligence survivability (15%) | 1 | 5 | 7 | 7 | 9 | 8 |
+
+### Weighted Scores
+
+| Path | Score | Rank |
+|------|-------|------|
+| **A** — Raise now | **3.05** | 6th — worst option |
+| **B** — Lawyer then raise | **4.85** | 5th — insufficient without clean-room |
+| **E** — Lawyer + clean-room + invent evolution | **6.60** | 3rd |
+| **F** — Abandon and restart | **6.35** | 4th |
+| **G** — Lawyer + negotiate RBC release | **7.20** | **1st** |
+| **H** — Lawyer + clean-room + post-resignation patents only | **7.00** | **2nd** |
+
+### Revised Recommendation: Path G (if achievable), Path H (if not)
+
+**Path G — Negotiate a release from RBC — is now the optimal path.**
+
+Why? Because with confirmed employment-period conception, the cleanest resolution is to get RBC to release the IP claim. This can happen through:
+
+1. **Formal release request upon resignation:** "I developed a personal project during my employment. It is unrelated to my role. I request written confirmation that RBC does not claim ownership."
+2. **Negotiated release for consideration:** RBC releases the IP in exchange for a payment, future royalty, or other consideration.
+3. **Informal non-assertion:** RBC reviews the facts and decides not to pursue (less formal, less reliable).
+
+**Why G might work:**
+- The project is unrelated to the founder's role
+- RBC has no product in this space (assumed — needs verification)
+- The economic value to RBC of pursuing a retail credit officer's side project is low (currently)
+- A release is administratively simpler than litigation
+
+**Why G might fail:**
+- RBC's legal department may have a blanket policy against releases
+- Requesting a release reveals the project's existence (triggers discovery)
+- RBC may demand terms that are unacceptable (large royalty, equity stake, assignment)
+- The disclosure obligation breach may poison the relationship
+
+**If G fails, fall back to Path H:** Clean-room the code + file patents ONLY on post-resignation inventive work. This accepts that the employment-period inventions may be encumbered and builds the patent portfolio on genuinely new claims.
+
+---
+
+## SECTION 8 — REVISED LAWYER PREP MEMO
+
+---
+
+**CONFIDENTIAL — ATTORNEY-CLIENT PRIVILEGED**
+
+**TO:** [BC IP/Employment Counsel]
+**FROM:** [Founder]
+**DATE:** March 23, 2026
+**RE:** IP Ownership — Personal Project Conceived and Developed During RBC Employment
+
+---
+
+### 1. Factual Background
+
+I am a Canadian citizen, BC resident, currently employed at RBC as a Credit Management Resolution Officer (retail banking). Employment began January 12, 2026. I have not resigned.
+
+**Critical admission: I conceived and developed a software prototype called "Bridgepoint Intelligence" (BPI) — a system for detecting and bridging cross-border B2B payment failures — entirely during my RBC employment period. The concept did not exist before January 12, 2026. There is no pre-employment evidence because there was no pre-employment conception.**
+
+All development was on personal equipment, personal time (evenings/weekends), using publicly available information. No RBC resources, data, systems, or personnel were involved. My role (retail credit management) is completely unrelated to BPI's domain (cross-border institutional payments).
+
+The prototype has 1,476 passing tests, 7 Docker images, a full CI/CD pipeline, and an ML inference engine. Development used AI-assisted methodology ("Ford model").
+
+My RBC offer letter contains this clause:
+
+> *"Anything you conceive, create or produce, whether alone or jointly with others, during your employment in this role or any other you might have later, as well as any improvements or contributions you make, including written documents, drawings, presentations and technologies (collectively, the Work Product), will be the property of Royal Bank of Canada (the Bank)."*
+
+And:
+
+> *"You must promptly and fully disclose Work Product to your Employer."*
+
+I have not disclosed BPI to RBC.
+
+I plan to: resign, incorporate a company, file patents, and raise capital. All of this is blocked on your opinion.
+
+### 2. Key Legal Questions
+
+1. **Is this clause enforceable** under BC/Canadian law when applied to a personal project that is (a) conceived and developed during employment, (b) completely unrelated to job duties, (c) on personal time with personal equipment, and (d) using only publicly available information?
+
+2. **If enforceable, would a court read it down** to "course of employment" or "related to employer's business"? What is the applicable standard?
+
+3. **Does the clause assign patent rights** to the inventions (not just copyright in the code)? Specifically, does "conceive" create a patent assignment?
+
+4. **What is my exposure for the disclosure obligation breach?** Does it create independent liability? Does it affect the IP ownership analysis?
+
+5. **Is a negotiated release from RBC feasible?** If I request a release upon resignation, what is the likely institutional response? Should I request it, or is silence better?
+
+6. **If clean-room is recommended, does it address the patent problem** given that the inventions were conceived during employment?
+
+7. **Can I file patents on post-resignation improvements/evolutions** of employment-period inventions? Where is the line between "improvement of existing invention" and "genuinely new invention"?
+
+8. **What is the realistic probability distribution** of outcomes? I need honest numbers, not reassurance.
+
+### 3. Documents for Review
+
+1. RBC offer letter (complete — attached)
+2. Any other RBC onboarding documents (I will locate)
+3. Git log export (date range, timestamps — I will provide)
+4. BPI system overview (functional description)
+5. Investor risk disclosure (current draft — for adequacy review)
+
+### 4. Decision Deadlines
+
+| Decision | Status |
+|----------|--------|
+| Whether to resign | Blocked on your advice |
+| Whether to disclose to RBC | Blocked on your advice |
+| Whether to raise F&F | Blocked on your opinion |
+| Whether to file patent | Blocked on your opinion |
+| Whether to incorporate | Blocked on your opinion |
+| Whether to clean-room | Blocked on your recommendation |
+
+### 5. Desired Outputs
+
+1. **IP ownership opinion** — enforceability assessment with probability-weighted outcomes
+2. **Recommended path** — resign/disclose/clean-room/patent sequencing
+3. **Release strategy** — whether and how to request a release from RBC
+4. **Patent guidance** — whether employment-period inventions can be patented; whether post-resignation innovations are safe
+5. **Fundraising clearance** — minimum conditions under which taking F&F money is defensible
+
+### 6. Scope and Budget
+
+Scope: IP ownership opinion, patent strategy, resignation/release strategy, fundraising clearance.
+Budget: $5,000–$10,000. Is this realistic? If not, what can be covered in Phase 1?
+
+### 7. Gating Note
+
+This opinion gates: $75K–$150K F&F round, patent filing, CBCA incorporation, and potential $1.5M pre-seed. Time-sensitive because each day of employment extends the clause's coverage.
+
+---
+
+## SECTION 9 — REVISED RED TEAM
+
+### Attack 1: The Enforceability Defence Is the ONLY Defence — and It's Untested
+
+The entire revised analysis rests on ONE argument: the clause is unconscionably broad and will be read down. If a court disagrees and enforces the clause as written, the founder has **zero fallback**. There is no pre-employment defence. There is no "I didn't know about the clause" defence (the disclosure obligation proves knowledge). There is no "it's unrelated to RBC's business" defence (the clause has no business-nexus requirement). It is a binary bet on unconscionability — a doctrine that has never been applied to a banking IP clause in Canada.
+
+### Attack 2: The Disclosure Breach Poisons Everything
+
+The concealment is the single most damaging fact after the employment-period conception. It transforms the narrative from "innocent employee with a hobby" to "employee who knew about the clause, chose to hide the project, and is now trying to escape with the IP." Every other defence is weakened by this.
+
+### Attack 3: RBC's "We Own the Patent" Argument Is Devastating
+
+If RBC's clause covers inventions (and "conceive" strongly suggests it does), then:
+- Clean-room is irrelevant for patent ownership
+- Post-resignation "improvements" may be derivative of employment-period inventions
+- The patent specification becomes a gift-wrapped document proving what was "conceived during employment"
+- RBC doesn't need to build the product — they just need the patent assignment
+
+### Attack 4: The "Personal Time" Defence Is Weaker Than It Feels
+
+It feels intuitively important that the founder used personal time and equipment. But under this clause, it is legally irrelevant. The clause says "anything … during your employment" — it doesn't say "anything during work hours" or "anything using our equipment." Personal time/equipment is relevant ONLY to the enforceability challenge, and even there, it's a supporting factor, not a determinative one.
+
+### Attack 5: The Negotiated Release May Backfire
+
+Requesting a release alerts RBC to the project's existence. If RBC declines and instead asserts ownership, the founder has traded strategic concealment (which had a chance of long-term success) for an immediate confrontation (which forces a resolution the founder may not want). The release request is a one-way door — you cannot un-ring that bell.
+
+### Attack 6: What If RBC Has a Competing Initiative?
+
+If any RBC team — RBCx, Transaction Banking, Innovation Group — has an initiative in cross-border payment optimization, the calculus changes completely. RBC would have both the motive (protect competitive position) and the institutional support (innovation team wants the IP) to aggressively pursue the claim. The founder does not know whether this is the case.
+
+---
+
+## SECTION 10 — REVISED EXECUTIVE BOTTOM LINE
+
+### Most Likely Practical Outcome
+
+The IP lawyer provides a nuanced opinion: the clause is broad but likely unenforceable as applied to a personal project in an unrelated field. However, counsel recommends: (a) clean-room reimplementation for copyright protection, (b) file patents only on post-resignation inventive work, (c) consider requesting a release but only after careful preparation. The founder resigns, executes the clean-room, develops new patentable claims, and raises F&F with full disclosure. RBC either never discovers or discovers and conducts a cost-benefit analysis that disfavours litigation against a zero-revenue startup.
+
+**Probability: 40–50%.**
+
+### Worst Plausible Outcome
+
+The clause is enforced. RBC asserts ownership of the inventions. The patent cannot be filed. The clean-room code implements RBC's claimed inventions. The venture is dead or captured. F&F investors (if any were taken) lose everything. The founder loses two years of work and the personal relationships affected by failed investment.
+
+**Probability: 15–25%.** Higher than v1 because pre-employment defence is gone.
+
+### Best Plausible Outcome
+
+Counsel opines the clause is unenforceable. The founder obtains a release from RBC (either formally or through non-assertion after the facts are reviewed). Clean-room produces a stronger, leaner codebase. Post-resignation inventive work yields patentable claims with clean title. F&F round closes. Pre-seed follows. RBC becomes a customer.
+
+**Probability: 15–20%.** Lower than v1 because the facts are worse.
+
+### Middle Outcome (Most Likely Specific Scenario)
+
+Counsel opines the clause is "likely unenforceable but uncertain." Recommends clean-room + post-resignation patents + enhanced disclosure. Does NOT recommend requesting a release (too risky to trigger discovery). The founder proceeds with residual risk. Investors accept the risk with appropriate valuation discount. The 15-year limitation period creates a long tail of uncertainty. The company grows, and the risk either never materializes or is resolved through negotiation when BPI has leverage (revenue, customers, patents).
+
+**Probability: 35–45%.**
+
+### What to Do in the Next 72 Hours
+
+**These are unchanged from v1 — except Item 1 is eliminated (no pre-employment evidence to search for).**
+
+**Hour 0–8: Documentation**
+
+1. Export complete git log: `git log --all --format="%H %ai %s" > git-history-export.txt`
+2. Cross-reference commit timestamps against your RBC work schedule. Identify any commits during work hours.
+3. Forensic snapshot the repository: `tar -czf PRKT2026-forensic-$(date +%Y%m%d).tar.gz PRKT2026/`
+4. Document every device, account, and tool used for BPI development.
+5. Locate ALL documents signed at RBC onboarding. Photograph/scan every page.
+
+**Hour 8–24: Lawyer Engagement**
+
+6. Research BC IP/employment lawyers with Schedule I bank experience.
+7. Send the revised lawyer memo (Section 8 above) to 2–3 candidates.
+8. Book initial consultations. Ask for fixed-fee quotes.
+9. Budget $5K–$10K from personal funds. DO NOT use any investor money.
+
+**Hour 24–72: Prepare for the Worst**
+
+10. Accept that PRKT2026 as it exists may not be the company's final codebase. Mentally prepare for clean-room.
+11. Accept that the patent portfolio may need to be built on post-resignation inventive work, not on employment-period inventions.
+12. Begin identifying how BPI's core methodology could be genuinely improved or evolved post-resignation — new inputs, new approaches, new data sources. This is Track 2 preparation.
+13. Do NOT resign, disclose, raise, incorporate, file, or publish. Everything waits for the lawyer.
+
+### What You Absolutely Must NOT Do
+
+1. **Do NOT raise money.** Not a dollar. Not from anyone. Not until the lawyer has opined.
+2. **Do NOT file a patent.** Filing on an employment-period invention may be filing on RBC's property.
+3. **Do NOT incorporate.** S.85 rollover requires clean title you don't have.
+4. **Do NOT resign.** Resignation triggers questions. Timing must be strategic, per counsel.
+5. **Do NOT disclose to RBC.** This may be appropriate later (per counsel) but premature now.
+6. **Do NOT alter git history.** Spoliation is worse than bad evidence.
+7. **Do NOT approach any bank as a customer.** Go-to-market waits for IP resolution.
+8. **Do NOT fabricate pre-employment evidence.** You told me there is none. Honesty is your best asset in front of a judge.
+9. **Do NOT panic.** The clause is broad, the facts are challenging, but the enforceability argument is real. Courts don't like it when $200B banks claim ownership of their janitor's poems. The analogy is imperfect but the principle is sound.
+
+---
+
+## CLOSING DELIVERABLES
+
+### TOP 10 FACTS I STILL NEED FROM YOU
+
+1. Complete, unredacted RBC offer letter — every page, every clause.
+2. Every document signed at RBC onboarding (NDA, IP form, code of conduct, IT policy).
+3. Your exact RBC work schedule and shift times.
+4. Your annual RBC compensation (relevant to consideration analysis).
+5. Whether anyone at RBC knows you can code or have tech skills.
+6. Whether you've ever accessed any RBC system related to payments/SWIFT (even training).
+7. Whether your personal laptop has any RBC software installed.
+8. Complete list of development devices, accounts, and tools.
+9. Your professional background before RBC (fintech, payments, software experience).
+10. Whether RBC has any known initiative in cross-border payment optimization.
+
+### TOP 10 DOCUMENTS TO GATHER
+
+1. **RBC offer letter** — complete, all pages, all annexes.
+2. **All RBC onboarding documents** — especially any separate IP/invention assignment form.
+3. **RBC Code of Conduct** — full text (the published IP language is damaging).
+4. **Git log export** — `git log --all --format="%H %ai %an %s"`.
+5. **RBC shift schedule / time records** — to cross-reference with git timestamps.
+6. **Personal device purchase receipts** — proving equipment is personally owned.
+7. **Cloud access logs** (AWS/GCP) — showing only personal device connections.
+8. **AI tool conversation histories** — full Claude/Copilot logs documenting development process.
+9. **RBC IT acceptable use policy** — BYOD provisions, monitoring disclosures.
+10. **Personal laptop forensic check** — confirm zero RBC software, zero RBC data.
+
+### TOP 10 QUESTIONS FOR REAL COUNSEL
+
+1. **Is the clause enforceable as applied to work conceived during employment but completely unrelated to job duties, on personal time, with personal equipment?** Give me a probability.
+
+2. **Does "conceive" in this clause assign patent rights?** If yes, clean-room is insufficient — what is the alternative?
+
+3. **What is my exposure for the disclosure obligation breach?** Does it strengthen RBC's position?
+
+4. **Should I request a release from RBC, or does that trigger more risk than it resolves?**
+
+5. **Can I safely file patents on post-resignation inventive improvements?** Where is the line between "improvement of RBC's claimed invention" and "genuinely new invention"?
+
+6. **What would you advise a friend investing $25K in this company?** Be honest.
+
+7. **Has any Canadian court struck down or read down a blanket IP assignment clause like this?** If not, what is the closest precedent?
+
+8. **If RBC asserts a claim, what is the most likely resolution mechanism?** Litigation, arbitration, negotiation? What is the realistic cost and timeline?
+
+9. **What is the minimum set of steps I must take before it is legally and ethically defensible to raise money from friends and family?**
+
+10. **Given everything — the clause, the timing, the conception during employment, the disclosure breach — is this venture viable? Tell me straight.**
+
+---
+
+*This revised analysis incorporates the founder's confirmation that all ideation and development occurred during the RBC employment period. There is no pre-employment conception evidence because there was no pre-employment conception. This is the honest fact pattern on which counsel must opine.*
+
+*Prepared March 23, 2026 as structured risk identification material. Not legal advice. All legal citations should be verified by counsel — AI systems can hallucinate case citations and statutory references.*

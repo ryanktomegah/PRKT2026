@@ -29,15 +29,17 @@ This is the single most important structural advantage in BPI's fundraising narr
 
 The table below is **illustrative only**. Actual valuations depend on market conditions, negotiation leverage, and execution. All figures are rounded conservatively (down, not up).
 
-| Round | Timing | Raise | Pre-Money Valuation | Post-Money | Founder Ownership | Founder Stake Value |
-|---|---|---|---|---|---|---|
-| Inception | Year 0 | — | — | — | 85% (15% ESOP reserved) | $0 |
-| Pre-Seed | Year 0.5 | $1.5M | $6M | $7.5M | ~68% | $0 (pre-revenue) |
-| Seed | Year 1.5 | $4M | $18M | $22M | ~55% | $0 (still pre-revenue) |
-| Series A | Year 3 | $12M | $50–60M | $62–72M | ~45% | $22.5–27M |
-| Series B | Year 5 | $35M | $150–200M | $185–235M | ~37% | $55.5–74M |
-| Growth / Pre-IPO | Year 7 | $60–80M | $450–600M | $510–680M | ~32% | $144–192M |
-| IPO / Exit | Year 10 | — | $1.5–2.5B | — | ~27% | $405–675M |
+| Round | Timing | Raise | Pre-Money Valuation | Post-Money | Founder Ownership | **Founder Voting %** | Founder Stake Value |
+|---|---|---|---|---|---|---|---|
+| Inception | Year 0 | — | — | — | 85% (15% ESOP reserved) | **100%** | $0 |
+| Pre-Seed | Year 0.5 | $1.5M | $6M | $7.5M | ~68% | **95.5%** | $0 (pre-revenue) |
+| Seed | Year 1.5 | $4M | $18M | $22M | ~55% | **92.4%** | $0 (still pre-revenue) |
+| Series A | Year 3 | $12M | $50–60M | $62–72M | ~45% | **89.1%** | $22.5–27M |
+| Series B | Year 5 | $35M | $150–200M | $185–235M | ~37% | **85.5%** | $55.5–74M |
+| Growth / Pre-IPO | Year 7 | $60–80M | $450–600M | $510–680M | ~32% | **82.5%** | $144–192M |
+| IPO / Exit | Year 10 | — | $1.5–2.5B | — | ~27% | **~78.7%** | $405–675M |
+
+> **Voting % Note:** Voting percentages assume a 10:1 Class A voting ratio as specified in the [Founder Protection Strategy](../docs/governance/Founder-Protection-Strategy.md). The founder holds 8,500,000 Class A shares (10 votes each = 85,000,000 votes). All other shares carry 1 vote each. The founder loses voting majority only at approximately **9.1% economic ownership** — well below the projected 27% at IPO. F&F SAFEs do not convert until the Pre-Seed qualifying financing ($500K minimum), so the founder holds 100% of votes through the F&F stage. See the Founder Protection Strategy §1.4 for the full calculation table.
 
 ### Valuation Rationale
 
@@ -127,7 +129,215 @@ Paper valuations are meaningless until a liquidity event (IPO, secondary sale, o
 - These are **paper-to-cash conversion estimates**, not predictions.
 - IPO lockup periods (typically 180 days) mean the founder cannot sell at the IPO price.
 - Secondary sales earlier in the journey (Series B or Growth round) may allow partial liquidity at lower valuations but with greater certainty.
-- Liquidation preferences from preferred investors will reduce founder proceeds in a downside exit scenario (below post-money valuation).
+- Liquidation preferences from preferred investors will reduce founder proceeds in a downside exit scenario (below post-money valuation). See Section 4a below for detailed liquidation waterfall modeling.
+
+---
+
+## 4a. What the Founder Actually Takes Home — Liquidation Scenarios
+
+Paper valuations and enterprise value projections do not account for **liquidation preferences** — the contractual right of preferred shareholders to receive their money back before common shareholders see a dollar. This section models what the founder actually receives at various exit valuations under different preference structures.
+
+### Why This Matters
+
+In a venture-backed company, every round of preferred share issuance creates a "preference stack" — the total amount that preferred shareholders are contractually entitled to receive before common shareholders. At exits **below** the preference stack, the founder receives **$0**. At exits above the stack, the founder receives their pro-rata share of what remains. The size and structure of the preference stack determines the minimum exit needed for the founder to see any money.
+
+### Preference Stack Scenarios
+
+Since actual raise amounts will vary based on market conditions and negotiation, three stack scenarios are modeled:
+
+| Stack Scenario | Pre-Seed | Seed | Series A | Series B | Growth | **Total Stack** |
+|---------------|----------|------|----------|----------|--------|----------------|
+| **Minimum** (smaller raises) | $1.0M | $3.0M | $8.0M | $25.0M | $50.0M | **$87.0M** |
+| **Projected** (per Section 2 table) | $1.5M | $4.0M | $12.0M | $35.0M | $70.0M | **$122.5M** |
+| **Maximum** (top of range raises) | $2.0M | $5.0M | $15.0M | $40.0M | $80.0M | **$142.0M** |
+
+### Two Preference Structures
+
+**1× Non-Participating Preferred (Standard — what BPI should insist on):**
+- Investors get back 1× their investment OR convert to common and take their pro-rata share — whichever is higher
+- They do NOT get both
+- At high valuations, investors convert to common because their pro-rata share exceeds their preference
+
+**1× Participating Preferred (what to avoid):**
+- Investors get back 1× their investment AND their pro-rata share of the remaining proceeds
+- This is "double-dipping" — investors recover their capital AND share in the upside
+- The founder's effective proceeds are always lower under participating preferred
+
+### Liquidation Waterfall — Projected Stack ($122.5M total preferences)
+
+**1× Non-Participating Preferred:**
+
+| Exit Value | Pref Stack Consumed | Remaining After Prefs | Founder Share (27% of remaining) | Investor Pro-Rata (73%) | Investors Choose | **Founder Receives** |
+|------------|--------------------|-----------------------|--------------------------------|------------------------|-----------------|--------------------|
+| $30M | $30M (partial) | $0 | $0 | N/A | Take preference | **$0** |
+| $50M | $50M (partial) | $0 | $0 | N/A | Take preference | **$0** |
+| $100M | $100M (partial) | $0 | $0 | N/A | Take preference | **$0** |
+| $122.5M | $122.5M (full) | $0 | $0 | N/A | Take preference | **$0** |
+| $250M | $122.5M | $127.5M | $34.4M | $93.1M | Convert (27% of $250M = $67.5M > $122.5M? No → take pref) | **$34.4M** |
+| $500M | $122.5M | $377.5M | $101.9M | Investors convert: 73% of $500M = $365M > $122.5M | Convert to common | **$135M** |
+| $1.0B | Investors convert | N/A | 27% of $1B | 73% of $1B | Convert to common | **$270M** |
+| $2.5B | Investors convert | N/A | 27% of $2.5B | 73% of $2.5B | Convert to common | **$675M** |
+
+**Crossover analysis:** Investors convert to common when 73% × Exit Value > $122.5M → Exit Value > **$167.8M**. Below this threshold, investors take their preference and the founder gets the remainder (if any). Above this threshold, investors convert to common and everyone gets their pro-rata share.
+
+**1× Participating Preferred (for comparison — shows why to avoid this):**
+
+| Exit Value | Pref Stack Consumed (1×) | Remaining After Prefs | Investor Share (73% of remaining) | Founder Share (27% of remaining) | **Founder Receives** | **Delta vs Non-Participating** |
+|------------|------------------------|-----------------------|----------------------------------|--------------------------------|--------------------|-----------------------------|
+| $30M | $30M | $0 | $0 | $0 | **$0** | $0 |
+| $50M | $50M | $0 | $0 | $0 | **$0** | $0 |
+| $100M | $100M | $0 | $0 | $0 | **$0** | $0 |
+| $122.5M | $122.5M | $0 | $0 | $0 | **$0** | $0 |
+| $250M | $122.5M | $127.5M | $93.1M | $34.4M | **$34.4M** | $0 |
+| $500M | $122.5M | $377.5M | $275.6M | $101.9M | **$101.9M** | **−$33.1M** |
+| $1.0B | $122.5M | $877.5M | $640.6M | $236.9M | **$236.9M** | **−$33.1M** |
+| $2.5B | $122.5M | $2.378B | $1.736B | $641.6M | **$641.6M** | **−$33.4M** |
+
+**The cost of participating preferred:** At a $1B exit, the founder receives $236.9M under participating preferred vs. $270M under non-participating — a **$33.1M loss** from accepting the wrong term sheet. At $2.5B, the delta is **$33.4M**. The participating preferred penalty is approximately constant at high valuations (≈ 27% × total preference stack).
+
+### Liquidation Waterfall — Minimum Stack ($87.0M)
+
+**1× Non-Participating Preferred:**
+
+| Exit Value | Prefs Returned | **Founder Receives** |
+|------------|---------------|---------------------|
+| $30M | $30M | **$0** |
+| $50M | $50M | **$0** |
+| $87M | $87M | **$0** |
+| $100M | $87M | **$3.5M** (27% of $13M remainder) |
+| $250M | Investors convert | **$67.5M** (27% of $250M) |
+| $500M | Investors convert | **$135M** |
+| $1.0B | Investors convert | **$270M** |
+| $2.5B | Investors convert | **$675M** |
+
+Crossover: 73% × Exit > $87M → Exit > **$119.2M**.
+
+### Liquidation Waterfall — Maximum Stack ($142.0M)
+
+**1× Non-Participating Preferred:**
+
+| Exit Value | Prefs Returned | **Founder Receives** |
+|------------|---------------|---------------------|
+| $30M | $30M | **$0** |
+| $50M | $50M | **$0** |
+| $100M | $100M | **$0** |
+| $142M | $142M | **$0** |
+| $250M | $142M | **$29.2M** (27% of $108M remainder) |
+| $500M | Investors convert | **$135M** |
+| $1.0B | Investors convert | **$270M** |
+| $2.5B | Investors convert | **$675M** |
+
+Crossover: 73% × Exit > $142M → Exit > **$194.5M**.
+
+### Key Insights
+
+1. **At exits below the preference stack ($87M–$142M depending on scenario), the founder receives $0 under non-participating preferred.** Investors take their money back first. This is not punitive — it is the basic bargain of preferred shares. But it means the minimum viable exit for the founder to see any money is approximately $90M–$145M.
+
+2. **Under participating preferred, the gap is even worse.** Investors double-dip: they get their preference back AND their pro-rata share of the remainder. The cost of accepting participating preferred terms is approximately **27% × total preference stack** at high valuations (~$23M–$38M depending on stack size). This is why the [Founder Protection Strategy](../docs/governance/Founder-Protection-Strategy.md) says "never accept more than 1× non-participating."
+
+3. **Above the crossover point, the preference stack becomes irrelevant.** Under non-participating preferred, once the exit exceeds ~$120M–$195M (depending on stack), all investors convert to common and everyone gets their pro-rata share. At $1B+ exits, the preference stack is noise — common shares dominate.
+
+4. **The platform model makes the preference stack irrelevant sooner.** Under the bridge-lending-only model (conservative $226M revenue × 3–5× multiple = $678M–$1.13B enterprise value), the preference stack is comfortably exceeded. Under the platform model ($500M–$2B revenue), it is entirely negligible. The larger the exit, the less the preference structure matters.
+
+5. **Model the waterfall at every round.** Each new raise increases the preference stack. Before accepting any term sheet, recalculate: "At what exit valuation does the founder start receiving proceeds? At what valuation does the preference structure become irrelevant?" If the minimum viable exit exceeds the realistic downside scenario, the terms may not be worth accepting.
+
+---
+
+## 4b. SPV Economics — How the Capital Structure Affects Founder Returns
+
+### The Two-Entity Structure
+
+BPI's capital structure separates IP ownership from lending operations:
+
+```
+BPI Inc. (Parent)
+├── Owns: Patent portfolio, platform IP (C1–C8), source code, trade secrets
+├── Owns: Bank licensing agreements (Phase 1 royalty income)
+├── Owns: 100% equity in BPI Capital I Ltd
+├── Revenue: Phase 1 IP royalty + intercompany IP license fees from SPV
+│
+└── BPI Capital I Ltd (SPV)
+    ├── Holds: Warehouse facility / securitization vehicle
+    ├── Holds: Bridge loan book
+    ├── Revenue: Lending operations (Phase 2/3 fee income)
+    ├── Costs: Cost of capital (senior lender + mezzanine)
+    └── Pays: Intercompany IP license fee to BPI Inc.
+```
+
+### Why the SPV Exists
+
+1. **IP protection.** The patent portfolio — BPI's existential asset — sits in the parent. If the SPV's loan book suffers unexpected losses, the parent is structurally remote. A capital partner's claim stops at the SPV boundary. BPI's IP is never collateral for lending operations. (See [Capital-Partner-Strategy.md](Capital-Partner-Strategy.md) §3.)
+
+2. **Tiered capital structure.** The SPV has its own capital stack — Senior (85–90%, SOFR + 200–350 bps), Mezzanine (5–10%, 10–14%), and BPI First-Loss Equity (5–15%, residual). BPI's actual equity at risk is the first-loss tranche, not the full SPV.
+
+3. **Securitization path.** After 12–18 months of clean SPV data, the warehouse can be refinanced into a rated securitization, dropping cost of capital from ~12% to ~5–6%.
+
+### Intercompany IP License — Transfer Pricing Mechanism
+
+The SPV pays BPI parent a **licensing fee** for use of the C1–C8 platform technology. This creates a transfer pricing mechanism with material tax and financial consequences:
+
+| Revenue Type | Entity | Income Classification | Tax Treatment |
+|-------------|--------|----------------------|---------------|
+| Phase 1 royalty | BPI Inc. (parent) | **IP royalty income** | Eligible for patent box / IP box regimes; SR&ED eligible; favorable HST |
+| Intercompany IP license | BPI Inc. (parent) | **Intercompany royalty** | Deductible expense for SPV; revenue for parent; must comply with arm's-length transfer pricing rules |
+| Phase 2/3 lending revenue | BPI Capital I Ltd (SPV) | **Lending/interest income** | Different withholding, deductibility, and regulatory treatment vs. IP income |
+
+**What the intercompany license achieves:**
+- **Keeps IP revenue in the parent** (where it is taxed as business/royalty income — potentially more favorable)
+- **Reduces taxable income in the SPV** (the license fee is a deductible operating expense for the SPV)
+- **Creates a revenue stream for the parent** that is independent of the SPV's lending profitability
+
+### SPV Economics at Scale
+
+**Phase 2 — Single Tier 1 Bank, 2% of Corridors (Conservative):**
+
+| Item | Value | Source |
+|------|-------|--------|
+| Annual eligible volume | $840M | Revenue-Projection-Model.md §8.2 |
+| Concurrent SPV capital | $16.1M | 7-day avg maturity |
+| BPI's 70% share | $11.3M | Phase 2 co-funding |
+| SPV capital structure: Senior (85%) | $9.6M at ~7% | $672K annual cost |
+| SPV capital structure: BPI equity (15%) | $1.7M | First-loss tranche |
+| BPI fee revenue (40% share) | ~$161K/year | At 400 bps floor |
+| **Net to BPI equity** | **Negative** | Phase 2 is strategic, not profitable |
+
+**Phase 3 — Single Tier 1 Bank, Full Book (Base Case at 700 bps avg):**
+
+| Item | Value | Source |
+|------|-------|--------|
+| Loans/year | 100,000 | Revenue-Projection-Model.md §8.6 |
+| Total annual fee | ~$134.2M | At 700 bps average |
+| BPI share (75%) | ~$100.7M | Phase 3 fee split |
+| Senior lender cost | ~$81.4M | At 5% post-securitization |
+| **Net to BPI equity** | **+$19.2M** | Per bank |
+| BPI equity at risk | ~$288M | 15% of concurrent capital |
+| **BPI equity ROE** | **+6.7%** | Improving with scale |
+
+### What the Founder Should Understand
+
+1. **Phase 1 generates pure IP income with zero capital at risk.** This is the cleanest revenue from a founder-return perspective — it flows directly to the parent entity, is subject to IP tax treatment, and requires no SPV, no warehouse, and no capital partner.
+
+2. **Phase 2 is a strategic investment.** The SPV is capital-negative in Phase 2. Its purpose is to generate 12–18 months of loan performance data needed to qualify for securitization. The cost of Phase 2 is funded from Phase 1 royalty income + equity capital.
+
+3. **Phase 3 is where SPV economics transform.** Post-securitization, the cost of capital drops from ~12% to ~5–6%. At 700+ bps average fee rate, Phase 3 generates positive returns on BPI equity. At scale (15 banks at Phase 3), the SPV produces substantial cash flow.
+
+4. **The intercompany IP license is a tax optimization tool, not a pricing game.** The license fee must be set at arm's length — meaning it must approximate what an unrelated third party would pay for the same technology license. CRA (Canada Revenue Agency) transfer pricing rules (ITA §247) apply. Setting the fee too high (to shift income to the parent) risks a transfer pricing adjustment. Setting it too low leaves money on the table.
+
+5. **SPV structure requires corporate counsel review.** Specifically:
+   - **Thin capitalization rules** (ITA §18(4)): The SPV must maintain sufficient equity relative to its debt to avoid having interest deductions denied. At 85% senior leverage, this must be analyzed.
+   - **Transfer pricing compliance** (ITA §247): The intercompany IP license fee must be arm's-length documented.
+   - **SPV bankruptcy remoteness**: Legal opinion required that the SPV is a "true sale" vehicle — assets transferred to the SPV cannot be clawed back if the parent faces insolvency.
+   - **Regulatory classification**: Depending on Phase 3 scale, the SPV may trigger financial institution classification by OSFI, requiring additional regulatory compliance.
+
+### Impact on Founder Returns
+
+At exits where the parent entity is valued, the SPV's loan book and cash flows are part of the consolidated enterprise value. The founder's 27% equity stake is in BPI Inc. (the parent), which owns 100% of the SPV. So the founder's proceeds include the full value of both entities.
+
+The key question for the founder is whether to keep the SPV consolidated at IPO or spin it off. This decision depends on:
+- **If consolidated:** Total enterprise value includes both IP platform + lending operations. Higher revenue but potentially lower multiple (lending multiples are lower than SaaS/platform multiples).
+- **If spun off:** Parent valued as a pure platform/IP company (higher multiple). SPV valued as a specialty lender (lower multiple). Combined value may be higher or lower depending on market conditions.
+
+This is a Year 7–8 decision. The answer depends on market conditions at that time. The governance strategy ensures the founder has sole authority to make this decision (Class A consent right over IPO terms, exchange selection, and underwriter selection per [Founder-Protection-Strategy.md](../docs/governance/Founder-Protection-Strategy.md) §3.2).
 
 ---
 
