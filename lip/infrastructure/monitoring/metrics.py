@@ -13,7 +13,7 @@ the caller's perspective.
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, Optional
+from typing import Any, Deque, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -136,8 +136,8 @@ class PrometheusMetricsCollector:
         self._gauges: Dict[str, float] = {}
         self._prom_available = False
         self._prom_histogram = None
-        self._prom_gauges: Dict[str, object] = {}
-        self._prom_counters: Dict[str, object] = {}
+        self._prom_gauges: Dict[str, Any] = {}
+        self._prom_counters: Dict[str, Any] = {}
         try:
             import prometheus_client as prom
             self._prom_available = True
