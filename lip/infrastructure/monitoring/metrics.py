@@ -51,6 +51,17 @@ METRIC_PORTFOLIO_CONCENTRATION_HHI = "lip_portfolio_concentration_hhi"
 METRIC_CONFORMAL_COVERAGE = "lip_conformal_coverage"
 METRIC_CONFORMAL_INTERVAL_WIDTH = "lip_conformal_interval_width"
 
+# P3 — Platform Licensing (MIPLO) metrics
+METRIC_MIPLO_API_LATENCY = "lip_miplo_api_latency_ms"
+METRIC_MIPLO_REQUEST_COUNT = "lip_miplo_requests_total"
+METRIC_PROCESSOR_TX_COUNT = "lip_processor_transactions_total"
+METRIC_PROCESSOR_GROSS_FEE = "lip_processor_gross_fee_usd"
+METRIC_PROCESSOR_NET_FEE = "lip_processor_net_fee_usd"
+METRIC_CONTAINER_HEARTBEAT = "lip_container_heartbeat_timestamp"
+METRIC_TENANT_ISOLATION_VIOLATION = "lip_tenant_isolation_violations_total"
+METRIC_TENANT_ACTIVE_LOANS = "lip_tenant_active_loans"
+METRIC_TENANT_EXPOSURE_USD = "lip_tenant_exposure_usd"
+
 
 @dataclass
 class LatencyTracker:
