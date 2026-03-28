@@ -34,3 +34,17 @@ CORPORATE_CENTRALITY_BATCH_INTERVAL_HOURS = 4
 # ── Corporate feature vector ─────────────────────────────────────────────────
 CORPORATE_NODE_FEATURE_DIM = 8
 """8-dimensional corporate node feature vector."""
+
+# ── Intervention optimizer ──────────────────────────────────────────────────
+INTERVENTION_FEE_RATE_BPS = 200
+"""Default bridge loan fee (bps annualised) for cost estimation."""
+
+# ── Cascade alert severity thresholds ───────────────────────────────────────
+CASCADE_ALERT_EXCLUSIVITY_HOURS = 4
+"""Bank exclusivity window (hours) to act on intervention recommendation."""
+
+CASCADE_ALERT_SEVERITY_HIGH_USD = Decimal("10000000")
+"""CVaR >= $10M triggers HIGH severity alert."""
+
+CASCADE_ALERT_SEVERITY_MEDIUM_USD = Decimal("1000000")
+"""CVaR >= $1M triggers MEDIUM severity alert (same as alert threshold)."""
