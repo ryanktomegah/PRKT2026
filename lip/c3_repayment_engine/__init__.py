@@ -8,8 +8,10 @@ Three-entity role mapping:
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
 from .corridor_buffer import CorridorBuffer
+from .nav_emitter import NAVEventEmitter
 from .rejection_taxonomy import RejectionClass, classify_rejection_code
 from .repayment_loop import RepaymentLoop, SettlementMonitor
+from .settlement_bridge import SettlementCallbackBridge
 
 __all__ = [
     "RepaymentLoop",
@@ -17,4 +19,6 @@ __all__ = [
     "classify_rejection_code",
     "RejectionClass",
     "CorridorBuffer",
+    "NAVEventEmitter",
+    "SettlementCallbackBridge",
 ]
