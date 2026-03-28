@@ -45,6 +45,7 @@ from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.common.business_calendar import add_business_days, currency_to_jurisdiction
 from lip.common.notification_service import NotificationEventType, NotificationService
 from lip.common.redis_factory import create_redis_client
+from lip.common.schemas import TenantContext
 from lip.common.state_machines import (
     LoanState,
     LoanStateMachine,
@@ -184,6 +185,7 @@ class LIPPipeline:
         entity_id: Optional[str] = None,
         beneficiary_id: Optional[str] = None,
         human_override_decision: Optional[str] = None,
+        tenant_context: Optional[TenantContext] = None,
     ) -> PipelineResult:
         """Run Algorithm 1 for a single payment event.
 
@@ -271,6 +273,8 @@ class LIPPipeline:
             )
 
         borrower = borrower or {}
+        # P3 Platform Licensing: extract tenant_id for C6 velocity isolation and C7 audit
+        tenant_id = tenant_context.tenant_id if tenant_context is not None else None
         # EPG-28: composite (sending_bic, debtor_account) key so each end-customer
         # originator within a correspondent bank has its own velocity window.
         # Falls back to BIC-only when debtor_account is not available (non-SWIFT rails
@@ -347,7 +351,7 @@ class LIPPipeline:
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             f_c4 = executor.submit(self._run_c4, event, tracker)
-            f_c6 = executor.submit(self._run_c6, event, entity_id, beneficiary_id, tracker)
+            f_c6 = executor.submit(self._run_c6, event, entity_id, beneficiary_id, tracker, tenant_id)
             c4_result = f_c4.result()
             c6_result = f_c6.result()
 
@@ -534,6 +538,8 @@ class LIPPipeline:
             "human_override_decision": human_override_decision,
             # EPG-18: propagate C6 anomaly flag so C7 can route to human review
             "anomaly_flagged": anomaly_flagged,
+            # P3 Platform Licensing: tenant_id for per-tenant decision log partitioning
+            "tenant_id": tenant_id or "",
         }
 
         with tracker.measure("c7"):
@@ -776,6 +782,7 @@ class LIPPipeline:
         entity_id: str,
         beneficiary_id: str,
         tracker: LatencyTracker,
+        tenant_id=None,
     ):
         """Run C6 AML combined gate (sanctions → velocity → anomaly) in a thread.
 
@@ -804,11 +811,27 @@ class LIPPipeline:
         if hasattr(self._c7, "aml_count_cap"):
             count_cap = self._c7.aml_count_cap
 
+        # P3 Platform Licensing: only pass tenant_id when the checker supports it
+        # (AMLChecker accepts tenant_id; legacy VelocityChecker does not).
+        import inspect
+        _sig = inspect.signature(self._c6.check)
+        _accepts_tenant_id = (
+            "tenant_id" in _sig.parameters
+            or any(
+                p.kind == inspect.Parameter.VAR_KEYWORD
+                for p in _sig.parameters.values()
+            )
+        )
+        extra_kwargs: dict[str, Any] = {}
+        if tenant_id is not None and _accepts_tenant_id:
+            extra_kwargs["tenant_id"] = tenant_id
+
         with tracker.measure("c6"):
             return self._c6.check(
                 entity_id, event.amount, beneficiary_id,
                 dollar_cap_override=dollar_cap,
                 count_cap_override=count_cap,
+                **extra_kwargs,
             )
 
     def _log_block(
