@@ -199,6 +199,29 @@ class PortfolioReporter:
             "estimated_annualised_yield_bps": estimated_yield_bps,
         }
 
+    # ── GET /miplo/portfolio/nav (tenant-scoped) ────────────────────────────
+
+    def get_tenant_nav(self, tenant_id: str) -> Dict:
+        """Return NAVEvent-shaped data for a single tenant (synchronous query).
+
+        Used by MIPLO portfolio endpoints for processor dashboards.
+        Filters active loans by licensee_id at query time.
+        """
+        now = datetime.now(tz=timezone.utc)
+        loans = [
+            loan for loan in self._loop.get_active_loans()
+            if loan.licensee_id == tenant_id
+        ]
+        total_exposure = sum(
+            (loan.principal for loan in loans), Decimal("0")
+        )
+        return {
+            "tenant_id": tenant_id,
+            "active_loans": len(loans),
+            "total_exposure_usd": str(total_exposure),
+            "timestamp": now.isoformat(),
+        }
+
     # ── GET /portfolio/risk ─────────────────────────────────────────────────
 
     def get_risk(self) -> Dict:

@@ -126,6 +126,30 @@ try:
             """Return processor container status (tenant info, authorized BICs)."""
             return miplo_service.get_status()
 
+        @router.get("/portfolio/loans", dependencies=deps)
+        async def portfolio_loans():
+            """Active loans for this processor's tenant."""
+            result = miplo_service.get_portfolio_loans()
+            if result is None:
+                raise HTTPException(status_code=503, detail="Portfolio reporting not configured")
+            return result
+
+        @router.get("/portfolio/exposure", dependencies=deps)
+        async def portfolio_exposure():
+            """Exposure breakdown for this processor's tenant."""
+            result = miplo_service.get_portfolio_exposure()
+            if result is None:
+                raise HTTPException(status_code=503, detail="Portfolio reporting not configured")
+            return result
+
+        @router.get("/portfolio/nav", dependencies=deps)
+        async def portfolio_nav():
+            """Latest NAV snapshot for this processor's tenant."""
+            result = miplo_service.get_portfolio_nav()
+            if result is None:
+                raise HTTPException(status_code=503, detail="Portfolio reporting not configured")
+            return result
+
         return router
 
 except ImportError:

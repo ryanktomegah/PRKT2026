@@ -47,6 +47,7 @@ class MIPLOService:
         pipeline,
         processor_context: ProcessorLicenseeContext,
         metrics_collector=None,
+        portfolio_reporter=None,
     ):
         self._pipeline = pipeline
         self._tenant_id = processor_context.licensee_id
@@ -57,6 +58,7 @@ class MIPLOService:
             deployment_phase=processor_context.deployment_phase,
         )
         self._metrics = metrics_collector
+        self._portfolio = portfolio_reporter
 
     @property
     def tenant_id(self) -> str:
@@ -119,6 +121,26 @@ class MIPLOService:
             beneficiary_id=beneficiary_id,
             tenant_context=self._tenant_context,
         )
+
+    # ── Portfolio delegation (tenant-scoped) ─────────────────────────────────
+
+    def get_portfolio_loans(self):
+        """Return active loans for this processor's tenant."""
+        if self._portfolio is None:
+            return None
+        return self._portfolio.get_loans()
+
+    def get_portfolio_exposure(self):
+        """Return exposure breakdown for this processor's tenant."""
+        if self._portfolio is None:
+            return None
+        return self._portfolio.get_exposure()
+
+    def get_portfolio_nav(self):
+        """Return NAV snapshot for this processor's tenant."""
+        if self._portfolio is None:
+            return None
+        return self._portfolio.get_tenant_nav(self._tenant_id)
 
     def get_status(self) -> dict:
         """Return processor container status for the /miplo/status endpoint."""
