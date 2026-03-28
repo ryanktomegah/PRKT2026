@@ -864,3 +864,84 @@ class FeeAllocation(BaseModel):
             "does NOT reduce bpi_share_usd or bank_share_usd."
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# P3 Platform Licensing — Multi-tenant schemas
+# ---------------------------------------------------------------------------
+
+class TenantContext(BaseModel):
+    """Multi-tenant context for processor-hosted deployments (P3 Platform Licensing).
+
+    Passed through the LIPPipeline to scope data partitioning, AML velocity,
+    decision logging, and settlement tracking to a single processor tenant.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    tenant_id: str = Field(
+        ..., min_length=1, description="Processor tenant identifier (e.g. 'FINASTRA_EU_001')."
+    )
+    sub_licensee_bics: list[str] = Field(
+        default_factory=list,
+        description="Authorised bank BICs under this processor's deployment.",
+    )
+    deployment_phase: str = Field(
+        default="LICENSOR",
+        description="Deployment phase: LICENSOR, HYBRID, or FULL_MLO.",
+    )
+
+
+class NAVEvent(BaseModel):
+    """Per-tenant NAV snapshot emitted by C3 every 60 minutes (P3 blueprint §4.3).
+
+    Feeds processor dashboards and BPI revenue metering.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    tenant_id: str = Field(..., min_length=1, description="Processor tenant identifier.")
+    active_loans: int = Field(..., ge=0, description="Current active bridge loan count.")
+    total_exposure_usd: Decimal = Field(
+        ..., ge=Decimal("0"), description="Total outstanding principal in USD."
+    )
+    settled_last_60min: int = Field(
+        ..., ge=0, description="Loans settled in the last 60-minute window."
+    )
+    settled_amount_last_60min_usd: Decimal = Field(
+        ..., ge=Decimal("0"), description="Settled principal in the last 60 minutes (USD)."
+    )
+    trailing_loss_rate_30d: Decimal = Field(
+        ..., ge=Decimal("0"), le=Decimal("1"), description="30-day trailing loss rate."
+    )
+    timestamp: datetime = Field(..., description="UTC timestamp of this NAV snapshot.")
+
+
+class RevenueRecord(BaseModel):
+    """Per-processor quarterly revenue record (P3 blueprint §4.8).
+
+    Tracks transaction count, gross/net fees, annual minimum shortfall,
+    and performance premium for revenue reconciliation.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    tenant_id: str = Field(..., min_length=1, description="Processor tenant identifier.")
+    period: str = Field(..., description="Fiscal quarter (e.g. '2027-Q3').")
+    transaction_count: int = Field(..., ge=0, description="Bridge loans originated this quarter.")
+    gross_fee_usd: Decimal = Field(..., ge=Decimal("0"), description="Total gross fees.")
+    processor_take_usd: Decimal = Field(..., ge=Decimal("0"), description="Processor take-rate amount.")
+    bpi_net_usd: Decimal = Field(..., ge=Decimal("0"), description="BPI net after processor take.")
+    annual_minimum_usd: Decimal = Field(..., ge=Decimal("0"), description="Contractual annual minimum.")
+    minimum_shortfall_usd: Decimal = Field(
+        default=Decimal("0"), ge=Decimal("0"), description="Shortfall vs annual minimum (0 if on track)."
+    )
+    performance_baseline_usd: Decimal = Field(
+        ..., ge=Decimal("0"), description="80% of projected annual volume."
+    )
+    performance_premium_usd: Decimal = Field(
+        default=Decimal("0"), ge=Decimal("0"), description="Premium on revenue above baseline."
+    )
+    total_bpi_revenue_usd: Decimal = Field(
+        ..., ge=Decimal("0"), description="bpi_net_usd + performance_premium_usd."
+    )
