@@ -43,7 +43,7 @@ try:
     # Shared state for shutdown coordination
     _shutdown_hooks: list = []
 
-    def create_app() -> FastAPI:
+    def create_app(pipeline=None, processor_context=None) -> FastAPI:
         """Factory that assembles the full LIP HTTP application.
 
         Wires dependencies from environment variables:
@@ -160,6 +160,17 @@ try:
             """Prometheus-compatible metrics scraping endpoint."""
             return metrics_collector.generate_latest()
 
+        # MIPLO gateway (P3 processor deployments — conditional)
+        if pipeline is not None and processor_context is not None:
+            from lip.api.miplo_router import make_miplo_router
+            from lip.api.miplo_service import MIPLOService
+
+            miplo_svc = MIPLOService(pipeline, processor_context, metrics_collector)
+            application.include_router(
+                make_miplo_router(miplo_svc, auth_dependency=auth_dep),
+                prefix="/miplo",
+            )
+
         return application
 
     # Module-level app instance for `uvicorn lip.api.app:app`
@@ -169,5 +180,5 @@ except ImportError:
     logger.debug("FastAPI not installed — HTTP application not available")
     app = None  # type: ignore[assignment]
 
-    def create_app():  # type: ignore[misc]
+    def create_app(pipeline=None, processor_context=None):  # type: ignore[misc]
         raise ImportError("FastAPI is required for the HTTP application")
