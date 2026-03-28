@@ -12,6 +12,7 @@ Three-entity role mapping:
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
 
+from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
 from lip.common.constants import (
@@ -23,6 +24,7 @@ from lip.common.constants import (
     MIN_LOAN_AMOUNT_USD,
     PLATFORM_ROYALTY_RATE,
 )
+from lip.p5_cascade_engine.constants import CASCADE_DISCOUNT_CAP
 
 _DAYS_IN_YEAR: Decimal = Decimal("365")
 _BPS_DIVISOR: Decimal = Decimal("10000")
@@ -207,3 +209,87 @@ def verify_floor_applies(fee_bps: Decimal) -> bool:
         ``True`` iff ``fee_bps == FEE_FLOOR_BPS`` (exactly 300.0 bps).
     """
     return Decimal(str(fee_bps)) == FEE_FLOOR_BPS
+
+
+@dataclass
+class CascadeAdjustedPricing:
+    """Result of cascade-adjusted PD computation (P5 blueprint §7.2).
+
+    QUANT invariant: cascade_adjusted_fee_bps >= FEE_FLOOR_BPS always.
+    """
+
+    base_pd: Decimal
+    cascade_adjusted_pd: Decimal
+    cascade_discount: Decimal
+    base_fee_bps: Decimal
+    cascade_adjusted_fee_bps: Decimal
+    cascade_value_prevented: Decimal
+    intervention_cost: Decimal
+
+
+def compute_cascade_adjusted_pd(
+    base_pd: Decimal,
+    cascade_value_prevented: Decimal,
+    intervention_cost: Decimal,
+    lgd: Decimal = Decimal("0.45"),
+    ead: Decimal = Decimal("1000000"),
+) -> CascadeAdjustedPricing:
+    """Compute cascade-adjusted PD and fee for intervention pricing.
+
+    The cascade-adjusted PD is LOWER than the base PD because the intervention
+    prevents a larger cascade — the bank's risk committee sees a better
+    risk-adjusted return.
+
+    Formula (P5 blueprint §7.2, QUANT sign-off required):
+        cascade_discount = min(CASCADE_DISCOUNT_CAP, value_prevented / (10 * cost))
+        cascade_adjusted_pd = base_pd * (1 - cascade_discount)
+
+    The 10x divisor is conservative — prevents aggressive discounting on small
+    interventions with large claimed cascade values. The 30% cap ensures the
+    cascade discount never reduces PD by more than 30%.
+
+    Parameters
+    ----------
+    base_pd : Decimal
+        Base probability of default for the bridge borrower.
+    cascade_value_prevented : Decimal
+        Total downstream CVaR prevented by this intervention.
+    intervention_cost : Decimal
+        Bridge loan amount (cost of the intervention).
+    lgd : Decimal
+        Loss Given Default (default 0.45 for unsecured bridge).
+    ead : Decimal
+        Exposure at Default (for fee computation).
+
+    Returns
+    -------
+    CascadeAdjustedPricing
+        Full pricing result with base and adjusted PD/fee.
+    """
+    base_pd = Decimal(str(base_pd))
+    cascade_value_prevented = Decimal(str(cascade_value_prevented))
+    intervention_cost = Decimal(str(intervention_cost))
+
+    # Cascade discount (capped at 30%)
+    if intervention_cost > 0 and cascade_value_prevented > 0:
+        raw_discount = cascade_value_prevented / (10 * intervention_cost)
+        cascade_discount = min(raw_discount, CASCADE_DISCOUNT_CAP)
+    else:
+        cascade_discount = Decimal("0")
+
+    # Adjusted PD
+    cascade_adjusted_pd = base_pd * (1 - cascade_discount)
+
+    # Fee computation
+    base_fee_bps = compute_fee_bps_from_el(base_pd, lgd, ead)
+    cascade_adjusted_fee_bps = compute_fee_bps_from_el(cascade_adjusted_pd, lgd, ead)
+
+    return CascadeAdjustedPricing(
+        base_pd=base_pd,
+        cascade_adjusted_pd=cascade_adjusted_pd,
+        cascade_discount=cascade_discount,
+        base_fee_bps=base_fee_bps,
+        cascade_adjusted_fee_bps=cascade_adjusted_fee_bps,
+        cascade_value_prevented=cascade_value_prevented,
+        intervention_cost=intervention_cost,
+    )
