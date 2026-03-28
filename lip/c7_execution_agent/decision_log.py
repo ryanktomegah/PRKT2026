@@ -55,6 +55,7 @@ class DecisionLogEntryData:
     kms_unavailable_gap: Optional[float] = None  # seconds
     operator_id: Optional[str] = None
     licensee_id: str = ""        # C8 license: identifies which BPI licensee generated this entry
+    tenant_id: str = ""             # P3: processor tenant for per-tenant audit partitioning
     entry_signature: str = ""    # HMAC-SHA256; populated by DecisionLogger.log()
 
 

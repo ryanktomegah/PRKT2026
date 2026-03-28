@@ -220,6 +220,7 @@ class ExecutionAgent:
         """
         uetr = payment_context.get("uetr", str(uuid.uuid4()))
         individual_payment_id = payment_context.get("individual_payment_id", "")
+        tenant_id = str(payment_context.get("tenant_id", ""))
 
         # 0. License TPS cap guard (C8)
         if not self._tps_limiter.allow():
@@ -250,6 +251,7 @@ class ExecutionAgent:
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "BLOCK",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                tenant_id=tenant_id,
             )
             return {
                 "status": "BORROWER_NOT_ENROLLED",
@@ -271,6 +273,7 @@ class ExecutionAgent:
                 uetr, individual_payment_id, "BLOCK",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
                 human_override=False,
+                tenant_id=tenant_id,
             )
             return {"status": "BLOCK", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": "aml_blocked"}
 
@@ -279,6 +282,7 @@ class ExecutionAgent:
                 uetr, individual_payment_id, "BLOCK",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
                 human_override=False,
+                tenant_id=tenant_id,
             )
             return {"status": "BLOCK", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": "dispute_blocked"}
 
@@ -295,6 +299,7 @@ class ExecutionAgent:
                 uetr, individual_payment_id, "BLOCK",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
                 human_override=False,
+                tenant_id=tenant_id,
             )
             return {
                 "status": "COMPLIANCE_HOLD_BLOCKS_BRIDGE",
@@ -344,6 +349,7 @@ class ExecutionAgent:
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "DECLINE",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                tenant_id=tenant_id,
             )
             return {"status": "DECLINE", "loan_offer": None, "decision_entry_id": entry_id, "halt_reason": None}
 
@@ -360,6 +366,7 @@ class ExecutionAgent:
                 entry_id = self._log_decision(
                     uetr, individual_payment_id, "CURRENCY_NOT_SUPPORTED",
                     failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                    tenant_id=tenant_id,
                 )
                 return {
                     "status": "CURRENCY_NOT_SUPPORTED",
@@ -393,6 +400,7 @@ class ExecutionAgent:
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "DECLINE",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                tenant_id=tenant_id,
             )
             return {
                 "status": "BELOW_MIN_LOAN_AMOUNT",
@@ -414,6 +422,7 @@ class ExecutionAgent:
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "DECLINE",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                tenant_id=tenant_id,
             )
             return {
                 "status": "BELOW_MIN_CASH_FEE",
@@ -428,6 +437,7 @@ class ExecutionAgent:
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "LOAN_AMOUNT_MISMATCH",
                 failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
+                tenant_id=tenant_id,
             )
             return {
                 "status": "LOAN_AMOUNT_MISMATCH",
@@ -449,6 +459,7 @@ class ExecutionAgent:
             uetr, individual_payment_id, "OFFER",
             failure_prob, pd_score, fee_bps, loan_amount, dispute_class, aml_passed,
             human_override=human_override_applied,
+            tenant_id=tenant_id,
         )
         return {
             "status": "OFFER",
@@ -568,6 +579,7 @@ class ExecutionAgent:
         dispute_class: str,
         aml_passed: bool,
         human_override: bool = False,
+        tenant_id: str = "",
     ) -> str:
         state = self.degraded_mode_manager.get_state_dict()
         entry = DecisionLogEntryData(
@@ -587,6 +599,7 @@ class ExecutionAgent:
             gpu_fallback=state["gpu_fallback"],
             kms_unavailable_gap=state["kms_unavailable_gap"],
             licensee_id=self.licensee_id,
+            tenant_id=tenant_id,
         )
         return self.decision_logger.log(entry)
 
