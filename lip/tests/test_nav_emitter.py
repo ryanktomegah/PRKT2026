@@ -10,8 +10,6 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock
 
-import pytest
-
 from lip.c3_repayment_engine.nav_emitter import NAVEventEmitter
 from lip.c3_repayment_engine.repayment_loop import ActiveLoan
 from lip.common.schemas import NAVEvent
