@@ -44,6 +44,7 @@ _AML_CAP_UNSET: int = -1
 # Valid deployment phase values — must match DeploymentPhase enum in deployment_phase.py.
 # Duplicated here as strings to avoid a circular import on the token module.
 _VALID_PHASES: frozenset = frozenset({"LICENSOR", "HYBRID", "FULL_MLO"})
+_VALID_LICENSEE_TYPES: frozenset = frozenset({"BANK", "PROCESSOR"})
 
 
 @dataclass
@@ -79,6 +80,11 @@ class LicenseToken:
     aml_count_cap: int = 0       # EPG-16: 0 = unlimited; 100 retail default removed
     min_loan_amount_usd: int = 500000
     deployment_phase: str = "LICENSOR"  # Phase 1=LICENSOR, Phase 2=HYBRID, Phase 3=FULL_MLO
+    licensee_type: str = "BANK"  # "BANK" (direct) or "PROCESSOR" (platform licensing)
+    sub_licensee_bics: List[str] = field(default_factory=list)  # Processor: authorised bank BICs
+    annual_minimum_usd: int = 0  # Annual minimum commitment ($0 = none)
+    performance_premium_pct: float = 0.0  # % of above-baseline revenue
+    platform_take_rate_pct: float = 0.0  # Processor's take rate
     permitted_components: List[str] = field(default_factory=lambda: list(ALL_COMPONENTS))
     hmac_signature: str = ""
 
@@ -98,6 +104,11 @@ class LicenseToken:
             "aml_count_cap": self.aml_count_cap,
             "min_loan_amount_usd": self.min_loan_amount_usd,
             "deployment_phase": self.deployment_phase,
+            "licensee_type": self.licensee_type,
+            "sub_licensee_bics": sorted(self.sub_licensee_bics),
+            "annual_minimum_usd": self.annual_minimum_usd,
+            "performance_premium_pct": self.performance_premium_pct,
+            "platform_take_rate_pct": self.platform_take_rate_pct,
             "permitted_components": sorted(self.permitted_components),
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -119,6 +130,11 @@ class LicenseToken:
             "min_loan_amount_usd": self.min_loan_amount_usd,
             "deployment_phase": self.deployment_phase,
             "permitted_components": self.permitted_components,
+            "licensee_type": self.licensee_type,
+            "sub_licensee_bics": self.sub_licensee_bics,
+            "annual_minimum_usd": self.annual_minimum_usd,
+            "performance_premium_pct": self.performance_premium_pct,
+            "platform_take_rate_pct": self.platform_take_rate_pct,
             "hmac_signature": self.hmac_signature,
         }
 
@@ -129,6 +145,11 @@ class LicenseToken:
             raise ValueError(
                 f"Unknown deployment_phase {phase!r} — valid values: {sorted(_VALID_PHASES)}"
             )
+        licensee_type = data.get("licensee_type", "BANK")
+        if licensee_type not in _VALID_LICENSEE_TYPES:
+            raise ValueError(
+                f"Unknown licensee_type {licensee_type!r} — valid values: {sorted(_VALID_LICENSEE_TYPES)}"
+            )
         return cls(
             licensee_id=data["licensee_id"],
             issue_date=data["issue_date"],
@@ -138,6 +159,11 @@ class LicenseToken:
             aml_count_cap=int(data["aml_count_cap"]),              # EPG-17: required field — no silent default
             min_loan_amount_usd=int(data.get("min_loan_amount_usd", 500000)),
             deployment_phase=phase,
+            licensee_type=licensee_type,
+            sub_licensee_bics=list(data.get("sub_licensee_bics", [])),
+            annual_minimum_usd=int(data.get("annual_minimum_usd", 0)),
+            performance_premium_pct=float(data.get("performance_premium_pct", 0.0)),
+            platform_take_rate_pct=float(data.get("platform_take_rate_pct", 0.0)),
             permitted_components=list(data.get("permitted_components", ALL_COMPONENTS)),
             hmac_signature=data.get("hmac_signature", ""),
         )
@@ -173,6 +199,21 @@ class LicenseeContext:
     token_expiry: str
     min_loan_amount_usd: int = 500000
     deployment_phase: str = "LICENSOR"
+
+
+@dataclass
+class ProcessorLicenseeContext(LicenseeContext):
+    """Runtime context for a processor licensee (P3 Platform Licensing).
+
+    Extends LicenseeContext with processor-specific fields for
+    sub-licensee BIC validation and revenue metering configuration.
+    """
+
+    licensee_type: str = "PROCESSOR"
+    sub_licensee_bics: List[str] = field(default_factory=list)
+    annual_minimum_usd: int = 0
+    performance_premium_pct: float = 0.0
+    platform_take_rate_pct: float = 0.0
 
 
 # ── Token signing and verification ───────────────────────────────────────────
@@ -211,6 +252,11 @@ def sign_token(token: LicenseToken, signing_key: bytes) -> LicenseToken:
         aml_count_cap=token.aml_count_cap,
         min_loan_amount_usd=token.min_loan_amount_usd,
         deployment_phase=token.deployment_phase,
+        licensee_type=token.licensee_type,
+        sub_licensee_bics=list(token.sub_licensee_bics),
+        annual_minimum_usd=token.annual_minimum_usd,
+        performance_premium_pct=token.performance_premium_pct,
+        platform_take_rate_pct=token.platform_take_rate_pct,
         permitted_components=list(token.permitted_components),
         hmac_signature=sig,
     )

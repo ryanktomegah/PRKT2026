@@ -23,16 +23,27 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+from decimal import Decimal
 from typing import Optional
 
 from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.common.constants import PROCESSOR_TAKE_RATE_MAX_PCT, PROCESSOR_TAKE_RATE_MIN_PCT
 
-from .license_token import _AML_CAP_UNSET, LicenseeContext, LicenseToken, verify_token
+from .license_token import (
+    _AML_CAP_UNSET,
+    LicenseeContext,
+    LicenseToken,
+    ProcessorLicenseeContext,
+    verify_token,
+)
 
 logger = logging.getLogger(__name__)
 
 _TOKEN_ENV = "LIP_LICENSE_TOKEN_JSON"
 _KEY_ENV = "LIP_LICENSE_KEY_HEX"
+
+_BIC_PATTERN = re.compile(r"^[A-Z0-9]{8}([A-Z0-9]{3})?$")
 
 
 class LicenseBootValidator:
@@ -85,6 +96,38 @@ class LicenseBootValidator:
             self._engage("aml_cap_not_configured")
             return None
 
+        # Processor-specific validation (P3 Platform Licensing)
+        if token.licensee_type == "PROCESSOR":
+            if not token.sub_licensee_bics:
+                logger.critical(
+                    "Processor token has no sub_licensee_bics for licensee=%s",
+                    token.licensee_id,
+                )
+                self._engage("processor_no_sub_licensees")
+                return None
+
+            for bic in token.sub_licensee_bics:
+                if not _BIC_PATTERN.match(bic):
+                    logger.critical(
+                        "Invalid BIC format %r in sub_licensee_bics for licensee=%s",
+                        bic,
+                        token.licensee_id,
+                    )
+                    self._engage("processor_invalid_bic")
+                    return None
+
+            take_rate = Decimal(str(token.platform_take_rate_pct))
+            if not (PROCESSOR_TAKE_RATE_MIN_PCT <= take_rate <= PROCESSOR_TAKE_RATE_MAX_PCT):
+                logger.critical(
+                    "Processor take rate %.2f%% outside bounds [%.0f%%, %.0f%%] for licensee=%s",
+                    token.platform_take_rate_pct * 100,
+                    float(PROCESSOR_TAKE_RATE_MIN_PCT) * 100,
+                    float(PROCESSOR_TAKE_RATE_MAX_PCT) * 100,
+                    token.licensee_id,
+                )
+                self._engage("processor_take_rate_out_of_bounds")
+                return None
+
         if self._required_component not in token.permitted_components:
             msg = (
                 f"License does not permit component {self._required_component} "
@@ -94,16 +137,33 @@ class LicenseBootValidator:
             self._engage("component_not_licensed")
             raise RuntimeError(msg)
 
-        ctx = LicenseeContext(
-            licensee_id=token.licensee_id,
-            max_tps=token.max_tps,
-            aml_dollar_cap_usd=token.aml_dollar_cap_usd,
-            aml_count_cap=token.aml_count_cap,
-            min_loan_amount_usd=token.min_loan_amount_usd,
-            deployment_phase=token.deployment_phase,
-            permitted_components=token.permitted_components,
-            token_expiry=token.expiry_date,
-        )
+        if token.licensee_type == "PROCESSOR":
+            ctx = ProcessorLicenseeContext(
+                licensee_id=token.licensee_id,
+                max_tps=token.max_tps,
+                aml_dollar_cap_usd=token.aml_dollar_cap_usd,
+                aml_count_cap=token.aml_count_cap,
+                min_loan_amount_usd=token.min_loan_amount_usd,
+                deployment_phase=token.deployment_phase,
+                permitted_components=token.permitted_components,
+                token_expiry=token.expiry_date,
+                licensee_type=token.licensee_type,
+                sub_licensee_bics=list(token.sub_licensee_bics),
+                annual_minimum_usd=token.annual_minimum_usd,
+                performance_premium_pct=token.performance_premium_pct,
+                platform_take_rate_pct=token.platform_take_rate_pct,
+            )
+        else:
+            ctx = LicenseeContext(
+                licensee_id=token.licensee_id,
+                max_tps=token.max_tps,
+                aml_dollar_cap_usd=token.aml_dollar_cap_usd,
+                aml_count_cap=token.aml_count_cap,
+                min_loan_amount_usd=token.min_loan_amount_usd,
+                deployment_phase=token.deployment_phase,
+                permitted_components=token.permitted_components,
+                token_expiry=token.expiry_date,
+            )
         self._context = ctx
         logger.info(
             "License validated: licensee=%s expiry=%s max_tps=%d",

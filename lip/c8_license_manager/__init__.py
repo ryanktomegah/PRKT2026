@@ -21,11 +21,18 @@ Components exposed:
 """
 
 from .boot_validator import LicenseBootValidator
-from .license_token import LicenseeContext, LicenseToken, sign_token, verify_token
+from .license_token import (
+    LicenseeContext,
+    LicenseToken,
+    ProcessorLicenseeContext,
+    sign_token,
+    verify_token,
+)
 
 __all__ = [
     "LicenseToken",
     "LicenseeContext",
+    "ProcessorLicenseeContext",
     "LicenseBootValidator",
     "sign_token",
     "verify_token",
