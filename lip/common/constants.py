@@ -210,3 +210,25 @@ SETTLEMENT_MIN_MATURITY_HOURS = 12.0
 CANCELLATION_SUSPICION_WINDOW_SECONDS = 300  # 5 minutes
 # Sender recall frequency threshold (per 24h) for behavioral alert
 CANCELLATION_SENDER_RECALL_THRESHOLD = 3
+
+# ── P3 Platform Licensing — Processor constants (QUANT sign-off required) ───
+# Take rate bounds: processor retains 15-30% of BPI's gross per-transaction fee
+PROCESSOR_TAKE_RATE_MIN_PCT = Decimal("0.15")       # 15% floor
+PROCESSOR_TAKE_RATE_MAX_PCT = Decimal("0.30")       # 30% ceiling
+PROCESSOR_TAKE_RATE_WALKAWAY_PCT = Decimal("0.35")  # >35% = economics unviable
+
+# Annual minimum per processor per year (P3 blueprint §3.2)
+PROCESSOR_ANNUAL_MINIMUM_FLOOR_USD = Decimal("500000")    # $500K
+PROCESSOR_ANNUAL_MINIMUM_CEILING_USD = Decimal("2000000")  # $2M
+
+# Performance premium bounds (P3 blueprint §3.2)
+PROCESSOR_PERFORMANCE_PREMIUM_MIN_PCT = Decimal("0.10")  # 10%
+PROCESSOR_PERFORMANCE_PREMIUM_MAX_PCT = Decimal("0.25")  # 25%
+PROCESSOR_PERFORMANCE_BASELINE_PCT = Decimal("0.80")     # 80% of projected annual volume
+
+# Container lifecycle intervals (P3 blueprint §2.5)
+CONTAINER_HEARTBEAT_INTERVAL_SECONDS = 60   # heartbeat to BPI telemetry endpoint
+REVENUE_METERING_SYNC_INTERVAL_SECONDS = 300  # 5-minute revenue sync
+
+# Revenue shortfall alerting
+REVENUE_SHORTFALL_ALERT_PCT = Decimal("0.50")  # alert when trailing 90d < 50% of annualized min
