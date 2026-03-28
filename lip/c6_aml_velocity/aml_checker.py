@@ -21,7 +21,8 @@ from decimal import Decimal
 from typing import List, Optional
 
 from .sanctions import SanctionsScreener
-from .velocity import VelocityChecker, VelocityResult
+from .tenant_velocity import StructuringDetector, TenantVelocityChecker
+from .velocity import DOLLAR_CAP_USD, RollingWindow, VelocityChecker, VelocityResult
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ class AMLResult:
     triggered_rules: List[str] = field(default_factory=list)
     sanctions_hits: List[str] = field(default_factory=list)
     velocity_result: Optional[VelocityResult] = None
+    structuring_flagged: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +170,11 @@ class AMLChecker:
                 self._sanctions = SanctionsScreener()  # mock data
         self._anomaly = anomaly_detector
         self._resolve_name = entity_name_resolver
+        # P3 tenant velocity infrastructure (Sprint 2b)
+        self._tenant_checkers: dict[str, TenantVelocityChecker] = {}
+        self._bpi_rolling_window = RollingWindow(redis_client=redis_client)
+        self._structuring_detector = StructuringDetector()
+        self._base_salt = velocity_checker.salt
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -180,6 +187,7 @@ class AMLChecker:
         beneficiary_name: Optional[str] = None,
         dollar_cap_override: Optional[Decimal] = None,
         count_cap_override: Optional[int] = None,
+        tenant_id: Optional[str] = None,
     ) -> AMLResult:
         """Run the full C6 AML gate for a single transaction.
 
@@ -250,11 +258,43 @@ class AMLChecker:
             )
 
         # ── Step 2: Velocity controls (atomic check-and-record — EPG-25) ────────
-        vel_result: VelocityResult = self._velocity.check_and_record(
-            entity_id, amount, beneficiary_id,
-            dollar_cap_override=dollar_cap_override,
-            count_cap_override=count_cap_override,
-        )
+        structuring_flagged = False
+
+        if tenant_id is not None:
+            # P3 tenant-aware path: dual-write to tenant + BPI windows
+            tenant_checker = self._get_or_create_tenant_checker(tenant_id)
+            vel_result = tenant_checker.check_and_record(
+                entity_id, amount, beneficiary_id,
+                dollar_cap_override=dollar_cap_override,
+                count_cap_override=count_cap_override,
+            )
+
+            if vel_result.passed:
+                # Record for structuring detection
+                bpi_hash = tenant_checker.bpi_entity_hash(entity_id)
+                self._structuring_detector.record(bpi_hash, tenant_id, amount)
+                # Check cross-processor structuring (soft flag)
+                structuring_result = self._structuring_detector.check(
+                    bpi_hash,
+                    dollar_cap=dollar_cap_override if dollar_cap_override is not None else DOLLAR_CAP_USD,
+                )
+                if structuring_result.flagged:
+                    structuring_flagged = True
+                    triggered_rules.append("CROSS_PROCESSOR_STRUCTURING")
+                    logger.warning(
+                        "Cross-processor structuring: entity_bpi_hash=%s… "
+                        "tenants=%d volume=%s",
+                        bpi_hash[:8],
+                        structuring_result.tenant_count,
+                        structuring_result.combined_volume,
+                    )
+        else:
+            # Existing single-tenant path (backward compatible)
+            vel_result = self._velocity.check_and_record(
+                entity_id, amount, beneficiary_id,
+                dollar_cap_override=dollar_cap_override,
+                count_cap_override=count_cap_override,
+            )
 
         if not vel_result.passed:
             triggered_rules.append(vel_result.reason or "VELOCITY_BLOCKED")
@@ -270,6 +310,7 @@ class AMLChecker:
                 triggered_rules=triggered_rules,
                 sanctions_hits=[],
                 velocity_result=vel_result,
+                structuring_flagged=False,
             )
 
         # ── Step 3: Anomaly detection (soft flag) ─────────────────────────────
@@ -307,4 +348,17 @@ class AMLChecker:
             triggered_rules=triggered_rules,
             sanctions_hits=[],
             velocity_result=vel_result,
+            structuring_flagged=structuring_flagged,
         )
+
+    def _get_or_create_tenant_checker(self, tenant_id: str) -> TenantVelocityChecker:
+        """Lazily create a TenantVelocityChecker for the given tenant."""
+        if tenant_id not in self._tenant_checkers:
+            self._tenant_checkers[tenant_id] = TenantVelocityChecker(
+                salt=self._base_salt,
+                tenant_id=tenant_id,
+                bpi_rolling_window=self._bpi_rolling_window,
+                redis_client=self._velocity._redis,
+            )
+            logger.info("Created TenantVelocityChecker for tenant=%s", tenant_id)
+        return self._tenant_checkers[tenant_id]
