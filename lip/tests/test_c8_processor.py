@@ -47,7 +47,7 @@ def _make_processor_token(
         aml_dollar_cap_usd=aml_dollar_cap,
         aml_count_cap=aml_count_cap,
         licensee_type="PROCESSOR",
-        sub_licensee_bics=sub_licensee_bics or ["COBADEFF", "DEUTDEFF"],
+        sub_licensee_bics=["COBADEFF", "DEUTDEFF"] if sub_licensee_bics is None else sub_licensee_bics,
         annual_minimum_usd=annual_minimum_usd,
         performance_premium_pct=performance_premium_pct,
         platform_take_rate_pct=platform_take_rate_pct,
