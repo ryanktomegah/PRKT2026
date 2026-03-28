@@ -71,9 +71,15 @@ try:
             uetr_mapping={},        # populated at runtime when C3 connects
             corridor_buffer={},     # populated at runtime when C3 connects
         )
+        from lip.c3_repayment_engine.settlement_bridge import SettlementCallbackBridge
+
+        # Bank mode default: bridge routes to royalty settlement only
+        settlement_bridge = SettlementCallbackBridge(
+            royalty_settlement=royalty_settlement,
+        )
         repayment_loop = RepaymentLoop(
             monitor=settlement_monitor,
-            repayment_callback=lambda event: logger.info("Repayment event: %s", event),
+            repayment_callback=settlement_bridge,
         )
 
         # Risk engine (portfolio VaR + concentration)
@@ -162,14 +168,50 @@ try:
 
         # MIPLO gateway (P3 processor deployments — conditional)
         if pipeline is not None and processor_context is not None:
+            from decimal import Decimal as _Decimal
+
             from lip.api.miplo_router import make_miplo_router
             from lip.api.miplo_service import MIPLOService
+            from lip.c3_repayment_engine.nav_emitter import NAVEventEmitter
+            from lip.c8_license_manager.revenue_metering import RevenueMetering
 
-            miplo_svc = MIPLOService(pipeline, processor_context, metrics_collector)
+            # Revenue metering for processor fee splits
+            revenue_metering = RevenueMetering()
+
+            # NAV emitter — wired to repayment_loop.get_active_loans after construction
+            nav_emitter = NAVEventEmitter(
+                get_active_loans=repayment_loop.get_active_loans,
+                nav_callback=lambda nav: logger.info("NAV event: tenant=%s loans=%d", nav.tenant_id, nav.active_loans),
+                metrics_collector=metrics_collector,
+            )
+
+            # Upgrade settlement bridge to processor mode (public method, not private mutation)
+            settlement_bridge.upgrade_to_processor_mode(
+                revenue_metering=revenue_metering,
+                nav_emitter=nav_emitter,
+                platform_take_rate_pct=_Decimal(str(processor_context.platform_take_rate_pct)),
+            )
+
+            # Tenant-scoped portfolio reporter for MIPLO
+            miplo_portfolio_reporter = PortfolioReporter(
+                repayment_loop=repayment_loop,
+                royalty_settlement=royalty_settlement,
+                licensee_id=processor_context.licensee_id,
+                risk_engine=risk_engine,
+            )
+
+            miplo_svc = MIPLOService(
+                pipeline, processor_context, metrics_collector,
+                portfolio_reporter=miplo_portfolio_reporter,
+            )
             application.include_router(
                 make_miplo_router(miplo_svc, auth_dependency=auth_dep),
                 prefix="/miplo",
             )
+
+            # Start NAV emission background thread + register shutdown hook
+            nav_emitter.start()
+            _shutdown_hooks.append(nav_emitter.stop)
 
         return application
 
