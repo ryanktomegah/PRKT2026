@@ -11,10 +11,12 @@ from .anomaly import AnomalyDetector
 from .cross_licensee import CrossLicenseeAggregator
 from .salt_rotation import SaltRotationManager
 from .sanctions import SanctionsScreener
+from .tenant_velocity import StructuringDetector, StructuringResult, TenantVelocityChecker
 from .velocity import VelocityChecker, VelocityResult
 
 __all__ = [
     "VelocityChecker", "VelocityResult", "CrossLicenseeAggregator",
     "SanctionsScreener", "AnomalyDetector", "SaltRotationManager",
     "AMLChecker", "AMLResult",
+    "TenantVelocityChecker", "StructuringDetector", "StructuringResult",
 ]
