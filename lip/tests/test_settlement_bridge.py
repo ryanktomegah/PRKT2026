@@ -192,3 +192,75 @@ class TestBridgeProcessorMode:
         royalty = MagicMock()
         bridge = SettlementCallbackBridge(royalty_settlement=royalty)
         assert callable(bridge)
+
+
+class TestRedisKeyScoping:
+    """Test that _claim_repayment() uses tenant-scoped Redis keys."""
+
+    def test_tenant_scoped_redis_key(self):
+        """Processor mode: key = lip:{tenant_id}:repaid:{uetr}."""
+        from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
+        from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
+
+        mock_redis = MagicMock()
+        mock_redis.set.return_value = True  # claim succeeds
+
+        monitor = SettlementMonitor(
+            handler_registry=SettlementHandlerRegistry.create_default(),
+            uetr_mapping={},
+            corridor_buffer={},
+        )
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=MagicMock(),
+            redis_client=mock_redis,
+        )
+        result = loop._claim_repayment("test-uetr", 7, tenant_id="FINASTRA_EU_001")
+        assert result is True
+
+        # Verify Redis key format
+        call_args = mock_redis.set.call_args
+        key = call_args[0][0]
+        assert key == "lip:FINASTRA_EU_001:repaid:test-uetr"
+
+    def test_bank_mode_redis_key_unchanged(self):
+        """Bank mode (no tenant): key = lip:repaid:{uetr} (backward compat)."""
+        from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
+        from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
+
+        mock_redis = MagicMock()
+        mock_redis.set.return_value = True
+
+        monitor = SettlementMonitor(
+            handler_registry=SettlementHandlerRegistry.create_default(),
+            uetr_mapping={},
+            corridor_buffer={},
+        )
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=MagicMock(),
+            redis_client=mock_redis,
+        )
+        result = loop._claim_repayment("test-uetr", 7, tenant_id="")
+        assert result is True
+
+        call_args = mock_redis.set.call_args
+        key = call_args[0][0]
+        assert key == "lip:repaid:test-uetr"
+
+    def test_in_memory_fallback_still_works(self):
+        """In-memory idempotency (no Redis) works regardless of tenant_id."""
+        from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
+        from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
+
+        monitor = SettlementMonitor(
+            handler_registry=SettlementHandlerRegistry.create_default(),
+            uetr_mapping={},
+            corridor_buffer={},
+        )
+        loop = RepaymentLoop(
+            monitor=monitor,
+            repayment_callback=MagicMock(),
+        )
+        assert loop._claim_repayment("uetr-1", 7, tenant_id="T1") is True
+        assert loop._claim_repayment("uetr-1", 7, tenant_id="T1") is False  # duplicate

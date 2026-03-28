@@ -249,7 +249,7 @@ class RepaymentLoop:
 
     # ── Repayment dispatch ────────────────────────────────────────────────────
 
-    def _claim_repayment(self, uetr: str, maturity_days: int) -> bool:
+    def _claim_repayment(self, uetr: str, maturity_days: int, tenant_id: str = "") -> bool:
         """Attempt to claim exclusive repayment rights for a UETR.
 
         Returns True if the claim succeeded (this instance should process the
@@ -262,7 +262,7 @@ class RepaymentLoop:
         """
         if self._redis is not None:
             try:
-                key = f"{_REDIS_REPAID_PREFIX}{uetr}"
+                key = f"lip:{tenant_id}:repaid:{uetr}" if tenant_id else f"{_REDIS_REPAID_PREFIX}{uetr}"
                 ttl_seconds = (maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS) * 86_400
                 result = self._redis.set(key, "1", nx=True, ex=ttl_seconds)
                 if result is None:
@@ -343,7 +343,7 @@ class RepaymentLoop:
                 }
             # ACCEPT_PARTIAL: fall through — fee computed on settlement_amount below
 
-        if not self._claim_repayment(loan.uetr, maturity_days):
+        if not self._claim_repayment(loan.uetr, maturity_days, tenant_id=loan.licensee_id):
             return {}
 
         now = _utcnow()
