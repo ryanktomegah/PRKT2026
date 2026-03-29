@@ -43,7 +43,7 @@ try:
     # Shared state for shutdown coordination
     _shutdown_hooks: list = []
 
-    def create_app(pipeline=None, processor_context=None) -> FastAPI:
+    def create_app(pipeline=None, processor_context=None, cascade_graph=None) -> FastAPI:
         """Factory that assembles the full LIP HTTP application.
 
         Wires dependencies from environment variables:
@@ -213,6 +213,17 @@ try:
             nav_emitter.start()
             _shutdown_hooks.append(nav_emitter.stop)
 
+        # Cascade intervention API (P5 — available in bank + processor mode)
+        if cascade_graph is not None:
+            from lip.api.cascade_router import make_cascade_router
+            from lip.api.cascade_service import CascadeService
+
+            cascade_svc = CascadeService(cascade_graph, default_budget_usd=10_000_000.0)
+            application.include_router(
+                make_cascade_router(cascade_svc, auth_dependency=auth_dep),
+                prefix="/cascade",
+            )
+
         return application
 
     # Module-level app instance for `uvicorn lip.api.app:app`
@@ -222,5 +233,5 @@ except ImportError:
     logger.debug("FastAPI not installed — HTTP application not available")
     app = None  # type: ignore[assignment]
 
-    def create_app(pipeline=None, processor_context=None):  # type: ignore[misc]
+    def create_app(pipeline=None, processor_context=None, cascade_graph=None):  # type: ignore[misc]
         raise ImportError("FastAPI is required for the HTTP application")
