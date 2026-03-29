@@ -6,8 +6,6 @@ evaluates whether it should generate a cascade alert.
 """
 from __future__ import annotations
 
-import pytest
-
 from lip.p5_cascade_engine.cascade_alerts import CascadeAlert
 from lip.p5_cascade_engine.cascade_settlement_trigger import CascadeSettlementTrigger
 from lip.p5_cascade_engine.corporate_graph import (
@@ -15,7 +13,6 @@ from lip.p5_cascade_engine.corporate_graph import (
     CorporateEdge,
     CorporateNode,
 )
-from lip.p5_cascade_engine.constants import CASCADE_ALERT_DEPENDENCY_THRESHOLD
 
 
 def _make_node(cid: str) -> CorporateNode:

@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from lip.c2_pd_model.fee import (
     CascadeAdjustedPricing,
     compute_cascade_adjusted_pd,

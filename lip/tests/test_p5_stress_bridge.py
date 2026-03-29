@@ -6,8 +6,6 @@ corporates and runs cascade propagation from each.
 """
 from __future__ import annotations
 
-import pytest
-
 from lip.c5_streaming.stress_regime_detector import StressRegimeEvent
 from lip.p5_cascade_engine.cascade_alerts import CascadeAlert
 from lip.p5_cascade_engine.corporate_graph import (

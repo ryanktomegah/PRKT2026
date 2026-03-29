@@ -6,22 +6,16 @@ returns None, exclusivity window, end-to-end alert generation.
 """
 from __future__ import annotations
 
-from decimal import Decimal
-
 import pytest
 
-from lip.p5_cascade_engine.cascade_alerts import CascadeAlert, build_cascade_alert
-from lip.p5_cascade_engine.cascade_propagation import CascadeResult, CascadeRiskNode
+from lip.p5_cascade_engine.cascade_alerts import build_cascade_alert
+from lip.p5_cascade_engine.constants import (
+    CASCADE_ALERT_EXCLUSIVITY_HOURS,
+)
 from lip.p5_cascade_engine.corporate_graph import (
     CascadeGraph,
     CorporateEdge,
     CorporateNode,
-)
-from lip.p5_cascade_engine.constants import (
-    CASCADE_ALERT_EXCLUSIVITY_HOURS,
-    CASCADE_ALERT_SEVERITY_HIGH_USD,
-    CASCADE_ALERT_SEVERITY_MEDIUM_USD,
-    CASCADE_ALERT_THRESHOLD_USD,
 )
 
 

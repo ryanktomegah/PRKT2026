@@ -8,20 +8,17 @@ from __future__ import annotations
 
 import pytest
 
+from lip.p5_cascade_engine.cascade_propagation import (
+    CascadePropagationEngine,
+    CascadeResult,
+)
 from lip.p5_cascade_engine.corporate_graph import (
     CascadeGraph,
     CorporateEdge,
     CorporateNode,
 )
-from lip.p5_cascade_engine.cascade_propagation import (
-    CascadePropagationEngine,
-    CascadeResult,
-    CascadeRiskNode,
-)
 from lip.p5_cascade_engine.intervention_optimizer import (
-    InterventionAction,
     InterventionOptimizer,
-    InterventionPlan,
 )
 
 
