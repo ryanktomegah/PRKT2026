@@ -232,3 +232,19 @@ REVENUE_METERING_SYNC_INTERVAL_SECONDS = 300  # 5-minute revenue sync
 
 # Revenue shortfall alerting
 REVENUE_SHORTFALL_ALERT_PCT = Decimal("0.50")  # alert when trailing 90d < 50% of annualized min
+
+# ── P10 Regulatory Data Product — Privacy Architecture ───────────────────
+# QUANT + CIPHER sign-off required to change any P10 privacy constant.
+# Rationale: Dwork & Roth (2014) differential privacy; Sweeney (2002) k-anonymity.
+P10_K_ANONYMITY_THRESHOLD = 5                      # minimum distinct banks per corridor/time-bucket
+P10_DIFFERENTIAL_PRIVACY_EPSILON = Decimal("0.5")  # per-query privacy loss (Laplace mechanism)
+P10_PRIVACY_BUDGET_PER_CYCLE = Decimal("5.0")      # total epsilon budget per 30-day cycle
+P10_PRIVACY_BUDGET_CYCLE_DAYS = 30                 # budget reset interval
+P10_TIMESTAMP_BUCKET_HOURS = 1                     # timestamp rounding granularity
+P10_AMOUNT_BUCKETS = ("0-10K", "10K-100K", "100K-1M", "1M-10M", "10M+")  # amount tier labels
+P10_AMOUNT_BUCKET_THRESHOLDS = (                   # upper bounds in USD for each bucket
+    Decimal("10000"),
+    Decimal("100000"),
+    Decimal("1000000"),
+    Decimal("10000000"),
+)

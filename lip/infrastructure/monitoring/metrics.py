@@ -62,6 +62,15 @@ METRIC_TENANT_ISOLATION_VIOLATION = "lip_tenant_isolation_violations_total"
 METRIC_TENANT_ACTIVE_LOANS = "lip_tenant_active_loans"
 METRIC_TENANT_EXPOSURE_USD = "lip_tenant_exposure_usd"
 
+# P10 — Regulatory Data Product (Anonymizer) metrics
+METRIC_P10_BATCHES_PROCESSED = "lip_p10_batches_processed_total"
+METRIC_P10_CORRIDORS_SUPPRESSED = "lip_p10_corridors_suppressed_total"
+METRIC_P10_SUPPRESSION_RATE = "lip_p10_suppression_rate"
+METRIC_P10_NOISE_APPLIED = "lip_p10_noise_applied_total"
+METRIC_P10_BUDGET_EXHAUSTED = "lip_p10_budget_exhausted_total"
+METRIC_P10_STALE_RESULTS = "lip_p10_stale_results_total"
+METRIC_P10_PRIVACY_BUDGET_REMAINING = "lip_p10_privacy_budget_remaining"
+
 
 @dataclass
 class LatencyTracker:
