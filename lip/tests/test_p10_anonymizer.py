@@ -351,3 +351,90 @@ class TestLaplaceMechanism:
             v1 = anon1._apply_laplace_noise(0.05, 0.002, rng=rng1)
             v2 = anon2._apply_laplace_noise(0.05, 0.002, rng=rng2)
             assert v1 == v2
+
+
+class TestAnonymizerIntegration:
+    """Full 3-layer pipeline integration tests."""
+
+    def _make_batches(self, n_banks=5, corridor="EUR-USD", payments_per_bank=100, failures_per_bank=5):
+        from lip.p10_regulatory_data.telemetry_schema import CorridorStatistic, TelemetryBatch
+        now = datetime.now(tz=timezone.utc)
+        batches = []
+        for i in range(n_banks):
+            rate = failures_per_bank / payments_per_bank if payments_per_bank > 0 else 0.0
+            batches.append(TelemetryBatch(
+                batch_id=f"TB-{i:03d}", bank_hash=f"bank_hash_{i}",
+                period_start=now, period_end=now,
+                corridor_statistics=[CorridorStatistic(
+                    corridor=corridor,
+                    total_payments=payments_per_bank,
+                    failed_payments=failures_per_bank,
+                    failure_rate=rate,
+                    failure_class_distribution={"CLASS_A": 3, "CLASS_B": 1, "CLASS_C": 1, "BLOCK": 0},
+                    mean_settlement_hours=4.0,
+                    p95_settlement_hours=18.0,
+                    amount_bucket_distribution={"0-10K": 50, "10K-100K": 50},
+                    stress_regime_active=False,
+                    stress_ratio=1.0,
+                )],
+                hmac_signature=f"sig_{i}",
+            ))
+        return batches
+
+    def test_full_pipeline_produces_valid_output(self):
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+        anon = RegulatoryAnonymizer(k=5, rng_seed=42)
+        results = anon.anonymize_batch(self._make_batches(n_banks=5))
+        assert len(results) == 1
+        r = results[0]
+        assert r.corridor == "EUR-USD"
+        assert r.k_anonymity_satisfied is True
+        assert r.noise_applied is True
+        assert r.stale is False
+        assert r.bank_count == 5
+        assert r.failure_rate >= 0.0
+        assert r.total_payments >= 0
+        assert r.failed_payments >= 0
+        assert r.failed_payments <= r.total_payments
+
+    def test_empty_batches_returns_empty(self):
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+        anon = RegulatoryAnonymizer(k=5, rng_seed=42)
+        results = anon.anonymize_batch([])
+        assert results == []
+
+    def test_timestamp_rounding_to_hourly_bucket(self):
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+        anon = RegulatoryAnonymizer(k=5, rng_seed=42)
+        dt = datetime(2029, 8, 1, 14, 37, 22, tzinfo=timezone.utc)
+        label = anon._compute_period_label(dt)
+        assert label == "2029-08-01T14:00Z"
+
+    def test_suppression_rate_tracked(self):
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+        anon = RegulatoryAnonymizer(k=5, rng_seed=42)
+        # 5 banks for EUR-USD (passes), 3 banks for GBP-EUR (suppressed)
+        batches = self._make_batches(n_banks=5, corridor="EUR-USD")
+        batches += self._make_batches(n_banks=3, corridor="GBP-EUR")
+        anon.anonymize_batch(batches)
+        # 2 corridors evaluated, 1 suppressed => rate = 0.5
+        assert anon.suppression_rate == pytest.approx(0.5)
+
+    def test_entity_hashing_uses_existing_hash_identifier(self):
+        """Verify that hash_identifier from lip.common.encryption is importable
+        and produces consistent output (integration with existing code)."""
+        from lip.common.encryption import hash_identifier
+        salt = b"test_salt_for_p10_32bytes_______"
+        h1 = hash_identifier("DEUTDEFF", salt)
+        h2 = hash_identifier("DEUTDEFF", salt)
+        assert h1 == h2
+        assert len(h1) == 64  # SHA-256 hex digest
+
+    def test_reset_budget_clears_cache(self):
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+        anon = RegulatoryAnonymizer(k=5, rng_seed=42, budget_per_cycle=Decimal("1.0"))
+        batches = self._make_batches(n_banks=5)
+        anon.anonymize_batch(batches)
+        anon.reset_budget_cycle()
+        status = anon.get_privacy_budget_status("EUR-USD")
+        assert status.budget_remaining == pytest.approx(1.0)
