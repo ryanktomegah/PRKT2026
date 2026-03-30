@@ -5,6 +5,8 @@ Sprint 4c: HTTP REST endpoints over Sprint 4b systemic risk engine.
 """
 from __future__ import annotations
 
+import pytest
+
 
 class TestRateLimiter:
     """Token-bucket rate limiter tests."""
@@ -202,3 +204,202 @@ class TestRegulatoryService:
         assert "methodology" in meta
         assert "data_freshness" in meta
         assert "rate_limit" in meta
+
+
+class TestRegulatoryRouter:
+    """HTTP endpoint tests using FastAPI TestClient."""
+
+    @pytest.fixture()
+    def client(self):
+        """Create a TestClient with regulatory router mounted."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+
+        engine = SystemicRiskEngine()
+        engine.ingest_results(
+            [
+                AnonymizedCorridorResult(
+                    corridor="EUR-USD",
+                    period_label="2029-08-01T14:00Z",
+                    total_payments=500,
+                    failed_payments=25,
+                    failure_rate=0.05,
+                    bank_count=8,
+                    k_anonymity_satisfied=True,
+                    privacy_budget_remaining=4.5,
+                    noise_applied=True,
+                    stale=False,
+                ),
+                AnonymizedCorridorResult(
+                    corridor="GBP-EUR",
+                    period_label="2029-08-01T14:00Z",
+                    total_payments=300,
+                    failed_payments=24,
+                    failure_rate=0.08,
+                    bank_count=6,
+                    k_anonymity_satisfied=True,
+                    privacy_budget_remaining=4.5,
+                    noise_applied=True,
+                    stale=False,
+                ),
+            ]
+        )
+        service = RegulatoryService(risk_engine=engine)
+        router = make_regulatory_router(service)
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v1/regulatory")
+        return TestClient(app)
+
+    def test_get_corridors_200(self, client):
+        """GET /corridors returns corridor list."""
+        resp = client.get("/api/v1/regulatory/corridors")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "corridors" in data
+        assert data["total_corridors"] >= 1
+
+    def test_get_corridors_empty_engine(self):
+        """Empty engine returns empty corridor list."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+
+        engine = SystemicRiskEngine()
+        service = RegulatoryService(risk_engine=engine)
+        app = FastAPI()
+        app.include_router(
+            make_regulatory_router(service), prefix="/api/v1/regulatory"
+        )
+        c = TestClient(app)
+        resp = c.get("/api/v1/regulatory/corridors")
+        assert resp.status_code == 200
+        assert resp.json()["total_corridors"] == 0
+
+    def test_get_corridor_trend_200(self, client):
+        """GET /corridors/{id}/trend returns time-series."""
+        resp = client.get("/api/v1/regulatory/corridors/EUR-USD/trend")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["corridor_id"] == "EUR-USD"
+        assert len(data["snapshots"]) >= 1
+
+    def test_get_corridor_trend_unknown_returns_empty(self, client):
+        """Unknown corridor returns empty trend (not 404)."""
+        resp = client.get("/api/v1/regulatory/corridors/UNKNOWN-PAIR/trend")
+        assert resp.status_code == 200
+        assert resp.json()["total_periods"] == 0
+
+    def test_get_concentration_200(self, client):
+        """GET /concentration returns HHI result."""
+        resp = client.get("/api/v1/regulatory/concentration")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "hhi" in data
+        assert data["dimension"] == "corridor"
+
+    def test_get_concentration_jurisdiction(self, client):
+        """GET /concentration?dimension=jurisdiction works."""
+        resp = client.get(
+            "/api/v1/regulatory/concentration?dimension=jurisdiction"
+        )
+        assert resp.status_code == 200
+        assert resp.json()["dimension"] == "jurisdiction"
+
+    def test_simulate_contagion_200(self, client):
+        """GET /contagion/simulate returns simulation."""
+        resp = client.get(
+            "/api/v1/regulatory/contagion/simulate?shock_corridor=EUR-USD"
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["origin_corridor"] == "EUR-USD"
+        assert 0.0 <= data["systemic_risk_score"] <= 1.0
+
+    def test_simulate_contagion_missing_param_422(self, client):
+        """Missing required shock_corridor returns 422."""
+        resp = client.get("/api/v1/regulatory/contagion/simulate")
+        assert resp.status_code == 422
+
+    def test_stress_test_200(self, client):
+        """POST /stress-test returns report."""
+        resp = client.post(
+            "/api/v1/regulatory/stress-test",
+            json={
+                "scenario_name": "EU corridor shock",
+                "shocks": [
+                    {"corridor": "EUR-USD", "magnitude": 0.9},
+                    {"corridor": "GBP-EUR", "magnitude": 0.7},
+                ],
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["scenario_name"] == "EU corridor shock"
+        assert data["report_id"].startswith("RPT-")
+
+    def test_stress_test_empty_shocks_422(self, client):
+        """Empty shocks list returns 422."""
+        resp = client.post(
+            "/api/v1/regulatory/stress-test",
+            json={"scenario_name": "empty", "shocks": []},
+        )
+        assert resp.status_code == 422
+
+    def test_get_report_200(self, client):
+        """GET /reports/{id} returns cached report."""
+        create_resp = client.post(
+            "/api/v1/regulatory/stress-test",
+            json={
+                "scenario_name": "test",
+                "shocks": [{"corridor": "EUR-USD", "magnitude": 0.5}],
+            },
+        )
+        report_id = create_resp.json()["report_id"]
+        resp = client.get(f"/api/v1/regulatory/reports/{report_id}")
+        assert resp.status_code == 200
+        assert resp.json()["report_id"] == report_id
+
+    def test_get_report_404(self, client):
+        """Missing report returns 404."""
+        resp = client.get("/api/v1/regulatory/reports/RPT-NONEXISTENT")
+        assert resp.status_code == 404
+
+    def test_get_metadata_200(self, client):
+        """GET /metadata returns metadata."""
+        resp = client.get("/api/v1/regulatory/metadata")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["api_version"] == "1.0.0"
+        assert "methodology" in data
+
+    def test_rate_limited_returns_429(self):
+        """Rate-limited request returns 429."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.rate_limiter import TokenBucketRateLimiter
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+
+        engine = SystemicRiskEngine()
+        service = RegulatoryService(risk_engine=engine)
+        limiter = TokenBucketRateLimiter(rate=2, period_seconds=3600)
+        app = FastAPI()
+        app.include_router(
+            make_regulatory_router(service, rate_limiter=limiter),
+            prefix="/api/v1/regulatory",
+        )
+        c = TestClient(app)
+        c.get("/api/v1/regulatory/metadata")
+        c.get("/api/v1/regulatory/metadata")
+        resp = c.get("/api/v1/regulatory/metadata")
+        assert resp.status_code == 429
