@@ -248,3 +248,13 @@ P10_AMOUNT_BUCKET_THRESHOLDS = (                   # upper bounds in USD for eac
     Decimal("1000000"),
     Decimal("10000000"),
 )
+
+# ── P10 Systemic Risk Engine — Contagion & Concentration ────────────────
+# QUANT sign-off required to change any contagion/concentration constant.
+P10_CONTAGION_PROPAGATION_DECAY = Decimal("0.7")    # per-hop stress multiplier
+P10_CONTAGION_MAX_HOPS = 5                           # BFS depth limit
+P10_CONTAGION_STRESS_THRESHOLD = Decimal("0.05")     # minimum stress to propagate
+P10_HHI_CONCENTRATION_THRESHOLD = Decimal("0.25")    # "highly concentrated" marker
+P10_TREND_RISING_THRESHOLD = Decimal("0.10")         # 10% relative increase = RISING
+P10_TREND_WINDOW_PERIODS = 3                          # periods for trend comparison
+P10_MAX_HISTORY_PERIODS = 720                         # 30 days × 24 hours
