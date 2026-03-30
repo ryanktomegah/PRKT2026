@@ -29,7 +29,12 @@ ReportRenderer (Sprint 5 — JSON / CSV / PDF output)
 
 ### File: `lip/p10_regulatory_data/report_metadata.py`
 
+**Naming note:** The blueprint (§7.7) uses `SystemicRiskReport` as the name for the versioned report wrapper. This spec uses `VersionedReport` for that role to avoid collision with the existing `SystemicRiskReport` computation dataclass in `systemic_risk.py`, which is a pure analytics output with no version tracking.
+
 ```python
+class ReportIntegrityError(Exception):
+    """Raised when a report's content hash does not match its stored hash."""
+
 @dataclass(frozen=True)
 class VersionedReport:
     """Immutable versioned regulatory report.
@@ -39,21 +44,26 @@ class VersionedReport:
     version is never modified — corrections produce a new version with
     a `supersedes` pointer.
     """
-    report_id: str              # "SRR-{hex12}" — matches existing RPT pattern
+    report_id: str              # "RPT-{hex12}" — consistent with existing codebase
     version: str                # "1.0", "1.1" etc.
     supersedes: Optional[str]   # report_id of the version this corrects, or None
-    generated_at: float         # time.time() — Unix timestamp
+    generated_at: float         # time.time() — Unix timestamp (ISO-8601 in renderers)
     period_start: str           # ISO-8601 label for the reporting period start
     period_end: str             # ISO-8601 label for the reporting period end
     methodology_version: str    # "P10-METH-v1.0"
     content_hash: str           # SHA-256 hex digest of serialized report content
+    hmac_signature: Optional[str] = None  # Sprint 6: HMAC using RegulatorSubscriptionToken key
     report: SystemicRiskReport  # the underlying computation output
 ```
+
+**Note on field ordering:** `hmac_signature` (with default `None`) must appear before `report` (no default) in the actual implementation, or use `field()` to handle it. The implementer should resolve the frozen dataclass ordering constraint — placing all defaulted fields after non-defaulted ones, or using `__post_init__` with a factory function.
 
 **Immutability contract:**
 - `frozen=True` prevents attribute mutation after construction
 - `content_hash` = SHA-256 over deterministic JSON serialization of the `report` field
 - Hash is verified on retrieval — any corruption raises `ReportIntegrityError`
+
+**`generated_at` type rationale:** `float` (Unix timestamp) matches the existing `SystemicRiskReport.timestamp` field. Renderers serialize this as ISO-8601 strings in JSON/CSV output. The "round floats to 6 decimal places" rule in the JSON renderer applies only to statistical floats (failure_rate, HHI, etc.), not to timestamps.
 
 **Versioning rules:**
 - First generation of a report gets version "1.0"
@@ -87,7 +97,7 @@ class ReportRenderer:
 - Deterministic key ordering (for hash stability)
 - Includes full report metadata (version, content_hash, methodology_version)
 - Includes methodology appendix as a nested object
-- All floats rounded to 6 decimal places for consistency
+- Statistical floats rounded to 6 decimal places; timestamps serialized as ISO-8601 strings
 
 ### CSV Renderer
 - Comment header block (`#`) with report metadata (report_id, version, generated_at, methodology_version, content_hash)
@@ -149,16 +159,20 @@ class MethodologyAppendix:
 ### File: `lip/api/regulatory_service.py` (MODIFY)
 
 **Changes:**
-1. Replace `CachedReport` with `VersionedReport` storage
+1. Replace `CachedReport` with `VersionedReport` storage — both `generate_report()` and `run_stress_test()` produce `VersionedReport` objects. The internal `_reports` dict stores `VersionedReport` exclusively. `CachedReport` is removed.
 2. Add `generate_report()` method that creates a `VersionedReport` from engine output
 3. Add `render_report(report_id, format)` method that delegates to `ReportRenderer`
-4. Maintain backward compatibility with existing `run_stress_test()` and `get_report()` methods
+4. Update `run_stress_test()` to produce `VersionedReport` instead of `CachedReport` — the return type changes from `Tuple[str, SystemicRiskReport]` to `Tuple[str, VersionedReport]`
+5. Update `get_report()` to return `Optional[VersionedReport]` and verify content hash on retrieval
+6. Align `get_metadata()` methodology_version string with `MethodologyAppendix.VERSION` (change `"P10-v1.0"` to `"P10-METH-v1.0"`)
+
+**Impact on existing tests:** `lip/tests/test_regulatory_api.py` tests that reference `CachedReport` or access `.report` on the return value need updating. The file map includes this.
 
 ```python
 def generate_report(self, period_start: str = "", period_end: str = "") -> VersionedReport:
     """Generate a new versioned report from current engine state."""
 
-def render_report(self, report_id: str, format: str = "json") -> Tuple[str | bytes, str]:
+def render_report(self, report_id: str, fmt: str = "json") -> Tuple[str | bytes, str]:
     """Render a cached report in the requested format.
     Returns (content, content_type).
     """
@@ -175,10 +189,10 @@ def get_version_chain(self, report_id: str) -> List[VersionedReport]:
 
 **Changes to `/reports/{report_id}` endpoint:**
 - Add `format` query parameter: `json` (default), `csv`, `pdf`
+- For `csv` and `pdf` formats, the handler returns `fastapi.Response` directly, which bypasses `response_model` validation. The route decorator removes `response_model=ReportResponse` — instead, JSON responses are constructed manually or the model is applied conditionally.
 - Set appropriate `Content-Type` and `Content-Disposition` headers
-- JSON returns the existing `ReportResponse` model
-- CSV returns `text/csv` with download filename
-- PDF returns `application/pdf` with download filename
+- If `format=pdf` and `fpdf2` is not installed, return HTTP 501 (Not Implemented)
+- If content hash verification fails on retrieval, return HTTP 500 with "Report integrity check failed"
 
 ```python
 @router.get("/reports/{report_id}", dependencies=deps)
@@ -188,13 +202,19 @@ async def get_report(
 ):
 ```
 
-**New endpoint: `/reports/generate`**
+**New endpoint: `POST /reports/generate`**
+
+Uses a Pydantic request body (matching the existing `POST /stress-test` pattern):
+
 ```python
+# In regulatory_models.py:
+class GenerateReportRequest(BaseModel):
+    period_start: str = ""
+    period_end: str = ""
+
+# In router:
 @router.post("/reports/generate", dependencies=deps)
-async def generate_report(
-    period_start: str = Query(default=""),
-    period_end: str = Query(default=""),
-):
+async def generate_report(request: GenerateReportRequest):
     """Generate a new versioned report from current engine state."""
 ```
 
@@ -210,19 +230,20 @@ No new constants needed. Methodology references existing P10 constants from `lip
 
 ### File: `lip/tests/test_p10_report_generator.py`
 
-~25 tests across 5 test classes:
+~28 tests across 7 test classes:
 
-**TestVersionedReport (4 tests)**
+**TestVersionedReport (5 tests)**
 - Frozen dataclass immutability
 - Content hash computed correctly (SHA-256)
 - Supersedes chain construction
-- Report integrity verification (hash check)
+- Report integrity verification (hash match)
+- Report integrity failure raises `ReportIntegrityError`
 
 **TestReportRendererJSON (4 tests)**
 - JSON output is valid JSON with all required fields
 - Deterministic key ordering (same report → same JSON)
 - Methodology appendix included
-- Float rounding to 6 decimal places
+- Statistical floats rounded to 6 decimal places; timestamps as ISO-8601
 
 **TestReportRendererCSV (4 tests)**
 - CSV output has metadata header comments
@@ -244,14 +265,21 @@ No new constants needed. Methodology references existing P10 constants from `lip
 - `generate_report()` produces VersionedReport
 - `render_report()` dispatches to correct renderer
 - Version chain traversal
-- Stress test reports are also versioned
+- Stress test reports are also VersionedReport
 
 **TestRouterContentNegotiation (5 tests)**
 - `format=json` returns application/json
 - `format=csv` returns text/csv
 - `format=pdf` returns application/pdf (or 501 if fpdf2 missing)
 - Invalid format returns 422
-- `/reports/generate` creates new report
+- `POST /reports/generate` creates new report
+
+### Existing test updates: `lip/tests/test_regulatory_api.py`
+
+Tests referencing `CachedReport` or `.report` on service return values are updated for `VersionedReport`. Specifically:
+- `test_run_stress_test_returns_report_and_does_not_pollute` — updated return type
+- `test_get_report_cached` — updated to use `VersionedReport`
+- `test_get_report_200` — updated response fields
 
 ---
 
@@ -259,14 +287,15 @@ No new constants needed. Methodology references existing P10 constants from `lip
 
 | Action | File | Responsibility |
 |--------|------|----------------|
-| Create | `lip/p10_regulatory_data/report_metadata.py` | `VersionedReport` frozen dataclass |
+| Create | `lip/p10_regulatory_data/report_metadata.py` | `VersionedReport`, `ReportIntegrityError` |
 | Create | `lip/p10_regulatory_data/report_renderer.py` | `ReportRenderer` — JSON/CSV/PDF |
 | Create | `lip/p10_regulatory_data/methodology.py` | `MethodologyAppendix` template |
-| Modify | `lip/api/regulatory_service.py` | VersionedReport generation + rendering |
-| Modify | `lip/api/regulatory_router.py` | Content negotiation, `/reports/generate` |
-| Modify | `lip/api/regulatory_models.py` | Format-related Pydantic models |
+| Modify | `lip/api/regulatory_service.py` | VersionedReport generation + rendering, remove CachedReport |
+| Modify | `lip/api/regulatory_router.py` | Content negotiation, `/reports/generate`, remove response_model |
+| Modify | `lip/api/regulatory_models.py` | Add `GenerateReportRequest` |
 | Modify | `lip/p10_regulatory_data/__init__.py` | Export new classes |
-| Create | `lip/tests/test_p10_report_generator.py` | ~25 TDD tests |
+| Create | `lip/tests/test_p10_report_generator.py` | ~28 TDD tests |
+| Modify | `lip/tests/test_regulatory_api.py` | Update existing tests for VersionedReport |
 
 ---
 
@@ -276,13 +305,13 @@ No new constants needed. Methodology references existing P10 constants from `lip
 |------|-------------|--------|
 | PDF charts (matplotlib) | Sprint 7/8 | Requires real data for meaningful visualizations |
 | Redis report persistence | Sprint 7 | In-memory sufficient for v0 |
-| Report signing (HMAC) | Sprint 6 | Requires RegulatorSubscriptionToken key management |
+| HMAC report signing | Sprint 6 | Requires RegulatorSubscriptionToken key management. `hmac_signature` field stubbed as `Optional[str] = None` on `VersionedReport` so Sprint 6 is not a breaking change. |
 | Report scheduling/cron | Sprint 7 | Manual generation sufficient for v0 |
 
 ---
 
 ## Sprint 6 Integration Points
 
-1. `VersionedReport.content_hash` can be extended to HMAC signature using regulator subscription key
+1. `VersionedReport.hmac_signature` is pre-stubbed — Sprint 6 fills it using RegulatorSubscriptionToken key
 2. `ReportRenderer` interface supports adding new formats (e.g., XBRL for central bank submissions)
 3. `MethodologyAppendix.VERSION` bump triggers automatic re-generation notice on next API call
