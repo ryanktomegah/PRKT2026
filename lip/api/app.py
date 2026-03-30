@@ -43,7 +43,8 @@ try:
     # Shared state for shutdown coordination
     _shutdown_hooks: list = []
 
-    def create_app(pipeline=None, processor_context=None, cascade_graph=None) -> FastAPI:
+    def create_app(pipeline=None, processor_context=None, cascade_graph=None,
+                   systemic_risk_engine=None) -> FastAPI:
         """Factory that assembles the full LIP HTTP application.
 
         Wires dependencies from environment variables:
@@ -224,6 +225,21 @@ try:
                 prefix="/cascade",
             )
 
+        # Regulatory API (P10 — available when systemic risk engine provided)
+        if systemic_risk_engine is not None:
+            from lip.api.rate_limiter import TokenBucketRateLimiter
+            from lip.api.regulatory_router import make_regulatory_router
+            from lip.api.regulatory_service import RegulatoryService
+
+            reg_service = RegulatoryService(risk_engine=systemic_risk_engine)
+            reg_limiter = TokenBucketRateLimiter(rate=100, period_seconds=3600)
+            application.include_router(
+                make_regulatory_router(
+                    reg_service, rate_limiter=reg_limiter, auth_dependency=auth_dep,
+                ),
+                prefix="/api/v1/regulatory",
+            )
+
         return application
 
     # Module-level app instance for `uvicorn lip.api.app:app`
@@ -233,5 +249,6 @@ except ImportError:
     logger.debug("FastAPI not installed — HTTP application not available")
     app = None  # type: ignore[assignment]
 
-    def create_app(pipeline=None, processor_context=None, cascade_graph=None):  # type: ignore[misc]
+    def create_app(pipeline=None, processor_context=None, cascade_graph=None,
+                   systemic_risk_engine=None):  # type: ignore[misc]
         raise ImportError("FastAPI is required for the HTTP application")

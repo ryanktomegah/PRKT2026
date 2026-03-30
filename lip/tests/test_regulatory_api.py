@@ -403,3 +403,98 @@ class TestRegulatoryRouter:
         c.get("/api/v1/regulatory/metadata")
         resp = c.get("/api/v1/regulatory/metadata")
         assert resp.status_code == 429
+
+
+class TestIntegration:
+    """Full pipeline integration tests."""
+
+    def test_full_pipeline_ingest_to_api(self):
+        """Ingest telemetry -> query API -> verify response matches."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+
+        engine = SystemicRiskEngine()
+        engine.ingest_results(
+            [
+                AnonymizedCorridorResult(
+                    corridor="EUR-USD",
+                    period_label="2029-08-01T14:00Z",
+                    total_payments=1000,
+                    failed_payments=100,
+                    failure_rate=0.10,
+                    bank_count=10,
+                    k_anonymity_satisfied=True,
+                    privacy_budget_remaining=4.5,
+                    noise_applied=True,
+                    stale=False,
+                ),
+            ]
+        )
+        service = RegulatoryService(risk_engine=engine)
+        app = FastAPI()
+        app.include_router(
+            make_regulatory_router(service), prefix="/api/v1/regulatory"
+        )
+        c = TestClient(app)
+        resp = c.get("/api/v1/regulatory/corridors")
+        data = resp.json()
+        assert data["corridors"][0]["failure_rate"] == pytest.approx(0.10)
+
+    def test_rate_limiter_wired_exhaustion_returns_429(self):
+        """Exhausting rate limit via real HTTP calls returns 429."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.rate_limiter import TokenBucketRateLimiter
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+
+        engine = SystemicRiskEngine()
+        service = RegulatoryService(risk_engine=engine)
+        limiter = TokenBucketRateLimiter(rate=5, period_seconds=3600)
+        app = FastAPI()
+        app.include_router(
+            make_regulatory_router(service, rate_limiter=limiter),
+            prefix="/api/v1/regulatory",
+        )
+        c = TestClient(app)
+        for _ in range(5):
+            resp = c.get("/api/v1/regulatory/metadata")
+            assert resp.status_code == 200
+        resp = c.get("/api/v1/regulatory/metadata")
+        assert resp.status_code == 429
+
+    def test_app_mounts_regulatory_when_engine_provided(self):
+        """create_app with systemic_risk_engine mounts /api/v1/regulatory."""
+        import sys
+        from unittest.mock import MagicMock, patch
+
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+
+        fake_metrics = MagicMock()
+        fake_metrics.generate_latest.return_value = ""
+
+        # If lip.api.app hasn't been imported yet, the module-level
+        # create_app() runs during import and hits duplicate Prometheus
+        # metrics from other test files. Patch at the source to survive.
+        if "lip.api.app" not in sys.modules:
+            with patch(
+                "lip.infrastructure.monitoring.metrics.PrometheusMetricsCollector",
+                return_value=fake_metrics,
+            ):
+                import lip.api.app  # noqa: F401 — force safe import
+
+        with patch("lip.api.app.PrometheusMetricsCollector", return_value=fake_metrics):
+            from lip.api.app import create_app
+
+            engine = SystemicRiskEngine()
+            app = create_app(systemic_risk_engine=engine)
+
+        routes = [r.path for r in app.routes]
+        assert any("/api/v1/regulatory" in r for r in routes)
