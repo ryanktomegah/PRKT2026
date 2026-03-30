@@ -162,3 +162,209 @@ class TestContagion:
         assert result.origin_corridor == "EUR-USD"
         assert 0.0 <= result.systemic_risk_score <= 1.0
         assert len(result.affected_corridors) >= 1
+
+
+class TestCorridorFailureRate:
+    """Corridor failure rate aggregation and trend detection."""
+
+    def _make_result(self, corridor="EUR-USD", failure_rate=0.05, total_payments=500,
+                     failed_payments=25, bank_count=5, stale=False, period_label="2029-08-01T14:00Z"):
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+        return AnonymizedCorridorResult(
+            corridor=corridor,
+            period_label=period_label,
+            total_payments=total_payments,
+            failed_payments=failed_payments,
+            failure_rate=failure_rate,
+            bank_count=bank_count,
+            k_anonymity_satisfied=True,
+            privacy_budget_remaining=4.5,
+            noise_applied=True,
+            stale=stale,
+        )
+
+    def test_ingest_single_period(self):
+        """Single ingestion produces one snapshot per corridor."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        engine.ingest_results([self._make_result()])
+        trend = engine.get_corridor_trend("EUR-USD")
+        assert len(trend) == 1
+        assert trend[0].corridor == "EUR-USD"
+        assert trend[0].failure_rate == pytest.approx(0.05)
+
+    def test_ingest_multiple_periods_builds_history(self):
+        """Multiple ingestions build time-series history."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        for i in range(5):
+            engine.ingest_results([
+                self._make_result(period_label=f"2029-08-01T{10+i:02d}:00Z",
+                                  failure_rate=0.05 + i * 0.01)
+            ])
+        trend = engine.get_corridor_trend("EUR-USD")
+        assert len(trend) == 5
+
+    def test_rising_trend_detection(self):
+        """Failure rate rising >10% -> RISING."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        # 3 periods at 0.05, then 3 periods at 0.07 (40% increase)
+        for i in range(3):
+            engine.ingest_results([
+                self._make_result(period_label=f"2029-08-01T{10+i:02d}:00Z", failure_rate=0.05)
+            ])
+        for i in range(3):
+            engine.ingest_results([
+                self._make_result(period_label=f"2029-08-01T{13+i:02d}:00Z", failure_rate=0.07)
+            ])
+        trend = engine.get_corridor_trend("EUR-USD")
+        direction, magnitude = engine.compute_trend_direction(trend)
+        assert direction == "RISING"
+        assert magnitude > 0.10
+
+    def test_falling_trend_detection(self):
+        """Failure rate falling >10% -> FALLING."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        for i in range(3):
+            engine.ingest_results([
+                self._make_result(period_label=f"2029-08-01T{10+i:02d}:00Z", failure_rate=0.10)
+            ])
+        for i in range(3):
+            engine.ingest_results([
+                self._make_result(period_label=f"2029-08-01T{13+i:02d}:00Z", failure_rate=0.07)
+            ])
+        trend = engine.get_corridor_trend("EUR-USD")
+        direction, magnitude = engine.compute_trend_direction(trend)
+        assert direction == "FALLING"
+        assert magnitude < -0.10
+
+    def test_stable_trend_detection(self):
+        """Failure rate within +/-10% -> STABLE."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        for i in range(6):
+            engine.ingest_results([
+                self._make_result(period_label=f"2029-08-01T{10+i:02d}:00Z", failure_rate=0.05)
+            ])
+        trend = engine.get_corridor_trend("EUR-USD")
+        direction, magnitude = engine.compute_trend_direction(trend)
+        assert direction == "STABLE"
+
+    def test_stale_data_flagged(self):
+        """Stale result -> snapshot.contains_stale_data=True."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        engine.ingest_results([self._make_result(stale=True)])
+        trend = engine.get_corridor_trend("EUR-USD")
+        assert trend[0].contains_stale_data is True
+
+    def test_empty_history_empty_report(self):
+        """No ingested data -> empty report."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        report = engine.compute_risk_report()
+        assert report.total_corridors_analyzed == 0
+        assert len(report.corridor_snapshots) == 0
+
+
+class TestSystemicRiskIntegration:
+    """Full pipeline integration."""
+
+    def _make_result(self, corridor="EUR-USD", failure_rate=0.05, total_payments=500,
+                     failed_payments=25, bank_count=5, stale=False, period_label="2029-08-01T14:00Z"):
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+        return AnonymizedCorridorResult(
+            corridor=corridor,
+            period_label=period_label,
+            total_payments=total_payments,
+            failed_payments=failed_payments,
+            failure_rate=failure_rate,
+            bank_count=bank_count,
+            k_anonymity_satisfied=True,
+            privacy_budget_remaining=4.5,
+            noise_applied=True,
+            stale=stale,
+        )
+
+    def test_full_pipeline_ingest_report(self):
+        """Ingest results -> compute risk report."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        engine.ingest_results([
+            self._make_result(corridor="EUR-USD", failure_rate=0.05, total_payments=500),
+            self._make_result(corridor="GBP-EUR", failure_rate=0.08, total_payments=300),
+        ])
+        report = engine.compute_risk_report()
+        assert report.total_corridors_analyzed == 2
+        assert len(report.corridor_snapshots) == 2
+        assert report.overall_failure_rate > 0.0
+        assert report.highest_risk_corridor in ("EUR-USD", "GBP-EUR")
+
+    def test_thread_safety_concurrent_access(self):
+        """Concurrent ingest + compute doesn't crash."""
+        import threading
+
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        errors = []
+
+        def ingest_worker():
+            try:
+                for i in range(50):
+                    engine.ingest_results([
+                        self._make_result(period_label=f"2029-08-01T{i%24:02d}:00Z")
+                    ])
+            except Exception as e:
+                errors.append(e)
+
+        def compute_worker():
+            try:
+                for _ in range(50):
+                    engine.compute_risk_report()
+            except Exception as e:
+                errors.append(e)
+
+        threads = [
+            threading.Thread(target=ingest_worker),
+            threading.Thread(target=compute_worker),
+            threading.Thread(target=ingest_worker),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert len(errors) == 0
+
+    def test_systemic_risk_score_bounded(self):
+        """Score always in [0.0, 1.0]."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        engine.ingest_results([
+            self._make_result(corridor="EUR-USD", failure_rate=0.95, total_payments=10000),
+        ])
+        report = engine.compute_risk_report()
+        assert 0.0 <= report.systemic_risk_score <= 1.0
+
+    def test_risk_report_includes_concentration(self):
+        """Report has valid concentration_hhi field."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        engine.ingest_results([
+            self._make_result(corridor="EUR-USD", total_payments=900),
+            self._make_result(corridor="GBP-EUR", total_payments=50),
+            self._make_result(corridor="USD-JPY", total_payments=50),
+        ])
+        report = engine.compute_risk_report()
+        assert report.concentration_hhi >= 0.0
+        assert report.concentration_hhi <= 1.0
+
+    def test_clear_history_resets(self):
+        """clear_history() empties all accumulated data."""
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        engine = SystemicRiskEngine()
+        engine.ingest_results([self._make_result()])
+        engine.clear_history()
+        report = engine.compute_risk_report()
+        assert report.total_corridors_analyzed == 0
