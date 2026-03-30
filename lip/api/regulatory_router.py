@@ -48,9 +48,9 @@ try:
 
         async def _check_rate(request: Request, response: Response):
             key = request.client.host if request.client else "unknown"
-            remaining = limiter.remaining(key)
+            allowed, remaining = limiter.check_and_consume_with_remaining(key)
             response.headers["X-RateLimit-Remaining"] = str(remaining)
-            if not limiter.check_and_consume(key):
+            if not allowed:
                 raise HTTPException(
                     status_code=429,
                     detail="Rate limit exceeded",

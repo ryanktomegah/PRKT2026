@@ -68,6 +68,10 @@ class RegulatoryService:
         self._lock = threading.Lock()
         self._query_count: int = 0
 
+    def _increment_query_count(self) -> None:
+        with self._lock:
+            self._query_count += 1
+
     def get_corridor_snapshots(
         self,
         period_count: int = 24,
@@ -78,7 +82,7 @@ class RegulatoryService:
         Returns (published_snapshots, suppressed_count).
         Corridors with bank_count < min_bank_count are suppressed.
         """
-        self._query_count += 1
+        self._increment_query_count()
         report = self._engine.compute_risk_report()
         published = []
         suppressed = 0
@@ -95,7 +99,7 @@ class RegulatoryService:
         periods: int = 24,
     ) -> List[CorridorRiskSnapshot]:
         """Get time-series for one corridor."""
-        self._query_count += 1
+        self._increment_query_count()
         return self._engine.get_corridor_trend(corridor_id, periods)
 
     def get_concentration(
@@ -106,7 +110,7 @@ class RegulatoryService:
 
         Extracts corridor volumes from the engine's current report.
         """
-        self._query_count += 1
+        self._increment_query_count()
         report = self._engine.compute_risk_report()
         volumes = {
             s.corridor: float(s.total_payments)
@@ -131,7 +135,7 @@ class RegulatoryService:
         corridor names using synthetic bank sets (real bank hash sets
         require live telemetry ingestion via RegulatoryAnonymizer).
         """
-        self._query_count += 1
+        self._increment_query_count()
         report = self._engine.compute_risk_report()
         corridors = [s.corridor for s in report.corridor_snapshots]
 
@@ -173,7 +177,7 @@ class RegulatoryService:
         Creates a temporary engine clone, ingests synthetic elevated-failure
         results, computes a report, and caches it. Does NOT pollute the main engine.
         """
-        self._query_count += 1
+        self._increment_query_count()
 
         # Create a fresh engine for the stress test.
         # Must hold the source engine's lock while copying history.
