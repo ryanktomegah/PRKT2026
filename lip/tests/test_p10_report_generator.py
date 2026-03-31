@@ -149,3 +149,135 @@ class TestMethodologyAppendix:
         assert "epsilon" in text.lower() or "ε" in text
         assert "0.25" in text  # HHI threshold
         assert "0.7" in text or "0.70" in text  # decay
+
+
+class TestReportRendererJSON:
+    """JSON report rendering tests."""
+
+    @staticmethod
+    def _make_versioned_report():
+        """Create a VersionedReport for testing."""
+        from lip.p10_regulatory_data.report_metadata import create_versioned_report
+
+        return create_versioned_report(
+            report=TestVersionedReport._make_report(),
+            period_start="2029-08-01T00:00Z",
+            period_end="2029-08-01T23:59Z",
+        )
+
+    def test_valid_json_with_required_fields(self):
+        """JSON output is valid and contains all metadata fields."""
+        import json
+
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_json(vr)
+        data = json.loads(output)
+        assert data["report_id"] == vr.report_id
+        assert data["version"] == vr.version
+        assert data["content_hash"] == vr.content_hash
+        assert data["methodology_version"] == vr.methodology_version
+        assert "corridor_snapshots" in data
+
+    def test_deterministic_ordering(self):
+        """Same report produces identical JSON key ordering."""
+        from lip.p10_regulatory_data.report_metadata import create_versioned_report
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        report = TestVersionedReport._make_report()
+        vr1 = create_versioned_report(report=report)
+        vr2 = create_versioned_report(report=report)
+        renderer = ReportRenderer()
+        j1 = renderer.render_json(vr1)
+        j2 = renderer.render_json(vr2)
+        import json
+
+        d1 = json.loads(j1)
+        d2 = json.loads(j2)
+        assert list(d1.keys()) == list(d2.keys())
+
+    def test_methodology_appendix_included(self):
+        """JSON output includes methodology sections."""
+        import json
+
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        data = json.loads(renderer.render_json(vr))
+        assert "methodology" in data
+        assert "data_collection" in data["methodology"]
+        assert len(data["methodology"]) == 7
+
+    def test_statistical_floats_rounded(self):
+        """Statistical floats are rounded to 6 decimal places."""
+        import json
+
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        data = json.loads(renderer.render_json(vr))
+        snapshot = data["corridor_snapshots"][0]
+        fr_str = str(snapshot["failure_rate"])
+        if "." in fr_str:
+            assert len(fr_str.split(".")[1]) <= 6
+
+
+class TestReportRendererCSV:
+    """CSV report rendering tests."""
+
+    @staticmethod
+    def _make_versioned_report():
+        return TestReportRendererJSON._make_versioned_report()
+
+    def test_metadata_header_comments(self):
+        """CSV starts with # comment header containing metadata."""
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_csv(vr)
+        lines = output.split("\n")
+        comment_lines = [line for line in lines if line.startswith("#")]
+        assert len(comment_lines) >= 3
+        header_text = "\n".join(comment_lines)
+        assert vr.report_id in header_text
+        assert vr.content_hash in header_text
+
+    def test_one_row_per_corridor(self):
+        """Data section has one row per corridor snapshot."""
+        import csv
+        import io
+
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_csv(vr)
+        data_lines = [line for line in output.split("\n") if line and not line.startswith("#")]
+        if data_lines and data_lines[0].startswith("\ufeff"):
+            data_lines[0] = data_lines[0][1:]
+        reader = csv.reader(io.StringIO("\n".join(data_lines)))
+        rows = list(reader)
+        assert len(rows) >= 3  # header + 1 data row + 1 summary row
+
+    def test_summary_footer_present(self):
+        """CSV ends with a summary row."""
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_csv(vr)
+        assert "SUMMARY" in output or "overall_failure_rate" in output.lower()
+
+    def test_utf8_bom_prefix(self):
+        """CSV output starts with UTF-8 BOM for Excel compatibility."""
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_csv(vr)
+        assert output.startswith("\ufeff")
