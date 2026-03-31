@@ -281,3 +281,44 @@ class TestReportRendererCSV:
         renderer = ReportRenderer()
         output = renderer.render_csv(vr)
         assert output.startswith("\ufeff")
+
+
+class TestReportRendererPDF:
+    """PDF report rendering tests."""
+
+    @staticmethod
+    def _make_versioned_report():
+        return TestReportRendererJSON._make_versioned_report()
+
+    def test_pdf_magic_bytes(self):
+        """PDF output starts with %PDF magic bytes."""
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_pdf(vr)
+        assert isinstance(output, bytes)
+        assert output[:5] == b"%PDF-"
+
+    def test_pdf_contains_metadata(self):
+        """PDF contains report ID and title."""
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        output = renderer.render_pdf(vr)
+        text = output.decode("latin-1")
+        assert "Systemic Risk Report" in text
+        assert vr.report_id in text
+
+    def test_pdf_import_error_without_fpdf2(self):
+        """render_pdf raises ImportError if fpdf2 not installed."""
+        from unittest.mock import patch
+
+        from lip.p10_regulatory_data.report_renderer import ReportRenderer
+
+        vr = self._make_versioned_report()
+        renderer = ReportRenderer()
+        with patch.dict("sys.modules", {"fpdf": None}):
+            with pytest.raises(ImportError, match="fpdf2"):
+                renderer.render_pdf(vr)

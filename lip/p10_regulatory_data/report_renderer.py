@@ -75,6 +75,8 @@ class ReportRenderer:
 
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_title("Systemic Risk Report")
+        pdf.set_subject(report.report_id)
 
         # Title page
         pdf.add_page()
@@ -175,7 +177,7 @@ class ReportRenderer:
             new_x="LMARGIN", new_y="NEXT",
         )
 
-        return pdf.output()
+        return bytes(pdf.output())
 
     def _build_json_dict(self, report: VersionedReport) -> Dict[str, Any]:
         """Build the JSON-serializable dictionary."""
