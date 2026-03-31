@@ -2,6 +2,8 @@
 regulatory_router.py — P10 Regulatory API HTTP endpoints.
 
 Sprint 4c: 7 REST endpoints over Sprint 4b systemic risk engine.
+Sprint 5 Task 6: Content negotiation for GET /reports/{id} (JSON/CSV/PDF)
+  and new POST /reports/generate endpoint.
 Factory pattern matching make_cascade_router / make_miplo_router.
 
 Endpoints:
@@ -10,7 +12,8 @@ Endpoints:
   GET  /concentration                 — HHI concentration metrics
   GET  /contagion/simulate            — BFS stress propagation
   POST /stress-test                   — Multi-shock stress scenario
-  GET  /reports/{report_id}           — Retrieve cached report (JSON)
+  GET  /reports/{report_id}           — Retrieve report (JSON/CSV/PDF)
+  POST /reports/generate              — Generate new versioned report
   GET  /metadata                      — API + data metadata
 """
 from __future__ import annotations
@@ -22,6 +25,8 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 try:
+    import json as json_stdlib
+
     from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
     from lip.api.rate_limiter import TokenBucketRateLimiter
@@ -32,12 +37,13 @@ try:
         CorridorListResponse,
         CorridorSnapshotResponse,
         CorridorTrendResponse,
+        GenerateReportRequest,
         MetadataResponse,
-        ReportResponse,
         StressTestRequest,
         StressTestResponse,
     )
     from lip.api.regulatory_service import RegulatoryService
+    from lip.p10_regulatory_data.report_metadata import ReportIntegrityError
 
     def _make_rate_limit_dep(limiter: TokenBucketRateLimiter):
         """Create a FastAPI dependency for rate limiting.
@@ -220,39 +226,66 @@ try:
 
         @router.get(
             "/reports/{report_id}",
-            response_model=ReportResponse,
             dependencies=deps,
         )
-        async def get_report(report_id: str):
-            """Retrieve a cached risk report by ID (JSON only)."""
-            cached = regulatory_service.get_report(report_id)
-            if cached is None:
+        async def get_report(
+            report_id: str,
+            format: str = Query(default="json", pattern="^(json|csv|pdf)$"),
+        ):
+            """Retrieve a report in JSON, CSV, or PDF format."""
+            try:
+                content, content_type = regulatory_service.render_report(
+                    report_id, fmt=format
+                )
+            except ValueError:
                 raise HTTPException(status_code=404, detail="Report not found")
-            report = cached.report
-            return ReportResponse(
-                report_id=cached.report_id,
-                timestamp=report.timestamp,
-                corridor_snapshots=[
-                    CorridorSnapshotResponse(
-                        corridor=s.corridor,
-                        period_label=s.period_label,
-                        failure_rate=s.failure_rate,
-                        total_payments=s.total_payments,
-                        failed_payments=s.failed_payments,
-                        bank_count=s.bank_count,
-                        trend_direction=s.trend_direction,
-                        trend_magnitude=s.trend_magnitude,
-                        contains_stale_data=s.contains_stale_data,
-                    )
-                    for s in report.corridor_snapshots
-                ],
-                overall_failure_rate=report.overall_failure_rate,
-                highest_risk_corridor=report.highest_risk_corridor,
-                concentration_hhi=report.concentration_hhi,
-                systemic_risk_score=report.systemic_risk_score,
-                stale_corridor_count=report.stale_corridor_count,
-                total_corridors_analyzed=report.total_corridors_analyzed,
+            except ReportIntegrityError:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Report integrity check failed",
+                )
+            except ImportError:
+                raise HTTPException(
+                    status_code=501,
+                    detail="PDF generation not available (fpdf2 not installed)",
+                )
+
+            if format == "json":
+                return json_stdlib.loads(content)
+            elif format == "csv":
+                return Response(
+                    content=content,
+                    media_type="text/csv",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{report_id}.csv"'
+                    },
+                )
+            else:  # pdf
+                return Response(
+                    content=content,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{report_id}.pdf"'
+                    },
+                )
+
+        @router.post(
+            "/reports/generate",
+            dependencies=deps,
+        )
+        async def generate_report(request: GenerateReportRequest):
+            """Generate a new versioned report from current engine state."""
+            vr = regulatory_service.generate_report(
+                period_start=request.period_start,
+                period_end=request.period_end,
             )
+            return {
+                "report_id": vr.report_id,
+                "version": vr.version,
+                "generated_at": vr.generated_at,
+                "content_hash": vr.content_hash,
+                "methodology_version": vr.methodology_version,
+            }
 
         @router.get(
             "/metadata",

@@ -410,3 +410,94 @@ class TestServiceIntegration:
         chain = service.get_version_chain(vr.report_id)
         assert len(chain) == 1
         assert chain[0].report_id == vr.report_id
+
+
+class TestRouterContentNegotiation:
+    """Router content negotiation and generate endpoint tests."""
+
+    @pytest.fixture()
+    def client(self):
+        """FastAPI test client with a seeded engine."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.rate_limiter import TokenBucketRateLimiter
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+
+        engine = SystemicRiskEngine()
+        engine.ingest_results([
+            AnonymizedCorridorResult(
+                corridor="EUR-USD",
+                period_label="2029-08-01T14:00Z",
+                total_payments=1000,
+                failed_payments=100,
+                failure_rate=0.10,
+                bank_count=10,
+                k_anonymity_satisfied=True,
+                privacy_budget_remaining=4.5,
+                noise_applied=True,
+                stale=False,
+            ),
+        ])
+        service = RegulatoryService(risk_engine=engine)
+        limiter = TokenBucketRateLimiter(rate=1000, period_seconds=3600)
+        app = FastAPI()
+        app.include_router(
+            make_regulatory_router(service, rate_limiter=limiter),
+            prefix="/api/v1/regulatory",
+        )
+        return TestClient(app)
+
+    def _create_report(self, client):
+        """Helper: generate a report and return report_id."""
+        resp = client.post(
+            "/api/v1/regulatory/reports/generate",
+            json={"period_start": "2029-08-01", "period_end": "2029-08-31"},
+        )
+        assert resp.status_code == 200
+        return resp.json()["report_id"]
+
+    def test_format_json_returns_application_json(self, client):
+        """format=json returns application/json."""
+        report_id = self._create_report(client)
+        resp = client.get(f"/api/v1/regulatory/reports/{report_id}?format=json")
+        assert resp.status_code == 200
+        assert "application/json" in resp.headers["content-type"]
+
+    def test_format_csv_returns_text_csv(self, client):
+        """format=csv returns text/csv."""
+        report_id = self._create_report(client)
+        resp = client.get(f"/api/v1/regulatory/reports/{report_id}?format=csv")
+        assert resp.status_code == 200
+        assert "text/csv" in resp.headers["content-type"]
+        assert resp.text.startswith("\ufeff")
+
+    def test_format_pdf_returns_application_pdf(self, client):
+        """format=pdf returns application/pdf (if fpdf2 installed)."""
+        report_id = self._create_report(client)
+        resp = client.get(f"/api/v1/regulatory/reports/{report_id}?format=pdf")
+        assert resp.status_code in (200, 501)
+        if resp.status_code == 200:
+            assert "application/pdf" in resp.headers["content-type"]
+            assert resp.content[:5] == b"%PDF-"
+
+    def test_invalid_format_returns_422(self, client):
+        """Invalid format parameter returns 422."""
+        report_id = self._create_report(client)
+        resp = client.get(f"/api/v1/regulatory/reports/{report_id}?format=xml")
+        assert resp.status_code == 422
+
+    def test_generate_report_creates_report(self, client):
+        """POST /reports/generate creates a versioned report."""
+        resp = client.post(
+            "/api/v1/regulatory/reports/generate",
+            json={"period_start": "2029-08-01", "period_end": "2029-08-31"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["report_id"].startswith("RPT-")
+        assert data["version"] == "1.0"
+        assert "content_hash" in data

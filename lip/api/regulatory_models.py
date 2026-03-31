@@ -53,6 +53,12 @@ try:
         scenario_name: str = Field(..., min_length=1, max_length=200)
         shocks: List[StressTestShock] = Field(..., min_length=1, max_length=20)
 
+    class GenerateReportRequest(BaseModel):
+        """Request body for POST /reports/generate."""
+
+        period_start: str = ""
+        period_end: str = ""
+
     # ── Response Models ─────────────────────────────────────────────
 
     class CorridorSnapshotResponse(BaseModel):
