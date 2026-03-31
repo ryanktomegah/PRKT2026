@@ -6,14 +6,13 @@ ContagionSimulator into API-ready responses. Manages in-memory report
 cache with TTL eviction.
 
 Sprint 4c: no new financial math — all computation delegates to Sprint 4b.
+Sprint 5: CachedReport replaced by VersionedReport.
 """
 from __future__ import annotations
 
 import logging
 import threading
 import time
-import uuid
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from lip.p10_regulatory_data.concentration import (
@@ -25,24 +24,20 @@ from lip.p10_regulatory_data.constants import (
     P10_K_ANONYMITY_THRESHOLD,
 )
 from lip.p10_regulatory_data.contagion import ContagionResult, ContagionSimulator
+from lip.p10_regulatory_data.methodology import MethodologyAppendix
+from lip.p10_regulatory_data.report_metadata import (
+    VersionedReport,
+    create_versioned_report,
+    verify_report_integrity,
+)
+from lip.p10_regulatory_data.report_renderer import ReportRenderer
 from lip.p10_regulatory_data.systemic_risk import (
     CorridorRiskSnapshot,
     SystemicRiskEngine,
-    SystemicRiskReport,
 )
 from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class CachedReport:
-    """In-memory cached risk report with TTL."""
-
-    report_id: str
-    report: SystemicRiskReport
-    created_at: float
-    scenario_name: str = ""
 
 
 class RegulatoryService:
@@ -64,9 +59,10 @@ class RegulatoryService:
         self._contagion = ContagionSimulator()
         self._report_ttl = report_ttl_seconds
         self._max_reports = max_cached_reports
-        self._reports: Dict[str, CachedReport] = {}
+        self._reports: Dict[str, VersionedReport] = {}
         self._lock = threading.Lock()
         self._query_count: int = 0
+        self._renderer = ReportRenderer()
 
     def _increment_query_count(self) -> None:
         with self._lock:
@@ -167,11 +163,59 @@ class RegulatoryService:
         }
         return sim.simulate(graph, shock_corridor, shock_magnitude, volumes)
 
+    def generate_report(
+        self,
+        period_start: str = "",
+        period_end: str = "",
+    ) -> VersionedReport:
+        """Generate a new versioned report from current engine state."""
+        self._increment_query_count()
+        report = self._engine.compute_risk_report()
+        vr = create_versioned_report(
+            report=report,
+            period_start=period_start,
+            period_end=period_end,
+        )
+        with self._lock:
+            self._reports[vr.report_id] = vr
+            if len(self._reports) > self._max_reports:
+                oldest_key = min(
+                    self._reports, key=lambda k: self._reports[k].generated_at
+                )
+                del self._reports[oldest_key]
+        return vr
+
+    def render_report(
+        self,
+        report_id: str,
+        fmt: str = "json",
+    ) -> Tuple[str | bytes, str]:
+        """Render a cached report in the requested format.
+        Returns (content, content_type).
+        """
+        vr = self.get_report(report_id)
+        if vr is None:
+            raise ValueError(f"Report {report_id} not found")
+        if fmt == "csv":
+            return self._renderer.render_csv(vr), "text/csv"
+        if fmt == "pdf":
+            return self._renderer.render_pdf(vr), "application/pdf"
+        return self._renderer.render_json(vr), "application/json"
+
+    def get_version_chain(self, report_id: str) -> List[VersionedReport]:
+        """Trace the version history for a report.
+        V0: returns single-element list. Full chain via supersedes deferred.
+        """
+        vr = self.get_report(report_id)
+        if vr is None:
+            return []
+        return [vr]
+
     def run_stress_test(
         self,
         scenario_name: str,
         shocks: List[Tuple[str, float]],
-    ) -> Tuple[str, SystemicRiskReport]:
+    ) -> Tuple[str, VersionedReport]:
         """Run multi-shock stress test.
 
         Creates a temporary engine clone, ingests synthetic elevated-failure
@@ -207,33 +251,28 @@ class RegulatoryService:
 
         # Compute report on stress engine
         report = stress_engine.compute_risk_report()
-        report_id = f"RPT-{uuid.uuid4().hex[:12].upper()}"
+        vr = create_versioned_report(report=report)
 
         # Cache the report
         with self._lock:
-            self._reports[report_id] = CachedReport(
-                report_id=report_id,
-                report=report,
-                created_at=time.time(),
-                scenario_name=scenario_name,
-            )
+            self._reports[vr.report_id] = vr
             if len(self._reports) > self._max_reports:
                 oldest_key = min(
-                    self._reports, key=lambda k: self._reports[k].created_at
+                    self._reports, key=lambda k: self._reports[k].generated_at
                 )
                 del self._reports[oldest_key]
+        return vr.report_id, vr
 
-        return report_id, report
-
-    def get_report(self, report_id: str) -> Optional[CachedReport]:
+    def get_report(self, report_id: str) -> Optional[VersionedReport]:
         """Retrieve cached report by ID. Returns None if expired/missing."""
         with self._lock:
             cached = self._reports.get(report_id)
             if cached is None:
                 return None
-            if time.time() - cached.created_at > self._report_ttl:
+            if time.time() - cached.generated_at > self._report_ttl:
                 del self._reports[report_id]
                 return None
+            verify_report_integrity(cached)
             return cached
 
     def get_metadata(self) -> Dict[str, Any]:
@@ -251,7 +290,7 @@ class RegulatoryService:
                 "differential_privacy_epsilon": float(
                     P10_DIFFERENTIAL_PRIVACY_EPSILON
                 ),
-                "methodology_version": "P10-v1.0",
+                "methodology_version": MethodologyAppendix.VERSION,
             },
             "rate_limit": {
                 "requests_per_hour": 100,

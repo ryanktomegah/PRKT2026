@@ -322,3 +322,91 @@ class TestReportRendererPDF:
         with patch.dict("sys.modules", {"fpdf": None}):
             with pytest.raises(ImportError, match="fpdf2"):
                 renderer.render_pdf(vr)
+
+
+class TestServiceIntegration:
+    """Service layer integration with VersionedReport."""
+
+    @staticmethod
+    def _make_engine_with_data():
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+
+        engine = SystemicRiskEngine()
+        engine.ingest_results([
+            AnonymizedCorridorResult(
+                corridor="EUR-USD",
+                period_label="2029-08-01T14:00Z",
+                total_payments=1000,
+                failed_payments=100,
+                failure_rate=0.10,
+                bank_count=10,
+                k_anonymity_satisfied=True,
+                privacy_budget_remaining=4.5,
+                noise_applied=True,
+                stale=False,
+            ),
+        ])
+        return engine
+
+    def test_generate_report_produces_versioned_report(self):
+        """generate_report() returns a VersionedReport."""
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.report_metadata import VersionedReport
+
+        engine = self._make_engine_with_data()
+        service = RegulatoryService(risk_engine=engine)
+        vr = service.generate_report()
+        assert isinstance(vr, VersionedReport)
+        assert vr.report_id.startswith("RPT-")
+        assert vr.version == "1.0"
+
+    def test_render_report_json(self):
+        """render_report with fmt='json' returns JSON string."""
+        import json
+
+        from lip.api.regulatory_service import RegulatoryService
+
+        engine = self._make_engine_with_data()
+        service = RegulatoryService(risk_engine=engine)
+        vr = service.generate_report()
+        content, content_type = service.render_report(vr.report_id, fmt="json")
+        assert content_type == "application/json"
+        data = json.loads(content)
+        assert data["report_id"] == vr.report_id
+
+    def test_render_report_csv(self):
+        """render_report with fmt='csv' returns CSV string."""
+        from lip.api.regulatory_service import RegulatoryService
+
+        engine = self._make_engine_with_data()
+        service = RegulatoryService(risk_engine=engine)
+        vr = service.generate_report()
+        content, content_type = service.render_report(vr.report_id, fmt="csv")
+        assert content_type == "text/csv"
+        assert vr.report_id in content
+
+    def test_stress_test_produces_versioned_report(self):
+        """run_stress_test() returns VersionedReport."""
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.report_metadata import VersionedReport
+
+        engine = self._make_engine_with_data()
+        service = RegulatoryService(risk_engine=engine)
+        report_id, vr = service.run_stress_test(
+            scenario_name="test-scenario",
+            shocks=[("EUR-USD", 0.9)],
+        )
+        assert isinstance(vr, VersionedReport)
+        assert vr.report_id == report_id
+
+    def test_version_chain_single_report(self):
+        """get_version_chain returns a list containing the single report."""
+        from lip.api.regulatory_service import RegulatoryService
+
+        engine = self._make_engine_with_data()
+        service = RegulatoryService(risk_engine=engine)
+        vr = service.generate_report()
+        chain = service.get_version_chain(vr.report_id)
+        assert len(chain) == 1
+        assert chain[0].report_id == vr.report_id

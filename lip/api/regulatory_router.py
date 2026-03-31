@@ -202,20 +202,20 @@ try:
         async def run_stress_test(request: StressTestRequest):
             """Multi-shock stress test scenario."""
             shocks = [(s.corridor, s.magnitude) for s in request.shocks]
-            report_id, report = regulatory_service.run_stress_test(
+            report_id, vr = regulatory_service.run_stress_test(
                 scenario_name=request.scenario_name,
                 shocks=shocks,
             )
             return StressTestResponse(
                 scenario_name=request.scenario_name,
                 report_id=report_id,
-                overall_failure_rate=report.overall_failure_rate,
-                highest_risk_corridor=report.highest_risk_corridor,
-                concentration_hhi=report.concentration_hhi,
-                systemic_risk_score=report.systemic_risk_score,
-                total_corridors_analyzed=report.total_corridors_analyzed,
-                stale_corridor_count=report.stale_corridor_count,
-                timestamp=report.timestamp,
+                overall_failure_rate=vr.report.overall_failure_rate,
+                highest_risk_corridor=vr.report.highest_risk_corridor,
+                concentration_hhi=vr.report.concentration_hhi,
+                systemic_risk_score=vr.report.systemic_risk_score,
+                total_corridors_analyzed=vr.report.total_corridors_analyzed,
+                stale_corridor_count=vr.report.stale_corridor_count,
+                timestamp=vr.report.timestamp,
             )
 
         @router.get(

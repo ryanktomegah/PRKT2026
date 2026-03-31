@@ -165,11 +165,11 @@ class TestRegulatoryService:
         service = RegulatoryService(risk_engine=engine)
         baseline = engine.compute_risk_report()
         baseline_count = baseline.total_corridors_analyzed
-        report_id, report = service.run_stress_test(
+        report_id, vr = service.run_stress_test(
             scenario_name="test-scenario",
             shocks=[("EUR-USD", 0.9), ("GBP-EUR", 0.7)],
         )
-        assert report.total_corridors_analyzed >= 1
+        assert vr.report.total_corridors_analyzed >= 1
         assert report_id is not None
         after = engine.compute_risk_report()
         assert after.total_corridors_analyzed == baseline_count
