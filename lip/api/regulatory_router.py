@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import time
+from decimal import Decimal
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,16 @@ try:
         StressTestResponse,
     )
     from lip.api.regulatory_service import RegulatoryService
+    from lip.c8_license_manager.query_metering import (
+        PrivacyBudgetExceededError,
+        QueryBudgetExceededError,
+        RegulatoryQueryMetering,
+    )
+    from lip.c8_license_manager.regulator_subscription import (
+        REGULATOR_SUBSCRIPTION_TIERS,
+        decode_regulator_token,
+        verify_regulator_token,
+    )
     from lip.p10_regulatory_data.report_metadata import ReportIntegrityError
 
     def _make_rate_limit_dep(limiter: TokenBucketRateLimiter):
@@ -65,10 +76,170 @@ try:
 
         return _check_rate
 
+    _TIER_RANK: dict[str, int] = {
+        tier: idx for idx, tier in enumerate(REGULATOR_SUBSCRIPTION_TIERS, start=1)
+    }
+
+    def _required_tier_for_endpoint(path: str) -> str:
+        if path.endswith("/stress-test") or path.endswith("/contagion/simulate"):
+            return "STRESS_TEST"
+        if path.endswith("/reports/generate") or "/corridors/" in path:
+            return "QUERY"
+        return "STANDARD"
+
+    def _tier_permits(subscription_tier: str, required_tier: str) -> bool:
+        return _TIER_RANK.get(subscription_tier, 0) >= _TIER_RANK.get(required_tier, 0)
+
+    def _epsilon_cost_for_endpoint(path: str) -> float:
+        if path.endswith("/stress-test"):
+            return 0.25
+        if path.endswith("/contagion/simulate"):
+            return 0.20
+        if path.endswith("/reports/generate"):
+            return 0.15
+        return 0.05
+
+    def _billing_amount_for_endpoint(path: str) -> Decimal:
+        if path.endswith("/stress-test"):
+            return Decimal("50000")
+        if path.endswith("/contagion/simulate"):
+            return Decimal("25000")
+        if path.endswith("/reports/generate"):
+            return Decimal("15000")
+        return Decimal("5000")
+
+    def _corridor_is_permitted(corridor: str, permitted_corridors: list[str]) -> bool:
+        for allowed in permitted_corridors:
+            if allowed.endswith("*"):
+                if corridor.startswith(allowed[:-1]):
+                    return True
+            elif corridor == allowed:
+                return True
+        return False
+
+    async def _extract_corridors_from_request(request: Request) -> list[str]:
+        corridors: list[str] = []
+        seen: set[str] = set()
+
+        def _append(value: Optional[str]) -> None:
+            if not value:
+                return
+            v = value.strip()
+            if v and v not in seen:
+                seen.add(v)
+                corridors.append(v)
+
+        _append(request.path_params.get("corridor_id"))
+        _append(request.query_params.get("corridor_id"))
+        _append(request.query_params.get("shock_corridor"))
+        _append(request.query_params.get("corridor"))
+
+        csv_corridors = request.query_params.get("corridors")
+        if csv_corridors:
+            for value in csv_corridors.split(","):
+                _append(value)
+
+        if request.method.upper() == "POST" and request.url.path.endswith("/stress-test"):
+            body = await request.body()
+            if body:
+                try:
+                    payload = json_stdlib.loads(body)
+                    shocks = payload.get("shocks", [])
+                    for shock in shocks:
+                        if isinstance(shock, dict):
+                            _append(shock.get("corridor"))
+                except Exception:
+                    # Body validation is handled by FastAPI endpoint parsing.
+                    pass
+
+        return corridors
+
+    def _make_regulator_subscription_dep(
+        signing_key: bytes,
+        query_metering: Optional[RegulatoryQueryMetering],
+    ):
+        """Create dependency for regulator bearer-token auth + metering."""
+
+        async def _check_regulator(request: Request):
+            auth_header = request.headers.get("authorization", "")
+            if not auth_header.startswith("Bearer "):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Missing regulator bearer token",
+                )
+
+            encoded = auth_header[len("Bearer "):].strip()
+            try:
+                token = decode_regulator_token(encoded)
+            except ValueError:
+                raise HTTPException(status_code=401, detail="Invalid regulator token")
+
+            if not verify_regulator_token(token, signing_key):
+                raise HTTPException(status_code=401, detail="Invalid regulator token")
+
+            required_tier = _required_tier_for_endpoint(request.url.path)
+            if not _tier_permits(token.subscription_tier, required_tier):
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        f"Subscription tier {token.subscription_tier} cannot access "
+                        f"this endpoint (requires {required_tier})"
+                    ),
+                )
+
+            corridors = await _extract_corridors_from_request(request)
+            if token.permitted_corridors is not None:
+                for corridor in corridors:
+                    if not _corridor_is_permitted(corridor, token.permitted_corridors):
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Corridor {corridor} not permitted for this token",
+                        )
+
+            epsilon_cost = _epsilon_cost_for_endpoint(request.url.path)
+            billing_amount = _billing_amount_for_endpoint(request.url.path)
+
+            if query_metering is not None:
+                try:
+                    query_metering.assert_within_budget(
+                        token=token, epsilon_cost=epsilon_cost
+                    )
+                except QueryBudgetExceededError as exc:
+                    raise HTTPException(status_code=429, detail=str(exc))
+                except PrivacyBudgetExceededError as exc:
+                    raise HTTPException(status_code=429, detail=str(exc))
+
+            started = time.monotonic()
+            try:
+                yield
+            finally:
+                if query_metering is not None:
+                    latency_ms = max(int((time.monotonic() - started) * 1000), 0)
+                    try:
+                        query_metering.record_query(
+                            token=token,
+                            endpoint=request.url.path,
+                            corridors_queried=corridors,
+                            epsilon_consumed=epsilon_cost,
+                            response_latency_ms=latency_ms,
+                            billing_amount_usd=billing_amount,
+                        )
+                    except (QueryBudgetExceededError, PrivacyBudgetExceededError):
+                        # Another concurrent request can consume the remaining budget
+                        # between pre-check and finalize write.
+                        logger.warning(
+                            "Budget exceeded during metering finalize for regulator_id=%s",
+                            token.regulator_id,
+                        )
+
+        return _check_regulator
+
     def make_regulatory_router(
         regulatory_service: RegulatoryService,
         rate_limiter: Optional[TokenBucketRateLimiter] = None,
         auth_dependency: Any = None,
+        regulator_signing_key: Optional[bytes] = None,
+        query_metering: Optional[RegulatoryQueryMetering] = None,
     ) -> APIRouter:
         """Factory that builds the P10 Regulatory API router.
 
@@ -82,6 +253,18 @@ try:
             deps.append(Depends(auth_dependency))
         if rate_limiter is not None:
             deps.append(Depends(_make_rate_limit_dep(rate_limiter)))
+        if regulator_signing_key is not None:
+            metering = query_metering or RegulatoryQueryMetering(
+                metering_key=regulator_signing_key
+            )
+            deps.append(
+                Depends(
+                    _make_regulator_subscription_dep(
+                        signing_key=regulator_signing_key,
+                        query_metering=metering,
+                    )
+                )
+            )
 
         @router.get(
             "/corridors",

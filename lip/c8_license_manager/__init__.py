@@ -28,6 +28,20 @@ from .license_token import (
     sign_token,
     verify_token,
 )
+from .query_metering import (
+    PrivacyBudgetExceededError,
+    QueryBudgetExceededError,
+    QueryMeterEntry,
+    RegulatoryQueryMetering,
+)
+from .regulator_subscription import (
+    REGULATOR_SUBSCRIPTION_TIERS,
+    RegulatorSubscriptionToken,
+    decode_regulator_token,
+    encode_regulator_token,
+    sign_regulator_token,
+    verify_regulator_token,
+)
 
 __all__ = [
     "LicenseToken",
@@ -36,4 +50,14 @@ __all__ = [
     "LicenseBootValidator",
     "sign_token",
     "verify_token",
+    "RegulatorSubscriptionToken",
+    "REGULATOR_SUBSCRIPTION_TIERS",
+    "sign_regulator_token",
+    "verify_regulator_token",
+    "encode_regulator_token",
+    "decode_regulator_token",
+    "QueryMeterEntry",
+    "RegulatoryQueryMetering",
+    "QueryBudgetExceededError",
+    "PrivacyBudgetExceededError",
 ]

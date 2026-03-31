@@ -112,6 +112,17 @@ try:
             hmac_key = hmac_key_hex.encode() if len(hmac_key_hex) < 64 else bytes.fromhex(hmac_key_hex)
             auth_dep = make_hmac_dependency(hmac_key)
 
+        regulator_signing_key = None
+        regulator_key_hex = os.environ.get("LIP_REGULATOR_SUBSCRIPTION_KEY_HEX", "").strip()
+        if regulator_key_hex:
+            try:
+                regulator_signing_key = bytes.fromhex(regulator_key_hex)
+            except ValueError:
+                logger.warning(
+                    "LIP_REGULATOR_SUBSCRIPTION_KEY_HEX is not valid hex; using raw bytes fallback"
+                )
+                regulator_signing_key = regulator_key_hex.encode("utf-8")
+
         # Lifespan for startup/shutdown
         @asynccontextmanager
         async def lifespan(application: FastAPI):
@@ -230,12 +241,22 @@ try:
             from lip.api.rate_limiter import TokenBucketRateLimiter
             from lip.api.regulatory_router import make_regulatory_router
             from lip.api.regulatory_service import RegulatoryService
+            from lip.c8_license_manager.query_metering import RegulatoryQueryMetering
 
             reg_service = RegulatoryService(risk_engine=systemic_risk_engine)
             reg_limiter = TokenBucketRateLimiter(rate=100, period_seconds=3600)
+            query_metering = None
+            if regulator_signing_key is not None:
+                query_metering = RegulatoryQueryMetering(
+                    metering_key=regulator_signing_key
+                )
             application.include_router(
                 make_regulatory_router(
-                    reg_service, rate_limiter=reg_limiter, auth_dependency=auth_dep,
+                    reg_service,
+                    rate_limiter=reg_limiter,
+                    auth_dependency=auth_dep,
+                    regulator_signing_key=regulator_signing_key,
+                    query_metering=query_metering,
                 ),
                 prefix="/api/v1/regulatory",
             )
