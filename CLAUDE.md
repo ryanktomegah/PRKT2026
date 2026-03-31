@@ -24,6 +24,11 @@ After auth, Claude can:
 - Lint: `ruff check lip/` — must be zero errors before commit
 - PYTHONPATH must be set to repo root for imports to resolve
 
+## Execution Protocol (Mandatory)
+- Follow `docs/engineering/default-execution-protocol.md` for every task.
+- Required defaults: `codex/*` branch workflow, plan/design before implementation,
+  commit+push at task completion, and draft PR by default with test evidence.
+
 ## Team Working Model — The Ford Principle
 
 The user is a strategic, non-technical founder. They set direction and make final calls. The team's job is not to follow orders — it is to **translate direction into correct technical decisions, flag when the direction is wrong, and push back before implementing anything flawed**. An agent that executes a bad instruction without questioning it has failed, even if the code runs.

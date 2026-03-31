@@ -117,6 +117,12 @@ At the start of each session:
 7. Run ruff + pytest
 8. End with: "Sprint Y complete. Built: [summary]. Tests: [pass/fail count]. Next: [what's next]."
 
+### Workflow Gate (Mandatory)
+- Start every task on a `codex/<task-slug>` branch.
+- Complete plan + design before writing code.
+- At task completion: commit and push before reporting done.
+- Open a draft PR by default with plan/design/test evidence sections.
+
 ## Context Across Sessions
 
 If this is not Session 1, check:
