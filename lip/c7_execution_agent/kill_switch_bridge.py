@@ -35,7 +35,7 @@ import logging
 import os
 import threading
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from lip.c7_execution_agent.kill_switch import (
     KillSwitch,
@@ -74,12 +74,12 @@ except ImportError:
 # ---------------------------------------------------------------------------
 _FORCE_PYTHON = os.environ.get("LIP_KS_FORCE_PYTHON", "").strip() == "1"
 
-_rust_module = None
+_rust_module: Any = None
 _rust_available = False
 
 if not _FORCE_PYTHON:
     try:
-        import lip_kill_switch as _rust_module  # type: ignore[import]
+        import lip_kill_switch as _rust_module  # type: ignore[import,no-redef]
 
         _rust_available = True
         logger.info("lip_kill_switch Rust module loaded successfully (primary path)")

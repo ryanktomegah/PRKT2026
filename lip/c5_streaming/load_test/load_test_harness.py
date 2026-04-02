@@ -170,8 +170,8 @@ def run_load_test(
             msg_start = time.monotonic()
             try:
                 event = normalizer.normalize(rail, raw)
-                result = _noop_pipeline(event)
-                _ = result  # consumed
+                pipeline_out = _noop_pipeline(event)
+                _ = pipeline_out  # consumed
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Message processing error: %s", exc)
                 errors += 1

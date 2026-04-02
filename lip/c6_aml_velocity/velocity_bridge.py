@@ -254,3 +254,5 @@ class RustVelocityChecker:
         """Flush all window state (for testing / scheduled resets)."""
         if _RUST_AVAILABLE:
             self._rust_vel.flush()
+        else:
+            self._py_vel._window._records.clear()
