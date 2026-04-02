@@ -1,0 +1,40 @@
+[package]
+name = "lip_kill_switch"
+version = "0.1.0"
+edition = "2021"
+description = "C7 kill switch — AtomicBool + POSIX shm + PyO3 bindings"
+license = "Proprietary"
+
+[[bin]]
+name = "lip_kill_switch_bin"
+path = "src/main.rs"
+
+[lib]
+name = "lip_kill_switch"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# PyO3: Python bindings — feature-gated so the lib still compiles without Python headers
+pyo3 = { version = "0.21", features = ["extension-module"], optional = true }
+
+# signal_hook: async-signal-safe AtomicBool flag registration
+signal-hook = "0.3"
+
+# libc: POSIX shm_open / mmap / ftruncate / shm_unlink
+libc = "0.2"
+
+# log + env_logger: structured logging from non-signal context
+log = "0.4"
+env_logger = "0.11"
+
+[features]
+default = []
+python = ["pyo3"]
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
