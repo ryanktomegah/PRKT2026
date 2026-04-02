@@ -1,0 +1,85 @@
+{
+  "type": "record",
+  "name": "NormalizedEvent",
+  "namespace": "com.bridgepoint.lip.c5",
+  "doc": "Canonical payment event format produced by C5 EventNormalizer. This is the input contract for all downstream pipeline components (C1, C2, C4, C6).",
+  "fields": [
+    {
+      "name": "uetr",
+      "type": "string",
+      "doc": "Unique End-to-end Transaction Reference. Primary partition key."
+    },
+    {
+      "name": "individual_payment_id",
+      "type": "string",
+      "doc": "Bank-assigned payment ID"
+    },
+    {
+      "name": "sending_bic",
+      "type": "string",
+      "doc": "BIC of sending institution (normalized from routing numbers for FedNow/RTP)"
+    },
+    {
+      "name": "receiving_bic",
+      "type": "string",
+      "doc": "BIC of receiving institution"
+    },
+    {
+      "name": "amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 20,
+        "scale": 2
+      },
+      "doc": "Transaction amount as Avro decimal (precision 20, scale 2). Go consumer uses math/big.Float internally."
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "doc": "ISO 4217 currency code"
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-micros"
+      },
+      "doc": "Event timestamp as microseconds since Unix epoch (UTC)"
+    },
+    {
+      "name": "rail",
+      "type": "string",
+      "doc": "Original payment rail (SWIFT | FEDNOW | RTP | SEPA)"
+    },
+    {
+      "name": "rejection_code",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Normalized ISO 20022 rejection code. Proprietary FedNow/RTP codes are mapped to ISO 20022 equivalents by the normalizer."
+    },
+    {
+      "name": "narrative",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Rejection narrative or payment description"
+    },
+    {
+      "name": "raw_source",
+      "type": "string",
+      "doc": "JSON-serialized original message for audit trail"
+    },
+    {
+      "name": "original_payment_amount_usd",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "GAP-17: USD settlement amount for cross-currency payments"
+    },
+    {
+      "name": "debtor_account",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "EPG-28: Debtor account for AML composite velocity key"
+    }
+  ]
+}
