@@ -1,0 +1,2 @@
+benchmark_name,run_date,implementation,target_tps,actual_tps,duration_s,total_messages,total_errors,error_rate_pct,p50_ms,p95_ms,p99_ms,max_ms,min_ms,notes
+C5 Python Baseline,2026-04-02T09:47:43Z,python,10000,10000.09,10.0,100001,0,0.0,0.005,0.007,0.010,0.083,0.003,Normalization-only (no ML/Kafka/Redis). EventNormalizer hot path at 10K TPS.
