@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
+from lip.c2_pd_model.fee import compute_loan_fee
 from lip.c2_pd_model.tier_assignment import Tier
 from lip.common.known_entity_registry import KnownEntityRegistry
 from lip.risk.portfolio_risk import PortfolioRiskEngine
@@ -170,7 +171,7 @@ class PortfolioReporter:
 
         for loan in self._get_loans():
             funded_days = max((now - loan.funded_at).total_seconds() / 86400, 0)
-            fee = loan.principal * Decimal(str(loan.fee_bps)) / Decimal("10000") * Decimal(str(funded_days)) / Decimal("365")
+            fee = compute_loan_fee(loan.principal, Decimal(str(loan.fee_bps)), funded_days)
             accrued_fee += fee
             total_principal += loan.principal
             weighted_bps_sum += loan.principal * Decimal(str(loan.fee_bps))

@@ -32,9 +32,12 @@ from __future__ import annotations
 import hashlib
 import math
 import time
+from decimal import Decimal
 from typing import List
 
 import numpy as np
+
+from lip.c2_pd_model.fee import compute_loan_fee
 
 # Canonical constants (QUANT-controlled)
 _FEE_FLOOR_BPS = 300
@@ -159,7 +162,7 @@ def _generate_record(
         ))
         settlement_ts = funded_ts + latency_s
         _days_funded = (settlement_ts - funded_ts) / 86400
-        settlement_amount_usd = principal_usd + (principal_usd * fee_bps / 10_000) * (_days_funded / 365)
+        settlement_amount_usd = principal_usd + float(compute_loan_fee(Decimal(str(principal_usd)), Decimal(str(fee_bps)), _days_funded))
         is_settled = True
         repayment_triggered_by = f"SETTLEMENT_SIGNAL_{primary_rail}"
 
@@ -167,7 +170,7 @@ def _generate_record(
         # No settlement signal; buffer triggers at maturity
         settlement_rail = "BUFFER"
         settlement_ts = float(maturity_ts) + float(rng.normal(300.0, 60.0))
-        settlement_amount_usd = principal_usd + (principal_usd * fee_bps / 10_000) * (maturity_days / 365)
+        settlement_amount_usd = principal_usd + float(compute_loan_fee(Decimal(str(principal_usd)), Decimal(str(fee_bps)), maturity_days))
         is_timeout = True
         is_settled = True
         repayment_triggered_by = "BUFFER_MATURITY_TRIGGER"
@@ -184,7 +187,7 @@ def _generate_record(
         # Shortfall: 5–40% of expected amount
         shortfall_fraction = float(rng.uniform(0.05, 0.40))
         _days_funded = (settlement_ts - funded_ts) / 86400
-        expected = principal_usd + (principal_usd * fee_bps / 10_000) * (_days_funded / 365)
+        expected = principal_usd + float(compute_loan_fee(Decimal(str(principal_usd)), Decimal(str(fee_bps)), _days_funded))
         shortfall_usd = expected * shortfall_fraction
         settlement_amount_usd = expected - shortfall_usd
         is_partial = True
@@ -205,7 +208,7 @@ def _generate_record(
         ))
         settlement_ts = funded_ts + primary_failure_delay_s + fallback_latency_s
         _days_funded = (settlement_ts - funded_ts) / 86400
-        settlement_amount_usd = principal_usd + (principal_usd * fee_bps / 10_000) * (_days_funded / 365)
+        settlement_amount_usd = principal_usd + float(compute_loan_fee(Decimal(str(principal_usd)), Decimal(str(fee_bps)), _days_funded))
         is_settled = True
         repayment_triggered_by = f"SETTLEMENT_SIGNAL_{fallback_rail}_FALLBACK"
 
@@ -215,7 +218,7 @@ def _generate_record(
         early_fraction = float(rng.uniform(0.05, 0.80))
         settlement_ts = funded_ts + early_fraction * maturity_days * 86400
         _days_funded = (settlement_ts - funded_ts) / 86400
-        settlement_amount_usd = principal_usd + (principal_usd * fee_bps / 10_000) * (_days_funded / 365)
+        settlement_amount_usd = principal_usd + float(compute_loan_fee(Decimal(str(principal_usd)), Decimal(str(fee_bps)), _days_funded))
         is_early = True
         is_settled = True
         repayment_triggered_by = "EARLY_REPAY_MANUAL"
