@@ -271,6 +271,15 @@ def compute_cascade_adjusted_pd(
     cascade_value_prevented = Decimal(str(cascade_value_prevented))
     intervention_cost = Decimal(str(intervention_cost))
 
+    # Guard: base_pd must be a valid probability in [0, 1].
+    # An out-of-range value (e.g. from a pipeline passing raw EL instead of PD)
+    # would produce an anomalously high fee_bps that bypasses the 300 bps floor check.
+    if not (Decimal("0") <= base_pd <= Decimal("1")):
+        raise ValueError(
+            f"base_pd must be in [0, 1]; got {base_pd}. "
+            "Ensure the input is a probability, not a raw expected-loss value."
+        )
+
     # Cascade discount (capped at 30%)
     if intervention_cost > 0 and cascade_value_prevented > 0:
         raw_discount = cascade_value_prevented / (10 * intervention_cost)
@@ -284,6 +293,15 @@ def compute_cascade_adjusted_pd(
     # Fee computation
     base_fee_bps = compute_fee_bps_from_el(base_pd, lgd, ead)
     cascade_adjusted_fee_bps = compute_fee_bps_from_el(cascade_adjusted_pd, lgd, ead)
+
+    # QUANT invariant: cascade_adjusted_fee_bps must never fall below FEE_FLOOR_BPS.
+    # compute_fee_bps_from_el() applies the floor, but we assert here defensively
+    # so any future refactoring of the fee formula cannot silently break this guarantee.
+    assert cascade_adjusted_fee_bps >= FEE_FLOOR_BPS, (
+        f"QUANT invariant violated: cascade_adjusted_fee_bps={cascade_adjusted_fee_bps} "
+        f"< FEE_FLOOR_BPS={FEE_FLOOR_BPS}. This should be impossible — "
+        "compute_fee_bps_from_el() must always apply the floor."
+    )
 
     return CascadeAdjustedPricing(
         base_pd=base_pd,

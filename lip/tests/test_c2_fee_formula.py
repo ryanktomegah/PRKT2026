@@ -25,9 +25,17 @@ import pytest
 
 from lip.c2_pd_model.fee import (
     FEE_FLOOR_BPS,
+    compute_cascade_adjusted_pd,
     compute_fee_bps_from_el,
     compute_loan_fee,
     compute_platform_royalty,
+    compute_tiered_fee_floor,
+)
+from lip.common.constants import (
+    FEE_FLOOR_TIER_MID_BPS,
+    FEE_FLOOR_TIER_SMALL_BPS,
+    FEE_TIER_MID_THRESHOLD_USD,
+    MIN_LOAN_AMOUNT_USD,
 )
 
 # ---------------------------------------------------------------------------
@@ -472,3 +480,154 @@ class TestSingleSourceIntegration:
             "c7 agent.py does not reference compute_loan_fee — "
             "single-source violation"
         )
+
+
+# ---------------------------------------------------------------------------
+# Tiered fee floor tests (QUANT-controlled — do NOT change without QUANT sign-off)
+# ---------------------------------------------------------------------------
+
+
+class TestTieredFeeFloor:
+    """compute_tiered_fee_floor() boundary and value tests.
+
+    Tier thresholds:
+      principal < $500K   → 500 bps (FEE_FLOOR_TIER_SMALL_BPS)
+      $500K ≤ p < $2M     → 400 bps (FEE_FLOOR_TIER_MID_BPS)
+      p ≥ $2M             → 300 bps (FEE_FLOOR_BPS / canonical floor)
+    """
+
+    @pytest.mark.parametrize(
+        "loan_amount, expected_bps",
+        [
+            # Small tier (< $500K)
+            (Decimal("0.01"),       Decimal("500")),
+            (Decimal("100000"),     Decimal("500")),
+            (Decimal("499999.99"),  Decimal("500")),
+            # Mid tier ($500K ≤ p < $2M)
+            (Decimal("500000"),     Decimal("400")),
+            (Decimal("500000.01"),  Decimal("400")),
+            (Decimal("1000000"),    Decimal("400")),
+            (Decimal("1999999.99"), Decimal("400")),
+            # Canonical floor (≥ $2M)
+            (Decimal("2000000"),    Decimal("300")),
+            (Decimal("2000000.01"), Decimal("300")),
+            (Decimal("10000000"),   Decimal("300")),
+        ],
+    )
+    def test_tiered_floor_values(
+        self, loan_amount: Decimal, expected_bps: Decimal
+    ) -> None:
+        """Verify each tier returns the correct QUANT-blessed floor bps."""
+        result = compute_tiered_fee_floor(loan_amount)
+        assert result == expected_bps, (
+            f"compute_tiered_fee_floor({loan_amount}) = {result}, expected {expected_bps}"
+        )
+
+    def test_canonical_floor_matches_fee_floor_bps_constant(self) -> None:
+        """The ≥$2M result must equal FEE_FLOOR_BPS so constants stay consistent."""
+        assert compute_tiered_fee_floor(Decimal("2000000")) == FEE_FLOOR_BPS
+
+    def test_small_tier_floor_matches_constant(self) -> None:
+        """The <$500K result must equal FEE_FLOOR_TIER_SMALL_BPS."""
+        assert compute_tiered_fee_floor(Decimal("100000")) == FEE_FLOOR_TIER_SMALL_BPS
+
+    def test_mid_tier_floor_matches_constant(self) -> None:
+        """The $500K–$2M result must equal FEE_FLOOR_TIER_MID_BPS."""
+        assert compute_tiered_fee_floor(Decimal("1000000")) == FEE_FLOOR_TIER_MID_BPS
+
+    def test_returns_decimal(self) -> None:
+        """Return type must be Decimal for downstream Decimal arithmetic safety."""
+        assert isinstance(compute_tiered_fee_floor(Decimal("500000")), Decimal)
+
+    def test_mid_threshold_boundary_is_inclusive(self) -> None:
+        """FEE_TIER_MID_THRESHOLD_USD exactly maps to the canonical 300 bps floor."""
+        assert compute_tiered_fee_floor(FEE_TIER_MID_THRESHOLD_USD) == FEE_FLOOR_BPS
+
+    def test_min_loan_boundary_is_inclusive(self) -> None:
+        """MIN_LOAN_AMOUNT_USD exactly maps to the mid-tier 400 bps floor."""
+        assert compute_tiered_fee_floor(MIN_LOAN_AMOUNT_USD) == FEE_FLOOR_TIER_MID_BPS
+
+
+# ---------------------------------------------------------------------------
+# Cascade-adjusted PD and pricing tests
+# ---------------------------------------------------------------------------
+
+
+class TestCascadeAdjustedPD:
+    """compute_cascade_adjusted_pd() correctness, guard, and invariant tests."""
+
+    def test_no_cascade_value_yields_no_discount(self) -> None:
+        """Zero cascade value prevented → zero discount → unchanged PD and fee."""
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("0.01"),
+            cascade_value_prevented=Decimal("0"),
+            intervention_cost=Decimal("1000000"),
+        )
+        assert result.cascade_discount == Decimal("0")
+        assert result.cascade_adjusted_pd == result.base_pd
+
+    def test_discount_capped_at_30_percent(self) -> None:
+        """CASCADE_DISCOUNT_CAP (30%) is never exceeded regardless of value/cost ratio."""
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("0.05"),
+            cascade_value_prevented=Decimal("1000000000"),  # very large
+            intervention_cost=Decimal("1"),
+        )
+        from lip.p5_cascade_engine.constants import CASCADE_DISCOUNT_CAP
+        assert result.cascade_discount <= CASCADE_DISCOUNT_CAP
+
+    def test_adjusted_pd_always_less_than_or_equal_base_pd(self) -> None:
+        """Cascade adjustment can only reduce PD, never increase it."""
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("0.02"),
+            cascade_value_prevented=Decimal("500000"),
+            intervention_cost=Decimal("1000000"),
+        )
+        assert result.cascade_adjusted_pd <= result.base_pd
+
+    def test_quant_invariant_fee_floor_never_violated(self) -> None:
+        """cascade_adjusted_fee_bps must always be >= FEE_FLOOR_BPS (300 bps)."""
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("0.001"),  # very low PD — floor will be binding
+            cascade_value_prevented=Decimal("100000"),
+            intervention_cost=Decimal("1000000"),
+        )
+        assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
+
+    def test_invalid_base_pd_above_one_raises(self) -> None:
+        """base_pd > 1.0 is not a valid probability — must raise ValueError."""
+        with pytest.raises(ValueError, match="base_pd must be in"):
+            compute_cascade_adjusted_pd(
+                base_pd=Decimal("1.5"),
+                cascade_value_prevented=Decimal("100000"),
+                intervention_cost=Decimal("1000000"),
+            )
+
+    def test_invalid_base_pd_negative_raises(self) -> None:
+        """Negative base_pd is not a valid probability — must raise ValueError."""
+        with pytest.raises(ValueError, match="base_pd must be in"):
+            compute_cascade_adjusted_pd(
+                base_pd=Decimal("-0.01"),
+                cascade_value_prevented=Decimal("100000"),
+                intervention_cost=Decimal("1000000"),
+            )
+
+    def test_base_pd_zero_is_valid(self) -> None:
+        """base_pd = 0 is a valid edge case (risk-free borrower)."""
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("0"),
+            cascade_value_prevented=Decimal("0"),
+            intervention_cost=Decimal("1000000"),
+        )
+        assert result.base_pd == Decimal("0")
+        assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
+
+    def test_base_pd_one_is_valid(self) -> None:
+        """base_pd = 1.0 is a valid edge case (certain default)."""
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("1"),
+            cascade_value_prevented=Decimal("0"),
+            intervention_cost=Decimal("1000000"),
+        )
+        assert result.base_pd == Decimal("1")
+        assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
