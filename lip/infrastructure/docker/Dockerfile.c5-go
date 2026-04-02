@@ -1,0 +1,84 @@
+# Dockerfile.c5-go — C5 Go Kafka Consumer
+# Multi-stage build: Go compiler + minimal runtime image.
+# Drop-in replacement for Dockerfile.c5 (Python/Flink).
+#
+# Build:
+#   docker build -f lip/infrastructure/docker/Dockerfile.c5-go \
+#       -t lip-c5-go:latest .
+#
+# Run:
+#   docker run --env-file .env lip-c5-go:latest
+
+# ── Stage 1: Build ─────────────────────────────────────────────────────────
+
+FROM golang:1.22-bullseye AS builder
+
+LABEL stage="builder"
+
+# confluent-kafka-go requires librdkafka headers (CGO build)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    librdkafka-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy go.mod and go.sum first for layer caching
+COPY lip/c5_streaming/go_consumer/go.mod lip/c5_streaming/go_consumer/go.sum ./
+RUN go mod download
+
+# Copy source
+COPY lip/c5_streaming/go_consumer/ ./
+
+# Build static binary (CGO required for librdkafka)
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s -X main.version=$(date -u +%Y%m%d%H%M%S)" \
+    -o /c5-go-consumer .
+
+# ── Stage 2: Runtime ───────────────────────────────────────────────────────
+
+FROM debian:bullseye-slim
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c5-go-consumer"
+LABEL description="LIP C5 Go Kafka consumer — drop-in replacement for Python consumer"
+
+# Runtime dependency for confluent-kafka-go (librdkafka shared library)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    librdkafka1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy compiled binary from builder
+COPY --from=builder /c5-go-consumer /app/c5-go-consumer
+
+# Copy Avro schemas (used when SCHEMA_REGISTRY_URL is set)
+COPY lip/c5_streaming/schemas/ /app/schemas/
+
+# Non-root user
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app
+USER lipuser
+
+# Kafka + Redis config via environment (mirrors Python KafkaConfig)
+ENV KAFKA_BOOTSTRAP_SERVERS="kafka:9092" \
+    KAFKA_GROUP_ID="lip-c5-go-worker" \
+    KAFKA_INPUT_TOPIC="lip.payment.events" \
+    KAFKA_OUTPUT_TOPIC="lip.failure.predictions" \
+    KAFKA_DLQ_TOPIC="lip.dead.letter" \
+    REDIS_ADDR="redis:6379" \
+    GRPC_C1_ADDR="c1-service:50051" \
+    GRPC_C2_ADDR="c2-service:50052" \
+    GRPC_C6_ADDR="c6-service:50056" \
+    NUM_WORKERS="8" \
+    METRICS_ADDR=":9090" \
+    LOG_LEVEL="info"
+
+# Prometheus metrics
+EXPOSE 9090
+
+# Health check via metrics endpoint
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD wget -q -O- http://localhost:9090/healthz || exit 1
+
+CMD ["/app/c5-go-consumer"]
