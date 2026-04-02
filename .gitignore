@@ -47,3 +47,4 @@ mlruns/
 
 # Rust build artifacts
 lip/c3/rust_state_machine/target/
+lip/c3/rust_state_machine/Cargo.lock

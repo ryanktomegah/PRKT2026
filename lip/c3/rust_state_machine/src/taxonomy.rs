@@ -141,6 +141,12 @@ pub fn is_block(code: &str) -> bool {
     matches!(classify(code), Ok(RejectionClass::Block))
 }
 
+/// EPG-19: Compliance-hold codes that must always be classified BLOCK.
+/// Defense-in-depth: these codes are also blocked at Layer 1 (pipeline short-circuit)
+/// and Layer 2 (C7 gate) per the EPG-19 architecture decision.
+pub const COMPLIANCE_HOLD_CODES: &[&str] =
+    &["DNOR", "CNOR", "RR01", "RR02", "RR03", "RR04", "AG01", "LEGL"];
+
 // ---------------------------------------------------------------------------
 // Unit tests
 // ---------------------------------------------------------------------------
@@ -215,8 +221,7 @@ mod tests {
     // EPG-compliance: all compliance-hold codes must be BLOCK
     #[test]
     fn test_compliance_hold_codes_are_block() {
-        let compliance_hold_codes = ["DNOR", "CNOR", "RR01", "RR02", "RR03", "RR04", "AG01", "LEGL"];
-        for code in compliance_hold_codes {
+        for code in COMPLIANCE_HOLD_CODES {
             assert_eq!(
                 classify(code).unwrap(),
                 RejectionClass::Block,

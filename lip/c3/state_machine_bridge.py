@@ -370,6 +370,9 @@ _DEFAULT_TTL_SECONDS: dict[str, float] = {
     "CANCELLATION_ALERT": 14 * 86_400,  # 14 days
 }
 
+#: Fallback TTL for states not listed in _DEFAULT_TTL_SECONDS (2× Class B 7d maturity).
+_FALLBACK_TTL_SECONDS: float = 14 * 86_400
+
 #: Terminal states — never flagged as stuck.
 _TERMINAL_STATES = frozenset({
     "REPAID",
@@ -539,7 +542,7 @@ class PaymentWatchdog:
         for entry in snapshot:
             if entry.state in _TERMINAL_STATES:
                 continue
-            ttl = self._ttl.get(entry.state, _DEFAULT_TTL_SECONDS.get(entry.state, 7 * 86_400))
+            ttl = self._ttl.get(entry.state, _DEFAULT_TTL_SECONDS.get(entry.state, _FALLBACK_TTL_SECONDS))
             age_s = now - entry.last_updated
             if age_s > ttl:
                 self._on_stuck(entry, age_s, ttl)
