@@ -37,6 +37,8 @@ jobs:
             dockerfile: lip/infrastructure/docker/Dockerfile.c4
           - component: c5
             dockerfile: lip/infrastructure/docker/Dockerfile.c5
+          - component: c5-go
+            dockerfile: lip/infrastructure/docker/Dockerfile.c5-go
           - component: c6
             dockerfile: lip/infrastructure/docker/Dockerfile.c6
           - component: c7

@@ -1,0 +1,31 @@
+{
+  "benchmark_name": "C5 Python Kafka Consumer — Pre-Migration Baseline",
+  "run_date": "2026-04-02T09:47:43Z",
+  "methodology": {
+    "tool": "lip/c5_streaming/load_test/load_test_harness.py",
+    "scope": "EventNormalizer hot path (deserialization + field normalization)",
+    "note": "Normalization-only — no ML inference, no live Kafka. Measures the Python EventNormalizer at 10K TPS. Full end-to-end latency (with Kafka I/O, ML inference, Redis) should be measured separately in canary.",
+    "environment": "Ubuntu 22.04, Python 3.11, single-process, no GIL contention"
+  },
+  "target_tps": 10000,
+  "actual_tps": 10000.09,
+  "duration_s": 10.0,
+  "total_messages": 100001,
+  "total_errors": 0,
+  "error_rate_pct": 0.0,
+  "latency_ms": {
+    "p50": 0.005,
+    "p95": 0.007,
+    "p99": 0.010,
+    "max": 0.083,
+    "min": 0.003
+  },
+  "gc_notes": "Python CPython GIL pauses observed under multi-threaded workloads (not captured in single-threaded harness). confluent-kafka-python librdkafka I/O threads release GIL; event loop pauses observed at p99+.",
+  "known_bottlenecks": [
+    "asyncio event loop: next-tick delivery latency ~50-200μs under high TPS",
+    "Python JSON decoder: ~5μs per message vs sub-μs in Go/Rust",
+    "GIL contention in multi-worker deployments limits true concurrency",
+    "fastavro: not yet integrated — current production uses JSON (slower than Avro)"
+  ],
+  "implementation": "python"
+}
