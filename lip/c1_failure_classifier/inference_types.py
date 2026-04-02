@@ -16,10 +16,13 @@ See docs/specs/c1_inference_endpoint_typing.md for the full contract.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Validation constants
@@ -30,6 +33,9 @@ _BIC_LENGTHS = frozenset({8, 11})
 _BIC_RE = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
 _CURRENCY_PAIR_RE = re.compile(r"^[A-Z]{3}_[A-Z]{3}$")
 _MIN_AMOUNT_USD: float = 0.01
+# ISO 9362:2022 — bank code (A-Z x4) + country code (A-Z x2) + location code (A-Z0-9 x2)
+#                 + optional branch code (A-Z0-9 x3)
+_BIC_RE = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
 
 
 # ---------------------------------------------------------------------------
@@ -72,9 +78,12 @@ class ClassifyRequest(BaseModel):
         model.
     sending_bic:
         ISO 9362 Bank Identifier Code of the originating bank (8 or 11
-        characters).
+        characters).  Automatically uppercased and validated against the
+        full ISO 9362 pattern (4 alpha + 2 alpha country + 2 alphanumeric
+        location [+ 3 alphanumeric branch]).
     receiving_bic:
-        ISO 9362 BIC of the receiving bank (8 or 11 characters).
+        ISO 9362 BIC of the receiving bank.  Same format and uppercasing
+        as ``sending_bic``.
     amount_usd:
         Notional transaction amount in USD.  Must be ≥ 0.01.
     currency_pair:
@@ -104,13 +113,16 @@ class ClassifyRequest(BaseModel):
     @field_validator("sending_bic", "receiving_bic")
     @classmethod
     def _validate_bic(cls, value: str, info: Any) -> str:
-        if not _BIC_RE.match(value):
+        # Normalize to upper-case before matching so lowercase BIC input is
+        # accepted (merged from PR #33).
+        upper = value.upper()
+        if not _BIC_RE.match(upper):
             raise ValueError(
                 f"{info.field_name} must be a valid ISO 9362 BIC (8 or 11 alphanumeric characters, "
                 f"format: 4-alpha institution + 2-alpha country + 2-alnum location [+ 3-alnum branch]); "
                 f"got {value!r}"
             )
-        return value
+        return upper
 
     @field_validator("currency_pair")
     @classmethod

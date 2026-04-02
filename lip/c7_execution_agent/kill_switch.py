@@ -94,6 +94,7 @@ class KillSwitch:
         self._reason: Optional[str] = None
         self._monitor_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+        self._state_lock = threading.Lock()
 
     def activate(self, reason: str = "") -> None:
         """Engage the kill switch and halt all new loan offers immediately.
@@ -108,9 +109,10 @@ class KillSwitch:
                 Required for DORA incident reporting; an empty string is
                 accepted but not recommended.
         """
-        self._kill_switch_state = KillSwitchState.ACTIVE
-        self._activated_at = datetime.now(tz=timezone.utc)
-        self._reason = reason
+        with self._state_lock:
+            self._kill_switch_state = KillSwitchState.ACTIVE
+            self._activated_at = datetime.now(tz=timezone.utc)
+            self._reason = reason
         if self._redis:
             self._redis.set("lip:kill_switch", "ACTIVE")
         logger.critical("KILL SWITCH ACTIVATED: %s", reason)
@@ -122,9 +124,10 @@ class KillSwitch:
         observe the recovery.  Resets in-memory state including
         ``activated_at`` and ``reason``.
         """
-        self._kill_switch_state = KillSwitchState.INACTIVE
-        self._activated_at = None
-        self._reason = None
+        with self._state_lock:
+            self._kill_switch_state = KillSwitchState.INACTIVE
+            self._activated_at = None
+            self._reason = None
         if self._redis:
             self._redis.delete("lip:kill_switch")
         logger.info("Kill switch deactivated")
@@ -142,7 +145,8 @@ class KillSwitch:
         if self._redis:
             val = self._redis.get("lip:kill_switch")
             return val is not None and val.decode() == "ACTIVE"
-        return self._kill_switch_state == KillSwitchState.ACTIVE
+        with self._state_lock:
+            return self._kill_switch_state == KillSwitchState.ACTIVE
 
     def check_kms(self) -> KMSState:
         """Probe the KMS and update internal availability state.
@@ -173,18 +177,26 @@ class KillSwitch:
     def get_status(self) -> KillSwitchStatus:
         """Return a point-in-time snapshot of kill switch and KMS state.
 
-        Calls :meth:`is_active` (which may query Redis) to ensure the
-        snapshot reflects distributed state across pods.
+        When no Redis client is configured, all state is read atomically under
+        the state lock.  When Redis is configured, ``is_active()`` queries Redis
+        for the authoritative distributed state.
 
         Returns:
             :class:`KillSwitchStatus` dataclass with all state fields.
         """
+        with self._state_lock:
+            in_memory_active = self._kill_switch_state == KillSwitchState.ACTIVE
+            activated_at = self._activated_at
+            reason = self._reason
+        # Query Redis (if configured) after releasing the lock — Redis call
+        # must not be made while holding the in-memory lock to avoid deadlock.
+        is_active = self.is_active() if self._redis else in_memory_active
         return KillSwitchStatus(
-            kill_switch_state=KillSwitchState.ACTIVE if self.is_active() else KillSwitchState.INACTIVE,
+            kill_switch_state=KillSwitchState.ACTIVE if is_active else KillSwitchState.INACTIVE,
             kms_state=self._kms_state,
-            activated_at=self._activated_at,
+            activated_at=activated_at,
             kms_unavailable_since=self._kms_unavailable_since,
-            reason=self._reason,
+            reason=reason,
         )
 
     def should_halt_new_offers(self) -> bool:
