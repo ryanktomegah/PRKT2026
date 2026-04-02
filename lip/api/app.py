@@ -249,6 +249,6 @@ except ImportError:
     logger.debug("FastAPI not installed — HTTP application not available")
     app = None  # type: ignore[assignment]
 
-    def create_app(pipeline=None, processor_context=None, cascade_graph=None,
-                   systemic_risk_engine=None):  # type: ignore[misc]
+    def create_app(pipeline=None, processor_context=None, cascade_graph=None,  # type: ignore[misc]
+                   systemic_risk_engine=None):
         raise ImportError("FastAPI is required for the HTTP application")

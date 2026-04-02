@@ -17,7 +17,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from lip.common.schemas import NAVEvent
 from lip.infrastructure.monitoring.metrics import (
@@ -55,7 +55,7 @@ class NAVEventEmitter:
         get_active_loans: Callable,
         nav_callback: Callable[[NAVEvent], None],
         interval_seconds: int = 3600,
-        metrics_collector: object = None,
+        metrics_collector: Any = None,
     ) -> None:
         self._get_active_loans = get_active_loans
         self._nav_callback = nav_callback

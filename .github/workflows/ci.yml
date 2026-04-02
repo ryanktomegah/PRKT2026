@@ -213,7 +213,7 @@ jobs:
           cache: "pip"
 
       - name: Install maturin
-        run: pip install maturin>=1.0,<2.0
+        run: pip install "maturin>=1.0,<2.0"
 
       - name: Build PyO3 wheel (C6)
         working-directory: lip/c6_aml_velocity/rust_velocity

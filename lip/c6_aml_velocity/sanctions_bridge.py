@@ -250,6 +250,8 @@ class RustSanctionsScreener:
         """Flush all loaded entries (for testing / reload workflows)."""
         if _RUST_AVAILABLE:
             self._rust_screener.flush()
+        else:
+            self._py_screener._lists.clear()
 
     def entry_count(self) -> int:
         """Return the number of loaded sanctions entries."""
