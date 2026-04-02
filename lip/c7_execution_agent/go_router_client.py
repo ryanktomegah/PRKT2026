@@ -64,7 +64,7 @@ def _inc_fallback_counter() -> None:
 # use_go_router() reads the env var fresh on each call if the override
 # sentinel is set, but the fast path avoids os.environ lookups in
 # production by caching the value at module import.
-_CANARY_PCT: int = int(os.environ.get("LIP_C7_GO_ROUTER_CANARY_PCT", "0"))
+_CANARY_PCT: int = max(0, min(100, int(os.environ.get("LIP_C7_GO_ROUTER_CANARY_PCT", "0"))))
 
 
 def use_go_router(uetr: str, _canary_pct: int | None = None) -> bool:

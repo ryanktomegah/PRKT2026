@@ -542,8 +542,31 @@ class LIPPipeline:
             "tenant_id": tenant_id or "",
         }
 
-        with tracker.measure("c7"):
-            c7_result = self._c7.process_payment(payment_context)
+        try:
+            with tracker.measure("c7"):
+                c7_result = self._c7.process_payment(payment_context)
+        except Exception:
+            logger.exception(
+                "C7 process_payment raised unexpectedly for uetr=%s — returning SYSTEM_ERROR",
+                event.uetr,
+            )
+            total_ms = (time.perf_counter() - t_start) * 1_000.0
+            result = PipelineResult(
+                outcome="SYSTEM_ERROR",
+                uetr=event.uetr,
+                failure_probability=failure_probability,
+                above_threshold=True,
+                shap_top20=shap_top20,
+                dispute_class=dispute_class_str,
+                aml_passed=aml_passed,
+                aml_hard_block=aml_hard_block,
+                payment_state=payment_sm.current_state.value,
+                loan_state=loan_sm.current_state.value,
+                payment_state_history=state_history,
+                component_latencies=tracker.get_latest_all(),
+                total_latency_ms=total_ms,
+            )
+            return _record_and_return(result)
 
         c7_status = c7_result["status"]
         loan_offer = c7_result.get("loan_offer")
@@ -767,14 +790,21 @@ class LIPPipeline:
             Raw dict returned by ``DisputeClassifier.classify``, containing
             at minimum a ``dispute_class`` key.
         """
-        with tracker.measure("c4"):
-            return self._c4.classify(
-                rejection_code=event.rejection_code,
-                narrative=event.narrative,
-                amount=str(event.amount),
-                currency=event.currency,
-                counterparty=event.sending_bic,
+        try:
+            with tracker.measure("c4"):
+                return self._c4.classify(
+                    rejection_code=event.rejection_code,
+                    narrative=event.narrative,
+                    amount=str(event.amount),
+                    currency=event.currency,
+                    counterparty=event.sending_bic,
+                )
+        except Exception as exc:
+            logger.error(
+                "C4 dispute classification failed for uetr=%s — defaulting to NOT_DISPUTE: %s",
+                event.uetr, exc,
             )
+            return {"dispute_class": DisputeClass.NOT_DISPUTE}
 
     def _run_c6(
         self,
@@ -827,12 +857,19 @@ class LIPPipeline:
             extra_kwargs["tenant_id"] = tenant_id
 
         with tracker.measure("c6"):
-            return self._c6.check(
-                entity_id, event.amount, beneficiary_id,
-                dollar_cap_override=dollar_cap,
-                count_cap_override=count_cap,
-                **extra_kwargs,
-            )
+            try:
+                return self._c6.check(
+                    entity_id, event.amount, beneficiary_id,
+                    dollar_cap_override=dollar_cap,
+                    count_cap_override=count_cap,
+                    **extra_kwargs,
+                )
+            except Exception:
+                logger.exception(
+                    "C6 AML check raised unexpectedly for uetr=%s — fail-closed (returning None)",
+                    event.uetr,
+                )
+                return None
 
     def _log_block(
         self,

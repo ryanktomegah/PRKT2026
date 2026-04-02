@@ -143,15 +143,22 @@ def is_killed() -> bool:
     available, giving sub-100ns latency.  Falls back to the Python
     ``KillSwitch`` (which uses Redis or in-memory state) otherwise.
 
-    **Fail-closed:** returns ``True`` if the Rust module is not available.
+    **Fail-closed:** returns ``True`` if the Rust module is not available or
+    raises a runtime exception.
     """
     t0 = time.perf_counter_ns()
+    result: bool = True  # fail-closed default
     try:
         if _rust_available:
-            result: bool = _rust_module.is_killed()
+            result = _rust_module.is_killed()
         else:
             _maybe_warn_fallback()
             result = _get_python_ks().is_active()
+    except Exception as exc:  # pragma: no cover — guards against Rust panic / shm corruption
+        logger.critical(
+            "is_killed() raised unexpectedly — fail-closed (returning True): %s", exc
+        )
+        result = True
     finally:
         latency_ns = time.perf_counter_ns() - t0
         if _PROMETHEUS_AVAILABLE:

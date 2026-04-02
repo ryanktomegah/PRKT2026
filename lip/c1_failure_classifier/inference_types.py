@@ -16,10 +16,13 @@ See docs/specs/c1_inference_endpoint_typing.md for the full contract.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Validation constants
@@ -28,6 +31,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 _BIC_LENGTHS = frozenset({8, 11})
 _CURRENCY_PAIR_RE = re.compile(r"^[A-Z]{3}_[A-Z]{3}$")
 _MIN_AMOUNT_USD: float = 0.01
+# ISO 9362:2022 — bank code (A-Z x4) + country code (A-Z x2) + location code (A-Z0-9 x2)
+#                 + optional branch code (A-Z0-9 x3)
+_BIC_RE = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +76,12 @@ class ClassifyRequest(BaseModel):
         model.
     sending_bic:
         ISO 9362 Bank Identifier Code of the originating bank (8 or 11
-        characters).
+        characters).  Automatically uppercased and validated against the
+        full ISO 9362 pattern (4 alpha + 2 alpha country + 2 alphanumeric
+        location [+ 3 alphanumeric branch]).
     receiving_bic:
-        ISO 9362 BIC of the receiving bank (8 or 11 characters).
+        ISO 9362 BIC of the receiving bank.  Same format and uppercasing
+        as ``sending_bic``.
     amount_usd:
         Notional transaction amount in USD.  Must be ≥ 0.01.
     currency_pair:
@@ -102,12 +111,14 @@ class ClassifyRequest(BaseModel):
     @field_validator("sending_bic", "receiving_bic")
     @classmethod
     def _validate_bic(cls, value: str, info: Any) -> str:
-        if len(value) not in _BIC_LENGTHS:
+        upper = value.upper()
+        if not _BIC_RE.match(upper):
             raise ValueError(
-                f"{info.field_name} must be 8 or 11 characters; "
-                f"got {len(value)!r} for {value!r}"
+                f"{info.field_name} must be a valid ISO 9362 BIC "
+                f"(8 or 11 alphanumeric characters, bank+country+location[+branch]); "
+                f"got {value!r}"
             )
-        return value
+        return upper
 
     @field_validator("currency_pair")
     @classmethod
@@ -129,7 +140,12 @@ class ClassifyRequest(BaseModel):
         Same-BIC payments are unusual but not technically invalid at the
         schema level (e.g. internal book transfers).
         """
-        # No hard rejection — just a note for future monitoring hooks.
+        if self.sending_bic == self.receiving_bic:
+            logger.warning(
+                "ClassifyRequest has identical sending_bic and receiving_bic (%s). "
+                "This may indicate an internal book transfer — verify this is intentional.",
+                self.sending_bic,
+            )
         return self
 
     def to_dict(self) -> Dict[str, Any]:
