@@ -14,6 +14,7 @@ Three-entity role mapping:
 
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Union
 
 from lip.common.constants import (
     FEE_FLOOR_BPS,
@@ -87,9 +88,9 @@ def compute_fee_bps_from_el(
 
 
 def compute_loan_fee(
-    loan_amount: Decimal,
-    fee_bps: Decimal,
-    days_funded: int,
+    loan_amount: Union[Decimal, float, int],
+    fee_bps: Union[Decimal, float, int],
+    days_funded: Union[int, float, Decimal],
 ) -> Decimal:
     """Compute the ACTUAL cash fee for a bridge-loan cycle.
 

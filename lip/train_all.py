@@ -50,6 +50,7 @@ import pickle
 import sys
 import time
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -202,6 +203,7 @@ def _train_c2(
     rng = np.random.default_rng(0)
     sample_idx = rng.integers(0, len(records), size=min(100, len(records)))
     from lip.c2_pd_model.features import UnifiedFeatureEngineer
+    from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_fee_bps_from_el
     from lip.c2_pd_model.lgd import lgd_for_corridor
     from lip.c2_pd_model.tier_assignment import Tier, TierFeatures, assign_tier
 
@@ -224,8 +226,12 @@ def _train_c2(
         corridor = rec.get("payment", {}).get("corridor", "DEFAULT")
         parts = corridor.split("-", 1)
         lgd = lgd_for_corridor(parts[0], parts[1] if len(parts) > 1 else parts[0])
-        fee_bps = max(300.0, pd_val * float(lgd) * 10000.0)
-        if fee_bps < 300.0:
+        fee_bps = compute_fee_bps_from_el(
+            pd=Decimal(str(pd_val)),
+            lgd=lgd,
+            ead=Decimal("1000000"),
+        )
+        if fee_bps < FEE_FLOOR_BPS:
             fee_violations += 1
 
     # Save artifacts

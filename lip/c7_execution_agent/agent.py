@@ -37,6 +37,12 @@ from lip.common.redis_factory import create_redis_client
 
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
+from .go_router_client import (
+    GoOfferRouterClient,
+    GoRouterError,
+    _inc_fallback_counter,
+    use_go_router,
+)
 from .human_override import HumanOverrideInterface
 from .kill_switch import KillSwitch
 from .offer_delivery import OfferDeliveryService
@@ -161,6 +167,7 @@ class ExecutionAgent:
         licensee_context: Optional[LicenseeContext] = None,
         stress_detector: Optional[StressRegimeDetector] = None,
         offer_delivery: Optional[OfferDeliveryService] = None,
+        go_router_client: Optional[GoOfferRouterClient] = None,
         known_entity_registry: Optional[KnownEntityRegistry] = None,
         fx_risk_config: Optional[FXRiskConfig] = None,
         redis_client=None,
@@ -189,6 +196,7 @@ class ExecutionAgent:
         self._tps_limiter = _TPSLimiter(max_tps=self.max_tps)
         self.stress_detector = stress_detector
         self.offer_delivery = offer_delivery
+        self._go_router_client = go_router_client
         self._known_entity_registry = known_entity_registry
         self._fx_risk_config = fx_risk_config
         self._settlement_predictor = None  # C9: injected via set_settlement_predictor()
@@ -447,7 +455,28 @@ class ExecutionAgent:
             }
 
         delivery_id: Optional[str] = None
-        if self.offer_delivery is not None:
+        uetr_str = str(offer.get("uetr", ""))
+        # Canary gate: route to Go offer router based on UETR hash.
+        # Falls back to Python OfferDeliveryService on any Go service error.
+        # Phase 0 default: LIP_C7_GO_ROUTER_CANARY_PCT=0 → all traffic to Python.
+        _go_routed = False
+        if self._go_router_client is not None and use_go_router(uetr_str):
+            try:
+                self._go_router_client.trigger_offer(offer)
+                _go_routed = True
+                logger.info(
+                    "C7_GO_ROUTER: offer triggered via Go service offer_id=%s uetr=%s",
+                    offer.get("loan_id"),
+                    uetr_str,
+                )
+            except GoRouterError as exc:
+                logger.error(
+                    "C7_GO_ROUTER: fallback to Python — Go service error: %s offer_id=%s",
+                    exc,
+                    offer.get("loan_id"),
+                )
+                _inc_fallback_counter()
+        if not _go_routed and self.offer_delivery is not None:
             delivery = self.offer_delivery.deliver(offer)
             delivery_id = str(delivery.delivery_id)
             logger.info(

@@ -11,12 +11,16 @@ from .anomaly import AnomalyDetector
 from .cross_licensee import CrossLicenseeAggregator
 from .salt_rotation import SaltRotationManager
 from .sanctions import SanctionsScreener
+from .sanctions_bridge import RustSanctionsScreener
 from .tenant_velocity import StructuringDetector, StructuringResult, TenantVelocityChecker
 from .velocity import VelocityChecker, VelocityResult
+from .velocity_bridge import RustVelocityChecker
 
 __all__ = [
     "VelocityChecker", "VelocityResult", "CrossLicenseeAggregator",
     "SanctionsScreener", "AnomalyDetector", "SaltRotationManager",
     "AMLChecker", "AMLResult",
     "TenantVelocityChecker", "StructuringDetector", "StructuringResult",
+    # Rust-backed bridge classes (fall back to Python if wheel unavailable)
+    "RustVelocityChecker", "RustSanctionsScreener",
 ]

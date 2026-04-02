@@ -143,3 +143,125 @@ jobs:
           cd lip && pip install -e .
       - name: Run mypy
         run: mypy lip/ --ignore-missing-imports --no-strict-optional
+
+  go-build:
+    name: Go Build & Test (C5 consumer)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: lip/c5_streaming/go_consumer/go.sum
+
+      - name: Install librdkafka (confluent-kafka-go CGO dep)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librdkafka-dev
+
+      - name: Download Go modules
+        working-directory: lip/c5_streaming/go_consumer
+        run: go mod download
+
+      - name: Build Go consumer
+        working-directory: lip/c5_streaming/go_consumer
+        run: CGO_ENABLED=1 go build -v ./...
+
+      - name: Run Go unit tests
+        working-directory: lip/c5_streaming/go_consumer
+        run: |
+          CGO_ENABLED=1 go test -v -count=1 \
+            -run "TestNormalize|TestLoadConfig|TestKafka|TestSSL" \
+            ./...
+
+  go-build-c7:
+    name: Go Build & Test (C7 offer router)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: lip/c7_execution_agent/go_offer_router/go.sum
+
+      - name: Download Go modules
+        working-directory: lip/c7_execution_agent/go_offer_router
+        run: go mod download
+
+      - name: Build Go offer router
+        working-directory: lip/c7_execution_agent/go_offer_router
+        run: go build -v ./...
+
+      - name: Run Go unit tests
+        working-directory: lip/c7_execution_agent/go_offer_router
+        run: |
+          go test -v -count=1 \
+            -run "TestOffer|TestConfig|TestKillSwitch|TestExpiry|TestAccept|TestReject|TestCancel|TestQuery|TestHealth|TestConcurrent" \
+            ./...
+
+  rust-build-c6:
+    name: Rust Build & Test (C6 velocity/sanctions)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            lip/c6_aml_velocity/rust_velocity/target
+          key: rust-c6-${{ hashFiles('lip/c6_aml_velocity/rust_velocity/Cargo.toml') }}
+          restore-keys: rust-c6-
+
+      - name: Run Rust unit tests (C6)
+        working-directory: lip/c6_aml_velocity/rust_velocity
+        run: cargo test --all-targets
+
+      - name: Build Rust release (verify compilation)
+        working-directory: lip/c6_aml_velocity/rust_velocity
+        run: cargo build --release
+
+      - name: Set up Python 3.11 for PyO3 wheel build
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install maturin
+        run: pip install "maturin>=1.0,<2.0"
+
+      - name: Build PyO3 wheel (C6)
+        working-directory: lip/c6_aml_velocity/rust_velocity
+        run: maturin build --release
+
+      - name: Install wheel and verify Python import
+        working-directory: lip/c6_aml_velocity/rust_velocity
+        run: |
+          pip install target/wheels/*.whl --force-reinstall
+          python -c "import lip_c6_rust_velocity; hc = lip_c6_rust_velocity.health_check(); assert hc['ok'], f'Health check failed: {hc}'; print('OK:', hc)"
+
+      - name: Install LIP package and run C6 Python tests with Rust wheel
+        run: |
+          pip install --upgrade pip setuptools>=68 wheel
+          pip install -r requirements.txt
+          cd lip && pip install -e .
+          PYTHONPATH=. python -m pytest lip/tests/test_c6_rust_velocity.py \
+            lip/tests/test_c6_aml.py \
+            lip/tests/test_c6_tenant_velocity.py \
+            -v --tb=short -q
+
