@@ -44,3 +44,6 @@ artifacts/
 # MLflow local tracking database
 mlflow.db
 mlruns/
+
+# Rust build artifacts
+lip/c3/rust_state_machine/target/
