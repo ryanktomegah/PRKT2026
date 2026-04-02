@@ -34,6 +34,28 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Prometheus metrics (optional — gracefully absent in test environments)
+# ---------------------------------------------------------------------------
+
+try:
+    from prometheus_client import Counter as _Prom_Counter
+
+    _go_router_fallback_total: _Prom_Counter | None = _Prom_Counter(
+        "c7_go_router_fallback_total",
+        "Total times the Go offer router returned an error and Python OfferDeliveryService "
+        "was used as fallback",
+    )
+except Exception:  # ImportError or duplicate registration in tests
+    _go_router_fallback_total = None
+
+
+def _inc_fallback_counter() -> None:
+    """Increment c7_go_router_fallback_total (no-op when prometheus_client is absent)."""
+    if _go_router_fallback_total is not None:
+        _go_router_fallback_total.inc()
+
+
+# ---------------------------------------------------------------------------
 # Canary gate
 # ---------------------------------------------------------------------------
 

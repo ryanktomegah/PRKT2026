@@ -37,7 +37,12 @@ from lip.common.redis_factory import create_redis_client
 
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
-from .go_router_client import GoOfferRouterClient, GoRouterError, use_go_router
+from .go_router_client import (
+    GoOfferRouterClient,
+    GoRouterError,
+    _inc_fallback_counter,
+    use_go_router,
+)
 from .human_override import HumanOverrideInterface
 from .kill_switch import KillSwitch
 from .offer_delivery import OfferDeliveryService
@@ -470,6 +475,7 @@ class ExecutionAgent:
                     exc,
                     offer.get("loan_id"),
                 )
+                _inc_fallback_counter()
         if not _go_routed and self.offer_delivery is not None:
             delivery = self.offer_delivery.deliver(offer)
             delivery_id = str(delivery.delivery_id)

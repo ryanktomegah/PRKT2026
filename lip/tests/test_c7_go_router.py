@@ -332,3 +332,62 @@ class TestGoOfferRouterClientClose:
         client.close()
         assert client._channel is None
         mock_chan.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Fallback counter tests
+# ---------------------------------------------------------------------------
+
+class TestFallbackCounter:
+    """Test that _inc_fallback_counter is called on Go router error."""
+
+    def test_fallback_counter_incremented_on_go_error(self):
+        """When Go service errors, _inc_fallback_counter() is called once."""
+        go_client = MagicMock(spec=GoOfferRouterClient)
+        go_client.trigger_offer.side_effect = GoRouterError("connection refused")
+
+        python_svc = MagicMock(spec=OfferDeliveryService)
+        delivery = MagicMock()
+        delivery.delivery_id = "fallback-delivery-id"
+        python_svc.deliver.return_value = delivery
+
+        agent = _make_agent(offer_delivery=python_svc, go_router_client=go_client)
+        ctx = _make_payment_context(failure_prob=0.85)
+
+        with patch("lip.c7_execution_agent.agent.use_go_router", return_value=True), \
+             patch("lip.c7_execution_agent.agent._inc_fallback_counter") as mock_inc:
+            result = agent.process_payment(ctx)
+
+        assert result.get("status") == "OFFER", (
+            f"Expected OFFER result to test fallback counter; got {result.get('status')!r}"
+        )
+        mock_inc.assert_called_once()
+        python_svc.deliver.assert_called_once()
+
+    def test_fallback_counter_not_incremented_on_success(self):
+        """When Go service succeeds, _inc_fallback_counter() is NOT called."""
+        go_client = MagicMock(spec=GoOfferRouterClient)
+        go_client.trigger_offer.return_value = {"accepted": True}
+
+        agent = _make_agent(offer_delivery=None, go_router_client=go_client)
+        ctx = _make_payment_context(failure_prob=0.85)
+
+        with patch("lip.c7_execution_agent.agent.use_go_router", return_value=True), \
+             patch("lip.c7_execution_agent.agent._inc_fallback_counter") as mock_inc:
+            result = agent.process_payment(ctx)
+
+        assert result.get("status") == "OFFER", (
+            f"Expected OFFER result to test fallback counter; got {result.get('status')!r}"
+        )
+        mock_inc.assert_not_called()
+
+    def test_inc_fallback_counter_noop_when_prometheus_absent(self):
+        """_inc_fallback_counter() does not raise when prometheus_client is unavailable."""
+        from lip.c7_execution_agent import go_router_client as grc
+        # Save original, replace with None to simulate absent prometheus_client
+        original = grc._go_router_fallback_total
+        grc._go_router_fallback_total = None
+        try:
+            grc._inc_fallback_counter()  # must not raise
+        finally:
+            grc._go_router_fallback_total = original

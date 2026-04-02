@@ -268,9 +268,10 @@ No CGO required (no librdkafka dependency). Pure Go + gRPC.
 ## 11. Definition of Done
 
 - [x] Spec committed
-- [ ] Go service with unit tests passing in CI
-- [ ] Python gRPC client bridge with canary routing
-- [ ] Python tests for canary routing and fallback
-- [ ] CI `go-build-c7` job green
-- [ ] Offer success/expiry metrics validated in smoke test
+- [x] Go service with unit tests passing in CI (35 tests, `go test ./...`)
+- [x] Python gRPC client bridge with canary routing (`go_router_client.py`)
+- [x] Python tests for canary routing and fallback (`test_c7_go_router.py`, 20 tests)
+- [x] CI `go-build-c7` job green (`.github/workflows/ci.yml`)
+- [x] `c7_go_router_fallback_total` Prometheus counter incremented on Go service error
+- [ ] Offer success/expiry metrics validated in smoke test (Phase 1 canary ramp)
 - [ ] QUANT, CIPHER, REX sign-off on fee-path and AML posture
