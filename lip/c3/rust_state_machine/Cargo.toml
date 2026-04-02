@@ -1,0 +1,25 @@
+[package]
+name = "lip_c3_rust_state_machine"
+version = "0.1.0"
+edition = "2021"
+description = "C3 Repayment Engine — Rust state machine core with PyO3 bindings"
+authors = ["LIP Engineering <engineering@lip.internal>"]
+
+[lib]
+name = "lip_c3_rust_state_machine"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+thiserror = "1"
+serde_json = "1"
+
+[dev-dependencies]
+# No additional test dependencies required — std test harness used
+
+[profile.release]
+# Optimise for latency: inline aggressively, strip debug symbols
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+strip = "symbols"

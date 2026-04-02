@@ -1,0 +1,8 @@
+# Compiled Go binary
+c5-go-consumer
+
+# Go test cache
+*.test
+
+# Go build cache
+*.a

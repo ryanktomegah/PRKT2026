@@ -1,0 +1,87 @@
+{
+  "type": "record",
+  "name": "PaymentEvent",
+  "namespace": "com.bridgepoint.lip.c5",
+  "doc": "Raw inbound payment event from bank connectors. Supports SWIFT pacs.002, FedNow, RTP (TCH), and SEPA pacs.002 rails. Matches the JSON shape consumed by the Python EventNormalizer.",
+  "fields": [
+    {
+      "name": "rail",
+      "type": {
+        "type": "enum",
+        "name": "PaymentRail",
+        "symbols": ["SWIFT", "FEDNOW", "RTP", "SEPA"],
+        "doc": "Payment network rail that originated this event"
+      },
+      "doc": "Payment rail (SWIFT | FEDNOW | RTP | SEPA)"
+    },
+    {
+      "name": "message_type",
+      "type": "string",
+      "doc": "ISO 20022 message type or proprietary equivalent (e.g. pacs.002, FedNow.002)"
+    },
+    {
+      "name": "uetr",
+      "type": "string",
+      "doc": "Unique End-to-end Transaction Reference (UUID format, RFC 4122). Partition key for exactly-once semantics."
+    },
+    {
+      "name": "individual_payment_id",
+      "type": "string",
+      "doc": "Payment ID assigned by originating bank — BIC + sequence number for SWIFT, FedNow transaction ID for FedNow/RTP"
+    },
+    {
+      "name": "sending_bic",
+      "type": "string",
+      "doc": "BIC or routing number (FedNow/RTP) of the sending institution. C5 normalizes routing numbers to synthetic BIC format."
+    },
+    {
+      "name": "receiving_bic",
+      "type": "string",
+      "doc": "BIC or routing number of the receiving institution"
+    },
+    {
+      "name": "amount",
+      "type": "string",
+      "doc": "Transaction amount as a decimal string to avoid floating-point loss (e.g. '1234567.89')"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "doc": "ISO 4217 currency code (e.g. USD, EUR, GBP)"
+    },
+    {
+      "name": "timestamp",
+      "type": "string",
+      "doc": "Event creation timestamp in ISO 8601 format (UTC). Used for watermark alignment."
+    },
+    {
+      "name": "rejection_code",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "ISO 20022 rejection reason code (e.g. AC01, MS03, NARR) or proprietary FedNow/RTP code — normalized by C5 EventNormalizer."
+    },
+    {
+      "name": "narrative",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Free-text rejection narrative or payment description. Used by C4 dispute classifier."
+    },
+    {
+      "name": "original_payment_amount_usd",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "GAP-17: Interbank settlement amount in USD for cross-currency payments. Null when same-currency."
+    },
+    {
+      "name": "debtor_account",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "EPG-28: Debtor account identifier for AML composite velocity key (BIC + debtor_account hash). May be null for interbank-only events."
+    },
+    {
+      "name": "raw_source",
+      "type": "string",
+      "doc": "JSON-serialized original message from the bank connector. Stored for audit trail and replay capability."
+    }
+  ]
+}
