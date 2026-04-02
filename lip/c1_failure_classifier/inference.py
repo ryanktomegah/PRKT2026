@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import List
+from typing import Dict, List, Optional, Union
 
 import numpy as np
+from pydantic import ValidationError
 
 from .embeddings import CorridorEmbeddingPipeline
 from .features import TabularFeatureEngineer
 from .graph_builder import BICGraphBuilder
+from .inference_types import ClassifyError, ClassifyRequest, ClassifyResponse
 from .model import ClassifierModel
 
 # F2-optimal threshold (τ* = 0.110) — calibrated from 10M corpus retraining
@@ -168,6 +170,74 @@ class InferenceEngine:
             "corridor_embedding_used": corridor_embedding_used,
             "shap_top20": shap_top20,
         }
+
+    # ------------------------------------------------------------------
+    # Typed (Pydantic-hardened) API — additive; does not touch predict()
+    # ------------------------------------------------------------------
+
+    def predict_validated(
+        self,
+        payment: Union[Dict, ClassifyRequest],
+    ) -> Union[ClassifyResponse, ClassifyError]:
+        """Run a validated single-payment failure prediction.
+
+        This is the Pydantic-strict entry point for the C1 inference endpoint.
+        It is **additive** — the legacy :meth:`predict` method is untouched and
+        remains the default path for the orchestrator and Triton integration.
+
+        Parameters
+        ----------
+        payment:
+            Either a :class:`~lip.c1_failure_classifier.inference_types.ClassifyRequest`
+            instance or a raw dict that will be coerced into one.
+
+        Returns
+        -------
+        ClassifyResponse
+            On successful inference; probability ∈ [0, 1].
+        ClassifyError
+            With ``error_type="VALIDATION_ERROR"`` on schema violation, or
+            ``error_type="INFERENCE_ERROR"`` on an unexpected runtime failure.
+        """
+        # --- Extract payment_id from raw dict before validation so we can
+        #     echo it in error responses even when validation fails. ---
+        raw_payment_id: Optional[str] = None
+        if isinstance(payment, dict):
+            raw_payment_id = payment.get("payment_id")
+        elif isinstance(payment, ClassifyRequest):
+            raw_payment_id = payment.payment_id
+
+        # --- Validate / coerce input ---
+        if isinstance(payment, dict):
+            try:
+                request = ClassifyRequest(**payment)
+            except ValidationError as exc:
+                # Surface the first offending field for structured error.
+                first_error = exc.errors()[0]
+                field_path = ".".join(str(loc) for loc in first_error.get("loc", []))
+                return ClassifyError(
+                    error_type="VALIDATION_ERROR",
+                    message=first_error.get("msg", str(exc)),
+                    field=field_path or None,
+                    payment_id=raw_payment_id,
+                )
+        else:
+            request = payment
+
+        # --- Run inference (legacy dict path) ---
+        try:
+            raw_result = self.predict(request.to_dict())
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("C1 inference runtime error for payment_id=%s", request.payment_id)
+            return ClassifyError(
+                error_type="INFERENCE_ERROR",
+                message=str(exc),
+                field=None,
+                payment_id=request.payment_id,
+            )
+
+        # --- Wrap result in typed response ---
+        return ClassifyResponse.from_dict(raw_result, payment_id=request.payment_id)
 
     # ------------------------------------------------------------------
     # SHAP approximation
