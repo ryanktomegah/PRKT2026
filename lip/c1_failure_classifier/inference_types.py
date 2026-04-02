@@ -26,6 +26,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # ---------------------------------------------------------------------------
 
 _BIC_LENGTHS = frozenset({8, 11})
+# ISO 9362 BIC format: 4 alpha (institution) + 2 alpha (country) + 2 alnum (location) + optional 3 alnum (branch)
+_BIC_RE = re.compile(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$")
 _CURRENCY_PAIR_RE = re.compile(r"^[A-Z]{3}_[A-Z]{3}$")
 _MIN_AMOUNT_USD: float = 0.01
 
@@ -102,10 +104,11 @@ class ClassifyRequest(BaseModel):
     @field_validator("sending_bic", "receiving_bic")
     @classmethod
     def _validate_bic(cls, value: str, info: Any) -> str:
-        if len(value) not in _BIC_LENGTHS:
+        if not _BIC_RE.match(value):
             raise ValueError(
-                f"{info.field_name} must be 8 or 11 characters; "
-                f"got {len(value)!r} for {value!r}"
+                f"{info.field_name} must be a valid ISO 9362 BIC (8 or 11 alphanumeric characters, "
+                f"format: 4-alpha institution + 2-alpha country + 2-alnum location [+ 3-alnum branch]); "
+                f"got {value!r}"
             )
         return value
 
@@ -129,7 +132,15 @@ class ClassifyRequest(BaseModel):
         Same-BIC payments are unusual but not technically invalid at the
         schema level (e.g. internal book transfers).
         """
-        # No hard rejection — just a note for future monitoring hooks.
+        import warnings as _warnings
+
+        if self.sending_bic == self.receiving_bic:
+            _warnings.warn(
+                f"sending_bic == receiving_bic ({self.sending_bic!r}): "
+                "same-BIC payment detected — may indicate internal book transfer or misconfiguration.",
+                UserWarning,
+                stacklevel=2,
+            )
         return self
 
     def to_dict(self) -> Dict[str, Any]:

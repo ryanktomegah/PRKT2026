@@ -122,18 +122,24 @@ def _get_python_ks() -> KillSwitch:
 
 _last_fallback_log: float = 0.0
 _FALLBACK_LOG_INTERVAL = 60.0  # seconds between repeated CRITICAL logs
+_fallback_log_lock = threading.Lock()
 
 
 def _maybe_warn_fallback() -> None:
     """Emit a CRITICAL log at most once per minute when on the fallback path."""
     global _last_fallback_log
     now = time.monotonic()
-    if now - _last_fallback_log >= _FALLBACK_LOG_INTERVAL:
-        _last_fallback_log = now
-        logger.critical(
-            "KILL SWITCH OPERATING IN PYTHON FALLBACK MODE — "
-            "Rust kill switch is unavailable. EU AI Act Art.9 fail-closed posture active."
-        )
+    # Fast path: check without lock first to avoid contention on the hot path.
+    if now - _last_fallback_log < _FALLBACK_LOG_INTERVAL:
+        return
+    with _fallback_log_lock:
+        # Re-check under the lock to ensure only one thread logs per interval.
+        if now - _last_fallback_log >= _FALLBACK_LOG_INTERVAL:
+            _last_fallback_log = now
+            logger.critical(
+                "KILL SWITCH OPERATING IN PYTHON FALLBACK MODE — "
+                "Rust kill switch is unavailable. EU AI Act Art.9 fail-closed posture active."
+            )
 
 
 def is_killed() -> bool:

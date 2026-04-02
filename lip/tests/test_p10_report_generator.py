@@ -292,6 +292,7 @@ class TestReportRendererPDF:
 
     def test_pdf_magic_bytes(self):
         """PDF output starts with %PDF magic bytes."""
+        pytest.importorskip("fpdf", reason="fpdf2 is required for PDF rendering tests")
         from lip.p10_regulatory_data.report_renderer import ReportRenderer
 
         vr = self._make_versioned_report()
@@ -302,6 +303,7 @@ class TestReportRendererPDF:
 
     def test_pdf_contains_metadata(self):
         """PDF contains report ID and title."""
+        pytest.importorskip("fpdf", reason="fpdf2 is required for PDF rendering tests")
         from lip.p10_regulatory_data.report_renderer import ReportRenderer
 
         vr = self._make_versioned_report()
