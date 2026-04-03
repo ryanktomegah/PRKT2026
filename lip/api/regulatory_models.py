@@ -150,5 +150,18 @@ try:
         methodology: Dict[str, Any]
         rate_limit: Dict[str, Any]
 
+    class UsageAnalyticsResponse(BaseModel):
+        """Response for GET /usage/{regulator_id}."""
+
+        query_count: int
+        epsilon_consumed: float
+        total_billing_usd: str
+        mean_latency_ms: float
+        p95_latency_ms: int
+        endpoints_breakdown: Dict[str, int]
+        corridors_queried: List[str]
+        first_query_at: Any  # str | None
+        last_query_at: Any  # str | None
+
 except ImportError:
     logger.debug("Pydantic not installed — regulatory models not available")

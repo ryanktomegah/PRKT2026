@@ -42,6 +42,7 @@ try:
         MetadataResponse,
         StressTestRequest,
         StressTestResponse,
+        UsageAnalyticsResponse,
     )
     from lip.api.regulatory_service import RegulatoryService
     from lip.c8_license_manager.query_metering import (
@@ -249,6 +250,7 @@ try:
         router = APIRouter(tags=["regulatory"])
 
         deps: list = []
+        metering: Optional[RegulatoryQueryMetering] = query_metering
         if auth_dependency is not None:
             deps.append(Depends(auth_dependency))
         if rate_limiter is not None:
@@ -479,6 +481,51 @@ try:
             """API and data metadata."""
             meta = regulatory_service.get_metadata()
             return MetadataResponse(**meta)
+
+        @router.get(
+            "/usage/{regulator_id}",
+            response_model=UsageAnalyticsResponse,
+            dependencies=deps,
+        )
+        async def get_usage_analytics(
+            regulator_id: str,
+            request: Request,
+        ):
+            """Usage analytics and billing summary for a regulator."""
+            # Extract and verify caller identity for authorization
+            auth_header = request.headers.get("authorization", "")
+            if auth_header.startswith("Bearer "):
+                encoded = auth_header[len("Bearer "):].strip()
+                try:
+                    caller = decode_regulator_token(encoded)
+                except ValueError:
+                    raise HTTPException(status_code=401, detail="Invalid token")
+
+                # Authorization: own data or REALTIME tier (admin)
+                if (
+                    caller.regulator_id != regulator_id
+                    and caller.subscription_tier != "REALTIME"
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Cannot view another regulator's usage",
+                    )
+
+            if metering is not None:
+                summary = metering.get_billing_summary(regulator_id)
+                return UsageAnalyticsResponse(**summary)
+
+            return UsageAnalyticsResponse(
+                query_count=0,
+                epsilon_consumed=0.0,
+                total_billing_usd="0",
+                mean_latency_ms=0.0,
+                p95_latency_ms=0,
+                endpoints_breakdown={},
+                corridors_queried=[],
+                first_query_at=None,
+                last_query_at=None,
+            )
 
         return router
 

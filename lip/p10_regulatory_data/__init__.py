@@ -6,6 +6,7 @@ Sprint 4b: Systemic risk engine (trend detection, HHI concentration, BFS contagi
 Sprint 5: Report generator (versioning, JSON/CSV/PDF rendering, methodology appendix).
 """
 from .anonymizer import RegulatoryAnonymizer
+from .circular_exposure import CircularExposure, detect_circular_exposures
 from .concentration import ConcentrationResult, CorridorConcentrationAnalyzer
 from .contagion import ContagionNode, ContagionResult, ContagionSimulator
 from .methodology import MethodologyAppendix
@@ -27,6 +28,7 @@ from .telemetry_schema import (
 
 __all__ = [
     "AnonymizedCorridorResult",
+    "CircularExposure",
     "ConcentrationResult",
     "ContagionNode",
     "ContagionResult",
@@ -45,5 +47,6 @@ __all__ = [
     "TelemetryBatch",
     "VersionedReport",
     "create_versioned_report",
+    "detect_circular_exposures",
     "verify_report_integrity",
 ]

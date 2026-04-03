@@ -147,6 +147,62 @@ class RegulatoryQueryMetering:
                 "epsilon_consumed": self._monthly_epsilon.get(key, 0.0),
             }
 
+    def get_billing_summary(
+        self,
+        regulator_id: str,
+        as_of: Optional[datetime] = None,
+    ) -> dict:
+        """Return comprehensive billing summary for one regulator (current month)."""
+        now = as_of.astimezone(timezone.utc) if as_of else datetime.now(timezone.utc)
+        month = self._month_bucket(now)
+
+        with self._lock:
+            matching = [
+                e
+                for e in self._entries
+                if e.regulator_id == regulator_id
+                and self._month_bucket(e.timestamp) == month
+            ]
+
+        query_count = len(matching)
+        epsilon_consumed = sum(e.epsilon_consumed for e in matching)
+        total_billing = sum(e.billing_amount_usd for e in matching)
+
+        if matching:
+            latencies = [e.response_latency_ms for e in matching]
+            mean_latency_ms = sum(latencies) / len(latencies)
+            sorted_latencies = sorted(latencies)
+            p95_latency_ms = sorted_latencies[int(0.95 * len(sorted_latencies))]
+        else:
+            mean_latency_ms = 0.0
+            p95_latency_ms = 0
+
+        endpoints_breakdown: dict[str, int] = {}
+        for e in matching:
+            endpoints_breakdown[e.endpoint] = endpoints_breakdown.get(e.endpoint, 0) + 1
+
+        corridors_set: set[str] = set()
+        for e in matching:
+            for c in e.corridors_queried:
+                corridors_set.add(c)
+        corridors_queried = sorted(corridors_set)
+
+        timestamps = [e.timestamp for e in matching]
+        first_query_at = min(timestamps).isoformat() if timestamps else None
+        last_query_at = max(timestamps).isoformat() if timestamps else None
+
+        return {
+            "query_count": query_count,
+            "epsilon_consumed": epsilon_consumed,
+            "total_billing_usd": str(total_billing),
+            "mean_latency_ms": mean_latency_ms,
+            "p95_latency_ms": p95_latency_ms,
+            "endpoints_breakdown": endpoints_breakdown,
+            "corridors_queried": corridors_queried,
+            "first_query_at": first_query_at,
+            "last_query_at": last_query_at,
+        }
+
     def _sign_entry(
         self,
         query_id: str,

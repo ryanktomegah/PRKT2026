@@ -276,3 +276,232 @@ class TestRegulatoryRouterWithSubscriptionToken:
             headers=self._auth_header(token),
         )
         assert resp.status_code == 429
+
+
+class TestUsageAnalytics:
+    """Usage analytics billing summary and endpoint tests."""
+
+    def test_billing_summary_empty_regulator(self):
+        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        summary = meter.get_billing_summary("OSFI-001")
+        assert summary["query_count"] == 0
+        assert summary["epsilon_consumed"] == 0.0
+        assert summary["total_billing_usd"] == "0"
+        assert summary["mean_latency_ms"] == 0.0
+        assert summary["p95_latency_ms"] == 0
+        assert summary["endpoints_breakdown"] == {}
+        assert summary["corridors_queried"] == []
+        assert summary["first_query_at"] is None
+        assert summary["last_query_at"] is None
+
+    def test_billing_summary_after_queries(self):
+        token = sign_regulator_token(
+            _make_regulator_token(query_budget_monthly=10), _KEY
+        )
+        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        for i in range(3):
+            meter.record_query(
+                token=token,
+                endpoint="/api/v1/regulatory/metadata",
+                corridors_queried=["EUR-USD"],
+                epsilon_consumed=0.05,
+                response_latency_ms=10 + i,
+                billing_amount_usd=Decimal("5000"),
+            )
+        summary = meter.get_billing_summary(token.regulator_id)
+        assert summary["query_count"] == 3
+        assert summary["epsilon_consumed"] == pytest.approx(0.15)
+        assert summary["total_billing_usd"] == "15000"
+
+    def test_billing_summary_endpoints_breakdown(self):
+        token = sign_regulator_token(
+            _make_regulator_token(query_budget_monthly=10), _KEY
+        )
+        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter.record_query(
+            token=token,
+            endpoint="/metadata",
+            corridors_queried=[],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+        )
+        meter.record_query(
+            token=token,
+            endpoint="/corridors",
+            corridors_queried=[],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+        )
+        meter.record_query(
+            token=token,
+            endpoint="/metadata",
+            corridors_queried=[],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+        )
+        summary = meter.get_billing_summary(token.regulator_id)
+        assert summary["endpoints_breakdown"] == {"/metadata": 2, "/corridors": 1}
+
+    def test_billing_summary_p95_latency(self):
+        token = sign_regulator_token(
+            _make_regulator_token(query_budget_monthly=100), _KEY
+        )
+        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        latencies = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+                     110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
+        for lat in latencies:
+            meter.record_query(
+                token=token,
+                endpoint="/metadata",
+                corridors_queried=[],
+                epsilon_consumed=0.01,
+                response_latency_ms=lat,
+                billing_amount_usd=Decimal("5000"),
+            )
+        summary = meter.get_billing_summary(token.regulator_id)
+        # p95 of [10..200] at index 19 (95% of 20) = index 19 = 200
+        assert summary["p95_latency_ms"] == 200
+
+    def test_billing_summary_corridors_deduplicated(self):
+        token = sign_regulator_token(
+            _make_regulator_token(query_budget_monthly=10), _KEY
+        )
+        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter.record_query(
+            token=token,
+            endpoint="/corridors",
+            corridors_queried=["EUR-USD", "GBP-EUR"],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+        )
+        meter.record_query(
+            token=token,
+            endpoint="/corridors",
+            corridors_queried=["EUR-USD", "JPY-USD"],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+        )
+        summary = meter.get_billing_summary(token.regulator_id)
+        assert summary["corridors_queried"] == ["EUR-USD", "GBP-EUR", "JPY-USD"]
+
+    def test_billing_summary_respects_month_boundary(self):
+        from datetime import datetime, timezone
+
+        token = sign_regulator_token(
+            _make_regulator_token(query_budget_monthly=100), _KEY
+        )
+        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        jan = datetime(2029, 1, 15, tzinfo=timezone.utc)
+        feb = datetime(2029, 2, 15, tzinfo=timezone.utc)
+        meter.record_query(
+            token=token,
+            endpoint="/metadata",
+            corridors_queried=[],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+            at=jan,
+        )
+        meter.record_query(
+            token=token,
+            endpoint="/metadata",
+            corridors_queried=[],
+            epsilon_consumed=0.05,
+            response_latency_ms=10,
+            billing_amount_usd=Decimal("5000"),
+            at=feb,
+        )
+        jan_summary = meter.get_billing_summary(token.regulator_id, as_of=jan)
+        feb_summary = meter.get_billing_summary(token.regulator_id, as_of=feb)
+        assert jan_summary["query_count"] == 1
+        assert feb_summary["query_count"] == 1
+
+    @pytest.fixture()
+    def usage_client(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from lip.api.rate_limiter import TokenBucketRateLimiter
+        from lip.api.regulatory_router import make_regulatory_router
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
+        from lip.p10_regulatory_data.telemetry_schema import AnonymizedCorridorResult
+
+        engine = SystemicRiskEngine()
+        engine.ingest_results(
+            [
+                AnonymizedCorridorResult(
+                    corridor="EUR-USD",
+                    period_label="2029-08-01T14:00Z",
+                    total_payments=1000,
+                    failed_payments=100,
+                    failure_rate=0.10,
+                    bank_count=10,
+                    k_anonymity_satisfied=True,
+                    privacy_budget_remaining=4.5,
+                    noise_applied=True,
+                    stale=False,
+                ),
+            ]
+        )
+        service = RegulatoryService(risk_engine=engine)
+        limiter = TokenBucketRateLimiter(rate=1000, period_seconds=3600)
+        metering = RegulatoryQueryMetering(metering_key=_KEY)
+        app = FastAPI()
+        app.include_router(
+            make_regulatory_router(
+                service,
+                rate_limiter=limiter,
+                regulator_signing_key=_KEY,
+                query_metering=metering,
+            ),
+            prefix="/api/v1/regulatory",
+        )
+        return TestClient(app)
+
+    @staticmethod
+    def _auth_header(
+        token: RegulatorSubscriptionToken,
+    ) -> dict[str, str]:
+        signed = sign_regulator_token(token, _KEY)
+        encoded = encode_regulator_token(signed)
+        return {"Authorization": f"Bearer {encoded}"}
+
+    def test_usage_endpoint_returns_200_own_data(self, usage_client):
+        token = _make_regulator_token(subscription_tier="STANDARD")
+        headers = self._auth_header(token)
+        # Make a query first to generate usage data
+        usage_client.get("/api/v1/regulatory/metadata", headers=headers)
+        # Now check usage
+        resp = usage_client.get(
+            "/api/v1/regulatory/usage/OSFI-001",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["query_count"] >= 0
+
+    def test_usage_endpoint_403_other_regulator(self, usage_client):
+        token = _make_regulator_token(subscription_tier="STANDARD")
+        resp = usage_client.get(
+            "/api/v1/regulatory/usage/FCA-001",
+            headers=self._auth_header(token),
+        )
+        assert resp.status_code == 403
+
+    def test_usage_endpoint_realtime_tier_can_view_any(self, usage_client):
+        token = _make_regulator_token(subscription_tier="REALTIME")
+        resp = usage_client.get(
+            "/api/v1/regulatory/usage/FCA-001",
+            headers=self._auth_header(token),
+        )
+        assert resp.status_code == 200
+
+    def test_usage_endpoint_401_without_token(self, usage_client):
+        resp = usage_client.get("/api/v1/regulatory/usage/OSFI-001")
+        assert resp.status_code == 401

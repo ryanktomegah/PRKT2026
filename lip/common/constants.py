@@ -258,3 +258,8 @@ P10_HHI_CONCENTRATION_THRESHOLD = Decimal("0.25")    # "highly concentrated" mar
 P10_TREND_RISING_THRESHOLD = Decimal("0.10")         # 10% relative increase = RISING
 P10_TREND_WINDOW_PERIODS = 3                          # periods for trend comparison
 P10_MAX_HISTORY_PERIODS = 720                         # 30 days × 24 hours
+
+# ── P10 Sprint 6: Telemetry eligibility + circular exposure (QUANT sign-off) ─
+P10_TELEMETRY_MIN_AMOUNT_USD = Decimal("1000")        # noise reduction: sub-$1K events excluded from P10 telemetry
+P10_CIRCULAR_EXPOSURE_MIN_WEIGHT = Decimal("0.3")     # min dependency_score for circular exposure edge
+P10_CIRCULAR_EXPOSURE_MAX_LENGTH = 5                   # max cycle hops (matches P10_CONTAGION_MAX_HOPS)

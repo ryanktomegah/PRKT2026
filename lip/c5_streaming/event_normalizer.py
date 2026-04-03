@@ -13,7 +13,25 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
+from lip.common.constants import P10_TELEMETRY_MIN_AMOUNT_USD
+
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# P10 Sprint 6 — telemetry eligibility constants
+# ---------------------------------------------------------------------------
+# Hardcoded to avoid circular import: event_normalizer → c3_repayment_engine →
+# c2_pd_model.fee → p5_cascade_engine → c5_streaming → event_normalizer.
+# Canonical source: lip/c3_repayment_engine/rejection_taxonomy.py (BLOCK class).
+_BLOCK_REJECTION_CODES: frozenset[str] = frozenset({
+    "DNOR", "CNOR",                     # prohibited-party (EPG-02/03)
+    "RR01", "RR02", "RR03", "RR04",     # KYC / regulatory holds (EPG-01/07/08)
+    "AG01", "LEGL",                      # legal / bank prohibition
+    "DISP", "DUPL", "FRAD", "FRAU",     # fraud / dispute
+})
+
+# Sentinel BIC used by test/sandbox transactions across all rails.
+_TEST_BIC = "XXXXXXXXXXX"
 
 # ---------------------------------------------------------------------------
 # Proprietary rejection code normalisation — FedNow / RTP → ISO 20022
@@ -115,6 +133,46 @@ class NormalizedEvent:
     # (sending_bic, debtor_account) AML velocity key so each originator within
     # a correspondent bank has its own rolling window. None → falls back to BIC-only.
     debtor_account: Optional[str] = None
+    # P10 Sprint 6: whether this event feeds the regulatory telemetry pipeline.
+    # False for BLOCK-class rejections, sub-$1K amounts, and test/sandbox transactions.
+    telemetry_eligible: bool = True
+
+
+def _is_test_transaction(event: 'NormalizedEvent') -> bool:
+    """Return True if the event originates from a test or sandbox source.
+
+    Detection heuristics:
+      1. UETR starts with ``TEST-`` (case-insensitive)
+      2. Sending or receiving BIC equals the sentinel ``XXXXXXXXXXX``
+      3. ``raw_source`` dict has a truthy ``is_test`` key
+    """
+    if event.uetr.upper().startswith("TEST-"):
+        return True
+    if event.sending_bic.upper() == _TEST_BIC or event.receiving_bic.upper() == _TEST_BIC:
+        return True
+    if isinstance(event.raw_source, dict) and event.raw_source.get("is_test"):
+        return True
+    return False
+
+
+def _compute_telemetry_eligibility(event: 'NormalizedEvent') -> bool:
+    """Determine whether *event* should feed the P10 hourly telemetry batch.
+
+    Returns ``False`` (ineligible) when any of these rules fire:
+      1. Rejection code belongs to the BLOCK class in the rejection taxonomy.
+      2. Transaction amount is below ``P10_TELEMETRY_MIN_AMOUNT_USD`` ($1,000).
+      3. Transaction is a test/sandbox event (see :func:`_is_test_transaction`).
+    """
+    # Rule 1: BLOCK-class rejection
+    if event.rejection_code and event.rejection_code.strip().upper() in _BLOCK_REJECTION_CODES:
+        return False
+    # Rule 2: Sub-threshold amount
+    if event.amount < P10_TELEMETRY_MIN_AMOUNT_USD:
+        return False
+    # Rule 3: Test / sandbox transaction
+    if _is_test_transaction(event):
+        return False
+    return True
 
 
 def _safe_decimal(value) -> Decimal:
@@ -389,7 +447,9 @@ class EventNormalizer:
         handler = handlers.get(rail.upper())
         if handler is None:
             raise ValueError(f"Unknown rail: {rail}")
-        return handler(msg)
+        event = handler(msg)
+        event.telemetry_eligible = _compute_telemetry_eligibility(event)
+        return event
 
 
 def normalize_event(rail: str, msg: dict) -> NormalizedEvent:
