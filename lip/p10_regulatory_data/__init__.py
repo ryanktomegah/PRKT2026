@@ -10,6 +10,7 @@ from .circular_exposure import CircularExposure, detect_circular_exposures
 from .concentration import ConcentrationResult, CorridorConcentrationAnalyzer
 from .contagion import ContagionNode, ContagionResult, ContagionSimulator
 from .methodology import MethodologyAppendix
+from .methodology_paper import MethodologyPaper, generate_methodology_paper
 from .privacy_audit import (
     AttackResult,
     BudgetAuditResult,
@@ -25,6 +26,14 @@ from .privacy_audit import (
     verify_dp_distribution,
 )
 from .privacy_budget import PrivacyBudgetTracker
+from .regulator_onboarding import (
+    ChecklistItem,
+    ComplianceMapping,
+    OnboardingChecklist,
+    generate_compliance_mapping,
+    generate_onboarding_checklist,
+    generate_sample_data_package,
+)
 from .report_metadata import (
     ReportIntegrityError,
     VersionedReport,
@@ -46,7 +55,9 @@ __all__ = [
     "AnonymizedCorridorResult",
     "AttackResult",
     "BudgetAuditResult",
+    "ChecklistItem",
     "CircularExposure",
+    "ComplianceMapping",
     "ConcentrationResult",
     "ContagionNode",
     "ContagionResult",
@@ -57,6 +68,8 @@ __all__ = [
     "DPVerificationResult",
     "KAnonymityProof",
     "MethodologyAppendix",
+    "MethodologyPaper",
+    "OnboardingChecklist",
     "PrivacyAuditReport",
     "PrivacyBudgetStatus",
     "PrivacyBudgetTracker",
@@ -74,6 +87,10 @@ __all__ = [
     "detect_circular_exposures",
     "frequency_attack",
     "generate_audit_report",
+    "generate_compliance_mapping",
+    "generate_methodology_paper",
+    "generate_onboarding_checklist",
+    "generate_sample_data_package",
     "k_anonymity_proof",
     "temporal_linkage_attack",
     "uniqueness_attack",
