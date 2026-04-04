@@ -18,7 +18,9 @@ from .report_metadata import (
     verify_report_integrity,
 )
 from .report_renderer import ReportRenderer
+from .shadow_runner import ShadowPipelineRunner, ShadowRunResult
 from .systemic_risk import CorridorRiskSnapshot, SystemicRiskEngine, SystemicRiskReport
+from .telemetry_collector import TelemetryCollector
 from .telemetry_schema import (
     AnonymizedCorridorResult,
     CorridorStatistic,
@@ -42,9 +44,12 @@ __all__ = [
     "RegulatoryAnonymizer",
     "ReportIntegrityError",
     "ReportRenderer",
+    "ShadowPipelineRunner",
+    "ShadowRunResult",
     "SystemicRiskEngine",
     "SystemicRiskReport",
     "TelemetryBatch",
+    "TelemetryCollector",
     "VersionedReport",
     "create_versioned_report",
     "detect_circular_exposures",

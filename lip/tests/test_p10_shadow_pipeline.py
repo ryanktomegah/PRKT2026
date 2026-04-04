@@ -1,17 +1,20 @@
 """
-test_p10_shadow_pipeline.py — TDD tests for P10 TelemetryCollector.
+test_p10_shadow_pipeline.py — Sprint 7 integration tests.
 
-Sprint 7: Shadow pipeline — first component in the data flow:
-  NormalizedEvent (C5) → TelemetryCollector → TelemetryBatch → RegulatoryAnonymizer
+Validates TelemetryCollector, ShadowPipelineRunner, shadow data generator,
+performance targets, and end-to-end pipeline data flow.
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
 
 from lip.c5_streaming.event_normalizer import NormalizedEvent
+from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+from lip.p10_regulatory_data.systemic_risk import SystemicRiskEngine
 
 _SALT = b"shadow_test_salt_32bytes________"
 
@@ -208,3 +211,261 @@ class TestTelemetryCollector:
         assert len(batches_a) == 1
         stat_a = batches_a[0].corridor_statistics[0]
         assert stat_a.failure_class_distribution.get("CLASS_A", 0) == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 3: Shadow Data Generator Tests
+# ---------------------------------------------------------------------------
+
+
+class TestShadowDataGenerator:
+    """Verify synthetic event generation for shadow mode."""
+
+    def test_generates_correct_count(self):
+        """5 banks x 2000 events = 10000 total."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        assert len(events) == 10_000
+
+    def test_distinct_banks(self):
+        """5 banks -> 5 distinct bank identifiers (first 4 chars of BIC)."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=100, seed=42)
+        bank_ids = {e.sending_bic[:4] for e in events}
+        assert len(bank_ids) == 5
+
+    def test_deterministic_with_seed(self):
+        """Same seed -> identical UETRs."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+
+        a = generate_shadow_events(n_banks=3, n_events_per_bank=50, seed=99)
+        b = generate_shadow_events(n_banks=3, n_events_per_bank=50, seed=99)
+        assert [e.uetr for e in a] == [e.uetr for e in b]
+
+    def test_failure_rate_approximately_correct(self):
+        """~8% overall failure rate (within generous range)."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        failed = sum(1 for e in events if e.rejection_code is not None)
+        rate = failed / len(events)
+        assert 0.05 < rate < 0.15
+
+    def test_some_events_ineligible(self):
+        """~2% of events have telemetry_eligible=False."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        ineligible = sum(1 for e in events if not e.telemetry_eligible)
+        rate = ineligible / len(events)
+        assert 0.005 < rate < 0.05
+
+
+# ---------------------------------------------------------------------------
+# Task 4: ShadowPipelineRunner End-to-End Tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def shadow_components():
+    """Pre-configured anonymizer + risk engine for shadow pipeline tests."""
+    anonymizer = RegulatoryAnonymizer(k=5, rng_seed=42)
+    engine = SystemicRiskEngine()
+    return anonymizer, engine
+
+
+class TestShadowPipelineEndToEnd:
+    """Verify full pipeline: events -> collector -> anonymizer -> engine -> report."""
+
+    def test_full_pipeline_produces_report(self, shadow_components):
+        """10K events -> non-None SystemicRiskReport."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        result = runner.run(events)
+        assert result.report is not None
+        assert result.report.total_corridors_analyzed > 0
+
+    def test_all_corridors_present(self, shadow_components):
+        """8 corridors in report (5 banks >= k=5, none suppressed)."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        result = runner.run(events)
+        assert result.corridors_suppressed == 0
+        assert result.corridors_analyzed >= 8
+
+    def test_stressed_corridor_elevated(self, shadow_components):
+        """Stressed corridor has higher failure rate than average."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(
+            n_banks=5, n_events_per_bank=2000, seed=42,
+            stressed_corridor="EUR-USD", stressed_rate=0.25,
+        )
+        result = runner.run(events)
+        snapshots = result.report.corridor_snapshots
+        rates = {s.corridor: s.failure_rate for s in snapshots}
+        max_rate = max(rates.values()) if rates else 0
+        mean_rate = sum(rates.values()) / len(rates) if rates else 0
+        assert max_rate > mean_rate
+
+    def test_privacy_budget_consumed(self, shadow_components):
+        """privacy_budget_consumed > 0.0 after pipeline run."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=200, seed=42)
+        result = runner.run(events)
+        assert result.privacy_budget_consumed > 0.0
+
+    def test_timings_populated(self, shadow_components):
+        """All timing keys present and >= 0."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=200, seed=42)
+        result = runner.run(events)
+        expected_keys = {
+            "collect_ms", "flush_ms", "anonymize_ms",
+            "ingest_ms", "report_ms", "verify_ms", "total_ms",
+        }
+        assert set(result.timings.keys()) == expected_keys
+        for key, val in result.timings.items():
+            assert val >= 0, f"timing {key} is negative: {val}"
+
+    def test_filtered_events_counted(self, shadow_components):
+        """events_filtered approximately 2% of total."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        result = runner.run(events)
+        total = result.events_ingested + result.events_filtered
+        filter_rate = result.events_filtered / total if total > 0 else 0
+        assert 0.005 < filter_rate < 0.05
+
+    def test_report_integrity_verified(self, shadow_components):
+        """integrity_verified is True."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=200, seed=42)
+        result = runner.run(events)
+        assert result.integrity_verified is True
+
+    def test_sequential_runs_accumulate_trends(self, shadow_components):
+        """3 runs -> trend history accumulates."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer, engine = shadow_components
+        runner = ShadowPipelineRunner(
+            salt=_SALT, anonymizer=anonymizer, risk_engine=engine,
+        )
+        for seed in [42, 43, 44]:
+            events = generate_shadow_events(n_banks=5, n_events_per_bank=200, seed=seed)
+            runner.run(events)
+
+        report = engine.compute_risk_report()
+        assert report.total_corridors_analyzed > 0
+
+
+# ---------------------------------------------------------------------------
+# Task 6: Performance Target Tests
+# ---------------------------------------------------------------------------
+
+class TestPerformanceTargets:
+    """Validate Sprint 7 blueprint performance targets."""
+
+    def test_corridor_query_under_500ms(self):
+        """RegulatoryService.get_corridor_snapshots() < 500ms."""
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer = RegulatoryAnonymizer(k=5, rng_seed=42)
+        engine = SystemicRiskEngine()
+        runner = ShadowPipelineRunner(salt=_SALT, anonymizer=anonymizer, risk_engine=engine)
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        runner.run(events)
+
+        service = RegulatoryService(risk_engine=engine)
+
+        t0 = time.perf_counter()
+        snapshots, suppressed = service.get_corridor_snapshots(period_count=24)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        assert elapsed_ms < 500, f"Corridor query took {elapsed_ms:.1f}ms (target: <500ms)"
+        assert len(snapshots) > 0
+
+    def test_stress_test_under_30s(self):
+        """RegulatoryService.run_stress_test() < 30s."""
+        from lip.api.regulatory_service import RegulatoryService
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer = RegulatoryAnonymizer(k=5, rng_seed=42)
+        engine = SystemicRiskEngine()
+        runner = ShadowPipelineRunner(salt=_SALT, anonymizer=anonymizer, risk_engine=engine)
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+        runner.run(events)
+
+        service = RegulatoryService(risk_engine=engine)
+
+        t0 = time.perf_counter()
+        report_id, report = service.run_stress_test(
+            scenario_name="EUR-USD-shock",
+            shocks=[("EUR-USD", 0.5)],
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        assert elapsed_ms < 30_000, f"Stress test took {elapsed_ms:.1f}ms (target: <30s)"
+        assert report is not None
+
+    def test_full_pipeline_under_5s(self):
+        """ShadowPipelineRunner.run(10K events) total_ms < 5000."""
+        from lip.p10_regulatory_data.shadow_data import generate_shadow_events
+        from lip.p10_regulatory_data.shadow_runner import ShadowPipelineRunner
+
+        anonymizer = RegulatoryAnonymizer(k=5, rng_seed=42)
+        engine = SystemicRiskEngine()
+        runner = ShadowPipelineRunner(salt=_SALT, anonymizer=anonymizer, risk_engine=engine)
+        events = generate_shadow_events(n_banks=5, n_events_per_bank=2000, seed=42)
+
+        result = runner.run(events)
+        assert result.timings["total_ms"] < 5000, (
+            f"Pipeline took {result.timings['total_ms']:.1f}ms (target: <5s)"
+        )
