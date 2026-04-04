@@ -53,6 +53,12 @@ try:
         scenario_name: str = Field(..., min_length=1, max_length=200)
         shocks: List[StressTestShock] = Field(..., min_length=1, max_length=20)
 
+    class GenerateReportRequest(BaseModel):
+        """Request body for POST /reports/generate."""
+
+        period_start: str = ""
+        period_end: str = ""
+
     # ── Response Models ─────────────────────────────────────────────
 
     class CorridorSnapshotResponse(BaseModel):
@@ -143,6 +149,19 @@ try:
         data_freshness: Dict[str, Any]
         methodology: Dict[str, Any]
         rate_limit: Dict[str, Any]
+
+    class UsageAnalyticsResponse(BaseModel):
+        """Response for GET /usage/{regulator_id}."""
+
+        query_count: int
+        epsilon_consumed: float
+        total_billing_usd: str
+        mean_latency_ms: float
+        p95_latency_ms: int
+        endpoints_breakdown: Dict[str, int]
+        corridors_queried: List[str]
+        first_query_at: Any  # str | None
+        last_query_at: Any  # str | None
 
 except ImportError:
     logger.debug("Pydantic not installed — regulatory models not available")

@@ -80,6 +80,12 @@
       "type": ["null", "string"],
       "default": null,
       "doc": "EPG-28: Debtor account for AML composite velocity key"
+    },
+    {
+      "name": "telemetry_eligible",
+      "type": "boolean",
+      "default": true,
+      "doc": "P10 Sprint 6: whether this event feeds the regulatory telemetry pipeline. False for BLOCK-class rejections, sub-$1K amounts, and test/sandbox transactions."
     }
   ]
 }

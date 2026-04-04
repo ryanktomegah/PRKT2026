@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,6 +29,7 @@ type NormalizedEvent struct {
 	RawSource               string   `json:"raw_source"`
 	OriginalPaymentAmountUSD *string `json:"original_payment_amount_usd,omitempty"`
 	DebtorAccount           *string  `json:"debtor_account,omitempty"`
+	TelemetryEligible       bool     `json:"telemetry_eligible"`
 }
 
 // proprietaryToISO20022 maps FedNow / RTP proprietary rejection codes to their
@@ -69,6 +71,76 @@ func normalizeRejectionCode(code *string, rail string) *string {
 	}
 	// Unknown proprietary code — pass through unchanged (safe default in C7/taxonomy)
 	return code
+}
+
+// blockRejectionCodes contains all BLOCK-class ISO 20022 rejection codes.
+// Mirrors _BLOCK_REJECTION_CODES in event_normalizer.py. Hardcoded here because
+// Go cannot import the Python rejection taxonomy at runtime.
+var blockRejectionCodes = map[string]bool{
+	"DNOR": true,
+	"CNOR": true,
+	"RR01": true,
+	"RR02": true,
+	"RR03": true,
+	"RR04": true,
+	"AG01": true,
+	"LEGL": true,
+	"DISP": true,
+	"DUPL": true,
+	"FRAD": true,
+	"FRAU": true,
+}
+
+// p10TelemetryMinAmount is the minimum USD amount for P10 telemetry eligibility.
+const p10TelemetryMinAmount = 1000.0
+
+// testBIC is the sentinel BIC used by test/sandbox transactions.
+const testBIC = "XXXXXXXXXXX"
+
+// isTestTransaction returns true if the event originates from a test or sandbox source.
+func isTestTransaction(event *NormalizedEvent) bool {
+	// UETR starts with "TEST-" (case-insensitive)
+	if strings.HasPrefix(strings.ToUpper(event.UETR), "TEST-") {
+		return true
+	}
+	// Sending or receiving BIC equals the sentinel
+	if strings.ToUpper(event.SendingBIC) == testBIC || strings.ToUpper(event.ReceivingBIC) == testBIC {
+		return true
+	}
+	// Check raw_source for is_test flag
+	if event.RawSource != "" {
+		var rawMap map[string]interface{}
+		if err := json.Unmarshal([]byte(event.RawSource), &rawMap); err == nil {
+			if v, ok := rawMap["is_test"]; ok && v != nil && v != false && v != 0.0 && v != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// computeTelemetryEligibility determines whether the event should feed the P10
+// hourly telemetry batch. Returns false for BLOCK-class rejections, sub-$1K
+// amounts, and test/sandbox transactions.
+func computeTelemetryEligibility(event *NormalizedEvent) bool {
+	// Rule 1: BLOCK-class rejection
+	if event.RejectionCode != nil {
+		code := strings.TrimSpace(strings.ToUpper(*event.RejectionCode))
+		if blockRejectionCodes[code] {
+			return false
+		}
+	}
+	// Rule 2: Sub-threshold amount
+	if amt, err := strconv.ParseFloat(event.Amount, 64); err == nil {
+		if amt < p10TelemetryMinAmount {
+			return false
+		}
+	}
+	// Rule 3: Test / sandbox transaction
+	if isTestTransaction(event) {
+		return false
+	}
+	return true
 }
 
 // rawPaymentEvent is the JSON wire shape consumed from Kafka. Matches the
@@ -154,7 +226,9 @@ func (n *Normalizer) normalizeRaw(raw *rawPaymentEvent) (*NormalizedEvent, error
 		RawSource:                rawSourceJSON,
 		OriginalPaymentAmountUSD: raw.OriginalPaymentAmountUSD,
 		DebtorAccount:            raw.DebtorAccount,
+		TelemetryEligible:       true, // default; overridden below
 	}
+	event.TelemetryEligible = computeTelemetryEligibility(event)
 	return event, nil
 }
 

@@ -1,0 +1,53 @@
+name: Protocol Guard
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  protocol-guard:
+    name: Enforce PR Protocol
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Validate branch naming
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ ! "${HEAD_REF}" =~ ^codex\/ ]]; then
+            echo "Protocol violation: PR branch must start with codex/ (got: ${HEAD_REF})"
+            exit 1
+          fi
+
+      - name: Validate draft-by-default policy
+        env:
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          if [[ "${IS_DRAFT}" != "true" && "${LABELS}" != *"protocol-exempt"* ]]; then
+            echo "Protocol violation: PR must be draft by default."
+            echo "If intentionally opening ready-for-review, apply label: protocol-exempt"
+            exit 1
+          fi
+
+      - name: Validate required PR body sections
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          required_sections=(
+            "## Plan"
+            "## Design Decisions"
+            "## Test Evidence"
+            "## Risks/Gaps"
+          )
+          for section in "${required_sections[@]}"; do
+            if ! grep -Fq "${section}" <<< "${PR_BODY}"; then
+              echo "Protocol violation: missing PR section: ${section}"
+              exit 1
+            fi
+          done

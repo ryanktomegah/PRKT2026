@@ -2,7 +2,7 @@ name: LIP CI
 
 on:
   push:
-    branches: ["main", "claude/*", "feature/*", "fix/*"]
+    branches: ["main", "claude/*", "codex/*", "feature/*", "fix/*"]
   pull_request:
     branches: ["main"]
 

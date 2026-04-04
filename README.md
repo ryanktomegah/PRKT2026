@@ -113,6 +113,8 @@ PYTHONPATH=. python -m lip.dgen.generate_all --output-dir artifacts/synthetic
 PYTHONPATH=. python lip/train_all.py --data-dir artifacts/synthetic
 ```
 
+AI contributor protocol: see [`docs/engineering/default-execution-protocol.md`](docs/engineering/default-execution-protocol.md) for mandatory branch, planning, commit/push, and PR standards.
+
 ## Repository Layout
 
 ```
