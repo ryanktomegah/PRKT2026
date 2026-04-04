@@ -10,6 +10,20 @@ from .circular_exposure import CircularExposure, detect_circular_exposures
 from .concentration import ConcentrationResult, CorridorConcentrationAnalyzer
 from .contagion import ContagionNode, ContagionResult, ContagionSimulator
 from .methodology import MethodologyAppendix
+from .privacy_audit import (
+    AttackResult,
+    BudgetAuditResult,
+    DPVerificationResult,
+    KAnonymityProof,
+    PrivacyAuditReport,
+    frequency_attack,
+    generate_audit_report,
+    k_anonymity_proof,
+    temporal_linkage_attack,
+    uniqueness_attack,
+    verify_budget_composition,
+    verify_dp_distribution,
+)
 from .privacy_budget import PrivacyBudgetTracker
 from .report_metadata import (
     ReportIntegrityError,
@@ -30,6 +44,8 @@ from .telemetry_schema import (
 
 __all__ = [
     "AnonymizedCorridorResult",
+    "AttackResult",
+    "BudgetAuditResult",
     "CircularExposure",
     "ConcentrationResult",
     "ContagionNode",
@@ -38,7 +54,10 @@ __all__ = [
     "CorridorConcentrationAnalyzer",
     "CorridorRiskSnapshot",
     "CorridorStatistic",
+    "DPVerificationResult",
+    "KAnonymityProof",
     "MethodologyAppendix",
+    "PrivacyAuditReport",
     "PrivacyBudgetStatus",
     "PrivacyBudgetTracker",
     "RegulatoryAnonymizer",
@@ -53,5 +72,12 @@ __all__ = [
     "VersionedReport",
     "create_versioned_report",
     "detect_circular_exposures",
+    "frequency_attack",
+    "generate_audit_report",
+    "k_anonymity_proof",
+    "temporal_linkage_attack",
+    "uniqueness_attack",
+    "verify_budget_composition",
+    "verify_dp_distribution",
     "verify_report_integrity",
 ]
