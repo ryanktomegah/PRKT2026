@@ -62,6 +62,39 @@ jobs:
             --cov-fail-under=75 \
             -q
 
+  integrity-check:
+    name: Integrity Shield checks
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Upgrade pip
+        run: pip install --upgrade pip setuptools>=68 wheel
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          cd lip && pip install -e .
+      - name: Run integrity tests
+        run: |
+          PYTHONPATH=. python -m pytest lip/tests/test_integrity_*.py \
+            --tb=short -v
+      - name: OSS attribution + GPL contamination check
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          from lip.integrity.oss_tracker import OSSAttributionRegistry
+          reg = OSSAttributionRegistry()
+          records = reg.scan_installed_packages()
+          gpl = reg.check_gpl_contamination(records)
+          if gpl:
+              print(f"FAIL: GPL contamination: {[r.package_name for r in gpl]}")
+              raise SystemExit(1)
+          print(f"OK: scanned {len(records)} packages, no GPL contamination")
+          PY
+
   train-smoke:
     name: Training smoke-test (C1 + C2 + C6)
     runs-on: ubuntu-latest
