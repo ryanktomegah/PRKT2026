@@ -127,7 +127,7 @@ class TestGoOfferRouterClient:
     def _make_client_with_mock(self, responses: dict):
         """Create a client whose _call method returns mock responses."""
         client = GoOfferRouterClient(addr="localhost:50057")
-        client._call = MagicMock(side_effect=lambda m, p: responses.get(m, {"accepted": True}))
+        client._call = MagicMock(side_effect=lambda m, p: responses.get(m, {"accepted": True}))  # type: ignore[method-assign]
         return client
 
     def test_trigger_offer_happy_path(self):
