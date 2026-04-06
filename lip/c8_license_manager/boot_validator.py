@@ -137,6 +137,7 @@ class LicenseBootValidator:
             self._engage("component_not_licensed")
             raise RuntimeError(msg)
 
+        ctx: LicenseeContext
         if token.licensee_type == "PROCESSOR":
             ctx = ProcessorLicenseeContext(
                 licensee_id=token.licensee_id,

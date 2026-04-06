@@ -155,7 +155,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24"
           cache: true
           cache-dependency-path: lip/c5_streaming/go_consumer/go.sum
 
@@ -190,7 +190,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24"
           cache: true
           cache-dependency-path: lip/c7_execution_agent/go_offer_router/go.sum
 
@@ -258,8 +258,8 @@ jobs:
       - name: Install LIP package and run C6 Python tests with Rust wheel
         run: |
           pip install --upgrade pip setuptools>=68 wheel
-          pip install -r requirements.txt
-          cd lip && pip install -e .
+          pip install -r requirements.txt -r requirements-ml.txt
+          (cd lip && pip install -e .)
           PYTHONPATH=. python -m pytest lip/tests/test_c6_rust_velocity.py \
             lip/tests/test_c6_aml.py \
             lip/tests/test_c6_tenant_velocity.py \
