@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib import metadata as importlib_metadata
-from typing import Iterable
+from typing import Any, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -99,17 +99,20 @@ def _extract_license(dist: importlib_metadata.Distribution) -> str:
     line. Returns "UNKNOWN" if nothing is found.
     """
     md = dist.metadata
-    # PEP 639: License-Expression is the preferred SPDX field
-    expr = md.get("License-Expression") if md is not None else None
+    # PEP 639: License-Expression is the preferred SPDX field.
+    # PackageMetadata's runtime type is email.message.Message which supports
+    # .get(); mypy's stub is overly narrow. Cast via Any.
+    md_any: Any = md
+    expr = md_any.get("License-Expression") if md_any is not None else None
     if expr:
         return expr.strip()
 
-    raw = md.get("License") if md is not None else None
+    raw = md_any.get("License") if md_any is not None else None
     if raw and raw.strip().lower() not in {"unknown", "none", ""}:
         return raw.strip()
 
     # Fall back to classifier scan
-    classifiers = md.get_all("Classifier") if md is not None else None
+    classifiers = md_any.get_all("Classifier") if md_any is not None else None
     if classifiers:
         for c in classifiers:
             if c.startswith("License ::"):
@@ -119,7 +122,7 @@ def _extract_license(dist: importlib_metadata.Distribution) -> str:
 
 
 def _extract_source_url(dist: importlib_metadata.Distribution) -> str:
-    md = dist.metadata
+    md: Any = dist.metadata
     if md is None:
         return ""
     for url in md.get_all("Project-URL") or []:
@@ -149,7 +152,7 @@ class OSSAttributionRegistry:
         """Return a DependencyRecord for every installed Python distribution."""
         records: list[DependencyRecord] = []
         for dist in importlib_metadata.distributions():
-            md = dist.metadata
+            md: Any = dist.metadata
             if md is None:
                 continue
             name = md.get("Name") or ""
