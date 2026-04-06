@@ -23,8 +23,9 @@ import hmac
 import json
 import logging
 import uuid
+from collections import OrderedDict
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +61,18 @@ class DecisionLogEntryData:
 
 
 class DecisionLogger:
-    """Immutable HMAC-SHA256 signed decision log with 7-year retention."""
+    """Immutable HMAC-SHA256 signed decision log with 7-year retention.
 
-    def __init__(self, hmac_key: bytes, storage_backend=None):
+    The in-memory ``_store`` is a bounded LRU cache (default 10 000 entries).
+    When ``_store_maxsize`` is reached the oldest entry is evicted.  Permanent
+    retention is the responsibility of ``storage_backend`` (e.g. PostgreSQL).
+    The in-memory store is only a short-term lookup cache for the current
+    process lifetime.
+    """
+
+    _DEFAULT_STORE_MAXSIZE = 10_000
+
+    def __init__(self, hmac_key: bytes, storage_backend=None, *, store_maxsize: int = _DEFAULT_STORE_MAXSIZE):
         # Security invariant: HMAC key must be ≥ 32 bytes (256-bit minimum).
         # Keys shorter than this weaken the MAC against brute-force attacks on the audit log.
         if len(hmac_key) < 32:
@@ -71,7 +81,9 @@ class DecisionLogger:
                 f"Got {len(hmac_key)} bytes. Source key from a secrets manager."
             )
         self._key = hmac_key
-        self._store: Dict[str, DecisionLogEntryData] = {}
+        self._store_maxsize = max(1, store_maxsize)
+        # OrderedDict used as a bounded LRU: oldest entry evicted when maxsize reached.
+        self._store: OrderedDict[str, DecisionLogEntryData] = OrderedDict()
         self._backend = storage_backend
 
     # ── public API ──────────────────────────────────────────────────────────
@@ -80,6 +92,9 @@ class DecisionLogger:
         if not entry.entry_id:
             entry.entry_id = str(uuid.uuid4())
         entry.entry_signature = self._sign_entry(entry)
+        # Evict oldest entry when the store is at capacity (LRU eviction).
+        if len(self._store) >= self._store_maxsize and entry.entry_id not in self._store:
+            self._store.popitem(last=False)
         self._store[entry.entry_id] = entry
         if self._backend:
             self._backend.save(entry)

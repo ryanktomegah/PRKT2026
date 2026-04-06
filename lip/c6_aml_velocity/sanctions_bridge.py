@@ -206,6 +206,7 @@ class RustSanctionsScreener:
         import time
 
         t0 = time.monotonic()
+        hits: list = []
         try:
             if _RUST_AVAILABLE:
                 raw = list(self._rust_screener.screen(entity_name))

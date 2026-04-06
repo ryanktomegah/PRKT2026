@@ -29,6 +29,7 @@ import hashlib
 import json
 import logging
 import os
+import threading
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,7 @@ class GoOfferRouterClient:
         self._timeout = timeout_seconds
         self._channel: Any = None
         self._stubs: Dict[str, Any] = {}
+        self._channel_lock = threading.Lock()
 
     # ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -336,16 +338,21 @@ class GoOfferRouterClient:
         except Exception as exc:
             raise GoRouterError(f"gRPC call {method} error: {exc}") from exc
 
-        if not resp.get("accepted", False) and resp.get("error"):
-            raise GoRouterError(f"Go offer router rejected {method}: {resp['error']}")
+        if not resp.get("accepted", False):
+            error_msg = resp.get("error") or f"Go offer router returned accepted=false for {method}"
+            raise GoRouterError(f"Go offer router rejected {method}: {error_msg}")
 
         return resp
 
     def _get_channel(self, grpc: Any) -> Any:
-        """Return the cached gRPC channel, creating it on first call."""
+        """Return the cached gRPC channel, creating it on first call (thread-safe)."""
         if self._channel is None:
-            self._channel = grpc.insecure_channel(self._addr)
-            logger.info(
-                "GoOfferRouterClient: connected to Go offer router at %s", self._addr
-            )
+            with self._channel_lock:
+                # Double-checked locking: re-test under the lock to avoid a race
+                # where two threads both observe _channel is None and both create channels.
+                if self._channel is None:
+                    self._channel = grpc.insecure_channel(self._addr)
+                    logger.info(
+                        "GoOfferRouterClient: connected to Go offer router at %s", self._addr
+                    )
         return self._channel
