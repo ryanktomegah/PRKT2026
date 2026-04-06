@@ -133,6 +133,11 @@ def uniqueness_attack(
     succeeded = len(unique_corridors) > 0
     confidence = 1.0 if succeeded else 0.0
 
+    verdict = (
+        "VULNERABLE: single-bank corridors expose individual data."
+        if succeeded
+        else "No uniquely identifiable banks."
+    )
     return AttackResult(
         attack_type="uniqueness",
         succeeded=succeeded,
@@ -140,9 +145,7 @@ def uniqueness_attack(
         details=(
             f"Checked {len(anon_results)} corridors. "
             f"Found {len(unique_corridors)} with bank_count < 2. "
-            f"{'VULNERABLE: single-bank corridors expose individual data.'
-               if succeeded
-               else 'No uniquely identifiable banks.'}"
+            f"{verdict}"
         ),
     )
 
