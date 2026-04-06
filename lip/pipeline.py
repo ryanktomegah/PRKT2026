@@ -146,6 +146,7 @@ class LIPPipeline:
         risk_engine: Optional[Any] = None,
         drift_monitor: Optional[Any] = None,
         settlement_predictor: Optional[Any] = None,
+        integrity_gate: Optional[Any] = None,
     ) -> None:
         self._c1 = c1_engine
         self._c2 = c2_engine
@@ -175,6 +176,20 @@ class LIPPipeline:
         # Phase 2.4: C9 settlement predictor → wire into C7 for dynamic maturity
         if settlement_predictor is not None and hasattr(c7_agent, "set_settlement_predictor"):
             c7_agent.set_settlement_predictor(settlement_predictor)
+        # Integrity Shield: structural prevention of Delve-class failure modes.
+        # Runs at construction time only — never per-inference (94ms SLO is sacred).
+        # v1: warn-only on failure; future work flips to hard-block.
+        self._integrity_gate = integrity_gate
+        if integrity_gate is not None and getattr(integrity_gate, "enabled", True):
+            try:
+                gate_result = integrity_gate.check()
+                if not gate_result.gate_passed:
+                    logger.warning(
+                        "Integrity gate failed at pipeline init: %s",
+                        gate_result.issues,
+                    )
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Integrity gate raised at pipeline init: %s", exc)
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
