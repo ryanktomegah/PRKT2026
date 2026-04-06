@@ -76,8 +76,8 @@ jobs:
         run: pip install --upgrade pip setuptools>=68 wheel
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          cd lip && pip install -e .
+          pip install -r requirements.txt -r requirements-ml.txt
+          (cd lip && pip install -e .)
       - name: Run integrity tests
         run: |
           PYTHONPATH=. python -m pytest lip/tests/test_integrity_*.py \
