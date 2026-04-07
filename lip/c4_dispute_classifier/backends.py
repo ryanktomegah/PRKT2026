@@ -150,6 +150,12 @@ def create_backend(backend_type: Optional[str] = None):
     from lip.c4_dispute_classifier.model import MockLLMBackend
 
     resolved = backend_type or os.environ.get("LIP_C4_BACKEND", "mock")
+    if resolved == "mock":
+        logger.critical(
+            "C4 using MockLLMBackend (no negation awareness). "
+            "Set LIP_C4_BACKEND=groq|github_models|openai_compat for production. "
+            "MockLLMBackend will misclassify negated disputes (e.g. 'no fraud').",
+        )
 
     if resolved == "github_models":
         api_key = os.environ.get("GITHUB_TOKEN", "")

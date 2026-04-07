@@ -948,9 +948,23 @@ class LIPPipeline:
         try:
             cls = classify_rejection_code(rejection_code)
             days = get_maturity_days(cls)
-            return days if days > 0 else 7
+            if days == 0:
+                # BLOCK class reached maturity derivation — Layer 1 short-circuit
+                # should have caught this. Log critical to alert on taxonomy gap.
+                logger.critical(
+                    "BLOCK rejection code '%s' reached _derive_maturity_days — "
+                    "Layer 1 short-circuit failed. Returning 0 (no offer).",
+                    rejection_code,
+                )
+                return 0
+            return days
         except ValueError:
-            return 7
+            logger.critical(
+                "UNKNOWN rejection code '%s' not in REJECTION_CODE_TAXONOMY — "
+                "update taxonomy immediately. Treating as BLOCK (0 days).",
+                rejection_code,
+            )
+            return 0
 
     def _derive_rejection_class(self, rejection_code: Optional[str]) -> str:
         """Derive the rejection class string from the ISO 20022 rejection code.
@@ -970,7 +984,12 @@ class LIPPipeline:
             cls = classify_rejection_code(rejection_code)
             return cls.value
         except ValueError:
-            return "CLASS_B"
+            logger.critical(
+                "UNKNOWN rejection code '%s' in _derive_rejection_class — "
+                "treating as BLOCK. Update REJECTION_CODE_TAXONOMY.",
+                rejection_code,
+            )
+            return "BLOCK"
 
     def _register_with_c3(
         self,

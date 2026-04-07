@@ -21,6 +21,13 @@ CONFORMAL_UNCERTAINTY_MAX_MULTIPLIER = 2.0
 LATENCY_P50_TARGET_MS = 45   # Architecture Spec v1.2 — p50 inference budget
 LATENCY_P99_TARGET_MS = 94   # Architecture Spec v1.2 — canonical end-to-end SLO
 
+# ── C1 failure classifier ─────────────────────────────────────────────────────
+# F2-optimal threshold (τ*) calibrated from 10M corpus retraining.
+# Payments with failure_probability >= this threshold are flagged as
+# above-threshold and eligible for loan offers.
+# QUANT + ARIA must sign off on any change — affects offer volume and risk.
+C1_FAILURE_PROBABILITY_THRESHOLD = 0.110
+
 # ── ML performance targets ────────────────────────────────────────────────────
 ML_BASELINE_AUC = Decimal("0.739")
 ML_TARGET_AUC   = Decimal("0.850")

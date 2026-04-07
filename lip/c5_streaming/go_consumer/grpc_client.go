@@ -33,16 +33,17 @@ type PipelineResult struct {
 
 // GRPCClient manages connections to C1, C2, and C6 upstream Python services.
 type GRPCClient struct {
-	c1Conn      *grpc.ClientConn
-	c2Conn      *grpc.ClientConn
-	c6Conn      *grpc.ClientConn
-	timeout     time.Duration
-	feeFloorBPS float64 // QUANT canonical constant — sourced from FEE_FLOOR_BPS env
+	c1Conn                    *grpc.ClientConn
+	c2Conn                    *grpc.ClientConn
+	c6Conn                    *grpc.ClientConn
+	timeout                   time.Duration
+	feeFloorBPS               float64 // QUANT canonical constant — sourced from FEE_FLOOR_BPS env
+	failureProbabilityThreshold float64 // ARIA/QUANT canonical — sourced from C1_FAILURE_PROBABILITY_THRESHOLD env
 }
 
 // NewGRPCClient dials all three upstream services. Returns an error if any
 // connection cannot be established (fail-fast at startup).
-func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloorBPS float64) (*GRPCClient, error) {
+func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloorBPS float64, fpThreshold float64) (*GRPCClient, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
@@ -67,11 +68,12 @@ func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloo
 	}
 
 	return &GRPCClient{
-		c1Conn:      c1,
-		c2Conn:      c2,
-		c6Conn:      c6,
-		timeout:     timeout,
-		feeFloorBPS: feeFloorBPS,
+		c1Conn:                      c1,
+		c2Conn:                      c2,
+		c6Conn:                      c6,
+		timeout:                     timeout,
+		feeFloorBPS:                 feeFloorBPS,
+		failureProbabilityThreshold: fpThreshold,
 	}, nil
 }
 
@@ -143,7 +145,7 @@ func (g *GRPCClient) FanOut(ctx context.Context, event *NormalizedEvent, m *Metr
 
 	outcome := "DECLINED"
 	var feeBPS *float64
-	if fp <= 0.152 && !c6Res.AMLBlock && c1Res.Err == nil {
+	if fp <= g.failureProbabilityThreshold && !c6Res.AMLBlock && c1Res.Err == nil {
 		// Above-threshold: call C2 for PD + fee computation
 		start := time.Now()
 		bps, err := g.callC2(callCtx, event, fp)

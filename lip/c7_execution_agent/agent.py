@@ -332,9 +332,13 @@ class ExecutionAgent:
                 corridor = payment_context.get("corridor", "UNKNOWN")
                 is_stressed = self.stress_detector.is_stressed(corridor) if self.stress_detector else False
 
-                review_reason = f"PD {pd_score:.3f} exceeds review threshold {pd_limit}"
-                if is_stressed:
+                anomaly_flagged = payment_context.get("anomaly_flagged", False)
+                if anomaly_flagged:
+                    review_reason = f"C6 AML anomaly alert for corridor {corridor}. EU AI Act Art.14 human oversight mandatory."
+                elif is_stressed:
                     review_reason = f"STRESS_REGIME detected in corridor {corridor}. Manual review mandatory."
+                else:
+                    review_reason = f"PD {pd_score:.3f} exceeds review threshold {pd_limit}"
 
                 req = self.human_override.request_override(
                     uetr=uetr,

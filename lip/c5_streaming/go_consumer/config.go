@@ -51,7 +51,8 @@ type Config struct {
 	DLQBackoffBase time.Duration
 
 	// Canonical constants (QUANT-governed; mirror lip/common/constants.py)
-	FeeFloorBPS float64
+	FeeFloorBPS                  float64
+	C1FailureProbabilityThreshold float64
 
 	// Observability
 	MetricsAddr    string // :9090
@@ -92,7 +93,8 @@ func LoadConfig() (*Config, error) {
 		DLQMaxRetries:  envInt("DLQ_MAX_RETRIES", 3),
 		DLQBackoffBase: envDuration("DLQ_BACKOFF_BASE_MS", 100) * time.Millisecond,
 
-		FeeFloorBPS: envFloat("FEE_FLOOR_BPS", 300.0),
+		FeeFloorBPS:                  envFloat("FEE_FLOOR_BPS", 300.0),
+		C1FailureProbabilityThreshold: envFloat("C1_FAILURE_PROBABILITY_THRESHOLD", 0.110),
 
 		MetricsAddr: envOrDefault("METRICS_ADDR", ":9090"),
 		LogLevel:    envOrDefault("LOG_LEVEL", "info"),

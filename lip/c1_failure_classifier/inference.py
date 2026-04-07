@@ -16,16 +16,17 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 from pydantic import ValidationError
 
+from lip.common.constants import C1_FAILURE_PROBABILITY_THRESHOLD
+
 from .embeddings import CorridorEmbeddingPipeline
 from .features import TabularFeatureEngineer
 from .graph_builder import BICGraphBuilder
 from .inference_types import ClassifyError, ClassifyRequest, ClassifyResponse
 from .model import ClassifierModel
 
-# F2-optimal threshold (τ* = 0.110) — calibrated from 10M corpus retraining
-# (2M sample, 20 corridors, isotonic calibration, ECE=0.0687). Kept as literal
-# to avoid circular import with pipeline.py.
-_DEFAULT_THRESHOLD: float = 0.110
+# F2-optimal threshold sourced from canonical constants (single source of truth).
+# Go consumer must use the same value via C1_FAILURE_PROBABILITY_THRESHOLD env var.
+_DEFAULT_THRESHOLD: float = C1_FAILURE_PROBABILITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
