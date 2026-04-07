@@ -54,8 +54,14 @@ C8 License Manager — HMAC token enforcement (cross-cutting)
 
 ## Documentation
 
+> **New here? Start with [`docs/INDEX.md`](docs/INDEX.md).** It is the role-based front door (banker / developer / investor / compliance / patent counsel / new team member) and tells you exactly which files to read in what order. The full EPG decision register lives in [`docs/decisions/`](docs/decisions/README.md). Critical-path blockers to pilot launch are tracked in [`docs/OPEN_BLOCKERS.md`](docs/OPEN_BLOCKERS.md).
+
 | File | Description |
 |------|-------------|
+| [`docs/INDEX.md`](docs/INDEX.md) | **Front door.** Role-based reading paths and full doc map across the three documentation layers |
+| [`docs/codebase/README.md`](docs/codebase/README.md) | **Codebase reference.** Every substantive subsystem in `lip/` — orchestrator, common, configs, api, integrity, risk, P5 cascade, P10 regulatory data, C9, dgen, compliance, tests, scripts |
+| [`docs/decisions/README.md`](docs/decisions/README.md) | EPG-XX decision register — every operative architectural and policy decision, with status, owner, and rationale |
+| [`docs/OPEN_BLOCKERS.md`](docs/OPEN_BLOCKERS.md) | Critical-path blockers to pilot launch (legal / contractual / patent — zero engineering blockers as of 2026-03-22) |
 | [`docs/architecture.md`](docs/architecture.md) | Algorithm 1 step-by-step, state machines, canonical constants, Redis/Kafka maps, patent claims |
 | [`docs/api-reference.md`](docs/api-reference.md) | All Pydantic schemas (C1–C8), fee formula warning, DecisionLogEntry retention |
 | [`docs/compliance.md`](docs/compliance.md) | SR 11-7, EU AI Act Art.9/13/14/17/61, DORA Art.30, AML controls, data privacy |
