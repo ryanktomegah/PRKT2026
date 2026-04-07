@@ -29,7 +29,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: c7-agent
-          image: lip/c7-execution-agent:latest
+          image: lip/c7-execution-agent:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: Never  # Bank-side: pre-pulled images only (zero outbound)
           ports:
             - containerPort: 8080

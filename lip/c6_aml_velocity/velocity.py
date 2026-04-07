@@ -107,11 +107,11 @@ for _, member in ipairs(entries) do
     end
 end
 
-if dollar_cap ~= 0 and vol + candidate > dollar_cap then
+if dollar_cap > 0 and vol + candidate > dollar_cap then
     return {'0', 'DOLLAR_CAP_EXCEEDED', tostring(vol), tostring(cnt)}
 end
 
-if count_cap ~= 0 and cnt + 1 > count_cap then
+if count_cap > 0 and cnt + 1 > count_cap then
     return {'0', 'COUNT_CAP_EXCEEDED', tostring(vol), tostring(cnt)}
 end
 

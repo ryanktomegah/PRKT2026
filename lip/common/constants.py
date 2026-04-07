@@ -12,10 +12,21 @@ FAILURE_RATE_UPSIDE       = Decimal("0.040")   # 4.0%
 # ── Fee parameters ────────────────────────────────────────────────────────────
 FEE_FLOOR_BPS              = Decimal("300")    # 300 bps annualized floor
 FEE_FLOOR_PER_7DAY_CYCLE   = Decimal("0.000575")  # 0.0575% per 7-day cycle
+# Maximum multiplier for conformal uncertainty fee adjustment (QUANT sign-off
+# required to change). Caps the upward adjustment from prediction interval
+# width so economically unreasonable fees are never issued.
+CONFORMAL_UNCERTAINTY_MAX_MULTIPLIER = 2.0
 
 # ── Latency targets ───────────────────────────────────────────────────────────
 LATENCY_P50_TARGET_MS = 45   # Architecture Spec v1.2 — p50 inference budget
 LATENCY_P99_TARGET_MS = 94   # Architecture Spec v1.2 — canonical end-to-end SLO
+
+# ── C1 failure classifier ─────────────────────────────────────────────────────
+# F2-optimal threshold (τ*) calibrated from 10M corpus retraining.
+# Payments with failure_probability >= this threshold are flagged as
+# above-threshold and eligible for loan offers.
+# QUANT + ARIA must sign off on any change — affects offer volume and risk.
+C1_FAILURE_PROBABILITY_THRESHOLD = 0.110
 
 # ── ML performance targets ────────────────────────────────────────────────────
 ML_BASELINE_AUC = Decimal("0.739")

@@ -49,7 +49,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: c4-dispute
-          image: lip/c4-dispute:latest
+          image: lip/c4-dispute:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -131,7 +131,7 @@ spec:
     spec:
       containers:
         - name: c4-dispute
-          image: lip/c4-dispute:latest
+          image: lip/c4-dispute:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

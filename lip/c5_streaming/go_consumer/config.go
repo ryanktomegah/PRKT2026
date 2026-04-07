@@ -50,6 +50,10 @@ type Config struct {
 	DLQMaxRetries  int
 	DLQBackoffBase time.Duration
 
+	// Canonical constants (QUANT-governed; mirror lip/common/constants.py)
+	FeeFloorBPS                  float64
+	C1FailureProbabilityThreshold float64
+
 	// Observability
 	MetricsAddr    string // :9090
 	LogLevel       string
@@ -88,6 +92,9 @@ func LoadConfig() (*Config, error) {
 		PollTimeoutMs:  envInt("POLL_TIMEOUT_MS", 1000),
 		DLQMaxRetries:  envInt("DLQ_MAX_RETRIES", 3),
 		DLQBackoffBase: envDuration("DLQ_BACKOFF_BASE_MS", 100) * time.Millisecond,
+
+		FeeFloorBPS:                  envFloat("FEE_FLOOR_BPS", 300.0),
+		C1FailureProbabilityThreshold: envFloat("C1_FAILURE_PROBABILITY_THRESHOLD", 0.110),
 
 		MetricsAddr: envOrDefault("METRICS_ADDR", ":9090"),
 		LogLevel:    envOrDefault("LOG_LEVEL", "info"),
@@ -191,6 +198,18 @@ func envInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+func envFloat(key string, def float64) float64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return def
+	}
+	return f
 }
 
 func envDuration(key string, defMs int64) time.Duration {

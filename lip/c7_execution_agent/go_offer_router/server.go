@@ -271,6 +271,9 @@ func (s *OfferRouterServer) Shutdown() {
 
 // handleTriggerOffer registers a new offer and spawns a goroutine to manage it.
 func (s *OfferRouterServer) handleTriggerOffer(ctx context.Context, body []byte) ([]byte, error) {
+	if ctx.Err() != nil {
+		return errorResp("client context cancelled before processing")
+	}
 	var req TriggerOfferRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		return errorResp(fmt.Sprintf("decode TriggerOfferRequest: %v", err))
@@ -341,6 +344,9 @@ func (s *OfferRouterServer) handleTriggerOffer(ctx context.Context, body []byte)
 
 // handleAcceptOffer delivers an ELO acceptance signal to the offer goroutine.
 func (s *OfferRouterServer) handleAcceptOffer(ctx context.Context, body []byte) ([]byte, error) {
+	if ctx.Err() != nil {
+		return errorResp("client context cancelled before processing")
+	}
 	var req AcceptOfferRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		return errorResp(fmt.Sprintf("decode AcceptOfferRequest: %v", err))
@@ -372,6 +378,9 @@ func (s *OfferRouterServer) handleAcceptOffer(ctx context.Context, body []byte) 
 
 // handleRejectOffer delivers an ELO rejection signal to the offer goroutine.
 func (s *OfferRouterServer) handleRejectOffer(ctx context.Context, body []byte) ([]byte, error) {
+	if ctx.Err() != nil {
+		return errorResp("client context cancelled before processing")
+	}
 	var req RejectOfferRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		return errorResp(fmt.Sprintf("decode RejectOfferRequest: %v", err))
@@ -409,6 +418,9 @@ func (s *OfferRouterServer) handleRejectOffer(ctx context.Context, body []byte) 
 
 // handleCancelOffer cancels an in-flight offer.
 func (s *OfferRouterServer) handleCancelOffer(ctx context.Context, body []byte) ([]byte, error) {
+	if ctx.Err() != nil {
+		return errorResp("client context cancelled before processing")
+	}
 	var req CancelOfferRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		return errorResp(fmt.Sprintf("decode CancelOfferRequest: %v", err))

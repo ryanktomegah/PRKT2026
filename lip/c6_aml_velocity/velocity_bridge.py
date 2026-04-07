@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import logging
 import os
-import warnings
 from decimal import Decimal
 from typing import Optional
 
@@ -51,14 +50,13 @@ try:
 except ImportError:
     _rust = None  # type: ignore[assignment]
     _RUST_AVAILABLE = False
-    warnings.warn(
+    logger.critical(
         "lip_c6_rust_velocity Rust extension not found. "
-        "Falling back to pure-Python C6 velocity counters. "
+        "Falling back to pure-Python C6 velocity counters — "
+        "LATENCY WILL BE DEGRADED. "
         "Build the Rust extension with: "
         "cd lip/c6_aml_velocity/rust_velocity && maturin build --release && "
         "pip install target/wheels/*.whl",
-        UserWarning,
-        stacklevel=2,
     )
 
 # ---------------------------------------------------------------------------

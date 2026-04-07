@@ -333,6 +333,57 @@ class TestCrossLicenseeSaltRotationDualHash:
         assert len(agg._store) == 2  # volume + count (current salt only)
 
 
+class TestVelocityUnlimitedCapRegression:
+    """EPG-16 regression: cap=0 means unlimited — transactions must NOT be blocked.
+
+    This tests the in-memory path directly.  The Lua script at
+    velocity.py:110-114 had the same bug (missing ``> 0`` guard) and was
+    fixed in the same commit; the Lua string is validated by
+    ``test_lua_script_has_cap_zero_guard`` below.
+    """
+
+    def test_dollar_cap_zero_means_unlimited(self):
+        """With dollar_cap=0 (EPG-16 default), any amount should pass."""
+        checker = VelocityChecker(salt=_SALT)
+        # Record a large volume first
+        checker.record("entity_unlim", Decimal("999999999"), "bene1")
+        result = checker.check(
+            "entity_unlim", Decimal("1"), "bene2",
+            dollar_cap_override=Decimal("0"),
+        )
+        assert result.passed is True, (
+            f"dollar_cap=0 should mean unlimited, but got blocked: {result.reason}"
+        )
+
+    def test_count_cap_zero_means_unlimited(self):
+        """With count_cap=0 (EPG-16 default), any count should pass."""
+        checker = VelocityChecker(salt=_SALT)
+        for i in range(200):
+            checker.record("entity_cnt_unlim", Decimal("1"), f"bene_{i}")
+        result = checker.check(
+            "entity_cnt_unlim", Decimal("1"), "bene_new",
+            count_cap_override=0,
+        )
+        assert result.passed is True, (
+            f"count_cap=0 should mean unlimited, but got blocked: {result.reason}"
+        )
+
+    def test_lua_script_has_cap_zero_guard(self):
+        """Verify the Lua script text contains the ``> 0`` guard for both caps.
+
+        This catches future regressions where someone edits the Lua script
+        and accidentally drops the guard.  It does NOT require a Redis instance.
+        """
+        from lip.c6_aml_velocity.velocity import _ATOMIC_CHECK_RECORD_LUA
+
+        assert "dollar_cap > 0 and vol + candidate > dollar_cap" in _ATOMIC_CHECK_RECORD_LUA, (
+            "Lua script missing dollar_cap > 0 guard (EPG-16: 0 = unlimited)"
+        )
+        assert "count_cap > 0 and cnt + 1 > count_cap" in _ATOMIC_CHECK_RECORD_LUA, (
+            "Lua script missing count_cap > 0 guard (EPG-16: 0 = unlimited)"
+        )
+
+
 class TestVelocityCheckAndRecordTOCTOU:
     """EPG-25 regression: concurrent check_and_record must not allow cap overruns."""
 
