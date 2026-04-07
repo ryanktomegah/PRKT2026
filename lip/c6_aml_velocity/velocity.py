@@ -42,8 +42,6 @@ from typing import Deque, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-DOLLAR_CAP_USD = Decimal("0")  # EPG-16: 0 = unlimited; set per-licensee via C8 token
-COUNT_CAP = 0                  # EPG-16: 0 = unlimited; set per-licensee via C8 token
 BENEFICIARY_CONCENTRATION_THRESHOLD = Decimal("0.80")
 
 # Exponential decay half-life (hours) for velocity scoring — transactions older
@@ -506,8 +504,8 @@ class VelocityChecker:
         else:
             conc = None
 
-        dollar_cap = dollar_cap_override if dollar_cap_override is not None else DOLLAR_CAP_USD
-        count_cap = count_cap_override if count_cap_override is not None else COUNT_CAP
+        dollar_cap = dollar_cap_override if dollar_cap_override is not None else Decimal("0")
+        count_cap = count_cap_override if count_cap_override is not None else 0
 
         # EPG-16: 0 means unlimited — skip cap enforcement entirely.
         if dollar_cap > 0 and vol + amount > dollar_cap:
@@ -605,8 +603,8 @@ class VelocityChecker:
         """
         entity_hash = self._hash_entity(entity_id)
         bene_hash = self._hash_beneficiary(beneficiary_id)
-        dollar_cap = dollar_cap_override if dollar_cap_override is not None else DOLLAR_CAP_USD
-        count_cap_val = count_cap_override if count_cap_override is not None else COUNT_CAP
+        dollar_cap = dollar_cap_override if dollar_cap_override is not None else Decimal("0")
+        count_cap_val = count_cap_override if count_cap_override is not None else 0
 
         if self._redis is not None:
             # --- Redis path: atomic Lua check-and-record -------------------------

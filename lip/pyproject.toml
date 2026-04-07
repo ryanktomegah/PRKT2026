@@ -35,7 +35,7 @@ dependencies = [
     # Storage
     "redis>=5.0.0",
     # YAML config loading
-    "pyyaml>=6.0",
+    "pyyaml>=6.0,<7.0",
 ]
 
 [project.optional-dependencies]
@@ -124,8 +124,20 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+select = ["E", "F", "W", "I", "S"]
+ignore = [
+    "E501",
+    "S101",   # assert — used for invariant checks
+    "S105",   # hardcoded password in assignment — false positives on default args
+    "S106",   # hardcoded password in function arg — false positives on default args
+    "S108",   # hardcoded temp file — /tmp references in comments/docs
+    "S110",   # try-except-pass — acceptable in fire-and-forget cleanup
+    "S310",   # audit URL open — all HTTP client calls are to controlled endpoints
+    "S311",   # pseudo-random — non-security use (test data, shuffling)
+    "S314",   # XML parsing — no untrusted XML input
+    "S324",   # insecure hash — hashlib used for non-security checksums
+    "S603",   # subprocess call — controlled inputs only
+]
 
 [tool.mypy]
 python_version = "3.10"

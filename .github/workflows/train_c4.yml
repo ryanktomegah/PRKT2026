@@ -104,7 +104,7 @@ jobs:
         with:
           name: c4-corpus-n${{ github.event.inputs.n_records }}-seed${{ github.event.inputs.seed }}
           path: artifacts/synthetic/c4_corpus_*.json
-          retention-days: 30
+          retention-days: 7
 
       - name: GPU training instructions
         run: |

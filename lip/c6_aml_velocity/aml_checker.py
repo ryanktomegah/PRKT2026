@@ -22,7 +22,7 @@ from typing import List, Optional
 
 from .sanctions import SanctionsScreener
 from .tenant_velocity import StructuringDetector, TenantVelocityChecker
-from .velocity import DOLLAR_CAP_USD, RollingWindow, VelocityChecker, VelocityResult
+from .velocity import RollingWindow, VelocityChecker, VelocityResult
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +276,7 @@ class AMLChecker:
                 # Check cross-processor structuring (soft flag)
                 structuring_result = self._structuring_detector.check(
                     bpi_hash,
-                    dollar_cap=dollar_cap_override if dollar_cap_override is not None else DOLLAR_CAP_USD,
+                    dollar_cap=dollar_cap_override if dollar_cap_override is not None else Decimal("0"),
                 )
                 if structuring_result.flagged:
                     structuring_flagged = True

@@ -10,6 +10,7 @@ Three-entity role mapping:
 import hashlib
 import logging
 import os
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
@@ -64,6 +65,7 @@ class SaltRotationManager:
         self._redis = redis_client
         self._current: Optional[SaltRecord] = None
         self._previous: Optional[SaltRecord] = None
+        self._lock = threading.Lock()
         self._init_salt()
 
     def _init_salt(self) -> None:
@@ -108,21 +110,26 @@ class SaltRotationManager:
         return self._previous.salt
 
     def rotate_salt(self) -> Tuple[bytes, bytes]:
-        """Generates new salt, promotes current to previous. Returns (new, old)."""
-        old_salt = self.get_current_salt()
-        new_salt = os.urandom(32)
-        now = datetime.now(tz=timezone.utc)
-        self._previous = self._current
-        self._previous.is_active = False  # type: ignore[union-attr]
-        self._store_salt("previous", self._previous)
-        self._current = SaltRecord(
-            salt=new_salt,
-            created_at=now,
-            expires_at=now + timedelta(days=ROTATION_INTERVAL_DAYS),
-        )
-        self._store_salt("current", self._current)
-        logger.info("Salt rotated at %s", now.isoformat())
-        return new_salt, old_salt
+        """Generates new salt, promotes current to previous. Returns (new, old).
+
+        Thread-safe: serialised via self._lock to prevent concurrent rotations
+        from corrupting the current/previous salt chain.
+        """
+        with self._lock:
+            old_salt = self.get_current_salt()
+            new_salt = os.urandom(32)
+            now = datetime.now(tz=timezone.utc)
+            self._previous = self._current
+            self._previous.is_active = False  # type: ignore[union-attr]
+            self._store_salt("previous", self._previous)
+            self._current = SaltRecord(
+                salt=new_salt,
+                created_at=now,
+                expires_at=now + timedelta(days=ROTATION_INTERVAL_DAYS),
+            )
+            self._store_salt("current", self._current)
+            logger.info("Salt rotated at %s", now.isoformat())
+            return new_salt, old_salt
 
     def is_in_overlap_period(self) -> bool:
         """True if within OVERLAP_DAYS of the last rotation."""
