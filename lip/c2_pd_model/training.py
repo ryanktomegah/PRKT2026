@@ -300,7 +300,7 @@ class PDTrainingPipeline:
                 }
                 clf = GradientBoostingClassifier(**params)
                 scores = cross_val_score(
-                    clf, X_train, y_train, cv=3, scoring="roc_auc", n_jobs=-1
+                    clf, X_train, y_train, cv=3, scoring="roc_auc", n_jobs=1
                 )
                 return float(scores.mean())
 

@@ -285,6 +285,9 @@ def test_auc_on_separable_data() -> None:
 def test_log_loss_vs_baseline() -> None:
     """Unified LightGBM log-loss < three-model (financial_ratio_pd) baseline.
 
+    Requires real LightGBM or sklearn — the LightGBMSurrogate is too simple to
+    outperform the hand-tuned financial_ratio_pd baseline on 75 features.
+
     Uses Tier-1 records with 20% default rate so the test set has ~16 positive
     labels (80 test samples × 20%), yielding a stable log-loss estimate.
     Baseline: financial_ratio_pd evaluated with current_ratio, debt_to_equity,

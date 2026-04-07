@@ -45,13 +45,14 @@ def _make_lgbm_model(random_seed: int, **params) -> Any:
             metric="auc",
             random_state=random_seed,
             verbose=-1,
-            n_jobs=-1,
+            n_jobs=1,
         )
         defaults.update(params)
         return lgb.LGBMClassifier(**defaults)  # type: ignore[arg-type]
-    except ImportError:
+    except (ImportError, OSError) as exc:
         logger.info(
-            "lightgbm not installed; falling back to sklearn GradientBoostingClassifier."
+            "lightgbm unavailable (%s); falling back to sklearn GradientBoostingClassifier.",
+            exc,
         )
         return _make_sklearn_model(random_seed, **params)
 
@@ -223,7 +224,7 @@ class PDModel:
         for seed in self.random_seeds:
             try:
                 model = _make_lgbm_model(seed, **model_params)
-            except Exception:
+            except (ImportError, OSError):
                 logger.warning(
                     "Both LightGBM and sklearn unavailable — using LightGBMSurrogate.",
                     exc_info=False,
