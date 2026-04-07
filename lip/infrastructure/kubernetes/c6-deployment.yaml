@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: c6-aml
-          image: lip/c6-aml:latest
+          image: lip/c6-aml:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

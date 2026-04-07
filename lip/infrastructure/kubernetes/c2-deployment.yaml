@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: c2-inference
-          image: lip/c2-pd-model:latest
+          image: lip/c2-pd-model:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

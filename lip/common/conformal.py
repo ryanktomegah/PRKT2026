@@ -23,7 +23,7 @@ from typing import Optional
 
 import numpy as np
 
-from lip.common.constants import FEE_FLOOR_BPS
+from lip.common.constants import CONFORMAL_UNCERTAINTY_MAX_MULTIPLIER, FEE_FLOOR_BPS
 
 logger = logging.getLogger(__name__)
 
@@ -255,5 +255,7 @@ def uncertainty_fee_adjustment(
         Adjusted fee in integer basis points, floored at FEE_FLOOR_BPS (300).
     """
     adjusted = baseline_fee_bps * (1.0 + interval_width * UNCERTAINTY_SCALE_FACTOR)
+    ceiling = baseline_fee_bps * CONFORMAL_UNCERTAINTY_MAX_MULTIPLIER
+    adjusted = min(adjusted, ceiling)
     floor = int(FEE_FLOOR_BPS)
     return max(math.ceil(adjusted), floor)

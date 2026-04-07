@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: c3-repayment
-          image: lip/c3-repayment:latest
+          image: lip/c3-repayment:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

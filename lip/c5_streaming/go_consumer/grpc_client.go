@@ -33,15 +33,16 @@ type PipelineResult struct {
 
 // GRPCClient manages connections to C1, C2, and C6 upstream Python services.
 type GRPCClient struct {
-	c1Conn  *grpc.ClientConn
-	c2Conn  *grpc.ClientConn
-	c6Conn  *grpc.ClientConn
-	timeout time.Duration
+	c1Conn      *grpc.ClientConn
+	c2Conn      *grpc.ClientConn
+	c6Conn      *grpc.ClientConn
+	timeout     time.Duration
+	feeFloorBPS float64 // QUANT canonical constant — sourced from FEE_FLOOR_BPS env
 }
 
 // NewGRPCClient dials all three upstream services. Returns an error if any
 // connection cannot be established (fail-fast at startup).
-func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration) (*GRPCClient, error) {
+func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloorBPS float64) (*GRPCClient, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
@@ -66,10 +67,11 @@ func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration) (*GRPCC
 	}
 
 	return &GRPCClient{
-		c1Conn:  c1,
-		c2Conn:  c2,
-		c6Conn:  c6,
-		timeout: timeout,
+		c1Conn:      c1,
+		c2Conn:      c2,
+		c6Conn:      c6,
+		timeout:     timeout,
+		feeFloorBPS: feeFloorBPS,
 	}, nil
 }
 
@@ -128,9 +130,13 @@ func (g *GRPCClient) FanOut(ctx context.Context, event *NormalizedEvent, m *Metr
 	fp := c1Res.FailureProbability
 	if c1Res.Err != nil {
 		fp = 1.0 // fail-closed: route to manual review
+		m.GRPCUpstreamErrors.WithLabelValues("c1").Inc()
 	}
 
 	var flags []string
+	if c6Res.Err != nil {
+		m.GRPCUpstreamErrors.WithLabelValues("c6").Inc()
+	}
 	if c6Res.AMLBlock || c6Res.Err != nil {
 		flags = append(flags, "AML_VELOCITY_BLOCK")
 	}
@@ -142,7 +148,10 @@ func (g *GRPCClient) FanOut(ctx context.Context, event *NormalizedEvent, m *Metr
 		start := time.Now()
 		bps, err := g.callC2(callCtx, event, fp)
 		m.GRPCDuration.WithLabelValues("c2").Observe(time.Since(start).Seconds())
-		if err == nil && bps >= 300 { // fee floor: 300 bps (QUANT canonical constant)
+		if err != nil {
+			m.GRPCUpstreamErrors.WithLabelValues("c2").Inc()
+		}
+		if err == nil && bps >= g.feeFloorBPS { // fee floor: QUANT canonical constant (from FEE_FLOOR_BPS env)
 			feeBPS = &bps
 			outcome = "OFFER"
 		}

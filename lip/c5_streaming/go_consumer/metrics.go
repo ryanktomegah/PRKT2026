@@ -23,6 +23,7 @@ type Metrics struct {
 	IngestionLatency  prometheus.Histogram
 	NormalizeDuration prometheus.Histogram
 	GRPCDuration      *prometheus.HistogramVec
+	GRPCUpstreamErrors *prometheus.CounterVec
 	ActiveWorkers     prometheus.Gauge
 }
 
@@ -72,6 +73,10 @@ func NewMetrics() *Metrics {
 			Name:    "c5_go_grpc_duration_seconds",
 			Help:    "gRPC call duration by upstream service (c1, c2, c6)",
 			Buckets: ingestionBuckets,
+		}, []string{"service"}),
+		GRPCUpstreamErrors: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "c5_go_grpc_upstream_errors_total",
+			Help: "Total gRPC errors from upstream services (c1, c2, c6). Non-zero rate indicates systemic outage.",
 		}, []string{"service"}),
 		ActiveWorkers: promauto.NewGauge(prometheus.GaugeOpts{
 			Name: "c5_go_active_workers",

@@ -61,10 +61,10 @@ func main() {
 	// In dry-run mode, create a no-op client so tests don't need live services.
 	var grpcClient *GRPCClient
 	if cfg.DryRun {
-		grpcClient = &GRPCClient{timeout: cfg.GRPCTimeout}
+		grpcClient = &GRPCClient{timeout: cfg.GRPCTimeout, feeFloorBPS: cfg.FeeFloorBPS}
 		log.Info("Dry-run mode: gRPC client is a no-op stub")
 	} else {
-		grpcClient, err = NewGRPCClient(cfg.GRPCC1Addr, cfg.GRPCC2Addr, cfg.GRPCC6Addr, cfg.GRPCTimeout)
+		grpcClient, err = NewGRPCClient(cfg.GRPCC1Addr, cfg.GRPCC2Addr, cfg.GRPCC6Addr, cfg.GRPCTimeout, cfg.FeeFloorBPS)
 		if err != nil {
 			log.Error("gRPC client init failed", "error", err)
 			os.Exit(1)
