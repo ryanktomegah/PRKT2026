@@ -18,12 +18,17 @@ from decimal import Decimal
 from typing import Optional
 
 from lip.c2_pd_model.fee import compute_loan_fee, compute_tiered_fee_floor
+from lip.c3_repayment_engine.rejection_taxonomy import (
+    RejectionClass,
+    get_all_codes_for_class,
+)
 from lip.c5_streaming.stress_regime_detector import StressRegimeDetector
 from lip.c8_license_manager.license_token import LicenseeContext
 from lip.common.borrower_registry import BorrowerRegistry
 from lip.common.business_calendar import currency_to_jurisdiction
 from lip.common.constants import (
     AMOUNT_VALIDATION_TOLERANCE_USD,
+    FEE_FLOOR_BPS,
     MIN_CASH_FEE_USD,
     MIN_LOAN_AMOUNT_CLASS_A_USD,
     MIN_LOAN_AMOUNT_CLASS_B_USD,
@@ -81,19 +86,14 @@ logger = logging.getLogger(__name__)
 # REX sign-off: 2026-03-18 (FATF R.18/R.20, EU AMLD6 Art.10, US BSA §1010.410)
 # CIPHER sign-off: 2026-03-18 (layering/structuring typology)
 # NOVA sign-off: 2026-03-18 (C3 repayment mechanics — UETR settlement dependency)
-_COMPLIANCE_HOLD_CODES: frozenset[str] = frozenset({
-    # KYC / identity failures — bank cannot identify who is sending or receiving
-    "RR01",   # MissingDebtorAccountOrIdentification — debtor account unknown (EPG-01)
-    "RR02",   # MissingDebtorNameOrAddress — debtor identity incomplete (EPG-01)
-    "RR03",   # MissingCreditorNameOrAddress — creditor identity incomplete (EPG-01)
-    # Compliance prohibition — bank's own rules prohibit this transaction
-    "RR04",   # RegulatoryReason — bank flagged for regulatory review (EPG-07)
-    "DNOR",   # DebtorNotAllowedToSend — bank compliance prohibited this sender (EPG-02)
-    "CNOR",   # CreditorNotAllowedToReceive — bank prohibited receiving entity (EPG-03)
-    "AG01",   # TransactionForbidden — bank explicitly forbidden this transaction (EPG-08)
-    # Legal / court hold
-    "LEGL",   # LegalDecision — court order, garnishment, or sanctions legal hold (EPG-08)
-})
+# Layer 2 defense-in-depth: all BLOCK-class codes from rejection_taxonomy.py.
+# Sourced from the single-source-of-truth taxonomy rather than duplicated here.
+# Includes compliance holds (RR01-RR04, DNOR, CNOR, AG01, LEGL) AND dispute/fraud
+# (DISP, DUPL, FRAD, FRAU). Broader than strictly necessary — intentionally so,
+# because Layer 2 is a safety net and must catch any BLOCK code that reaches C7.
+_COMPLIANCE_HOLD_CODES: frozenset[str] = frozenset(
+    get_all_codes_for_class(RejectionClass.BLOCK)
+)
 
 
 @dataclass
@@ -251,7 +251,7 @@ class ExecutionAgent:
             # Use BLOCK status for unenrolled borrowers as it's a policy-based hard gate
             failure_prob = float(payment_context.get("failure_probability", 0.0))
             pd_score = float(payment_context.get("pd_score", 0.0))
-            fee_bps = int(payment_context.get("fee_bps", 300))
+            fee_bps = int(payment_context.get("fee_bps", int(FEE_FLOOR_BPS)))
             loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
             dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
             aml_passed = bool(payment_context.get("aml_passed", True))
@@ -270,7 +270,7 @@ class ExecutionAgent:
 
         failure_prob = float(payment_context.get("failure_probability", 0.0))
         pd_score = float(payment_context.get("pd_score", 0.0))
-        fee_bps = int(payment_context.get("fee_bps", 300))
+        fee_bps = int(payment_context.get("fee_bps", int(FEE_FLOOR_BPS)))
         loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
         dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
         aml_passed = bool(payment_context.get("aml_passed", True))

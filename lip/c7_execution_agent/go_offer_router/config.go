@@ -39,6 +39,10 @@ type Config struct {
 
 	// gRPC max message size in bytes (default 4 MiB)
 	GRPCMaxMsgSize int
+
+	// TTL for resolved offer entries before eviction (default 1h).
+	// Keeps the resolved map bounded for long-running processes.
+	ResolvedTTL time.Duration
 }
 
 // LoadConfig reads all settings from environment variables, applying
@@ -53,6 +57,7 @@ func LoadConfig() (*Config, error) {
 		DefaultExpirySeconds: 120,
 		MaxConcurrentOffers:  0,
 		ShutdownTimeout:      30 * time.Second,
+		ResolvedTTL:          1 * time.Hour,
 	}
 
 	if v := os.Getenv("C7_MAX_CONCURRENT_OFFERS"); v != "" {

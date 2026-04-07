@@ -137,4 +137,4 @@ jobs:
           path: |
             artifacts/models/c2_model.pkl
             artifacts/models/c2_training_report.json
-          retention-days: 30
+          retention-days: 7

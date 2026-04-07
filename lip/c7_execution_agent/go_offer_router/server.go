@@ -230,7 +230,41 @@ func NewOfferRouterServer(cfg *Config, ks *KillSwitchReader, metrics *Metrics, l
 	// This matches the C5 Go consumer pattern — no protobuf stubs required.
 	registerRawService(s.grpcServer, s)
 
+	// Background goroutine: evict stale resolved entries to prevent unbounded growth.
+	go s.evictResolvedLoop()
+
 	return s
+}
+
+// evictResolvedLoop periodically removes entries older than cfg.ResolvedTTL
+// from the resolved map. Runs until shutdownCh is closed.
+func (s *OfferRouterServer) evictResolvedLoop() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.shutdownCh:
+			return
+		case <-ticker.C:
+			s.evictStaleResolved()
+		}
+	}
+}
+
+func (s *OfferRouterServer) evictStaleResolved() {
+	cutoff := time.Now().Add(-s.cfg.ResolvedTTL)
+	s.resolvedMu.Lock()
+	defer s.resolvedMu.Unlock()
+	evicted := 0
+	for id, entry := range s.resolved {
+		if entry.resolvedAt.Before(cutoff) {
+			delete(s.resolved, id)
+			evicted++
+		}
+	}
+	if evicted > 0 {
+		s.log.Info("evicted stale resolved entries", "count", evicted, "remaining", len(s.resolved))
+	}
 }
 
 // Serve starts the gRPC listener and blocks until Shutdown is called.

@@ -58,6 +58,7 @@ class DecisionLogEntryData:
     licensee_id: str = ""        # C8 license: identifies which BPI licensee generated this entry
     tenant_id: str = ""             # P3: processor tenant for per-tenant audit partitioning
     entry_signature: str = ""    # HMAC-SHA256; populated by DecisionLogger.log()
+    prev_signature: str = ""     # Chain hash: previous entry's signature (DORA Art.30 tamper evidence)
 
 
 class DecisionLogger:
@@ -85,13 +86,18 @@ class DecisionLogger:
         # OrderedDict used as a bounded LRU: oldest entry evicted when maxsize reached.
         self._store: OrderedDict[str, DecisionLogEntryData] = OrderedDict()
         self._backend = storage_backend
+        # Chain integrity: signature of the last logged entry (DORA Art.30).
+        # Each new entry includes prev_signature, creating a tamper-evident chain.
+        self._last_signature: str = ""
 
     # ── public API ──────────────────────────────────────────────────────────
 
     def log(self, entry: DecisionLogEntryData) -> str:
         if not entry.entry_id:
             entry.entry_id = str(uuid.uuid4())
+        entry.prev_signature = self._last_signature
         entry.entry_signature = self._sign_entry(entry)
+        self._last_signature = entry.entry_signature
         # Evict oldest entry when the store is at capacity (LRU eviction).
         if len(self._store) >= self._store_maxsize and entry.entry_id not in self._store:
             self._store.popitem(last=False)

@@ -166,4 +166,4 @@ jobs:
           path: |
             artifacts/models/c6_anomaly_detector.pkl
             artifacts/models/c6_training_report.json
-          retention-days: 30
+          retention-days: 7

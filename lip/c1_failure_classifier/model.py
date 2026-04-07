@@ -485,21 +485,35 @@ class ClassifierModel:
         path:
             Directory path previously used with :meth:`save`.
         """
-        self.graphsage.load_weights(os.path.join(path, "graphsage.npz"))
-        self.tabtransformer.load_weights(os.path.join(path, "tabtransformer.npz"))
-        mlp_data = np.load(os.path.join(path, "mlp.npz"))
-        self.mlp.set_weights(dict(mlp_data))
+        required_files = ["graphsage.npz", "tabtransformer.npz", "mlp.npz"]
+        for fname in required_files:
+            fpath = os.path.join(path, fname)
+            if not os.path.exists(fpath):
+                raise FileNotFoundError(
+                    f"Required checkpoint file missing: {fpath}. "
+                    f"Model directory may be corrupt or incomplete."
+                )
+        try:
+            self.graphsage.load_weights(os.path.join(path, "graphsage.npz"))
+            self.tabtransformer.load_weights(os.path.join(path, "tabtransformer.npz"))
+            mlp_data = np.load(os.path.join(path, "mlp.npz"))
+            self.mlp.set_weights(dict(mlp_data))
+        except (ValueError, OSError, EOFError) as exc:
+            raise OSError(
+                f"Corrupt checkpoint in {path}: {exc}. "
+                f"Re-run training to regenerate model artifacts."
+            ) from exc
         lgbm_path = os.path.join(path, "lgbm.pkl")
         if os.path.exists(lgbm_path):
             import pickle
             with open(lgbm_path, "rb") as f:
-                self.lgbm_model = pickle.load(f)
+                self.lgbm_model = pickle.load(f)  # noqa: S301
         # Restore calibrator if previously saved
         cal_path = os.path.join(path, "calibrator.pkl")
         if os.path.exists(cal_path):
             import pickle
             with open(cal_path, "rb") as f:
-                self.calibrator = pickle.load(f)
+                self.calibrator = pickle.load(f)  # noqa: S301
             logger.info("Calibrator loaded (fitted=%s)", self.calibrator._is_fitted)
         logger.info("ClassifierModel loaded from %s", path)
 

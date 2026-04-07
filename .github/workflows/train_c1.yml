@@ -167,4 +167,4 @@ jobs:
             artifacts/c1_trained/f2_threshold.txt
             artifacts/production_data/synthesis_parameters.json
             artifacts/production_data/data_card.json
-          retention-days: 30
+          retention-days: 7
