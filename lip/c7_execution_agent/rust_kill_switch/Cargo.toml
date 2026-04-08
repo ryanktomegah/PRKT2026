@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # PyO3: Python bindings — feature-gated so the lib still compiles without Python headers
-pyo3 = { version = "0.21", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.24", features = ["extension-module"], optional = true }
 
 # signal_hook: async-signal-safe AtomicBool flag registration
 signal-hook = "0.3"
