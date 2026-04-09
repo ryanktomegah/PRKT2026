@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
+from lip.common.block_codes import ALL_BLOCK_CODES as _BLOCK_REJECTION_CODES
 from lip.common.constants import P10_TELEMETRY_MIN_AMOUNT_USD
 
 logger = logging.getLogger(__name__)
@@ -20,15 +21,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # P10 Sprint 6 — telemetry eligibility constants
 # ---------------------------------------------------------------------------
-# Hardcoded to avoid circular import: event_normalizer → c3_repayment_engine →
-# c2_pd_model.fee → p5_cascade_engine → c5_streaming → event_normalizer.
-# Canonical source: lip/c3_repayment_engine/rejection_taxonomy.py (BLOCK class).
-_BLOCK_REJECTION_CODES: frozenset[str] = frozenset({
-    "DNOR", "CNOR",                     # prohibited-party (EPG-02/03)
-    "RR01", "RR02", "RR03", "RR04",     # KYC / regulatory holds (EPG-01/07/08)
-    "AG01", "LEGL",                      # legal / bank prohibition
-    "DISP", "DUPL", "FRAD", "FRAU",     # fraud / dispute
-})
+# BLOCK-class rejection codes are loaded from lip.common.block_codes (B6-01).
+# That module is the single source of truth shared across Python, Rust, and Go;
+# the cross-language drift test (B13-02) keeps every consumer in sync.
+# lip.common.block_codes is import-side-effect-free aside from JSON load, so it
+# does not reintroduce the historical event_normalizer → c3 → c2 → p5 → c5
+# circular import.
 
 # Sentinel BIC used by test/sandbox transactions across all rails.
 _TEST_BIC = "XXXXXXXXXXX"
