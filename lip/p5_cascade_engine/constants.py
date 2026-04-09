@@ -5,6 +5,8 @@ All thresholds require QUANT sign-off to change (per P5 blueprint §7.6).
 """
 from decimal import Decimal
 
+from lip.common.constants import FEE_FLOOR_BPS
+
 # ── Cascade propagation thresholds (QUANT sign-off required) ─────────────────
 CASCADE_INTERVENTION_THRESHOLD = 0.70
 """Minimum cascade probability to include a node in intervention plan."""
@@ -36,8 +38,16 @@ CORPORATE_NODE_FEATURE_DIM = 8
 """8-dimensional corporate node feature vector."""
 
 # ── Intervention optimizer ──────────────────────────────────────────────────
-INTERVENTION_FEE_RATE_BPS = 200
-"""Default bridge loan fee (bps annualised) for cost estimation."""
+INTERVENTION_FEE_RATE_BPS = FEE_FLOOR_BPS
+"""Default bridge loan fee (bps annualised) for cost estimation.
+
+Bound to the canonical ``FEE_FLOOR_BPS`` (300 bps). The intervention
+optimiser must never estimate costs below the fee floor — doing so would
+make bridge loans appear cheaper than they can ever actually be priced,
+overstating cost-efficiency and biasing the greedy selection.
+
+QUANT sign-off is required to decouple this from ``FEE_FLOOR_BPS``.
+"""
 
 # ── Cascade alert severity thresholds ───────────────────────────────────────
 CASCADE_ALERT_EXCLUSIVITY_HOURS = 4
