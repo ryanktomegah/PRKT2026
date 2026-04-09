@@ -156,7 +156,11 @@ class RegulatoryAnonymizer:
             # Step 5-6: Apply differential privacy (or serve stale)
             cache_key = f"{corridor}:{period_label}"
 
-            if not self._budget.has_budget(corridor, self._epsilon):
+            # B8-01: sequential composition — releasing 3 noised statistics
+            # costs 3*epsilon, not 1*epsilon. Check budget for the true cost.
+            epsilon_per_batch = self._epsilon * 3
+
+            if not self._budget.has_budget(corridor, epsilon_per_batch):
                 # Budget exhausted: serve cached stale result
                 if cache_key in self._cache:
                     stale_result = self._cache[cache_key]
@@ -190,17 +194,22 @@ class RegulatoryAnonymizer:
                     ))
                 continue
 
-            # Apply Laplace noise
+            # B8-01: Apply Laplace noise to all 3 statistics, each deducting
+            # epsilon via _apply_laplace_noise_for_corridor (sequential
+            # composition: total cost = 3 * epsilon per batch).
             sensitivity = 1.0 / total_payments if total_payments > 0 else 1.0
             noised_rate = self._apply_laplace_noise_for_corridor(
                 corridor, raw_failure_rate, sensitivity,
             )
-            # Noise the counts proportionally
             noised_total = max(0, round(
-                self._apply_laplace_noise(float(total_payments), 1.0),
+                self._apply_laplace_noise_for_corridor(
+                    corridor, float(total_payments), 1.0,
+                ),
             ))
             noised_failed = max(0, round(
-                self._apply_laplace_noise(float(failed_payments), 1.0),
+                self._apply_laplace_noise_for_corridor(
+                    corridor, float(failed_payments), 1.0,
+                ),
             ))
             # Ensure failed <= total
             noised_failed = min(noised_failed, noised_total)

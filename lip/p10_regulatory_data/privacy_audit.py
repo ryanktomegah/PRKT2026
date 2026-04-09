@@ -336,10 +336,12 @@ def generate_audit_report(
     dp_ver = verify_dp_distribution(anon2, epsilon=0.5, sensitivity=1.0)
 
     # Budget audit
+    # B8-01: sequential composition — each batch releases 3 noised statistics,
+    # so the per-batch cost is 3 * epsilon, not 1 * epsilon.
     budget_result = verify_budget_composition(
         anon2._budget,
         expected_queries={c: 1 for c in {r.corridor for r in anon_results}},
-        epsilon_per_query=0.5,
+        epsilon_per_query=0.5 * 3,
     )
 
     # Overall verdict
