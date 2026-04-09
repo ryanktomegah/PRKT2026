@@ -130,21 +130,80 @@ func (c *Consumer) Run(ctx context.Context) error {
 	}
 }
 
+// processMessageResult is the outcome of processing a single Kafka message.
+//
+// B6-02: before this type existed, processMessage called commitOffset directly
+// on every code path — including normalization, fan-out, and produce errors.
+// That silently broke the exactly-once claim: a transient C1/C2 fan-out error
+// committed the offset anyway, so the message was never redelivered on restart
+// and was lost to the DLQ (assuming DLQ routing even succeeded). The reviewer's
+// recommended fix is "never commit on error; let rebalance redeliver." This
+// enum makes the commit decision a single, centralised fact — workerLoop calls
+// commitOffset iff result.shouldCommit() returns true — and shouldCommit is a
+// pure function that is unit-tested against the B6-02 invariant.
+type processMessageResult int
+
+const (
+	// resultSuccess — full pipeline completed; offset may advance.
+	resultSuccess processMessageResult = iota
+	// resultNullValue — Kafka tombstone/null-value record; nothing to process
+	// but the offset may advance so the partition doesn't stall on tombstones.
+	resultNullValue
+	// resultNormalizeError — raw bytes failed to decode; routed to DLQ.
+	// Offset is NOT committed; rebalance will redeliver. Poison-pill handling
+	// (max retries then skip-and-commit) is tracked as a Phase 2 follow-up;
+	// the B6-02 fix is deliberately conservative and prefers partition stall
+	// over silent data loss.
+	resultNormalizeError
+	// resultFanOutError — C1/C2/C6 gRPC fan-out failed; routed to DLQ.
+	// Almost always transient; do NOT commit — rebalance will retry.
+	resultFanOutError
+	// resultProduceError — output-topic produce failed after retries; routed
+	// to DLQ. Do NOT commit; rebalance will retry from the same offset.
+	resultProduceError
+)
+
+// shouldCommit is the B6-02 rule: only successes and null-value tombstones
+// may advance the Kafka offset. Every error path returns false so the message
+// is redelivered on the next rebalance (fail-closed exactly-once semantics).
+//
+// Changing this function MUST be accompanied by a review of the commit-path
+// unit tests in consumer_test.go and the pytest grep guard in
+// lip/tests/test_c5_consumer_commit_on_error.py (B6-02 regression test).
+func (r processMessageResult) shouldCommit() bool {
+	switch r {
+	case resultSuccess, resultNullValue:
+		return true
+	default:
+		return false
+	}
+}
+
 // workerLoop processes messages from msgCh until the channel is closed.
+//
+// B6-02: the commit decision is centralised here, NOT inside processMessage.
+// processMessage reports its outcome and workerLoop consults shouldCommit.
+// This is the only place in the consumer that is allowed to call
+// commitOffset — the pytest grep guard enforces that.
 func (c *Consumer) workerLoop(ctx context.Context) {
 	for msg := range c.msgCh {
 		start := time.Now()
-		c.processMessage(ctx, msg)
+		result := c.processMessage(ctx, msg)
+		if result.shouldCommit() {
+			c.commitOffset(msg)
+		}
 		c.metrics.IngestionLatency.Observe(time.Since(start).Seconds())
 	}
 }
 
-// processMessage implements the normalize → fan-out → produce → commit pipeline.
-func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) {
+// processMessage implements the normalize → fan-out → produce pipeline and
+// returns a processMessageResult describing the outcome. It routes errored
+// messages to the DLQ but does NOT commit the Kafka offset itself — the
+// caller (workerLoop) commits iff result.shouldCommit() returns true.
+func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) processMessageResult {
 	if msg.Value == nil {
 		c.log.Warn("Null-value message — skipping", "offset", msg.TopicPartition.Offset)
-		c.commitOffset(msg)
-		return
+		return resultNullValue
 	}
 
 	// Normalize (JSON or Avro)
@@ -156,8 +215,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) {
 			"offset", msg.TopicPartition.Offset, "error", err)
 		c.routeDLQ(msg)
 		c.metrics.ProcessingErrors.Inc()
-		c.commitOffset(msg)
-		return
+		return resultNormalizeError
 	}
 
 	// gRPC fan-out to C1/C2/C6
@@ -167,8 +225,7 @@ func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) {
 			"uetr", event.UETR, "error", err)
 		c.routeDLQ(msg)
 		c.metrics.ProcessingErrors.Inc()
-		c.commitOffset(msg)
-		return
+		return resultFanOutError
 	}
 
 	// Produce result
@@ -179,14 +236,13 @@ func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) {
 				"uetr", event.UETR, "error", err)
 			c.routeDLQ(msg)
 			c.metrics.ProduceErrors.Inc()
-			c.commitOffset(msg)
-			return
+			return resultProduceError
 		}
 		c.metrics.MessagesProduced.Inc()
 	}
 
 	c.metrics.MessagesConsumed.Inc()
-	c.commitOffset(msg)
+	return resultSuccess
 }
 
 // produceWithRetry produces to the output topic with exponential backoff.
