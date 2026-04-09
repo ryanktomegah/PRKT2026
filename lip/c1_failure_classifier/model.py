@@ -466,15 +466,15 @@ class ClassifierModel:
         self.graphsage.save_weights(os.path.join(path, "graphsage"))
         self.tabtransformer.save_weights(os.path.join(path, "tabtransformer"))
         np.savez(os.path.join(path, "mlp"), **self.mlp.get_weights())
+        # B10-01: LightGBM booster and calibrator are persisted through the
+        # secure_pickle wrapper, which writes an HMAC-SHA256 sidecar that
+        # .load() verifies before touching pickle. Requires LIP_MODEL_HMAC_KEY.
+        from lip.common import secure_pickle
         if self.lgbm_model is not None:
-            import pickle
-            with open(os.path.join(path, "lgbm.pkl"), "wb") as f:
-                pickle.dump(self.lgbm_model, f)
+            secure_pickle.dump(self.lgbm_model, os.path.join(path, "lgbm.pkl"))
         # Persist calibrator state so it survives save/load cycle
         if self.calibrator._is_fitted:
-            import pickle
-            with open(os.path.join(path, "calibrator.pkl"), "wb") as f:
-                pickle.dump(self.calibrator, f)
+            secure_pickle.dump(self.calibrator, os.path.join(path, "calibrator.pkl"))
         logger.info("ClassifierModel saved to %s", path)
 
     def load(self, path: str) -> None:
@@ -503,17 +503,18 @@ class ClassifierModel:
                 f"Corrupt checkpoint in {path}: {exc}. "
                 f"Re-run training to regenerate model artifacts."
             ) from exc
+        # B10-01: LightGBM and calibrator artefacts must be loaded through
+        # secure_pickle.load, which verifies an HMAC-SHA256 sidecar before
+        # invoking pickle. Any attempt to bypass this will fail the
+        # test_pickle_ban.py regression test (B13-01).
+        from lip.common import secure_pickle
         lgbm_path = os.path.join(path, "lgbm.pkl")
         if os.path.exists(lgbm_path):
-            import pickle
-            with open(lgbm_path, "rb") as f:
-                self.lgbm_model = pickle.load(f)  # noqa: S301
+            self.lgbm_model = secure_pickle.load(lgbm_path)
         # Restore calibrator if previously saved
         cal_path = os.path.join(path, "calibrator.pkl")
         if os.path.exists(cal_path):
-            import pickle
-            with open(cal_path, "rb") as f:
-                self.calibrator = pickle.load(f)  # noqa: S301
+            self.calibrator = secure_pickle.load(cal_path)
             logger.info("Calibrator loaded (fitted=%s)", self.calibrator._is_fitted)
         logger.info("ClassifierModel loaded from %s", path)
 
