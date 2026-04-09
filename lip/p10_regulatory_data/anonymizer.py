@@ -35,6 +35,15 @@ from .telemetry_schema import (
 logger = logging.getLogger(__name__)
 
 
+class PrivacyBudgetExhaustedError(RuntimeError):
+    """Raised when a corridor's DP budget is exhausted and no cached result exists.
+
+    B8-02: the anonymizer must never return raw un-noised data. If the budget
+    is exhausted and no stale cached result is available, this exception is
+    raised instead.
+    """
+
+
 class RegulatoryAnonymizer:
     """Three-layer privacy pipeline for P10 regulatory data.
 
@@ -179,19 +188,15 @@ class RegulatoryAnonymizer:
                         stale=True,
                     ))
                 else:
-                    # No cache: return un-noised aggregate with stale flag
-                    results.append(AnonymizedCorridorResult(
-                        corridor=corridor,
-                        period_label=period_label,
-                        total_payments=total_payments,
-                        failed_payments=failed_payments,
-                        failure_rate=raw_failure_rate,
-                        bank_count=len(bank_set),
-                        k_anonymity_satisfied=True,
-                        privacy_budget_remaining=0.0,
-                        noise_applied=False,
-                        stale=True,
-                    ))
+                    # B8-02: NEVER return raw un-noised data. A corridor
+                    # seen for the first time after budget exhaustion has
+                    # no cached noised result to serve — raising is the
+                    # only privacy-safe option.
+                    raise PrivacyBudgetExhaustedError(
+                        f"Privacy budget exhausted for corridor {corridor} "
+                        f"and no cached result available. Cannot release "
+                        f"un-noised data."
+                    )
                 continue
 
             # B8-01: Apply Laplace noise to all 3 statistics, each deducting
