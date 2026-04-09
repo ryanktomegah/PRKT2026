@@ -46,7 +46,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import pickle
 import sys
 import time
 from datetime import datetime, timezone
@@ -139,11 +138,14 @@ def _train_c1(
     threshold_path = output_dir / "c1_threshold.txt"
     emb_path = output_dir / "c1_embeddings.pkl"
 
-    with open(model_path, "wb") as f:
-        pickle.dump(model, f)
+    # B10-01: training artefacts are written through secure_pickle.dump
+    # so every pickle produced by this pipeline ships with an HMAC sidecar
+    # that downstream secure_pickle.load() will verify. Requires
+    # LIP_MODEL_HMAC_KEY in the environment.
+    from lip.common import secure_pickle
+    secure_pickle.dump(model, model_path)
     threshold_path.write_text(f"{threshold:.6f}\n")
-    with open(emb_path, "wb") as f:
-        pickle.dump(emb_pipeline, f)
+    secure_pickle.dump(emb_pipeline, emb_path)
 
     report = {
         "component": "C1",
@@ -234,10 +236,10 @@ def _train_c2(
         if fee_bps < FEE_FLOOR_BPS:
             fee_violations += 1
 
-    # Save artifacts
+    # Save artifacts (B10-02: signed via secure_pickle)
     model_path = output_dir / "c2_model.pkl"
-    with open(model_path, "wb") as f:
-        pickle.dump(model, f)
+    from lip.common import secure_pickle
+    secure_pickle.dump(model, model_path)
 
     report = {
         "component": "C2",
@@ -315,10 +317,10 @@ def _train_c6(
         separation_correct = False
         detection_rate = float("nan")
 
-    # Save artifact
+    # Save artifact (B10-01 family: signed via secure_pickle)
     model_path = output_dir / "c6_anomaly_detector.pkl"
-    with open(model_path, "wb") as f:
-        pickle.dump(detector, f)
+    from lip.common import secure_pickle
+    secure_pickle.dump(detector, model_path)
 
     report = {
         "component": "C6",

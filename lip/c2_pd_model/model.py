@@ -10,10 +10,11 @@ Three-entity role mapping:
 
 import logging
 import os
-import pickle
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+from lip.common import secure_pickle
 
 logger = logging.getLogger(__name__)
 
@@ -331,12 +332,17 @@ class PDModel:
     # ------------------------------------------------------------------
 
     def save(self, path: str) -> None:
-        """Serialise the full ensemble to a pickle file at *path*.
+        """Serialise the full ensemble to an integrity-signed pickle at *path*.
+
+        Writes ``<path>`` and the sidecar ``<path>.sig`` via
+        :mod:`lip.common.secure_pickle`, which computes an HMAC-SHA256
+        signature that :meth:`load` verifies before touching pickle.
+        Requires ``LIP_MODEL_HMAC_KEY`` to be set in the environment.
 
         Parameters
         ----------
         path:
-            Destination file path.  Directories must exist.
+            Destination file path.  Parent directory is created if missing.
         """
         self._require_fitted()
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -345,20 +351,27 @@ class PDModel:
             "random_seeds": self.random_seeds,
             "models": self._models,
         }
-        with open(path, "wb") as fh:
-            pickle.dump(payload, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        # B10-02: route through secure_pickle.dump so the artefact ships with
+        # an HMAC-SHA256 sidecar. The matching load() verifies before
+        # invoking pickle.
+        secure_pickle.dump(payload, path)
         logger.info("PDModel saved to %s", path)
 
     def load(self, path: str) -> None:
-        """Deserialise an ensemble from a pickle file at *path*.
+        """Deserialise an ensemble from an integrity-signed pickle at *path*.
 
         Parameters
         ----------
         path:
-            Source file path produced by :meth:`save`.
+            Source file path produced by :meth:`save`. The sidecar
+            ``<path>.sig`` must be present and must validate against
+            ``LIP_MODEL_HMAC_KEY``; otherwise :class:`~lip.common.secure_pickle.SecurePickleError`
+            is raised and no deserialisation occurs.
         """
-        with open(path, "rb") as fh:
-            payload = pickle.load(fh)  # noqa: S301 — trusted model artifacts only
+        # B10-02: secure_pickle.load raises SecurePickleError on any integrity
+        # failure and never falls through to raw pickle.load. See
+        # lip/tests/test_pickle_ban.py (B13-01) for the regression guard.
+        payload = secure_pickle.load(path)
         self.n_models = payload["n_models"]
         self.random_seeds = payload["random_seeds"]
         self._models = payload["models"]

@@ -6,6 +6,13 @@ All fixtures use in-memory state only; no external services required.
 
 from __future__ import annotations
 
+# NB: `_test_env` must be imported BEFORE any `lip.*` module so its
+# import-time side effects (e.g. LIP_MODEL_HMAC_KEY for secure_pickle)
+# are in place by the time pytest starts collecting and importing tests.
+# isort: off
+import lip.tests._test_env  # noqa: F401 — import-time side effects
+# isort: on
+
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
