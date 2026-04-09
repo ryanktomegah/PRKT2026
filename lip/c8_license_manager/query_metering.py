@@ -62,7 +62,14 @@ class RegulatoryQueryMetering:
         epsilon_cost: float,
         as_of: Optional[datetime] = None,
     ) -> None:
-        """Raise if recording another query would exceed token budgets."""
+        """Raise if recording another query would exceed token budgets.
+
+        This is a fast-path pre-check that callers may use to avoid expensive
+        work before calling record_query.  It is NOT the enforcement point —
+        record_query performs an atomic check-and-increment under a single lock
+        hold (B3-01 fix).  Two concurrent threads that both pass this pre-check
+        will still be serialised correctly inside record_query.
+        """
         now = as_of.astimezone(timezone.utc) if as_of else datetime.now(timezone.utc)
         key = (token.regulator_id, self._month_bucket(now))
         with self._lock:
@@ -91,12 +98,18 @@ class RegulatoryQueryMetering:
         billing_amount_usd: Decimal,
         at: Optional[datetime] = None,
     ) -> QueryMeterEntry:
-        """Record one query and update monthly budget usage."""
+        """Record one query and update monthly budget usage.
+
+        B3-01: the budget check and counter increment are atomic — both happen
+        under a single ``self._lock`` hold.  The old code called
+        ``assert_within_budget`` (which acquired/released the lock) and then
+        took the lock *again* to increment, leaving a TOCTOU window where two
+        threads at budget−1 could both pass the check and both increment.
+        """
         if response_latency_ms < 0:
             raise ValueError("response_latency_ms must be non-negative")
 
         now = at.astimezone(timezone.utc) if at else datetime.now(timezone.utc)
-        self.assert_within_budget(token=token, epsilon_cost=epsilon_consumed, as_of=now)
         month = self._month_bucket(now)
         key = (token.regulator_id, month)
 
@@ -124,12 +137,24 @@ class RegulatoryQueryMetering:
             hmac_signature=signature,
         )
 
+        # B3-01: atomic check-and-increment under a single lock hold.
         with self._lock:
+            query_count = self._monthly_queries.get(key, 0)
+            epsilon_used = self._monthly_epsilon.get(key, 0.0)
+
+            if query_count + 1 > token.query_budget_monthly:
+                raise QueryBudgetExceededError(
+                    f"Monthly query budget exhausted for regulator_id={token.regulator_id}"
+                )
+            epsilon_next = epsilon_used + float(epsilon_consumed)
+            if epsilon_next > token.privacy_budget_allocation + 1e-12:
+                raise PrivacyBudgetExceededError(
+                    f"Privacy budget exhausted for regulator_id={token.regulator_id}"
+                )
+
             self._entries.append(entry)
-            self._monthly_queries[key] = self._monthly_queries.get(key, 0) + 1
-            self._monthly_epsilon[key] = self._monthly_epsilon.get(key, 0.0) + float(
-                epsilon_consumed
-            )
+            self._monthly_queries[key] = query_count + 1
+            self._monthly_epsilon[key] = epsilon_next
 
         return entry
 
