@@ -1,0 +1,19 @@
+{
+  "_comment": "Authoritative BLOCK-class rejection codes. Single source of truth for Python, Rust, and Go. Do not hand-maintain parallel lists. See lip/common/block_codes.py and lip/c3/rust_state_machine/src/taxonomy.rs.",
+  "epg19_compliance_hold": [
+    "DNOR",
+    "CNOR",
+    "RR01",
+    "RR02",
+    "RR03",
+    "RR04",
+    "AG01",
+    "LEGL"
+  ],
+  "dispute_fraud_block": [
+    "DISP",
+    "DUPL",
+    "FRAD",
+    "FRAU"
+  ]
+}

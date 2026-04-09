@@ -74,8 +74,14 @@ func normalizeRejectionCode(code *string, rail string) *string {
 }
 
 // blockRejectionCodes contains all BLOCK-class ISO 20022 rejection codes.
-// Mirrors _BLOCK_REJECTION_CODES in event_normalizer.py. Hardcoded here because
-// Go cannot import the Python rejection taxonomy at runtime.
+//
+// B6-01: The Python and Rust callers load this set from
+// lip/common/block_codes.json (single source of truth). The go_consumer
+// module has its own go.mod, so go:embed cannot reach the JSON across
+// module boundaries; vendoring the JSON into the module is tracked as a
+// Phase 2 cleanup. Until then, the cross-language drift test
+// (lip/tests/test_block_code_drift.py) text-parses this literal and
+// fails the build if it deviates from block_codes.json.
 var blockRejectionCodes = map[string]bool{
 	"DNOR": true,
 	"CNOR": true,
