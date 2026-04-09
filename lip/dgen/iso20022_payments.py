@@ -66,8 +66,8 @@ from lip.dgen.bic_pool import BICPool
 # Class A (permanent, 3-day maturity) — target 35% of failures
 #   These codes indicate account/routing issues that are not self-healing.
 #
-# Class B (compliance/AML hold, 7-day maturity) — target 40% of failures
-#   These codes indicate regulatory holds that may lift with documentation.
+# Class B (systemic/processing delay, 7-day maturity) — target 40% of failures
+#   These codes indicate systemic or processing delays that typically resolve.
 #
 # Class C (liquidity/timing, 21-day maturity) — target 25% of failures
 #   These codes indicate operational/liquidity issues that resolve over time.
