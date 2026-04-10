@@ -71,7 +71,8 @@ func LoadConfig() (*Config, error) {
 		KafkaSSLCALocation:    os.Getenv("KAFKA_SSL_CA_LOCATION"),
 		KafkaSSLCertLocation:  os.Getenv("KAFKA_SSL_CERT_LOCATION"),
 		KafkaSSLKeyLocation:   os.Getenv("KAFKA_SSL_KEY_LOCATION"),
-		KafkaSecurityProtocol: envOrDefault("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+		// B6-05: Default to SSL. PLAINTEXT requires explicit opt-in via env var.
+		KafkaSecurityProtocol: envOrDefault("KAFKA_SECURITY_PROTOCOL", "SSL"),
 
 		SchemaRegistryURL:      envOrDefault("SCHEMA_REGISTRY_URL", ""),
 		SchemaRegistryUsername: os.Getenv("SCHEMA_REGISTRY_USERNAME"),
@@ -112,6 +113,17 @@ func (c *Config) validate() error {
 	}
 	if c.NumWorkers < 1 || c.NumWorkers > 64 {
 		return fmt.Errorf("NUM_WORKERS must be 1-64, got %d", c.NumWorkers)
+	}
+	// B6-05: Validate Kafka security protocol
+	validProtocols := map[string]bool{
+		"SSL": true, "SASL_SSL": true, "PLAINTEXT": true, "SASL_PLAINTEXT": true,
+	}
+	if !validProtocols[c.KafkaSecurityProtocol] {
+		return fmt.Errorf("KAFKA_SECURITY_PROTOCOL must be one of SSL, SASL_SSL, PLAINTEXT, SASL_PLAINTEXT; got %q", c.KafkaSecurityProtocol)
+	}
+	// B6-05: SSL requires CA cert path
+	if (c.KafkaSecurityProtocol == "SSL" || c.KafkaSecurityProtocol == "SASL_SSL") && c.KafkaSSLCALocation == "" {
+		return fmt.Errorf("KAFKA_SSL_CA_LOCATION is required when KAFKA_SECURITY_PROTOCOL=%s", c.KafkaSecurityProtocol)
 	}
 	return nil
 }
