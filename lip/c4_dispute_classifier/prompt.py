@@ -2,8 +2,51 @@
 prompt.py — Structured prompt construction for LLM dispute classification
 C4 Spec Section 5.3
 """
+import re
+import unicodedata
 
 from .taxonomy import DisputeClass
+
+# B10-06: Maximum allowed length for user-supplied prompt fields.
+_MAX_NARRATIVE_LEN = 2000
+_MAX_COUNTERPARTY_LEN = 200
+
+# B10-06: Regex matching sequences that could trick the LLM into treating
+# user data as instructions. Matches common injection patterns:
+#   - "ignore all previous instructions"
+#   - "system:", "assistant:", "user:" role markers
+#   - markdown/XML-style delimiters that might break prompt structure
+_INJECTION_PATTERNS = re.compile(
+    r"(?i)"
+    r"(?:ignore\s+(?:all\s+)?(?:previous|above|prior)\s+instructions)"
+    r"|(?:^|\n)\s*(?:system|assistant|user)\s*:"
+    r"|<\s*/?(?:system|prompt|instruction|message)[^>]*>"
+    r"|```\s*(?:system|prompt)",
+)
+
+
+def _sanitise_user_field(value: str, max_len: int) -> str:
+    """Sanitise a user-supplied string before prompt interpolation (B10-06).
+
+    1. Strip Unicode control characters (C0/C1) except whitespace.
+    2. Collapse excessive whitespace.
+    3. Truncate to *max_len* characters.
+    4. Redact known prompt-injection patterns.
+    """
+    # Strip control chars except newline/tab/space
+    cleaned = "".join(
+        ch for ch in value
+        if ch in ("\n", "\t", " ") or not unicodedata.category(ch).startswith("C")
+    )
+    # Collapse runs of whitespace (preserve single newlines)
+    cleaned = re.sub(r"[ \t]+", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    # Truncate
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len] + "…[truncated]"
+    # Redact injection patterns
+    cleaned = _INJECTION_PATTERNS.sub("[REDACTED]", cleaned)
+    return cleaned
 
 # ---------------------------------------------------------------------------
 # System prompt — stable, version-controlled
@@ -164,11 +207,12 @@ class DisputePromptBuilder:
         """
         # Normalise empty / missing fields to 'N/A' for consistent tokenisation.
         rejection_code = rejection_code.strip() if rejection_code else "N/A"
-        narrative = narrative.strip() if narrative else "N/A"
         amount = amount.strip() if amount else "N/A"
         currency = currency.strip().upper() if currency else "N/A"
-        counterparty = counterparty.strip() if counterparty else "N/A"
         language = language.strip().upper() if language else "EN"
+        # B10-06: Sanitise user-controlled fields to prevent prompt injection.
+        narrative = _sanitise_user_field(narrative.strip(), _MAX_NARRATIVE_LEN) if narrative else "N/A"
+        counterparty = _sanitise_user_field(counterparty.strip(), _MAX_COUNTERPARTY_LEN) if counterparty else "N/A"
 
         return (
             f"Payment Rejection Details:\n"
