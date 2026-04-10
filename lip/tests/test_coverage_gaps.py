@@ -180,28 +180,17 @@ class TestRunInference:
         assert result == mock_predict_result
         instance.predict.assert_called_once()
 
-    def test_run_inference_without_salt_uses_placeholder(self):
-        """When salt is None, a zero-byte placeholder is used with a warning."""
+    def test_run_inference_without_salt_raises(self):
+        """B10-07: run_inference must refuse None salt — no zero-byte fallback."""
         mock_model = MagicMock()
 
-        with patch("lip.c2_pd_model.PDInferenceEngine") as MockEngine:
-            instance = MockEngine.return_value
-            instance.predict.return_value = {
-                "pd_score": 0.1,
-                "fee_bps": 300,
-                "tier": 3,
-                "shap_values": [],
-                "borrower_id_hash": "hash",
-                "inference_latency_ms": 1.0,
-            }
-            with patch("lip.c2_pd_model.logger") as mock_logger:
-                run_inference(
-                    model=mock_model,
-                    payment={"amount_usd": 1000},
-                    borrower={},
-                    salt=None,
-                )
-                mock_logger.warning.assert_called_once()
+        with pytest.raises(ValueError, match="explicit salt"):
+            run_inference(
+                model=mock_model,
+                payment={"amount_usd": 1000},
+                borrower={},
+                salt=None,
+            )
 
     def test_run_inference_derives_tier_from_borrower(self):
         """Tier should be derived from borrower availability flags."""

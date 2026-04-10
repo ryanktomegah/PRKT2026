@@ -78,8 +78,11 @@ class LicenseToken:
     issue_date: str = ""
     expiry_date: str = ""
     max_tps: int = 0
-    aml_dollar_cap_usd: int = 0  # EPG-16: 0 = unlimited; 1M retail default removed
-    aml_count_cap: int = 0       # EPG-16: 0 = unlimited; 100 retail default removed
+    # B3-03: Default to sentinel (-1) instead of 0 (unlimited). Programmatic
+    # construction must set caps explicitly; from_dict() sets them from JSON.
+    # 0 = unlimited (valid, explicit); -1 = unset (rejected by boot validator).
+    aml_dollar_cap_usd: int = _AML_CAP_UNSET  # EPG-16: must be set explicitly
+    aml_count_cap: int = _AML_CAP_UNSET       # EPG-16: must be set explicitly
     min_loan_amount_usd: int = 500000
     deployment_phase: str = "LICENSOR"  # Phase 1=LICENSOR, Phase 2=HYBRID, Phase 3=FULL_MLO
     licensee_type: str = "BANK"  # "BANK" (direct) or "PROCESSOR" (platform licensing)

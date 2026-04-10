@@ -717,7 +717,7 @@ class TestDisputeClassifierBatch:
     """Cover lines 273-283: classify_batch processes list of cases."""
 
     def test_classify_batch_returns_list(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         cases = [
             {"rejection_code": "DISP", "narrative": "disputed"},
             {"rejection_code": "AC01", "narrative": "normal payment"},
@@ -728,13 +728,13 @@ class TestDisputeClassifierBatch:
         assert all("dispute_class" in r for r in results)
 
     def test_classify_batch_empty_list(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         results = clf.classify_batch([])
         assert results == []
 
     def test_classify_batch_optional_fields(self):
         """Batch cases with amount, currency, counterparty."""
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         cases = [
             {
                 "rejection_code": "AC01",
