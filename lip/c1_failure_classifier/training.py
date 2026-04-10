@@ -94,6 +94,7 @@ class TrainingConfig:
     k_neighbors_infer: int = 5
     val_split: float = 0.2
     random_seed: int = 42
+    strict_oot: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +350,18 @@ class TrainingPipeline:
             indices = np.argsort(timestamps)
             logger.info("stage4: chronological OOT split enabled (timestamps provided)")
         else:
+            # B10-04: Warn loudly when falling back to random split.
+            # Random split violates SR 11-7 OOT validation requirements.
+            logger.warning(
+                "stage4: timestamps missing or length mismatch — falling back to "
+                "RANDOM split. This violates SR 11-7 OOT validation requirements. "
+                "Ensure training data includes 'timestamp' field."
+            )
+            if getattr(self.config, "strict_oot", False):
+                raise ValueError(
+                    "strict_oot=True but timestamps are missing or length mismatch. "
+                    "Cannot perform chronological OOT split."
+                )
             indices = self._rng.permutation(n)
 
         train_idx = indices[: n - n_val]
