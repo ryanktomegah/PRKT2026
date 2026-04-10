@@ -12,11 +12,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -44,8 +48,17 @@ type GRPCClient struct {
 // NewGRPCClient dials all three upstream services. Returns an error if any
 // connection cannot be established (fail-fast at startup).
 func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloorBPS float64, fpThreshold float64) (*GRPCClient, error) {
+	// B6-04: Default to TLS. Plaintext requires explicit GRPC_INSECURE=true.
+	var transportCreds grpc.DialOption
+	if strings.EqualFold(os.Getenv("GRPC_INSECURE"), "true") {
+		transportCreds = grpc.WithTransportCredentials(insecure.NewCredentials())
+	} else {
+		transportCreds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}))
+	}
 	dialOpts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		transportCreds,
 		grpc.WithBlock(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
