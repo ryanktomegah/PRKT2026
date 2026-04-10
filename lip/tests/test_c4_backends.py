@@ -173,13 +173,14 @@ class TestOpenAICompatibleBackend(unittest.TestCase):
 class TestDisputeClassifierBackendSelection(unittest.TestCase):
     """DisputeClassifier picks the right backend based on LIP_C4_BACKEND."""
 
-    def test_default_uses_mock(self):
-        from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
+    def test_no_backend_raises(self):
+        """B10-05: DisputeClassifier must refuse silent MockLLMBackend fallback."""
+        from lip.c4_dispute_classifier.model import DisputeClassifier
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("LIP_C4_BACKEND", None)
-            dc = DisputeClassifier()
-        self.assertIsInstance(dc._backend, MockLLMBackend)
+            with self.assertRaises(ValueError, msg="single_replica"):
+                DisputeClassifier()
 
     def test_explicit_injection_overrides_env(self):
         """Injected backend always wins, regardless of env var."""

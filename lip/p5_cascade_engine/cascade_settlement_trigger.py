@@ -32,7 +32,7 @@ class CascadeSettlementTrigger:
         self,
         cascade_graph: CascadeGraph,
         bic_to_corporate: Dict[str, str],
-        budget_usd: float = 0.0,
+        budget_usd: float,  # B9-04: no default — must be set explicitly
     ) -> None:
         self._graph = cascade_graph
         self._bic_to_corp = bic_to_corporate

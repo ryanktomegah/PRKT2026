@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Module-level salt — injected at startup from secrets manager.
 # Set via :func:`configure_inference_salt` before first inference call.
-_INFERENCE_SALT: bytes = b"\x00" * 32  # replaced at runtime
+# B10-07: zero-byte default removed; hash operations before configuration raise.
+_INFERENCE_SALT: bytes | None = None
 
 
 def configure_inference_salt(salt: bytes) -> None:
@@ -137,6 +138,11 @@ class PDInferenceEngine:
         t0 = time.perf_counter()
 
         # --- 1. Hash borrower ID immediately; never propagate raw tax_id ----
+        if _INFERENCE_SALT is None:
+            raise RuntimeError(
+                "Inference salt not configured. Call configure_inference_salt() "
+                "at application startup before running inference (B10-07)."
+            )
         raw_tax_id = borrower.get("tax_id", "")
         borrower_hash = hash_borrower_id(str(raw_tax_id), _INFERENCE_SALT)
 

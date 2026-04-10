@@ -124,11 +124,18 @@ class DisputeClassifier:
     ) -> None:
         if llm_backend is not None:
             self._backend = llm_backend
-        elif os.environ.get("LIP_C4_BACKEND", "mock") != "mock":
+        elif os.environ.get("LIP_C4_BACKEND"):
             from .backends import create_backend
             self._backend = create_backend()
         else:
-            self._backend = MockLLMBackend()
+            # B10-05: refuse silent fallback to MockLLMBackend. In production
+            # LIP_C4_BACKEND must be set. For tests, pass backend=MockLLMBackend()
+            # explicitly.
+            raise ValueError(
+                "No LLM backend configured. Set LIP_C4_BACKEND env var for "
+                "production, or pass llm_backend=MockLLMBackend() explicitly "
+                "for testing (B10-05)."
+            )
         self._timeout = timeout_seconds
         self._prefilter = PreFilter()
         self._prompt_builder = DisputePromptBuilder()
@@ -291,20 +298,22 @@ class DisputeClassifier:
 def classify_dispute(
     rejection_code: Optional[str],
     narrative: Optional[str],
+    llm_backend=None,
 ) -> DisputeClass:
     """
     Convenience function for single-shot dispute classification.
 
-    Creates a :class:`DisputeClassifier` with default settings and returns
-    the :class:`~taxonomy.DisputeClass` only.
+    Creates a :class:`DisputeClassifier` and returns the
+    :class:`~taxonomy.DisputeClass` only.
 
     Args:
         rejection_code: ISO 20022 / SWIFT rejection reason code, or None.
         narrative:      Free-text payment narrative, or None.
+        llm_backend:    LLM backend instance. Required (B10-05).
 
     Returns:
         The classified :class:`~taxonomy.DisputeClass`.
     """
-    classifier = DisputeClassifier()
+    classifier = DisputeClassifier(llm_backend=llm_backend)
     result = classifier.classify(rejection_code=rejection_code, narrative=narrative)
     return result["dispute_class"]

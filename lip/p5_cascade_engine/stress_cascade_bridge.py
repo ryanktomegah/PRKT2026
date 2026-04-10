@@ -39,7 +39,7 @@ class StressCascadeBridge:
         self,
         cascade_graph: CascadeGraph,
         corridor_to_corporates: Dict[str, List[str]],
-        budget_usd: float = 0.0,
+        budget_usd: float,  # B9-04: no default — must be set explicitly
     ) -> None:
         self._graph = cascade_graph
         self._corridor_map = corridor_to_corporates

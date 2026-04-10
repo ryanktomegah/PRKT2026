@@ -233,10 +233,10 @@ class FeatureMasker:
 # UnifiedFeatureEngineer
 # ---------------------------------------------------------------------------
 
-# Module-level salt placeholder — in production this is injected from a secrets
-# manager at startup and never hard-coded.
-_DEFAULT_SALT = b"\x00" * 32  # overridden at runtime via configure_salt()
-_CONFIGURED_SALT: bytes = _DEFAULT_SALT
+# Module-level salt — in production this is injected from a secrets manager
+# at startup via configure_salt(). B10-07: zero-byte default removed; any
+# hash operation before configure_salt() is called will raise RuntimeError.
+_CONFIGURED_SALT: bytes | None = None
 
 
 def configure_salt(salt: bytes) -> None:
