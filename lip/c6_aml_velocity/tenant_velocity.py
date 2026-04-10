@@ -64,7 +64,20 @@ class StructuringDetector:
     when the MIPLO API gateway is built (Sprint 2c).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, single_replica: bool = False) -> None:
+        if not single_replica:
+            raise ValueError(
+                "StructuringDetector uses in-memory state that resets on "
+                "redeploy and multiplies N× across replicas. Pass "
+                "single_replica=True to acknowledge single-replica constraint, "
+                "or configure a Redis-backed store (B7-10)."
+            )
+        if single_replica:
+            import logging
+            logging.getLogger(__name__).warning(
+                "StructuringDetector running with single_replica=True — "
+                "cross-tenant structuring detection will not work across replicas"
+            )
         # entity_hash → {tenant_id: cumulative_volume}
         self._registry: Dict[str, Dict[str, Decimal]] = defaultdict(
             lambda: defaultdict(Decimal)

@@ -81,7 +81,7 @@ class TestQueryBudgetAtomicity:
 
     def test_exactly_k_accepted(self):
         token = _make_token(query_budget=self.K)
-        metering = RegulatoryQueryMetering()
+        metering = RegulatoryQueryMetering(single_replica=True)
         results: list[bool | None] = [None] * self.N
 
         barrier = threading.Barrier(self.N)
@@ -124,7 +124,7 @@ class TestEpsilonBudgetAtomicity:
     def test_exactly_budget_div_cost_accepted(self):
         expected_accepted = int(self.BUDGET / self.PER_QUERY)
         token = _make_token(privacy_budget=self.BUDGET)
-        metering = RegulatoryQueryMetering()
+        metering = RegulatoryQueryMetering(single_replica=True)
         results: list[bool | None] = [None] * self.N
 
         barrier = threading.Barrier(self.N)
@@ -161,7 +161,7 @@ def test_sequential_query_budget_enforced():
     """K queries succeed, K+1 raises QueryBudgetExceededError."""
     k = 5
     token = _make_token(query_budget=k)
-    metering = RegulatoryQueryMetering()
+    metering = RegulatoryQueryMetering(single_replica=True)
     for _ in range(k):
         metering.record_query(
             token=token,
@@ -185,7 +185,7 @@ def test_sequential_query_budget_enforced():
 def test_sequential_epsilon_budget_enforced():
     """Epsilon budget exhaustion raises PrivacyBudgetExceededError."""
     token = _make_token(privacy_budget=2.0)
-    metering = RegulatoryQueryMetering()
+    metering = RegulatoryQueryMetering(single_replica=True)
     # Two queries at epsilon=1.0 each should succeed
     for _ in range(2):
         metering.record_query(
@@ -216,7 +216,7 @@ def test_assert_within_budget_is_non_authoritative():
     This documents the B3-01 design: assert_within_budget is advisory only.
     """
     token = _make_token(query_budget=1)
-    metering = RegulatoryQueryMetering()
+    metering = RegulatoryQueryMetering(single_replica=True)
 
     # Pre-check passes
     metering.assert_within_budget(token=token, epsilon_cost=0.01)

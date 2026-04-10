@@ -171,7 +171,7 @@ class TestStructuringDetector:
 
     def test_single_tenant_no_flag(self):
         """Entity in only one tenant is not structuring."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_abc", "PROCESSOR_A", Decimal("500000"))
 
         result = detector.check("entity_hash_abc", dollar_cap=_TEST_DOLLAR_CAP)
@@ -179,7 +179,7 @@ class TestStructuringDetector:
 
     def test_two_tenants_below_cap_no_flag(self):
         """Entity in 2 tenants but combined volume below cap: not flagged."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_def", "PROCESSOR_A", Decimal("100000"))
         detector.record("entity_hash_def", "PROCESSOR_B", Decimal("200000"))
 
@@ -188,7 +188,7 @@ class TestStructuringDetector:
 
     def test_two_tenants_above_cap_flagged(self):
         """Entity in 2 tenants with combined volume above cap: flagged."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_ghi", "PROCESSOR_A", Decimal("600000"))
         detector.record("entity_hash_ghi", "PROCESSOR_B", Decimal("500000"))
 
@@ -199,7 +199,7 @@ class TestStructuringDetector:
 
     def test_three_tenants_flagged(self):
         """Entity across 3 tenants: flagged when above cap."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_jkl", "PROC_A", Decimal("400000"))
         detector.record("entity_hash_jkl", "PROC_B", Decimal("400000"))
         detector.record("entity_hash_jkl", "PROC_C", Decimal("400000"))
@@ -210,7 +210,7 @@ class TestStructuringDetector:
 
     def test_unlimited_cap_never_flags_for_volume(self):
         """When dollar_cap is 0 (unlimited), volume check is skipped."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_mno", "PROC_A", Decimal("99999999"))
         detector.record("entity_hash_mno", "PROC_B", Decimal("99999999"))
 
@@ -219,7 +219,7 @@ class TestStructuringDetector:
 
     def test_result_has_correct_fields(self):
         """StructuringResult exposes flagged, tenant_count, combined_volume, tenants."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_pqr", "PROC_X", Decimal("800000"))
         detector.record("entity_hash_pqr", "PROC_Y", Decimal("300000"))
 
@@ -232,7 +232,7 @@ class TestStructuringDetector:
 
     def test_same_tenant_recorded_twice_counts_once(self):
         """Multiple transactions from same tenant count as 1 tenant."""
-        detector = StructuringDetector()
+        detector = StructuringDetector(single_replica=True)
         detector.record("entity_hash_stu", "PROC_A", Decimal("200000"))
         detector.record("entity_hash_stu", "PROC_A", Decimal("300000"))
 

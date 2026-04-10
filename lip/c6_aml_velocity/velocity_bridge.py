@@ -112,7 +112,27 @@ class RustVelocityChecker:
         salt: bytes,
         window_seconds: int = 86400,
         redis_client=None,
+        *,
+        single_replica: bool = False,
     ) -> None:
+        # Rust path is always in-memory (DashMap); Python path is in-memory
+        # when redis_client is None. Both require the single_replica opt-in
+        # unless a Redis backend is configured (B7-02).
+        uses_in_memory = _RUST_AVAILABLE or redis_client is None
+        if uses_in_memory and not single_replica:
+            raise ValueError(
+                "VelocityBridge uses in-memory state that resets on redeploy "
+                "and multiplies N× across replicas. Pass single_replica=True "
+                "to acknowledge single-replica constraint, or provide a "
+                "redis_client for distributed state (B7-02)."
+            )
+        if uses_in_memory and single_replica:
+            import logging
+            logging.getLogger(__name__).warning(
+                "VelocityBridge running with single_replica=True — "
+                "AML velocity state will not survive restarts or scale "
+                "across replicas"
+            )
         self._salt = salt
         if _RUST_AVAILABLE:
             self._rust_vel = _rust.PyRollingVelocity(

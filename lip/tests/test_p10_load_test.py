@@ -47,7 +47,7 @@ def _make_test_app(rate_limit_per_hour: int = 10000):
 
     service = RegulatoryService(risk_engine=engine)
     limiter = TokenBucketRateLimiter(rate=rate_limit_per_hour, period_seconds=3600)
-    metering = RegulatoryQueryMetering(metering_key=_SIGNING_KEY)
+    metering = RegulatoryQueryMetering(metering_key=_SIGNING_KEY, single_replica=True)
 
     router = make_regulatory_router(
         regulatory_service=service,

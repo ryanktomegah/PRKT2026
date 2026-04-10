@@ -257,7 +257,8 @@ try:
             deps.append(Depends(_make_rate_limit_dep(rate_limiter)))
         if regulator_signing_key is not None:
             metering = query_metering or RegulatoryQueryMetering(
-                metering_key=regulator_signing_key
+                metering_key=regulator_signing_key,
+                single_replica=True,
             )
             deps.append(
                 Depends(
