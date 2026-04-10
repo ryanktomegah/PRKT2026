@@ -41,13 +41,13 @@ class TestRustVelocityChecker:
     """Velocity counter tests — both Rust and Python paths share the same behaviour."""
 
     def test_small_transaction_passes(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         result = checker.check("entity1", Decimal("1000"), "bene1")
         assert result.passed is True
         assert result.reason is None
 
     def test_dollar_cap_exceeded(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         checker.record("entity_dc", _TEST_DOLLAR_CAP - Decimal("1"), "bene1")
         result = checker.check(
             "entity_dc", Decimal("2"), "bene2",
@@ -57,7 +57,7 @@ class TestRustVelocityChecker:
         assert result.reason == "DOLLAR_CAP_EXCEEDED"
 
     def test_count_cap_exceeded(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         for i in range(_TEST_COUNT_CAP):
             checker.record("entity_cc", Decimal("1"), f"bene{i}")
         result = checker.check(
@@ -68,7 +68,7 @@ class TestRustVelocityChecker:
         assert result.reason == "COUNT_CAP_EXCEEDED"
 
     def test_beneficiary_concentration_exceeded(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         # 9 × $1000 to bene_dominant, 1 × $1000 to bene_other → 90% concentration
         for _ in range(9):
             checker.record("entity_bc", Decimal("1000"), "bene_dominant")
@@ -79,20 +79,20 @@ class TestRustVelocityChecker:
         assert result.reason == "BENEFICIARY_CONCENTRATION_EXCEEDED"
 
     def test_entity_id_never_stored_raw(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         hashed = checker._hash_entity("TAX123456")
         assert "TAX123456" not in hashed
         assert len(hashed) == 64  # SHA-256 hex digest
 
     def test_different_entities_isolated(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         checker.record("entity_a", _TEST_DOLLAR_CAP - Decimal("1"), "bene1")
         result = checker.check("entity_b", Decimal("500000"), "bene2")
         assert result.passed is True
 
     def test_unlimited_caps_always_pass(self):
         """EPG-16: 0 = unlimited; dollar and count cap never fires for a fresh entity."""
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         # A fresh entity with no history has no window data → only concentration
         # check could fire, but that requires ≥ 2 prior records first.
         result = checker.check("entity_unlim_fresh", Decimal("999999999"), "bene1")
@@ -100,7 +100,7 @@ class TestRustVelocityChecker:
 
     def test_caps_zero_no_dollar_block(self):
         """EPG-16: even with $0 dollar cap (=unlimited), the dollar rule never blocks."""
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         checker.record("entity_nodollar", Decimal("10000000"), "bene1")
         # dollar_cap_override=0 → unlimited → should not block
         result = checker.check("entity_nodollar", Decimal("9999999"), "bene1",
@@ -109,7 +109,7 @@ class TestRustVelocityChecker:
 
     def test_caps_zero_no_count_block(self):
         """EPG-16: even with 0 count cap (=unlimited), the count rule never blocks."""
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         for i in range(200):
             checker.record("entity_nocount", Decimal("1"), f"bene{i}")
         # count_cap_override=0 → unlimited → should not block
@@ -118,7 +118,7 @@ class TestRustVelocityChecker:
         assert result.passed is True
 
     def test_check_and_record_atomic(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         result = checker.check_and_record(
             "entity_car", Decimal("500"), "bene1",
             dollar_cap_override=_TEST_DOLLAR_CAP,
@@ -132,7 +132,7 @@ class TestRustVelocityChecker:
         assert result2.passed is True
 
     def test_rust_metrics_populated(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         checker.check("entity_m", Decimal("100"), "bene1")
         checker.record("entity_m", Decimal("100"), "bene1")
         metrics = checker.get_rust_metrics()
@@ -144,7 +144,7 @@ class TestRustVelocityChecker:
             assert metrics == {}
 
     def test_flush_resets_window(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         checker.record("entity_fl", Decimal("900000"), "bene1")
         # After flush, the same entity should have no history
         checker.flush()
@@ -166,7 +166,7 @@ class TestRustPythonParityVelocity:
     def test_dollar_cap_same_result(self):
         from lip.c6_aml_velocity.velocity import VelocityChecker
 
-        rust_checker = RustVelocityChecker(salt=_SALT)
+        rust_checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         py_checker = VelocityChecker(salt=_SALT)
 
         for checker in (rust_checker, py_checker):
@@ -187,7 +187,7 @@ class TestRustPythonParityVelocity:
     def test_count_cap_same_result(self):
         from lip.c6_aml_velocity.velocity import VelocityChecker
 
-        rust_checker = RustVelocityChecker(salt=_SALT)
+        rust_checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         py_checker = VelocityChecker(salt=_SALT)
 
         for checker in (rust_checker, py_checker):
@@ -407,7 +407,7 @@ class TestPythonFallbackPath:
             warnings.simplefilter("ignore", UserWarning)
             import lip.c6_aml_velocity.velocity_bridge as vb
             importlib.reload(vb)
-            checker = vb.RustVelocityChecker(salt=_SALT)
+            checker = vb.RustVelocityChecker(salt=_SALT, single_replica=True)
 
         assert not checker.RUST_AVAILABLE or True  # fallback may or may not apply post-reload
         result = checker.check("entity_fb", Decimal("1000"), "bene1")
@@ -446,7 +446,7 @@ class TestPythonFallbackPath:
 
 class TestBridgeBackendAttribute:
     def test_velocity_has_rust_available_attr(self):
-        checker = RustVelocityChecker(salt=_SALT)
+        checker = RustVelocityChecker(salt=_SALT, single_replica=True)
         assert isinstance(checker.RUST_AVAILABLE, bool)
 
     def test_sanctions_has_rust_available_attr(self):

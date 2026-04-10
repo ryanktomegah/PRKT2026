@@ -173,7 +173,7 @@ class AMLChecker:
         # P3 tenant velocity infrastructure (Sprint 2b)
         self._tenant_checkers: dict[str, TenantVelocityChecker] = {}
         self._bpi_rolling_window = RollingWindow(redis_client=redis_client)
-        self._structuring_detector = StructuringDetector()
+        self._structuring_detector = StructuringDetector(single_replica=True)
         self._base_salt = velocity_checker.salt
 
     # ── Public API ──────────────────────────────────────────────────────────

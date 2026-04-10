@@ -45,7 +45,25 @@ class QueryMeterEntry:
 class RegulatoryQueryMetering:
     """In-memory query metering with monthly budget enforcement."""
 
-    def __init__(self, metering_key: bytes = b"") -> None:
+    def __init__(
+        self,
+        metering_key: bytes = b"",
+        *,
+        single_replica: bool = False,
+    ) -> None:
+        if not single_replica:
+            raise ValueError(
+                "RegulatoryQueryMetering uses in-memory state that resets on "
+                "redeploy and multiplies N× across replicas. Pass "
+                "single_replica=True to acknowledge single-replica constraint, "
+                "or configure a Redis-backed store (B3-04)."
+            )
+        if single_replica:
+            import logging
+            logging.getLogger(__name__).warning(
+                "RegulatoryQueryMetering running with single_replica=True — "
+                "state will not survive restarts or scale across replicas"
+            )
         self._metering_key = metering_key
         self._entries: list[QueryMeterEntry] = []
         self._monthly_queries: dict[tuple[str, str], int] = {}

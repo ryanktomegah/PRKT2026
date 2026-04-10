@@ -248,7 +248,8 @@ try:
             query_metering = None
             if regulator_signing_key is not None:
                 query_metering = RegulatoryQueryMetering(
-                    metering_key=regulator_signing_key
+                    metering_key=regulator_signing_key,
+                    single_replica=True,
                 )
             application.include_router(
                 make_regulatory_router(
