@@ -136,6 +136,10 @@ func (c *Config) KafkaProducerConfigMap() map[string]interface{} {
 		"enable.idempotence":       true,
 		"acks":                     "all",
 		"retries":                  2147483647,
+		// B6-06: Python uses max.in.flight=1 (conservative exactly-once).
+		// Go uses 5 for higher throughput — safe with idempotence=true
+		// (Kafka guarantees ordering within a partition). If idempotence
+		// is ever disabled, reduce to 1 to prevent ordering violations.
 		"max.in.flight.requests.per.connection": 5,
 		"compression.type":         "snappy",
 		"linger.ms":                5,
