@@ -300,8 +300,12 @@ class PreFilter:
                     continue          # negated → skip this keyword
                 return DisputeClass.DISPUTE_CONFIRMED
 
+        # B10-09: Negotiation keywords must also check negation guard.
         for kw in _NEGOTIATION_KEYWORDS:
             if kw in lowered:
+                kw_pos = _find_keyword_token_pos(tokens, kw)
+                if kw_pos is not None and _is_negated(tokens, kw_pos):
+                    continue
                 return DisputeClass.NEGOTIATION
 
         return None

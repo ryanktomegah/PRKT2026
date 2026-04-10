@@ -245,7 +245,17 @@ class AMLChecker:
                         hit.confidence,
                     )
             except Exception as exc:
-                logger.error("Sanctions screening error for entity '%s': %s", name[:16], exc)
+                # B7-07: Sanctions screening failure must fail-closed.
+                # If we can't screen, assume the worst.
+                logger.error("Sanctions screening error for entity '%s': %s — BLOCKING as precaution", name[:16], exc)
+                return AMLResult(
+                    passed=False,
+                    reason="SANCTIONS_SCREENING_ERROR",
+                    anomaly_flagged=False,
+                    triggered_rules=triggered_rules,
+                    sanctions_hits=[],
+                    velocity_result=None,
+                )
 
         if sanctions_hits:
             return AMLResult(
