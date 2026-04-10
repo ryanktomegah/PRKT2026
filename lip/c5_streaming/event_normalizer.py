@@ -7,10 +7,12 @@ Three-entity role mapping:
   MIPLO — Money In / Payment Lending Organisation
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
+import json as _json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from pathlib import Path as _Path
 from typing import Optional
 
 from lip.common.block_codes import ALL_BLOCK_CODES as _BLOCK_REJECTION_CODES
@@ -46,26 +48,12 @@ _TEST_BIC = "XXXXXXXXXXX"
 #   - DO NOT add entries based on inference — only confirmed mappings.
 #   - Unknown codes are passed through unchanged; C7 and the taxonomy treat
 #     them as unrecognised and apply the safe default (7-day maturity / no offer).
-_PROPRIETARY_TO_ISO20022: dict[str, str] = {
-    # FedNow — regulatory / compliance holds
-    "F002": "RR04",           # FedNow: regulatory requirement hold
-    "REGULATORY_HOLD": "RR04",
-    "COMPLIANCE_HOLD": "RR04",
-    "COMPLIANCE_REVIEW": "RR04",
-    "AML_HOLD": "RR04",
-    # FedNow — legal / forbidden
-    "TRANSACTION_FORBIDDEN": "AG01",
-    "LEGAL_HOLD": "LEGL",
-    "LEGAL_DECISION": "LEGL",
-    # RTP (TCH) — compliance holds
-    "RTP_COMPLIANCE": "RR04",
-    "RTP_REGULATORY": "RR04",
-    "RTP_LEGAL": "LEGL",
-    "RTP_FORBIDDEN": "AG01",
-    # Common freeform strings that map unambiguously
-    "FRAUD": "FRAU",
-    "FRAUD_SUSPECTED": "FRAU",
-}
+# B6-03: Loaded from shared JSON — single source of truth for Python and Go.
+# Do NOT hand-maintain a parallel dict here.
+_PROPRIETARY_TO_ISO20022: dict[str, str] = _json.loads(
+    (_Path(__file__).resolve().parents[1] / "common" / "proprietary_iso20022_map.json")
+    .read_text()
+)["mapping"]
 
 
 def _normalize_rejection_code(code: str | None, rail: str) -> str | None:
