@@ -732,9 +732,11 @@ def _inject_temporal_clustering(
     result["timestamp_utc"] = new_timestamps
 
     # Integrity check: labels must never be altered by timestamp resampling.
-    assert np.array_equal(original_labels, result["label"].to_numpy()), (
-        "BUG: _inject_temporal_clustering corrupted label column"
-    )
+    # NOTE: This is a raise, not an assert — it must survive python -O.
+    if not np.array_equal(original_labels, result["label"].to_numpy()):
+        raise RuntimeError(
+            "BUG: _inject_temporal_clustering corrupted label column"
+        )
     return result
 
 

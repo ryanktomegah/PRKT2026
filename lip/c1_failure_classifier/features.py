@@ -163,9 +163,10 @@ def _build_feature_names() -> List[str]:
         "charge_type_sha",           # SHA charges flag
     ]
 
-    assert len(names) == TABULAR_FEATURE_DIM, (
-        f"Expected {TABULAR_FEATURE_DIM} feature names, got {len(names)}"
-    )
+    if len(names) != TABULAR_FEATURE_DIM:
+        raise ValueError(
+            f"Expected {TABULAR_FEATURE_DIM} feature names, got {len(names)}"
+        )
     return names
 
 
