@@ -465,7 +465,7 @@ impl PyRollingVelocity {
     /// Return a dict of Prometheus-style metric counters.
     fn get_metrics(&self, py: Python<'_>) -> PyResult<PyObject> {
         let snap = self.inner.get_metrics_snapshot();
-        let d = pyo3::types::PyDict::new_bound(py);
+        let d = pyo3::types::PyDict::new(py);
         for (k, v) in snap {
             d.set_item(k, v)?;
         }

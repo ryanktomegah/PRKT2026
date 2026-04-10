@@ -42,7 +42,7 @@ fn lip_c6_rust_velocity(m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Return a dict with build metadata for health checks / Prometheus.
 #[pyfunction]
 fn health_check(py: Python<'_>) -> PyResult<PyObject> {
-    let d = pyo3::types::PyDict::new_bound(py);
+    let d = pyo3::types::PyDict::new(py);
     d.set_item("ok", true)?;
     d.set_item("version", env!("CARGO_PKG_VERSION"))?;
     d.set_item("backend", "lip_c6_rust_velocity")?;
