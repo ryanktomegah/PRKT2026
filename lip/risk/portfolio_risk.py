@@ -8,7 +8,6 @@ No bank risk committee will approve deployment without answering
 
 from __future__ import annotations
 
-import math
 import threading
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
@@ -182,9 +181,9 @@ class PortfolioRiskEngine:
             maturity_d = Decimal(str(pos.maturity_days))
 
             # Time-horizon scaling factor: sqrt(horizon / maturity)
-            time_scale = Decimal(
-                str(math.sqrt(float(horizon) / float(maturity_d)))
-            )
+            # B8-04: Use Decimal.sqrt() to avoid float precision loss at
+            # compliance boundaries.
+            time_scale = (Decimal(str(horizon)) / maturity_d).sqrt()
 
             # Expected loss contribution
             el_i = pd_d * lgd_d * ead * time_scale
@@ -202,7 +201,8 @@ class PortfolioRiskEngine:
             ul_variance_total += ul_var_i
 
         # Portfolio unexpected-loss standard deviation
-        ul_std = Decimal(str(math.sqrt(float(ul_variance_total))))
+        # B8-04: Use Decimal.sqrt() to avoid float precision loss.
+        ul_std = ul_variance_total.sqrt()
 
         var_99 = (el_total + self._Z_99 * ul_std).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
