@@ -295,13 +295,15 @@ def compute_cascade_adjusted_pd(
     cascade_adjusted_fee_bps = compute_fee_bps_from_el(cascade_adjusted_pd, lgd, ead)
 
     # QUANT invariant: cascade_adjusted_fee_bps must never fall below FEE_FLOOR_BPS.
-    # compute_fee_bps_from_el() applies the floor, but we assert here defensively
+    # compute_fee_bps_from_el() applies the floor, but we check here defensively
     # so any future refactoring of the fee formula cannot silently break this guarantee.
-    assert cascade_adjusted_fee_bps >= FEE_FLOOR_BPS, (
-        f"QUANT invariant violated: cascade_adjusted_fee_bps={cascade_adjusted_fee_bps} "
-        f"< FEE_FLOOR_BPS={FEE_FLOOR_BPS}. This should be impossible — "
-        "compute_fee_bps_from_el() must always apply the floor."
-    )
+    # NOTE: This is a raise, not an assert — it must survive python -O (B10-08).
+    if cascade_adjusted_fee_bps < FEE_FLOOR_BPS:
+        raise ValueError(
+            f"QUANT invariant violated: cascade_adjusted_fee_bps={cascade_adjusted_fee_bps} "
+            f"< FEE_FLOOR_BPS={FEE_FLOOR_BPS}. This should be impossible — "
+            "compute_fee_bps_from_el() must always apply the floor."
+        )
 
     return CascadeAdjustedPricing(
         base_pd=base_pd,

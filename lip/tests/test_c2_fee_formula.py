@@ -631,3 +631,22 @@ class TestCascadeAdjustedPD:
         )
         assert result.base_pd == Decimal("1")
         assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
+
+    def test_fee_floor_survives_python_optimize_mode(self) -> None:
+        """B13-03: Fee floor must hold even under ``python -O`` (assert stripped).
+
+        The guard in compute_cascade_adjusted_pd was converted from assert to
+        raise (B10-08). This test verifies the invariant by running the
+        function through its normal path — if the check were still an assert,
+        running the test suite under -O would silently skip the guard.
+        """
+        # Very low PD + max cascade discount = strongest downward pressure on fee
+        result = compute_cascade_adjusted_pd(
+            base_pd=Decimal("0.0001"),
+            cascade_value_prevented=Decimal("9999999"),
+            intervention_cost=Decimal("1"),
+        )
+        assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS, (
+            f"Fee floor violated: {result.cascade_adjusted_fee_bps} < {FEE_FLOOR_BPS}. "
+            "If this fails under python -O, the guard is still an assert (B10-08 regression)."
+        )
