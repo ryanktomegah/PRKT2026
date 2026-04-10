@@ -379,7 +379,7 @@ class TestPipelineStage4:
         X, y = _make_Xy(_SMALL_N)
         config = TrainingConfig(test_split=0.2, val_split=0.1)
         pipeline = PDTrainingPipeline(config)
-        X_train, X_val, X_test, y_train, y_val, y_test = pipeline.stage4_train_val_test_split(X, y)
+        X_train, X_val, X_test, y_train, y_val, y_test, _test_idx = pipeline.stage4_train_val_test_split(X, y)
 
         total = len(y_train) + len(y_val) + len(y_test)
         assert total == _SMALL_N
