@@ -69,7 +69,7 @@ def _make_token(
         regulator_id=regulator_id,
         regulator_name=f"Test Regulator {regulator_id}",
         subscription_tier=tier,
-        permitted_corridors=corridors,
+        permitted_corridors=tuple(corridors) if corridors is not None else None,
         query_budget_monthly=10000,
         privacy_budget_allocation=100.0,
         valid_from=datetime(2026, 1, 1, tzinfo=timezone.utc),

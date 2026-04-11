@@ -38,7 +38,7 @@ def _make_regulator_token(
         regulator_id="OSFI-001",
         regulator_name="OSFI",
         subscription_tier=subscription_tier,
-        permitted_corridors=permitted_corridors,
+        permitted_corridors=tuple(permitted_corridors) if permitted_corridors is not None else None,
         query_budget_monthly=query_budget_monthly,
         privacy_budget_allocation=privacy_budget_allocation,
         valid_from=now - timedelta(days=1),

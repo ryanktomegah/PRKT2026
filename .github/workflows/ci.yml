@@ -45,6 +45,12 @@ jobs:
         run: pip install -e .
 
       - name: Run tests
+        env:
+          # B5-02: Rust extension not compiled in CI; allow Python fallback
+          LIP_ALLOW_PYTHON_FALLBACK: "1"
+          # B11-04 CIPHER: AML thresholds loaded from env, never from VCS
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m pytest lip/tests/ \
             --tb=short \
@@ -54,6 +60,10 @@ jobs:
 
       - name: Run tests with coverage (3.11 only)
         if: matrix.python-version == '3.11'
+        env:
+          LIP_ALLOW_PYTHON_FALLBACK: "1"
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m pytest lip/tests/ \
             --tb=short \
@@ -79,6 +89,10 @@ jobs:
           pip install -r requirements.txt -r requirements-ml.txt
           (cd lip && pip install -e .)
       - name: Run integrity tests
+        env:
+          LIP_ALLOW_PYTHON_FALLBACK: "1"
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m pytest lip/tests/test_integrity_*.py \
             --tb=short -v
@@ -110,6 +124,10 @@ jobs:
           pip install -r requirements.txt -r requirements-ml.txt
           cd lip && pip install -e .
       - name: Run DGEN smoke-test (C1 + C2 + C3 + C6)
+        env:
+          # B11-04 CIPHER: AML thresholds loaded from env, never from VCS
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m lip.dgen.generate_all \
             --output-dir /tmp/lip_smoke_corpus \
@@ -121,6 +139,9 @@ jobs:
           # This is a fixed CI test key — not a production secret.
           # Production deployments must use a proper secret from the vault.
           LIP_MODEL_HMAC_KEY: "ci-smoke-test-hmac-key-not-for-prod"
+          # B11-04 CIPHER: AML thresholds loaded from env, never from VCS
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m lip.train_all \
             --corpus-dir /tmp/lip_smoke_corpus \

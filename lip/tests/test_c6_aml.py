@@ -1,8 +1,9 @@
 """
 test_c6_aml.py — Tests for C6 AML Velocity Controls
 """
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from lip.c6_aml_velocity.aml_checker import AMLChecker
 from lip.c6_aml_velocity.anomaly import AnomalyDetector

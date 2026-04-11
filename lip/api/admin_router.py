@@ -249,7 +249,7 @@ try:
                 positions = [
                     MCPosition(
                         loan_id=pos.loan_id,
-                        principal=float(pos.principal),
+                        principal=Decimal(str(pos.principal)),
                         pd=pos.pd,
                         lgd=pos.lgd,
                         corridor=pos.corridor,

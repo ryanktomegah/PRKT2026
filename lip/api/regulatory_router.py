@@ -123,7 +123,7 @@ try:
             return Decimal("15000")
         return Decimal("5000")
 
-    def _corridor_is_permitted(corridor: str, permitted_corridors: list[str]) -> bool:
+    def _corridor_is_permitted(corridor: str, permitted_corridors: tuple[str, ...]) -> bool:
         for allowed in permitted_corridors:
             if allowed.endswith("*"):
                 if corridor.startswith(allowed[:-1]):

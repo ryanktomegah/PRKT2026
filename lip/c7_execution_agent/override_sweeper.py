@@ -12,7 +12,7 @@ from typing import Any, Optional
 try:
     from lip.common.notification_service import NotificationEventType as _NotificationEventType
 except ImportError:
-    _NotificationEventType = None  # type: ignore[assignment]
+    _NotificationEventType = None  # type: ignore[misc]
 
 logger = logging.getLogger(__name__)
 
