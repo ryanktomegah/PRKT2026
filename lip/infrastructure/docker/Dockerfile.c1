@@ -9,6 +9,10 @@ LABEL component="c1-failure-classifier"
 LABEL description="LIP C1 GraphSAGE+TabTransformer failure classifier — GPU inference"
 
 # Install Python dependencies
+# --ignore-installed cryptography: Triton base image ships a Debian-managed
+# cryptography build (no pip RECORD file); pip cannot uninstall it normally.
+# Reinstalling with --ignore-installed lays a fresh wheel on top.
+RUN pip install --no-cache-dir --ignore-installed "cryptography>=42.0.0,<44.0"
 RUN pip install --no-cache-dir \
     "numpy>=1.26.0,<3.0" \
     "scikit-learn>=1.4.0,<2.0" \
