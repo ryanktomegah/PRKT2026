@@ -123,7 +123,7 @@ Create a detailed table with these columns:
 **Mandatory rows** (add more if the fact pattern warrants):
 
 1. Source code (existing PRKT2026 repository)
-2. Architecture and design documents (consolidation files, playbooks, briefings)
+2. Architecture and design documents (docs/ subdirectories, playbooks, briefings)
 3. ML models and training methodology (C2 model, BIC-pair detection, CVA/PD estimation)
 4. Pricing logic, rules, heuristics, and fee constants (QUANT-controlled parameters)
 5. Patentable inventions (bridging methodology, auto-settlement on UETR)

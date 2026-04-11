@@ -1713,8 +1713,8 @@ These issues are required for SR 11-7 / EU AI Act compliance in regulated market
 - `lip/common/constants.py` (canonical constants, settlement P95 labels)
 - `docs/compliance.md` (SR 11-7, EU AI Act, DORA, AML/CFT)
 - `CLIENT_PERSPECTIVE_ANALYSIS.md` (operational gaps 1–17)
-- `consolidation files/BPI_Gap_Analysis_v2.0.md` (licensing model gaps)
-- `consolidation files/BPI_Architecture_Specification_v1.2.md` (three-entity model)
+- `docs/engineering/specs/BPI_Gap_Analysis_v2.0.md` (licensing model gaps)
+- `docs/engineering/specs/BPI_Architecture_Specification_v1.2.md` (three-entity model)
 - `CLAUDE.md` (canonical constants, agent sign-off authorities)
 
 **Review standard:** Every issue in this document was derived from reading the actual source.

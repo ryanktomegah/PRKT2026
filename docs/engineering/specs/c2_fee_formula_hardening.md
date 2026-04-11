@@ -155,7 +155,7 @@ If a defect is found in `compute_loan_fee` after deployment:
 
 ## 7. Definition of Done Checklist
 
-- [x] Spec doc merged (`docs/specs/c2_fee_formula_hardening.md`)
+- [x] Spec doc merged (`docs/engineering/specs/c2_fee_formula_hardening.md`)
 - [x] `compute_loan_fee` is the single named pure function (already existed in `fee.py`)
 - [x] `days_funded` type broadened to `Union[int, float, Decimal]` (handles generator)
 - [x] `lip/api/portfolio_router.py` patched to call `compute_loan_fee`

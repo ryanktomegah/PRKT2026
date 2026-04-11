@@ -5,7 +5,7 @@
 **Decision authority:** Founder + patent counsel
 **Source rationale:** [`/CLAUDE.md`](../../CLAUDE.md) § EPG-20/21
 **Related briefing:** [`../patent_counsel_briefing.md`](../patent_counsel_briefing.md)
-**Related ref:** `consolidation files/Provisional-Specification-v5.2.md`, `Patent-Family-Architecture-v2.1.md`
+**Related ref:** [`../patent/Provisional-Specification-v5.2.md`](../patent/Provisional-Specification-v5.2.md), [`../patent/Patent-Family-Architecture-v2.1.md`](../patent/Patent-Family-Architecture-v2.1.md)
 
 ---
 
@@ -66,4 +66,4 @@ The list of BLOCK-class ISO 20022 codes (DNOR, CNOR, RR01–RR04, AG01, LEGL) **
 
 ## Open dependency
 
-Both EPG-20 and EPG-21 are pending non-provisional filing. The provisional specification `consolidation files/Provisional-Specification-v5.2.md` already conforms to these rules, but counsel review and the non-provisional filing have not yet happened. Until they do, the patent moat is provisional only. See [`../OPEN_BLOCKERS.md`](../OPEN_BLOCKERS.md).
+Both EPG-20 and EPG-21 are pending non-provisional filing. The provisional specification [`../patent/Provisional-Specification-v5.2.md`](../patent/Provisional-Specification-v5.2.md) already conforms to these rules, but counsel review and the non-provisional filing have not yet happened. Until they do, the patent moat is provisional only. See [`../../engineering/OPEN_BLOCKERS.md`](../../engineering/OPEN_BLOCKERS.md).

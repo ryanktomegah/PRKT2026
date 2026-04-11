@@ -4,7 +4,7 @@
 
 **Source:** `lip/p10_regulatory_data/`
 **Module count:** 17 modules + `__init__.py`
-**Patent reference:** `consolidation files/P10-v0-Implementation-Blueprint.md` (referenced via `Future-Technology-Disclosure-v2.1.md`)
+**Patent reference:** [`docs/engineering/blueprints/P10-v0-Implementation-Blueprint.md`](../blueprints/P10-v0-Implementation-Blueprint.md) (referenced via [`Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md))
 **Sprint history:** Sprint 4a (anonymizer foundation) → 4b (systemic risk engine) → Sprint 5 (report generator)
 
 ---
@@ -106,7 +106,7 @@ P10 is its own patent in the BPI patent family. The patentable contribution is t
 
 ## Cross-references
 
-- **Forward technology disclosure**: `consolidation files/Future-Technology-Disclosure-v2.1.md`
-- **Patent family map**: `consolidation files/Patent-Family-Architecture-v2.1.md`
-- **Related forward-looking patents**: P5 (cascade engine, see [`p5_cascade_engine.md`](p5_cascade_engine.md)), P9 (CBDC, see [`../cbdc-protocol-research.md`](../cbdc-protocol-research.md)), P12 (federated learning, see [`../federated-learning-architecture.md`](../federated-learning-architecture.md))
+- **Forward technology disclosure**: [`../../legal/patent/Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md)
+- **Patent family map**: [`../../legal/patent/Patent-Family-Architecture-v2.1.md`](../../legal/patent/Patent-Family-Architecture-v2.1.md)
+- **Related forward-looking patents**: P5 (cascade engine, see [`p5_cascade_engine.md`](p5_cascade_engine.md)), P9 (CBDC, see [`../../models/cbdc-protocol-research.md`](../../models/cbdc-protocol-research.md)), P12 (federated learning, see [`../../models/federated-learning-architecture.md`](../../models/federated-learning-architecture.md))
 - **Integrity layer**: P10 reports are emitted through `lip/integrity/compliance_enforcer.py` so the proof chain is gated end-to-end (see [`integrity.md`](integrity.md))

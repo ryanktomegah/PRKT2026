@@ -38,7 +38,7 @@ Producing these documents by hand for every model and every release is unsustain
 | **Runtime reporters** | `lip/common/regulatory_reporter.py` | Runtime emission of DORA audit events with `within_threshold` calculations; `SR117ModelValidationReport` data structure; `RegulatoryReporter` class |
 | **HTTP exposure** | `lip/api/regulatory_router.py`, `regulatory_service.py`, `regulatory_models.py` | The HTTP surface a regulator (or auditor) uses to fetch the generated artifacts |
 | **Emission gate** | `lip/integrity/compliance_enforcer.py` | The structural check that refuses to emit any artifact whose evidence chain is broken |
-| **Generated artifacts** | `docs/c1-model-card.md`, `c1-training-data-card.md`, `c2-model-card.md`, `c6_sanctions_audit.md`, `consolidation files/BPI_SR11-7_Model_Governance_Pack_v1.0.md` | The actual output documents |
+| **Generated artifacts** | `docs/models/c1-model-card.md`, `docs/models/c1-training-data-card.md`, `docs/models/c2-model-card.md`, `docs/legal/c6_sanctions_audit.md`, `docs/legal/governance/BPI_SR11-7_Model_Governance_Pack_v1.0.md` | The actual output documents |
 
 A compliance officer onboarding to LIP should read `docs/compliance.md` first (the checklist), then this file (the generator), then `lip/integrity/` (see [`integrity.md`](integrity.md)) to understand the gate, then the generated artifacts to see what the output looks like in practice.
 
@@ -48,5 +48,5 @@ A compliance officer onboarding to LIP should read `docs/compliance.md` first (t
 - **Runtime reporters**: `lip/common/regulatory_reporter.py` (see [`common.md`](common.md))
 - **HTTP surface**: `lip/api/regulatory_router.py` (see [`api.md`](api.md))
 - **Emission gate**: `lip/integrity/compliance_enforcer.py` (see [`integrity.md`](integrity.md))
-- **Operative compliance decisions**: [`../decisions/EPG-19_compliance_hold_bridging.md`](../decisions/EPG-19_compliance_hold_bridging.md), [`../decisions/EPG-16-18_aml_caps_human_review.md`](../decisions/EPG-16-18_aml_caps_human_review.md)
-- **Full SR 11-7 governance pack**: `consolidation files/BPI_SR11-7_Model_Governance_Pack_v1.0.md`
+- **Operative compliance decisions**: [`../../legal/decisions/EPG-19_compliance_hold_bridging.md`](../../legal/decisions/EPG-19_compliance_hold_bridging.md), [`../../legal/decisions/EPG-16-18_aml_caps_human_review.md`](../../legal/decisions/EPG-16-18_aml_caps_human_review.md)
+- **Full SR 11-7 governance pack**: [`../../legal/governance/BPI_SR11-7_Model_Governance_Pack_v1.0.md`](../../legal/governance/BPI_SR11-7_Model_Governance_Pack_v1.0.md)

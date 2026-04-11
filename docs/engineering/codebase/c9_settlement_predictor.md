@@ -37,12 +37,12 @@ The `__init__.py` is intentionally a one-line docstring with no exports — the 
 
 Settlement time is **right-censored** at the maturity window: for any payment that has not settled by maturity, we know the settlement time is at least the maturity, but not the exact value. Standard regression models cannot handle this without throwing away the censored observations, which is most of the dataset for slow corridors. Survival models (Cox, AFT, parametric Weibull / log-normal) handle censoring natively, which is why C9 uses them.
 
-This is also a **patentable** modelling choice in combination with the LIP base pipeline — using a survival model to set bridge-loan maturity windows on cross-border failed payments is novel. The C9 contribution is referenced in the forward technology disclosure (`consolidation files/Future-Technology-Disclosure-v2.1.md`).
+This is also a **patentable** modelling choice in combination with the LIP base pipeline — using a survival model to set bridge-loan maturity windows on cross-border failed payments is novel. The C9 contribution is referenced in the forward technology disclosure ([`docs/legal/patent/Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md)).
 
 ## Cross-references
 
 - **Reading order**: this file → `model.py` → `synthetic_data.py`
 - **Consumers**: `lip/risk/var_monte_carlo.py` (today); `lip/c3_repayment_engine/` (planned, gated on QUANT sign-off)
 - **Maturity windows it would replace**: `lip/configs/rejection_taxonomy.yaml` `maturity_days` table (see [`configs.md`](configs.md))
-- **Forward technology disclosure**: `consolidation files/Future-Technology-Disclosure-v2.1.md`
+- **Forward technology disclosure**: [`../../legal/patent/Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md)
 - **Notification surface**: `lip/common/notification_service.py` (see [`common.md`](common.md))

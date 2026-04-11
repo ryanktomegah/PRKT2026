@@ -4,7 +4,7 @@
 **Decided:** 2026-03-18
 **Decision authority:** REX (final), unanimous with CIPHER and NOVA
 **Source rationale:** [`/CLAUDE.md`](../../CLAUDE.md) § EPG-19 (full deliberation)
-**Source audit:** [`/EPIGNOSIS_ARCHITECTURE_REVIEW.md`](../../EPIGNOSIS_ARCHITECTURE_REVIEW.md)
+**Source audit:** [`/docs/engineering/review/EPIGNOSIS_ARCHITECTURE_REVIEW.md`](../../engineering/review/EPIGNOSIS_ARCHITECTURE_REVIEW.md)
 **Implementation history:** [`/PROGRESS.md`](../../PROGRESS.md) (search "EPG-19")
 
 ---

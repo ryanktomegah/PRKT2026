@@ -10,7 +10,7 @@ This document specifies the governance architecture for Bridgepoint Intelligence
 
 ## Why This Document Exists
 
-The [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md) projects dilution from 85% at inception to ~27% at IPO. Without governance protections, 27% ownership means the founder can be outvoted on everything — CEO removal, company sale, strategic direction, share issuance. Every protection in this document exists to decouple **economic ownership** (which dilutes naturally through fundraising) from **voting control** (which must not dilute).
+The [Founder Financial Model](../../business/Founder-Financial-Model.md) projects dilution from 85% at inception to ~27% at IPO. Without governance protections, 27% ownership means the founder can be outvoted on everything — CEO removal, company sale, strategic direction, share issuance. Every protection in this document exists to decouple **economic ownership** (which dilutes naturally through fundraising) from **voting control** (which must not dilute).
 
 The existing fundraising documents mention a "dual share class (common + blank-cheque preferred)" in the [F&F round budget](../fundraising/ff-round-structure.md) (line item #3: CBCA incorporation). This document converts that one-line mention into a complete governance architecture.
 
@@ -41,7 +41,7 @@ The existing fundraising documents mention a "dual share class (common + blank-c
 | **Class B Common** | 1 vote per share | Equal per-share with Class A | ESOP, employees, converted investors | Cannot convert to Class A |
 | **Class C Preferred** | 1 vote per share (on as-converted basis) | Liquidation preference + equal per-share | Investors (series C-1, C-2, etc.) | Mandatory → Class B at IPO |
 
-**Why three classes, not two:** Class A/B is the dual-class voting structure. Class C is the "blank-cheque preferred" referenced in the [F&F round structure](../fundraising/ff-round-structure.md) and the [Section 85 Rollover Briefing](../../consolidation%20files/Section-85-Rollover-Briefing-v1.1.md) — it accommodates investor-specific terms (liquidation preference, anti-dilution) without contaminating the common share economics or voting structure.
+**Why three classes, not two:** Class A/B is the dual-class voting structure. Class C is the "blank-cheque preferred" referenced in the [F&F round structure](../fundraising/ff-round-structure.md) and the [Section 85 Rollover Briefing](../../business/Section-85-Rollover-Briefing-v1.1.md) — it accommodates investor-specific terms (liquidation preference, anti-dilution) without contaminating the common share economics or voting structure.
 
 ### 1.2 Shares at Founding
 
@@ -51,11 +51,11 @@ The existing fundraising documents mention a "dual share class (common + blank-c
 | Class B Common | 100,000,000 | 0 (1,500,000 reserved for ESOP, unissued until exercised) | Option pool |
 | Class C Preferred | 100,000,000 (in series) | 0 | — |
 
-**Share math:** 8,500,000 / 10,000,000 = 85% founder ownership at inception. 1,500,000 / 10,000,000 = 15% ESOP reserve. Both figures match the [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md) ("Inception: 85% (15% ESOP reserved)").
+**Share math:** 8,500,000 / 10,000,000 = 85% founder ownership at inception. 1,500,000 / 10,000,000 = 15% ESOP reserve. Both figures match the [Founder Financial Model](../../business/Founder-Financial-Model.md) ("Inception: 85% (15% ESOP reserved)").
 
 **CBCA requirement:** No par value shares — s.24(1) of the Canada Business Corporations Act prohibits par value shares. This is mandatory. The articles will specify share class rights, not par values.
 
-**S.85 interaction:** The [Section 85 Rollover Briefing v1.1](../../consolidation%20files/Section-85-Rollover-Briefing-v1.1.md) raises a PUC (paid-up capital) question about dual share classes (Question 5 for the accountant): "Does the dual share class structure create any PUC complications under s. 85(2.1) that could affect future preferred share issuances?" The s.85(2.1) PUC reduction applies only to the shares issued as consideration for the IP transfer (Class A Common). It should not contaminate Class C Preferred PUC when preferred shares are later issued for cash. **Confirm with tax counsel before filing the T2057.**
+**S.85 interaction:** The [Section 85 Rollover Briefing v1.1](../../business/Section-85-Rollover-Briefing-v1.1.md) raises a PUC (paid-up capital) question about dual share classes (Question 5 for the accountant): "Does the dual share class structure create any PUC complications under s. 85(2.1) that could affect future preferred share issuances?" The s.85(2.1) PUC reduction applies only to the shares issued as consideration for the IP transfer (Class A Common). It should not contaminate Class C Preferred PUC when preferred shares are later issued for cash. **Confirm with tax counsel before filing the T2057.**
 
 ### 1.3 Automatic Conversion Triggers on Class A
 
@@ -87,7 +87,7 @@ This is the core of the strategy. Because Class A shares carry 10 votes each and
 | Growth/Pre-IPO (~32%) | 32% | 26,562,500 | 18,062,500 | 85,000,000 | **82.5%** |
 | **IPO (~27%)** | **27%** | **31,481,481** | **22,981,481** | **85,000,000** | **78.7%** |
 
-**How to read this table:** Economic ownership percentages come from the [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md) dilution path (fully-diluted basis, including ESOP reserve in the denominator). At each stage, total fully-diluted shares = founder shares / founder %. Others' shares = total − founder shares. All non-founder shares carry 1 vote each (Class B Common or Class C Preferred on as-converted basis). F&F SAFEs do not convert until the Pre-Seed equity financing ($500K minimum qualifying financing per the [SAFE template](../fundraising/safe-agreement-template.md)), so the founder holds 100% of votes through the F&F stage. At founding, the ESOP reserve is authorized but unissued — no voting shares exist outside Class A.
+**How to read this table:** Economic ownership percentages come from the [Founder Financial Model](../../business/Founder-Financial-Model.md) dilution path (fully-diluted basis, including ESOP reserve in the denominator). At each stage, total fully-diluted shares = founder shares / founder %. Others' shares = total − founder shares. All non-founder shares carry 1 vote each (Class B Common or Class C Preferred on as-converted basis). F&F SAFEs do not convert until the Pre-Seed equity financing ($500K minimum qualifying financing per the [SAFE template](../fundraising/safe-agreement-template.md)), so the founder holds 100% of votes through the F&F stage. At founding, the ESOP reserve is authorized but unissued — no voting shares exist outside Class A.
 
 **Conservative assumption:** This table counts ALL non-founder fully-diluted shares as voting, including ESOP shares that may not yet be exercised. In practice, unexercised options do not vote, so the founder's actual voting power at each stage is equal to or higher than shown.
 
@@ -172,7 +172,7 @@ These consent rights are attached to the **Class A share class** under CBCA s.24
 
 - Entry into a materially different line of business
 - Single transactions or commitments exceeding $500,000 (adjust upward at each funding round)
-- Assignment, licensing, encumbrance, or abandonment of the patent or any core IP (including the provisional patent application, the utility patent, and the trade secret portfolio described in the [Section 85 Rollover Briefing](../../consolidation%20files/Section-85-Rollover-Briefing-v1.1.md))
+- Assignment, licensing, encumbrance, or abandonment of the patent or any core IP (including the provisional patent application, the utility patent, and the trade secret portfolio described in the [Section 85 Rollover Briefing](../../business/Section-85-Rollover-Briefing-v1.1.md))
 - Related-party transactions (any transaction between BPI and the founder, founder's family, founder's holdco, or any entity in which the founder has an interest)
 
 ### 3.3 Why This Is Robust
@@ -216,7 +216,7 @@ The founder has the right to participate pro rata in any new share issuance (exc
 
 ### 5.2 Structural Protection
 
-The 10:1 voting ratio IS the primary anti-dilution mechanism for **control.** Economic dilution is expected and natural — the [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md) projects dilution from 85% to 27% across seven rounds. What dual-class prevents is **voting dilution** — the founder's economic stake shrinks, but their governance control does not.
+The 10:1 voting ratio IS the primary anti-dilution mechanism for **control.** Economic dilution is expected and natural — the [Founder Financial Model](../../business/Founder-Financial-Model.md) projects dilution from 85% to 27% across seven rounds. What dual-class prevents is **voting dilution** — the founder's economic stake shrinks, but their governance control does not.
 
 ### 5.3 Explicit Class A Protection
 
@@ -329,7 +329,7 @@ The Canada Business Corporations Act provides the statutory foundation for every
 | Adopt By-law No. 1 | Corporate by-law | Standard CBCA by-law: meetings, quorum, officer appointments, banking, indemnification (broadest per s.124). |
 | Pass organizational resolutions | Board resolutions | First director = founder. Adopt by-law. Authorize share issuance. Authorize CEO to sign T2057. Adopt ESOP plan. |
 | Adopt ESOP plan | Equity incentive plan | 1,500,000 Class B shares reserved. Vesting: 4-year standard, 1-year cliff. Board (i.e., founder at this stage) approves all grants. |
-| Execute IP Assignment Agreement | IP transfer agreement | Transfers all IP from founder to BPI. Separate from the T2057 (tax election) — this is the legal transfer of title. Per [Section 85 Rollover Briefing v1.1](../../consolidation%20files/Section-85-Rollover-Briefing-v1.1.md). |
+| Execute IP Assignment Agreement | IP transfer agreement | Transfers all IP from founder to BPI. Separate from the T2057 (tax election) — this is the legal transfer of title. Per [Section 85 Rollover Briefing v1.1](../../business/Section-85-Rollover-Briefing-v1.1.md). |
 | File T2057 (Section 85 election) | CRA Form T2057 | Joint election: elected amount = $1 (or lowest defensible amount per accountant). PUC reduction per s.85(2.1). **Do not miss the filing deadline — penalty is $100/month, max $8,000, and CRA may deny the election entirely if >3 years late.** |
 
 ### Phase 3: Incorporate → F&F Close (2–8 Weeks Post-Incorporation)
@@ -387,7 +387,7 @@ The Canada Business Corporations Act provides the statutory foundation for every
 
 | Trap | What It Is | Defence |
 |------|-----------|---------|
-| **Running out of cash** | The most powerful governance protections in this document are worthless if the company is desperate for capital. A company with 2 months of runway will accept any terms. | **Never go below 6 months of runway before starting a fundraise.** The [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md) sizes each round for 18–24 months of runway. Start raising at Month 12, not Month 18. |
+| **Running out of cash** | The most powerful governance protections in this document are worthless if the company is desperate for capital. A company with 2 months of runway will accept any terms. | **Never go below 6 months of runway before starting a fundraise.** The [Founder Financial Model](../../business/Founder-Financial-Model.md) sizes each round for 18–24 months of runway. Start raising at Month 12, not Month 18. |
 | **Oppression remedy (s.241)** | Investors can petition a court if the founder uses dual-class control for self-dealing, excessive compensation, or disregard of minority interests. The court has broad discretion to order any remedy it considers fit, including ordering the company to buy back shares or restraining the founder's actions. | **Act in good faith.** No excessive salary, no related-party sweetheart deals, no disregarding minority economic interests. The dual-class structure grants control, not impunity. Consider all stakeholders in every material decision. Document the business rationale for any decision that could be perceived as self-interested. |
 
 ---
@@ -419,19 +419,19 @@ This document was cross-referenced against the following source documents on cre
 
 | Check | Source Document | Status |
 |-------|----------------|--------|
-| Founder ownership at inception = 85% (15% ESOP) | [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md), Row 1 | Consistent (8.5M / 10M = 85%) |
+| Founder ownership at inception = 85% (15% ESOP) | [Founder Financial Model](../../business/Founder-Financial-Model.md), Row 1 | Consistent (8.5M / 10M = 85%) |
 | Dilution path: 85% → 68% → 55% → 45% → 37% → 32% → 27% | Founder Financial Model, Section 2 equity journey table | Consistent |
 | F&F SAFE terms: $2M cap, 20% discount | [F&F Round Structure](../fundraising/ff-round-structure.md), Section 1 | Consistent |
 | SAFE conversion trigger: $500K minimum qualifying financing | [SAFE Agreement Template](../fundraising/safe-agreement-template.md), Section 1.5 | Consistent |
 | ESOP reserve = 15% = 1,500,000 / 10,000,000 | Founder Financial Model ("15% ESOP reserved") | Consistent |
-| S.85 rollover: IP transfer at elected amount $1, PUC reduction per s.85(2.1) | [Section 85 Rollover Briefing v1.1](../../consolidation%20files/Section-85-Rollover-Briefing-v1.1.md), Sections 1, 4 | Consistent. PUC dual-class interaction flagged (Question 5 for accountant) — requires counsel confirmation. |
+| S.85 rollover: IP transfer at elected amount $1, PUC reduction per s.85(2.1) | [Section 85 Rollover Briefing v1.1](../../business/Section-85-Rollover-Briefing-v1.1.md), Sections 1, 4 | Consistent. PUC dual-class interaction flagged (Question 5 for accountant) — requires counsel confirmation. |
 | Dual share class mentioned in existing docs | F&F Round Structure (budget item #3), Section 85 Briefing (Question 5) | Consistent. This document expands the one-line mention into full specification. |
 | No par value shares (CBCA s.24(1)) | Section 85 Briefing (no par value assumed throughout) | Consistent |
 | D&O insurance: $2K–$5K/yr | F&F Round Structure, budget item #6 | Consistent. This document specifies $5M minimum coverage. |
 
 ### Items Requiring Founder Financial Model Update
 
-The [Founder Financial Model](../../consolidation%20files/Founder-Financial-Model.md) should be updated to reflect:
+The [Founder Financial Model](../../business/Founder-Financial-Model.md) should be updated to reflect:
 
 1. **Voting control column.** The equity journey table (Section 2) shows only economic ownership. A "Founder Voting %" column should be added showing the 10:1 impact (as calculated in Section 1.4 of this document).
 2. **Liquidation waterfall modeling.** Section 7 ("Dilution May Be Higher Than Modeled") mentions liquidation preferences but does not model them. A waterfall analysis showing founder proceeds at various exit valuations (1×, 2×, 3× last post-money) should be added.
@@ -447,6 +447,6 @@ The CBCA section references in this document reflect the statute as of March 202
 
 ---
 
-*Cross-references: [Founder-Financial-Model.md](../../consolidation%20files/Founder-Financial-Model.md) | [ff-round-structure.md](../fundraising/ff-round-structure.md) | [safe-agreement-template.md](../fundraising/safe-agreement-template.md) | [Section-85-Rollover-Briefing-v1.1.md](../../consolidation%20files/Section-85-Rollover-Briefing-v1.1.md)*
+*Cross-references: [Founder-Financial-Model.md](../../business/Founder-Financial-Model.md) | [ff-round-structure.md](../fundraising/ff-round-structure.md) | [safe-agreement-template.md](../fundraising/safe-agreement-template.md) | [Section-85-Rollover-Briefing-v1.1.md](../../business/Section-85-Rollover-Briefing-v1.1.md)*
 
 *VERSION 1.0 | Bridgepoint Intelligence Inc. | March 2026*

@@ -52,7 +52,7 @@ A single change to the loan book ripples through all four layers, but they answe
 ## Cross-references
 
 - **HTTP consumers**: `lip/api/portfolio_router.py`, `lip/api/admin_router.py` (see [`api.md`](api.md))
-- **Per-payment risk**: `lip/c2_pd_model/` and the canonical spec at `consolidation files/BPI_C2_Component_Spec_v1.0.md`
+- **Per-payment risk**: `lip/c2_pd_model/` and the canonical spec at [`docs/engineering/specs/BPI_C2_Component_Spec_v1.0.md`](../specs/BPI_C2_Component_Spec_v1.0.md)
 - **Privacy-preserving regulatory analytics**: `lip/p10_regulatory_data/` (see [`p10_regulatory_data.md`](p10_regulatory_data.md))
 - **Cascade-aware portfolio view**: `lip/p5_cascade_engine/` (see [`p5_cascade_engine.md`](p5_cascade_engine.md))
 - **DORA reporting**: `lip/common/regulatory_reporter.py` (see [`common.md`](common.md))

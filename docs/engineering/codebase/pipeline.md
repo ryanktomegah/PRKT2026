@@ -4,7 +4,7 @@
 
 **Source:** `lip/pipeline.py`
 **Implements:** Algorithm 1 (Architecture Specification v1.2 § 3)
-**Canonical spec:** `consolidation files/BPI_Architecture_Specification_v1.2.md`
+**Canonical spec:** [`docs/engineering/specs/BPI_Architecture_Specification_v1.2.md`](../specs/BPI_Architecture_Specification_v1.2.md)
 
 ---
 
@@ -29,7 +29,7 @@ For each payment event:
    - If accepted: state transitions to `FUNDED`, **C3** starts settlement monitoring on the UETR
 4. Returns a `PipelineResult` with full audit trail (`outcome`, `compliance_hold`, `decision_log_entries`, latency telemetry)
 
-The `τ*` constant (`FAILURE_PROBABILITY_THRESHOLD = 0.110`) is documented inline in `pipeline.py` with the calibration provenance: F2-optimal threshold from C1 retraining on a 10M corpus, ECE = 0.0687 post-isotonic calibration, validated 2026-03-21. **It is locked** — see [`../decisions/README.md`](../decisions/README.md) and `CLAUDE.md` § Canonical Constants.
+The `τ*` constant (`FAILURE_PROBABILITY_THRESHOLD = 0.110`) is documented inline in `pipeline.py` with the calibration provenance: F2-optimal threshold from C1 retraining on a 10M corpus, ECE = 0.0687 post-isotonic calibration, validated 2026-03-21. **It is locked** — see [`../../legal/decisions/README.md`](../../legal/decisions/README.md) and `CLAUDE.md` § Canonical Constants.
 
 ## Where it sits
 
@@ -65,12 +65,12 @@ PipelineResult  (outcome, compliance_hold, decision_log, latency)
 
 ## Cross-references
 
-- **Per-step detail**: see each component's README in `lip/c{N}_*/README.md` and the canonical spec in `consolidation files/BPI_C{N}_Component_Spec_v1.0*.md`
+- **Per-step detail**: see each component's README in `lip/c{N}_*/README.md` and the canonical spec in [`docs/engineering/specs/BPI_C{N}_Component_Spec_v1.0*.md`](../specs/)
 - **State machines**: `lip/common/state_machines.py` — `PaymentState`, `LoanState`, `PaymentStateMachine`, `LoanStateMachine`
 - **Schemas**: `lip/common/schemas.py` — `LoanOffer`, `LoanOfferDelivery`, `LoanOfferAcceptance`, `LoanOfferExpiry`, `DecisionLogEntry`, `TenantContext`, `LoanState`, `OfferExpiryReason`, `RevenueRecord`
 - **Result type**: `lip/pipeline_result.py` — `PipelineResult`
 - **Rejection taxonomy**: `lip/c3_repayment_engine/rejection_taxonomy.py` — the BLOCK / CLASS_A / CLASS_B / CLASS_C classification of every ISO 20022 rejection code
-- **Operative compliance policy**: [`../decisions/EPG-19_compliance_hold_bridging.md`](../decisions/EPG-19_compliance_hold_bridging.md) — defense-in-depth at Layer 1 (rejection_taxonomy) and Layer 2 (C7 `_COMPLIANCE_HOLD_CODES`)
+- **Operative compliance policy**: [`../../legal/decisions/EPG-19_compliance_hold_bridging.md`](../../legal/decisions/EPG-19_compliance_hold_bridging.md) — defense-in-depth at Layer 1 (rejection_taxonomy) and Layer 2 (C7 `_COMPLIANCE_HOLD_CODES`)
 
 ## Reading order for a new developer
 
@@ -81,4 +81,4 @@ PipelineResult  (outcome, compliance_hold, decision_log, latency)
 5. The outcome-mapping helpers at the bottom of the file
 6. Then jump into whichever component you need from `lip/c{N}_*/`
 
-Do **not** modify `pipeline.py` without (a) reading the relevant component spec in `consolidation files/`, and (b) running the full E2E test suite (`lip/tests/test_e2e_pipeline.py` — 8 in-memory scenarios, no infrastructure required).
+Do **not** modify `pipeline.py` without (a) reading the relevant component spec in [`docs/engineering/specs/`](../specs/), and (b) running the full E2E test suite (`lip/tests/test_e2e_pipeline.py` — 8 in-memory scenarios, no infrastructure required).

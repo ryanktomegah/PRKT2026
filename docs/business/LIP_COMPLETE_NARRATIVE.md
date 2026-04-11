@@ -581,8 +581,9 @@ PRKT2026/
 │   ├── developer-guide.md            # Developer onboarding
 │   ├── api-reference.md              # API docs
 │   └── benchmark-results.md          # Latency benchmarks
-├── consolidation files/
-│   ├── BPI_SR11-7_Model_Governance_Pack_v1.0.md
+├── docs/legal/governance/
+│   └── BPI_SR11-7_Model_Governance_Pack_v1.0.md
+├── docs/engineering/specs/
 │   ├── BPI_C1_Component_Spec_v1.0.md
 │   └── BPI_C2_Component_Spec_v1.0.md
 ├── scripts/                          # Training and validation scripts
@@ -592,7 +593,7 @@ PRKT2026/
 │   └── commands/                     # /train, /dgen, etc.
 ├── CLAUDE.md                         # Team rules and constants
 ├── PROGRESS.md                       # Session-by-session work log
-├── EPIGNOSIS_ARCHITECTURE_REVIEW.md  # Deep architecture audit
+├── docs/engineering/review/EPIGNOSIS_ARCHITECTURE_REVIEW.md  # Deep architecture audit
 └── CLIENT_PERSPECTIVE_ANALYSIS.md    # Business/operational gap analysis
 ```
 
@@ -642,4 +643,4 @@ No gaps are fatal. All sixteen documented gaps have identified fixes. The system
 
 ---
 
-*This document is the single narrative source for LIP. For specific ground truth values, defer to `docs/c1-model-card.md` and `docs/c1-training-data-card.md`. For regulatory compliance detail, defer to `consolidation files/BPI_SR11-7_Model_Governance_Pack_v1.0.md`. For architecture decisions and gap analysis, defer to `EPIGNOSIS_ARCHITECTURE_REVIEW.md` and `CLIENT_PERSPECTIVE_ANALYSIS.md`.*
+*This document is the single narrative source for LIP. For specific ground truth values, defer to `docs/models/c1-model-card.md` and `docs/models/c1-training-data-card.md`. For regulatory compliance detail, defer to `docs/legal/governance/BPI_SR11-7_Model_Governance_Pack_v1.0.md`. For architecture decisions and gap analysis, defer to `docs/engineering/review/EPIGNOSIS_ARCHITECTURE_REVIEW.md` and `docs/business/CLIENT_PERSPECTIVE_ANALYSIS.md`.*

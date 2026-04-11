@@ -19,7 +19,7 @@ Each file documents one subsystem. The format is the same throughout:
 4. **Public API** — the symbols intended for use by other subsystems
 5. **Cross-references** — canonical spec, related EPG decisions, related modules
 
-This is **reference documentation**, not narrative. For the end-to-end story of how a payment moves through LIP, read [`../architecture.md`](../architecture.md) and the per-component READMEs in `lip/c{N}_*/README.md`. For *why* the code looks the way it does, read [`../decisions/README.md`](../decisions/README.md). For *what's blocking pilot*, read [`../OPEN_BLOCKERS.md`](../OPEN_BLOCKERS.md).
+This is **reference documentation**, not narrative. For the end-to-end story of how a payment moves through LIP, read [`../architecture.md`](../architecture.md) and the per-component READMEs in `lip/c{N}_*/README.md`. For *why* the code looks the way it does, read [`../../legal/decisions/README.md`](../../legal/decisions/README.md). For *what's blocking pilot*, read [`../OPEN_BLOCKERS.md`](../OPEN_BLOCKERS.md).
 
 ---
 
@@ -74,10 +74,10 @@ This is **reference documentation**, not narrative. For the end-to-end story of 
 |-------|-------|----------|
 | Architecture overview | [`../architecture.md`](../architecture.md) | ✅ Algorithm 1, state machines, Redis/Kafka maps |
 | Per-component (C1–C8) | `lip/c{N}_*/README.md` | ✅ All eight |
-| Canonical specs (prosecution-grade) | `consolidation files/BPI_C{N}_Component_Spec_v1.0*.md` | ✅ All eight; C3/C5/C7 split into Part1/Part2 |
+| Canonical specs (prosecution-grade) | [`../specs/BPI_C{N}_Component_Spec_v1.0*.md`](../specs/) | ✅ All eight; C3/C5/C7 split into Part1/Part2 |
 | Migration / hardening specs | [`../specs/`](../specs/) | ✅ C1, C2, C3, C5, C6, C7 |
-| Model cards (SR 11-7) | [`../c1-model-card.md`](../c1-model-card.md), [`c1-training-data-card.md`](../c1-training-data-card.md), [`c2-model-card.md`](../c2-model-card.md), [`c6_sanctions_audit.md`](../c6_sanctions_audit.md) | ✅ C1, C2, C6 |
-| Forward-looking patents | [`../federated-learning-architecture.md`](../federated-learning-architecture.md), [`../cbdc-protocol-research.md`](../cbdc-protocol-research.md), `consolidation files/Future-Technology-Disclosure-v2.1.md` | ✅ P9, P12; P5/P10 documented here |
+| Model cards (SR 11-7) | [`../../models/c1-model-card.md`](../../models/c1-model-card.md), [`../../models/c1-training-data-card.md`](../../models/c1-training-data-card.md), [`../../models/c2-model-card.md`](../../models/c2-model-card.md), [`../../legal/c6_sanctions_audit.md`](../../legal/c6_sanctions_audit.md) | ✅ C1, C2, C6 |
+| Forward-looking patents | [`../../models/federated-learning-architecture.md`](../../models/federated-learning-architecture.md), [`../../models/cbdc-protocol-research.md`](../../models/cbdc-protocol-research.md), [`../../legal/patent/Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md) | ✅ P9, P12; P5/P10 documented here |
 | Pipeline orchestrator | [`pipeline.md`](pipeline.md) | ✅ This directory |
 | Shared `common/` layer | [`common.md`](common.md) | ✅ This directory |
 | FastAPI surface | [`api.md`](api.md) | ✅ This directory |

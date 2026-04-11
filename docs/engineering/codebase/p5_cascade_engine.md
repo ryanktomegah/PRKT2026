@@ -4,7 +4,7 @@
 
 **Source:** `lip/p5_cascade_engine/`
 **Module count:** 9 modules + `__init__.py`
-**Patent reference:** `consolidation files/P5-v0-Implementation-Blueprint.md`, `Patent-Family-Architecture-v2.1.md`
+**Patent reference:** [`docs/engineering/blueprints/P5-v0-Implementation-Blueprint.md`](../blueprints/P5-v0-Implementation-Blueprint.md), [`docs/legal/patent/Patent-Family-Architecture-v2.1.md`](../../legal/patent/Patent-Family-Architecture-v2.1.md)
 **Sprint history:** Sprint 3a (entity resolution) → 3b (propagation) → 3c (C2/C3/C5 bridges) → 3d (C7 intervention API)
 
 ---
@@ -101,7 +101,7 @@ When discussing P5 with patent counsel, the same EPG-21 language scrub rules app
 ## Cross-references
 
 - **HTTP surface**: `lip/api/cascade_router.py` and `cascade_service.py` (see [`api.md`](api.md))
-- **Patent blueprint**: `consolidation files/P5-v0-Implementation-Blueprint.md`
-- **Patent family map**: `consolidation files/Patent-Family-Architecture-v2.1.md`
-- **Forward technology disclosure**: `consolidation files/Future-Technology-Disclosure-v2.1.md`
-- **Related forward-looking patents**: P9 (CBDC, see [`../cbdc-protocol-research.md`](../cbdc-protocol-research.md)), P10 (regulatory data, see [`p10_regulatory_data.md`](p10_regulatory_data.md)), P12 (federated learning, see [`../federated-learning-architecture.md`](../federated-learning-architecture.md))
+- **Patent blueprint**: [`../blueprints/P5-v0-Implementation-Blueprint.md`](../blueprints/P5-v0-Implementation-Blueprint.md)
+- **Patent family map**: [`../../legal/patent/Patent-Family-Architecture-v2.1.md`](../../legal/patent/Patent-Family-Architecture-v2.1.md)
+- **Forward technology disclosure**: [`../../legal/patent/Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md)
+- **Related forward-looking patents**: P9 (CBDC, see [`../../models/cbdc-protocol-research.md`](../../models/cbdc-protocol-research.md)), P10 (regulatory data, see [`p10_regulatory_data.md`](p10_regulatory_data.md)), P12 (federated learning, see [`../../models/federated-learning-architecture.md`](../../models/federated-learning-architecture.md))

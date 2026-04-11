@@ -315,7 +315,7 @@ To enable Rust builds in CI, add:
 
 ## 9. Definition of Done Checklist
 
-- [x] Spec committed: `docs/specs/c3_state_machine_migration.md`
+- [x] Spec committed: `docs/engineering/specs/c3_state_machine_migration.md`
 - [x] Rust crate: `lip/c3/rust_state_machine/` (compiles with `maturin develop`)
 - [x] PyO3 bindings: all functions listed in §6 exposed
 - [x] Python bridge: `lip/c3/state_machine_bridge.py` with fallback + watchdog

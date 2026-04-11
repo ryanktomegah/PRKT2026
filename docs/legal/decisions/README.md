@@ -51,6 +51,6 @@
 ## Cross-references
 
 - Source rationale lives in: [`/CLAUDE.md`](../../CLAUDE.md) § EPIGNOSIS Architecture Review — Team Decisions
-- The internal audit that produced these decisions: [`/EPIGNOSIS_ARCHITECTURE_REVIEW.md`](../../EPIGNOSIS_ARCHITECTURE_REVIEW.md)
+- The internal audit that produced these decisions: [`/docs/engineering/review/EPIGNOSIS_ARCHITECTURE_REVIEW.md`](../../engineering/review/EPIGNOSIS_ARCHITECTURE_REVIEW.md)
 - Implementation history: [`/PROGRESS.md`](../../PROGRESS.md)
-- Open contractual obligations: [`../OPEN_BLOCKERS.md`](../OPEN_BLOCKERS.md)
+- Open contractual obligations: [`../../engineering/OPEN_BLOCKERS.md`](../../engineering/OPEN_BLOCKERS.md)

@@ -230,7 +230,7 @@ The F&F round funds the legal prerequisites (IP lawyer, patent filing, incorpora
 
 **This is NOT a change to the SAFE terms.** The cap remains $2M. The discount remains 20%. What changes is the context: F&F investors should understand they are not merely investing in a bridge lending startup. They are investing, at the deepest possible discount, in a payment intelligence platform whose patent portfolio covers seven distinct multi-billion-dollar markets.
 
-See [Revenue-Acceleration-Analysis.md](../../consolidation%20files/Revenue-Acceleration-Analysis.md) for the complete strategic analysis.
+See [Revenue-Acceleration-Analysis.md](../Revenue-Acceleration-Analysis.md) for the complete strategic analysis.
 
 ---
 

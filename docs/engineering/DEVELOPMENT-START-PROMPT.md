@@ -29,12 +29,12 @@ You are the decision-maker for all technical, architectural, and implementation 
 Read CLAUDE.md first — it contains canonical constants, the Ford Principle, and non-negotiable rules. Follow them exactly.
 
 Read each blueprint before implementing its components. These are your specs — written by you in a prior session. They contain exact API payloads, data structures, C-component maps, and effort estimates:
-- `consolidation files/P3-v0-Implementation-Blueprint.md` — Platform Licensing (MIPLO/ELO)
-- `consolidation files/P4-v0-Implementation-Blueprint.md` — Pre-Emptive Facility
-- `consolidation files/P5-v0-Implementation-Blueprint.md` — Supply Chain Cascade
-- `consolidation files/P7-v0-Implementation-Blueprint.md` — Tokenised Receivables
-- `consolidation files/P8-v0-Implementation-Blueprint.md` — AI Treasury Agent
-- `consolidation files/P10-v0-Implementation-Blueprint.md` — Regulatory Data Product
+- `docs/engineering/blueprints/P3-v0-Implementation-Blueprint.md` — Platform Licensing (MIPLO/ELO)
+- `docs/engineering/blueprints/P4-v0-Implementation-Blueprint.md` — Pre-Emptive Facility
+- `docs/engineering/blueprints/P5-v0-Implementation-Blueprint.md` — Supply Chain Cascade
+- `docs/engineering/blueprints/P7-v0-Implementation-Blueprint.md` — Tokenised Receivables
+- `docs/engineering/blueprints/P8-v0-Implementation-Blueprint.md` — AI Treasury Agent
+- `docs/engineering/blueprints/P10-v0-Implementation-Blueprint.md` — Regulatory Data Product
 
 ## Build Order & Sprint Plan
 
@@ -108,7 +108,7 @@ Sprint 7d: C6 Minor — Circular exposure detection rule
 ## Session Protocol
 
 At the start of each session:
-1. Read this prompt (it's in `consolidation files/DEVELOPMENT-START-PROMPT.md`)
+1. Read this prompt (it's in `docs/engineering/DEVELOPMENT-START-PROMPT.md`)
 2. Check git status — see where we left off
 3. Read the relevant blueprint section for the current phase/sprint
 4. Read the existing code files you'll extend
