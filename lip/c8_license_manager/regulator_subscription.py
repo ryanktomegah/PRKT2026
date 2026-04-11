@@ -7,6 +7,7 @@ offline HMAC verification, mirroring the existing LicenseToken pattern.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -43,7 +44,7 @@ class RegulatorSubscriptionToken:
     regulator_id: str
     regulator_name: str
     subscription_tier: str
-    permitted_corridors: Optional[list[str]]
+    permitted_corridors: Optional[tuple[str, ...]]
     query_budget_monthly: int
     privacy_budget_allocation: float
     valid_from: datetime
@@ -94,7 +95,7 @@ class RegulatorSubscriptionToken:
 
         corridors = data.get("permitted_corridors")
         if corridors is not None:
-            corridors = [str(c) for c in corridors]
+            corridors = tuple(str(c) for c in corridors)
 
         token = cls(
             regulator_id=str(data["regulator_id"]),
@@ -128,7 +129,7 @@ def sign_regulator_token(
         regulator_name=token.regulator_name,
         subscription_tier=token.subscription_tier,
         permitted_corridors=(
-            list(token.permitted_corridors)
+            tuple(token.permitted_corridors)
             if token.permitted_corridors is not None
             else None
         ),
@@ -176,6 +177,7 @@ def decode_regulator_token(encoded: str) -> RegulatorSubscriptionToken:
     try:
         raw = base64.urlsafe_b64decode((encoded + pad).encode("ascii"))
         payload = json.loads(raw.decode("utf-8"))
-    except Exception as exc:  # defensive parse guard
-        raise ValueError("invalid encoded regulator token") from exc
+    except (binascii.Error, json.JSONDecodeError, UnicodeDecodeError, KeyError) as e:
+        logger.error("Failed to decode regulator token: %s", e)
+        raise ValueError("invalid encoded regulator token") from e
     return RegulatorSubscriptionToken.from_dict(payload)

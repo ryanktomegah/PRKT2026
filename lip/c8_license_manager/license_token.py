@@ -32,6 +32,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import ClassVar, List, Optional
 
+from lip.common.constants import MIN_LOAN_AMOUNT_USD
+
 logger = logging.getLogger(__name__)
 
 # Component IDs recognised by the token validator
@@ -83,7 +85,7 @@ class LicenseToken:
     # 0 = unlimited (valid, explicit); -1 = unset (rejected by boot validator).
     aml_dollar_cap_usd: int = _AML_CAP_UNSET  # EPG-16: must be set explicitly
     aml_count_cap: int = _AML_CAP_UNSET       # EPG-16: must be set explicitly
-    min_loan_amount_usd: int = 500000
+    min_loan_amount_usd: int = int(MIN_LOAN_AMOUNT_USD)
     deployment_phase: str = "LICENSOR"  # Phase 1=LICENSOR, Phase 2=HYBRID, Phase 3=FULL_MLO
     licensee_type: str = "BANK"  # "BANK" (direct) or "PROCESSOR" (platform licensing)
     sub_licensee_bics: List[str] = field(default_factory=list)  # Processor: authorised bank BICs
@@ -147,7 +149,7 @@ class LicenseToken:
             max_tps=int(data["max_tps"]),
             aml_dollar_cap_usd=int(data["aml_dollar_cap_usd"]),   # EPG-17: required field — no silent default
             aml_count_cap=int(data["aml_count_cap"]),              # EPG-17: required field — no silent default
-            min_loan_amount_usd=int(data.get("min_loan_amount_usd", 500000)),
+            min_loan_amount_usd=int(data.get("min_loan_amount_usd", MIN_LOAN_AMOUNT_USD)),
             deployment_phase=phase,
             licensee_type=licensee_type,
             sub_licensee_bics=list(data.get("sub_licensee_bics", [])),
@@ -187,7 +189,7 @@ class LicenseeContext:
     aml_count_cap: int
     permitted_components: List[str]
     token_expiry: str
-    min_loan_amount_usd: int = 500000
+    min_loan_amount_usd: int = int(MIN_LOAN_AMOUNT_USD)
     deployment_phase: str = "LICENSOR"
 
 
@@ -260,7 +262,10 @@ def verify_token(
         ``True`` iff the HMAC is valid AND the token is not expired.
     """
     if not token.hmac_signature:
-        logger.warning("License token has no signature — rejecting")
+        logger.debug(
+            "License token has no signature — rejecting (licensee=%s)",
+            token.licensee_id[:8] + "…" if len(token.licensee_id) > 8 else token.licensee_id,
+        )
         return False
 
     expected = _compute_hmac(token.canonical_payload(), signing_key)

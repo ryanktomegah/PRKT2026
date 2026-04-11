@@ -34,7 +34,7 @@ class QueryMeterEntry:
     query_id: str
     regulator_id: str
     endpoint: str
-    corridors_queried: list[str]
+    corridors_queried: tuple[str, ...]
     epsilon_consumed: float
     response_latency_ms: int
     timestamp: datetime
@@ -159,7 +159,7 @@ class RegulatoryQueryMetering:
             query_id=query_id,
             regulator_id=token.regulator_id,
             endpoint=endpoint,
-            corridors_queried=list(corridors_queried),
+            corridors_queried=tuple(corridors_queried),
             epsilon_consumed=float(epsilon_consumed),
             response_latency_ms=response_latency_ms,
             timestamp=now,
@@ -227,7 +227,7 @@ class RegulatoryQueryMetering:
             latencies = [e.response_latency_ms for e in matching]
             mean_latency_ms = sum(latencies) / len(latencies)
             sorted_latencies = sorted(latencies)
-            p95_latency_ms = sorted_latencies[int(0.95 * len(sorted_latencies))]
+            p95_latency_ms = sorted_latencies[min(int(0.95 * len(sorted_latencies)), len(sorted_latencies) - 1)]
         else:
             mean_latency_ms = 0.0
             p95_latency_ms = 0

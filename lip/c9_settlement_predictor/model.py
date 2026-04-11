@@ -28,9 +28,11 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -201,6 +203,19 @@ class SettlementTimePredictor:
             Settlement times in hours, shape ``(N,)``.
         events:
             Event indicator (1 = settled, 0 = censored), shape ``(N,)``.
+
+        Security note (B10-11 — pickle RCE risk):
+            The fitted ``CoxPHFitter`` object (``self._model``) is a lifelines
+            object that uses pickle for serialisation.  If you persist this
+            model to disk and later load it from an untrusted or user-supplied
+            file path, you are exposed to arbitrary code execution via pickle
+            deserialization.  Always:
+              1. Validate that the source path is inside a known artifacts
+                 directory before loading (see ``_validate_artifact_path``).
+              2. Never load model files that arrived over an unauthenticated
+                 channel or were not produced by this codebase.
+              3. Prefer HMAC-verified wrappers (``lip.common.secure_pickle``)
+                 over raw pickle/joblib for any model artefact.
         """
         try:
             import pandas as pd
@@ -358,6 +373,73 @@ class SettlementTimePredictor:
         lower = median * 0.5
         upper = median * 1.5
         return median, lower, upper
+
+    # ------------------------------------------------------------------
+    # Persistence — path-validated to prevent pickle RCE (B10-11)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_artifact_path(path: str) -> Path:
+        """Resolve *path* and verify it is inside the known artifacts directory.
+
+        Raises ValueError if the resolved path escapes the artifacts tree.
+        This guards against directory-traversal attacks that could trick the
+        loader into deserializing an untrusted pickle from an arbitrary location.
+
+        The trusted root is resolved from the ``LIP_ARTIFACTS_DIR`` environment
+        variable (default: ``artifacts/`` relative to the repo root).
+        """
+        artifacts_root_env = os.environ.get("LIP_ARTIFACTS_DIR", "artifacts")
+        artifacts_root = Path(artifacts_root_env).resolve()
+        resolved = Path(path).resolve()
+        if not str(resolved).startswith(str(artifacts_root)):
+            raise ValueError(
+                f"B10-11: Refusing to load/save model outside artifacts directory. "
+                f"Resolved path: {resolved!r}; trusted root: {artifacts_root!r}. "
+                f"Set LIP_ARTIFACTS_DIR to override the trusted root."
+            )
+        return resolved
+
+    def save(self, path: str) -> None:
+        """Serialise model to *path* using ``lip.common.secure_pickle``.
+
+        Security (B10-11): path is validated to be inside the artifacts
+        directory before any I/O.  Serialisation uses HMAC-signed pickle via
+        ``secure_pickle.dump`` to prevent tampering.
+        """
+        resolved = self._validate_artifact_path(path)
+        from lip.common import secure_pickle  # noqa: PLC0415
+
+        payload = {
+            "model": self._model,
+            "model_type": self._model_type,
+            "heuristic_medians": self._heuristic_medians,
+            "safety_margin": self._safety_margin,
+            "min_maturity_hours": self._min_maturity_hours,
+        }
+        secure_pickle.dump(payload, str(resolved))
+        logger.info("SettlementTimePredictor saved to %s", resolved)
+
+    def load(self, path: str) -> None:
+        """Deserialise model from *path*.
+
+        Security (B10-11): path is validated against the artifacts directory
+        before deserialisation.  Uses HMAC-verified ``secure_pickle.load``,
+        which raises ``SecurePickleError`` on any integrity failure.
+        Never call this method with a path derived from user input or an
+        unauthenticated network source.
+        """
+        resolved = self._validate_artifact_path(path)
+        from lip.common import secure_pickle  # noqa: PLC0415
+
+        payload = secure_pickle.load(str(resolved))
+        self._model = payload["model"]
+        self._model_type = payload["model_type"]
+        self._heuristic_medians = payload["heuristic_medians"]
+        self._safety_margin = payload["safety_margin"]
+        self._min_maturity_hours = payload["min_maturity_hours"]
+        self._fitted = True
+        logger.info("SettlementTimePredictor loaded from %s (type=%s)", resolved, self._model_type)
 
     def predict_dynamic_maturity_days(
         self,
