@@ -545,7 +545,13 @@ class ExecutionAgent:
                     payment_context.get("uetr"), static_maturity_days,
                     dynamic_days, maturity_days,
                 )
-            except Exception as exc:
+            except (ValueError, TypeError, RuntimeError, OSError) as exc:
+                # B4-12: narrowed from broad Exception to the plausible failure
+                # modes of an ML predictor call (bad inputs, model not fitted,
+                # inference error, I/O timeout). KeyboardInterrupt/SystemExit
+                # must propagate; unexpected bugs in the predictor should also
+                # surface rather than being silently swallowed. Static maturity
+                # fallback is preserved — this is a deliberate graceful-degrade.
                 logger.warning("C9 settlement predictor failed, using static maturity: %s", exc)
                 maturity_days = static_maturity_days
         loan_id = str(uuid.uuid4())

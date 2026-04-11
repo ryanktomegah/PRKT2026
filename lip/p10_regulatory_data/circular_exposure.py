@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from lip.c1_failure_classifier.graph_builder import CorridorGraph, PaymentEdge
 from lip.p10_regulatory_data.constants import (
@@ -96,11 +96,12 @@ def detect_circular_exposures(
     graph: CorridorGraph,
     min_cycle_weight: float = float(P10_CIRCULAR_EXPOSURE_MIN_WEIGHT),
     max_cycle_length: int = P10_CIRCULAR_EXPOSURE_MAX_LENGTH,
+    max_depth: int = 50,
 ) -> list[CircularExposure]:
     """Detect circular dependency chains in a BIC payment graph.
 
     Runs a modified DFS from every node in *graph*, tracking the current
-    recursion path.  When a back-edge is found (a neighbour already on the
+    traversal path.  When a back-edge is found (a neighbour already on the
     current path), the cycle is extracted, canonicalized, and -- if it passes
     weight and length filters -- added to the result set.
 
@@ -121,6 +122,13 @@ def detect_circular_exposures(
         Maximum number of nodes in a reportable cycle.  Cycles longer than
         this are discarded.  Defaults to ``P10_CIRCULAR_EXPOSURE_MAX_LENGTH``
         (5).
+    max_depth:
+        B8-14: absolute bound on traversal depth per starting node. Prevents
+        stack-blow-up on large or densely connected graphs by stopping the
+        DFS frontier once the current path reaches this length. A value
+        greater than ``max_cycle_length`` is fine — long acyclic tails are
+        simply trimmed. Default 50 (two orders of magnitude above the
+        typical 3–5 node cycles we care about).
 
     Returns
     -------
@@ -142,67 +150,91 @@ def detect_circular_exposures(
     seen_cycles: Set[Tuple[str, ...]] = set()
     results: List[CircularExposure] = []
 
-    def _dfs(
-        node: str,
-        path: List[str],
-        path_set: Set[str],
-    ) -> None:
-        """Iterative-style recursive DFS collecting cycles via back-edges."""
-        neighbours = latest_edges.get(node)
-        if neighbours is None:
+    def _record_cycle(raw_cycle: List[str]) -> None:
+        """Canonicalize, dedupe, and append a detected cycle to *results*."""
+        if len(raw_cycle) > max_cycle_length:
             return
+        canonical = _canonicalize_cycle(raw_cycle)
+        if canonical in seen_cycles:
+            return
+        seen_cycles.add(canonical)
 
-        for neighbour, edge in neighbours.items():
+        edge_scores: List[float] = []
+        edge_obs_counts: List[int] = []
+        for i in range(len(raw_cycle)):
+            src = raw_cycle[i]
+            dst = raw_cycle[(i + 1) % len(raw_cycle)]
+            cycle_edge = latest_edges[src][dst]
+            edge_scores.append(cycle_edge.dependency_score)
+            edge_obs_counts.append(cycle_edge.observation_count)
+
+        aggregate_weight = math.prod(edge_scores)
+        min_obs = min(edge_obs_counts)
+
+        results.append(CircularExposure(
+            cycle_nodes=canonical,
+            cycle_length=len(canonical),
+            aggregate_weight=aggregate_weight,
+            min_edge_weight=min(edge_scores),
+            max_edge_weight=max(edge_scores),
+            min_observation_count=min_obs,
+            confidence=(
+                "HIGH"
+                if min_obs >= _CONFIDENCE_OBSERVATION_THRESHOLD
+                else "LOW"
+            ),
+        ))
+
+    # B8-14: iterative DFS. Each stack frame is an iterator over the current
+    # node's outbound neighbours. On push, both ``path`` and ``path_set`` gain
+    # the visited neighbour; on pop (when the iterator is exhausted) they
+    # lose the previous frame's visited neighbour. This replicates the
+    # recursive version's backtracking exactly but removes the recursion
+    # limit as a failure mode on deep graphs.
+    def _iterative_dfs(start_node: str) -> None:
+        path: List[str] = [start_node]
+        path_set: Set[str] = {start_node}
+        # stack entries: iterator over outbound edges of the node at the
+        # corresponding position in *path*.
+        first_neighbours = latest_edges.get(start_node)
+        if first_neighbours is None:
+            return
+        stack: List[Any] = [iter(first_neighbours.items())]
+
+        while stack:
+            try:
+                neighbour, _edge = next(stack[-1])
+            except StopIteration:
+                # Backtrack: pop the last node off the path.
+                stack.pop()
+                popped = path.pop()
+                path_set.discard(popped)
+                continue
+
             if neighbour in path_set:
-                # Back-edge found -- extract the cycle.
+                # Back-edge — extract the cycle from the first occurrence
+                # of ``neighbour`` on the path through to the current tail.
                 cycle_start_idx = path.index(neighbour)
-                raw_cycle = path[cycle_start_idx:]
+                _record_cycle(path[cycle_start_idx:])
+                continue
 
-                if len(raw_cycle) > max_cycle_length:
-                    continue
+            if len(path) >= max_depth:
+                # Depth guard — stop exploring this branch but keep iterating
+                # the current frame for siblings at shallower depth.
+                continue
 
-                canonical = _canonicalize_cycle(raw_cycle)
-                if canonical in seen_cycles:
-                    continue
-                seen_cycles.add(canonical)
+            sub_neighbours = latest_edges.get(neighbour)
+            if sub_neighbours is None:
+                # Dead-end: nothing to recurse into. Do not push a frame.
+                continue
 
-                # Gather edge metrics around the cycle.
-                edge_scores: List[float] = []
-                edge_obs_counts: List[int] = []
-                for i in range(len(raw_cycle)):
-                    src = raw_cycle[i]
-                    dst = raw_cycle[(i + 1) % len(raw_cycle)]
-                    cycle_edge = latest_edges[src][dst]
-                    edge_scores.append(cycle_edge.dependency_score)
-                    edge_obs_counts.append(cycle_edge.observation_count)
-
-                aggregate_weight = math.prod(edge_scores)
-                min_obs = min(edge_obs_counts)
-
-                exposure = CircularExposure(
-                    cycle_nodes=canonical,
-                    cycle_length=len(canonical),
-                    aggregate_weight=aggregate_weight,
-                    min_edge_weight=min(edge_scores),
-                    max_edge_weight=max(edge_scores),
-                    min_observation_count=min_obs,
-                    confidence=(
-                        "HIGH"
-                        if min_obs >= _CONFIDENCE_OBSERVATION_THRESHOLD
-                        else "LOW"
-                    ),
-                )
-                results.append(exposure)
-            else:
-                path.append(neighbour)
-                path_set.add(neighbour)
-                _dfs(neighbour, path, path_set)
-                path.pop()
-                path_set.discard(neighbour)
+            path.append(neighbour)
+            path_set.add(neighbour)
+            stack.append(iter(sub_neighbours.items()))
 
     # Launch DFS from every node in the graph.
     for start_node in graph.nodes:
-        _dfs(start_node, [start_node], {start_node})
+        _iterative_dfs(start_node)
 
     # Sort by aggregate_weight descending (highest-risk first).
     results.sort(key=lambda ce: ce.aggregate_weight, reverse=True)

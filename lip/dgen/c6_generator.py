@@ -37,12 +37,15 @@ _CORPUS_TAG = "SYNTHETIC_CORPUS_C6"
 _CTR_THRESHOLD_USD = 10_000.0
 _STR_THRESHOLD_EUR = 10_000.0
 
-# High-risk jurisdiction codes (fictional BIC suffixes for synthetic purposes)
+# High-risk jurisdiction codes (fictional BIC-8s for synthetic purposes).
+# B11-09: all entries must conform to ISO 9362 BIC format (8 or 11 chars).
+# ``TRANSC000`` was 9 chars and failed the boot_validator BIC regex
+# ``^[A-Z0-9]{8}([A-Z0-9]{3})?$`` — truncated to 8.
 _HIGH_RISK_JURISDICTIONS = [
     "BANKNA00",  # fictional: non-cooperative jurisdiction A
     "FINSTXX0",  # fictional: shell jurisdiction X
     "PAYMBZ00",  # fictional: minimal oversight zone B
-    "TRANSC000",  # fictional: pass-through jurisdiction C
+    "TRANSC00",  # fictional: pass-through jurisdiction C
 ]
 
 _STANDARD_BICS = [

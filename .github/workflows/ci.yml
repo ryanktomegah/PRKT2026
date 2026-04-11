@@ -116,6 +116,11 @@ jobs:
             --components c1 c2 c3 c6 \
             --smoke-test
       - name: Run train_all smoke-test (C1 + C2 + C6)
+        env:
+          # B10-01/B10-02: secure_pickle requires a non-empty HMAC key.
+          # This is a fixed CI test key — not a production secret.
+          # Production deployments must use a proper secret from the vault.
+          LIP_MODEL_HMAC_KEY: "ci-smoke-test-hmac-key-not-for-prod"
         run: |
           PYTHONPATH=. python -m lip.train_all \
             --corpus-dir /tmp/lip_smoke_corpus \
