@@ -291,9 +291,9 @@ class TestTaxonomy:
     def test_is_block_false_for_class_a(self, bridge: StateMachineBridge):
         assert not bridge.is_block_code("AC01")
 
-    def test_is_block_false_for_unknown_code(self, bridge: StateMachineBridge):
-        # Never raises — returns False
-        assert not bridge.is_block_code("UNKNOWN_GARBAGE")
+    def test_is_block_true_for_unknown_code(self, bridge: StateMachineBridge):
+        # Fail-closed: unknown codes return True (may be unrecognised compliance hold)
+        assert bridge.is_block_code("UNKNOWN_GARBAGE")
 
     def test_epg19_compliance_hold_codes_are_block(self, bridge: StateMachineBridge):
         """EPG-19: All 8 compliance-hold codes must be BLOCK (defense-in-depth)."""

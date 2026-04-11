@@ -89,13 +89,17 @@ class TestHashIdentifier:
         assert all(c in "0123456789abcdef" for c in digest)
 
     def test_sha256_not_md5(self):
-        """SECURITY INVARIANT: Must use SHA-256, never MD5."""
+        """SECURITY INVARIANT: Must use HMAC-SHA256, never MD5 or raw SHA-256."""
+        import hmac as _hmac
         value = "TAX_ID_12345"
         salt = b"security_salt"
         result = hash_identifier(value, salt)
-        expected_sha256 = hashlib.sha256(value.encode("utf-8") + salt).hexdigest()
-        # Verify it matches SHA-256
-        assert result == expected_sha256
+        # B1-08: hash_identifier now uses HMAC-SHA256 (keyed), not raw SHA-256
+        expected_hmac_sha256 = _hmac.new(salt, value.encode("utf-8"), hashlib.sha256).hexdigest()
+        assert result == expected_hmac_sha256
+        # Verify it does NOT match raw SHA-256 (which was the old, insecure implementation)
+        raw_sha256 = hashlib.sha256(value.encode("utf-8") + salt).hexdigest()
+        assert result != raw_sha256
         # Verify it does NOT match MD5
         md5_hash = hashlib.md5(value.encode("utf-8") + salt).hexdigest()
         assert result != md5_hash
@@ -502,12 +506,11 @@ class TestAnomalyDetectorComprehensive:
             "amount_zscore": 0.0,
         }
 
-    def test_predict_without_fit_returns_not_anomaly(self):
-        """Before fit(), predict should return is_anomaly=False (safe default)."""
+    def test_predict_without_fit_raises(self):
+        """B7-08: Before fit(), predict() must raise RuntimeError (fail-closed)."""
         det = AnomalyDetector()
-        result = det.predict(self._make_normal_tx())
-        assert result.is_anomaly is False
-        assert result.anomaly_score == 0.0
+        with pytest.raises(RuntimeError, match="called before fit"):
+            det.predict(self._make_normal_tx())
 
     def test_z_score_fallback_when_sklearn_unavailable(self):
         """When IsolationForest import fails, z-score fallback must activate."""
@@ -557,12 +560,16 @@ class TestAnomalyDetectorComprehensive:
 
     def test_features_used_always_reported(self):
         det = AnomalyDetector()
+        # B7-08: must fit before predict
+        det.fit([self._make_normal_tx(amount=i * 100) for i in range(1, 51)])
         result = det.predict(self._make_normal_tx())
         assert len(result.features_used) == 8
 
     def test_missing_fields_use_defaults(self):
         """Transaction dict with missing fields should use defaults, not crash."""
         det = AnomalyDetector()
+        # B7-08: must fit before predict
+        det.fit([self._make_normal_tx(amount=i * 100) for i in range(1, 51)])
         sparse_tx = {"amount": 5000}  # Missing hour_of_day, day_of_week, etc.
         result = det.predict(sparse_tx)
         assert isinstance(result, AnomalyResult)

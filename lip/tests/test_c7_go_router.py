@@ -76,6 +76,9 @@ def _make_payment_context(
         "corridor": "SWIFT_EU_US",
         "timestamp_utc": now.isoformat(),
         "expires_at": (now + timedelta(hours=2)).isoformat(),
+        # B4-01: aml_passed now defaults to False (fail-closed); Go router tests
+        # explicitly set True since they test routing logic, not AML screening.
+        "aml_passed": True,
     }
 
 

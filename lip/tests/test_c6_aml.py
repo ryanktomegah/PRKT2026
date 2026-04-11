@@ -1,6 +1,7 @@
 """
 test_c6_aml.py — Tests for C6 AML Velocity Controls
 """
+import pytest
 from decimal import Decimal
 
 from lip.c6_aml_velocity.aml_checker import AMLChecker
@@ -128,9 +129,10 @@ class TestAnomalyDetector:
         }
 
     def test_predict_before_fit(self):
+        # B7-08: predict() before fit() now raises RuntimeError (fail-closed)
         det = AnomalyDetector()
-        result = det.predict(self._make_tx())
-        assert isinstance(result.is_anomaly, bool)
+        with pytest.raises(RuntimeError, match="called before fit"):
+            det.predict(self._make_tx())
 
     def test_fit_and_predict(self):
         det = AnomalyDetector()
@@ -271,8 +273,9 @@ class TestCrossLicenseeSaltRotationDualHash:
         cur_key = agg._make_key(cur_hash, "volume")
         prev_key = agg._make_key(prev_hash, "volume")
 
-        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("50000")
-        assert Decimal(agg._store.get(prev_key, "0")) == Decimal("50000")
+        # B7-05: _store now holds integer cents; $50,000 = 5,000,000 cents
+        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("5000000")
+        assert Decimal(agg._store.get(prev_key, "0")) == Decimal("5000000")
 
     def test_get_volume_reads_from_prev_salt_during_overlap(self):
         """get_cross_licensee_volume aggregates old-salt data during overlap."""
@@ -318,7 +321,8 @@ class TestCrossLicenseeSaltRotationDualHash:
         # Current-salt key should now have the volume
         cur_hash = cross_licensee_hash("TAX_MIGRATE_001", mgr.get_current_salt())
         cur_key = agg._make_key(cur_hash, "volume")
-        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("75000")
+        # B7-05: _store holds integer cents; $75,000 = 7,500,000 cents
+        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("7500000")
 
     def test_no_dual_write_outside_overlap(self):
         """Outside the overlap window, only current-salt key is written."""
