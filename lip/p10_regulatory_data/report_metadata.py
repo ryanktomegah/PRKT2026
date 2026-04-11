@@ -37,9 +37,15 @@ class VersionedReport:
 
 
 def _compute_content_hash(report: SystemicRiskReport) -> str:
-    """SHA-256 over deterministic JSON serialization of the report."""
+    """SHA-256 over deterministic JSON serialization of the report.
+
+    B8-13: ``report.timestamp`` is deliberately excluded. Timestamp is a
+    generation-time metadata field, not report content — including it would
+    make two reports with identical analytical findings produce different
+    hashes just because they were generated at different wall-clock times,
+    breaking content-level deduplication and audit comparison.
+    """
     data = {
-        "timestamp": report.timestamp,
         "overall_failure_rate": report.overall_failure_rate,
         "highest_risk_corridor": report.highest_risk_corridor,
         "concentration_hhi": report.concentration_hhi,

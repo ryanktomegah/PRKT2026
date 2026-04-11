@@ -208,3 +208,52 @@ class TestCircularExposureDetection:
         graph = CorridorGraph(nodes=["A"], edges=[], adjacency={})
         result = detect_circular_exposures(graph)
         assert result == []
+
+    def test_deep_acyclic_chain_no_recursion_error(self):
+        """B8-14: 200-node acyclic chain must not blow the Python recursion limit.
+
+        The original recursive implementation would hit ``RecursionError`` when
+        the traversal path grew past the default ``sys.getrecursionlimit()``
+        on dense or deep graphs. The iterative rewrite removes that failure
+        mode entirely. This test builds a linear 200-node chain (well beyond
+        any realistic cycle length) and confirms detection completes without
+        raising. No cycles should be returned.
+        """
+        edges = [(f"N{i:03d}", f"N{i + 1:03d}", 0.5, 10) for i in range(200)]
+        graph = _make_graph(edges)
+        # Should complete without RecursionError and report no cycles.
+        result = detect_circular_exposures(graph)
+        assert result == []
+
+    def test_deep_chain_with_cycle_at_end_detected(self):
+        """B8-14: a cycle reachable through a long tail is still detected
+        when within ``max_depth``.
+
+        Builds a 10-node linear lead-in (N000→N001→...→N009) and then a
+        triangle (N009→T0→T1→N009). With ``max_cycle_length=3`` and
+        ``max_depth=50`` the triangle is detected.
+        """
+        chain_edges = [(f"N{i:03d}", f"N{i + 1:03d}", 0.5, 10) for i in range(9)]
+        cycle_edges = [
+            ("N009", "T0", 0.5, 10),
+            ("T0", "T1", 0.5, 10),
+            ("T1", "N009", 0.5, 10),
+        ]
+        graph = _make_graph(chain_edges + cycle_edges)
+        result = detect_circular_exposures(graph, max_cycle_length=3, max_depth=50)
+        assert len(result) == 1
+        assert result[0].cycle_length == 3
+        assert set(result[0].cycle_nodes) == {"N009", "T0", "T1"}
+
+    def test_max_depth_prunes_deep_branches(self):
+        """B8-14: paths longer than ``max_depth`` stop exploring further.
+
+        With a 30-node linear chain and ``max_depth=5``, the detector simply
+        truncates the search along that chain. No exceptions, no cycles
+        returned because there are none to find, but the traversal must
+        complete cleanly.
+        """
+        edges = [(f"N{i:03d}", f"N{i + 1:03d}", 0.5, 10) for i in range(30)]
+        graph = _make_graph(edges)
+        result = detect_circular_exposures(graph, max_depth=5)
+        assert result == []

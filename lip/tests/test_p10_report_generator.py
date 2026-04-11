@@ -69,6 +69,22 @@ class TestVersionedReport:
         vr2 = create_versioned_report(report=report)
         assert vr1.content_hash == vr2.content_hash
 
+    def test_content_hash_ignores_timestamp(self):
+        """B8-13: identical analytical content produces identical content hash.
+
+        ``report.timestamp`` is metadata, not content. Two reports with all
+        analytical fields identical but differing wall-clock timestamps must
+        hash to the same value so that downstream audit tooling can dedupe
+        and compare report bodies regardless of generation time.
+        """
+        from dataclasses import replace
+
+        from lip.p10_regulatory_data.report_metadata import _compute_content_hash
+
+        report_a = self._make_report()
+        report_b = replace(report_a, timestamp=report_a.timestamp + 86_400.0)
+        assert _compute_content_hash(report_a) == _compute_content_hash(report_b)
+
     def test_supersedes_chain(self):
         """Corrected report has supersedes pointing to original."""
         from lip.p10_regulatory_data.report_metadata import create_versioned_report

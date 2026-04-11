@@ -89,6 +89,51 @@ class TestOnboardingChecklist:
         checklist = generate_onboarding_checklist(salt=_SALT)
         assert checklist.timestamp > 0
 
+    def test_test_backed_items_default_to_not_evaluated(self):
+        """B8-08: test-backed items no longer self-certify as PASS.
+
+        When no ``test_results`` are supplied, items 4–6 must report
+        NOT_EVALUATED rather than PASS. The checklist still reports
+        all_passed=True because NOT_EVALUATED is not a failure.
+        """
+        checklist = generate_onboarding_checklist(salt=_SALT)
+        items_by_name = {item.name: item for item in checklist.items}
+        assert items_by_name["api_endpoints_tested"].status == "NOT_EVALUATED"
+        assert items_by_name["load_test_passed"].status == "NOT_EVALUATED"
+        assert items_by_name["security_audit_passed"].status == "NOT_EVALUATED"
+        # all_passed semantics: "no FAIL", so NOT_EVALUATED still yields True.
+        assert checklist.all_passed is True
+
+    def test_test_backed_items_reflect_supplied_results(self):
+        """B8-08: explicit results propagate to PASS/FAIL status."""
+        checklist = generate_onboarding_checklist(
+            salt=_SALT,
+            test_results={
+                "api_endpoints_tested": True,
+                "load_test_passed": True,
+                "security_audit_passed": True,
+            },
+        )
+        items_by_name = {item.name: item for item in checklist.items}
+        assert items_by_name["api_endpoints_tested"].status == "PASS"
+        assert items_by_name["load_test_passed"].status == "PASS"
+        assert items_by_name["security_audit_passed"].status == "PASS"
+        assert checklist.all_passed is True
+
+    def test_failing_test_result_fails_checklist(self):
+        """B8-08: a failing test result flips all_passed to False."""
+        checklist = generate_onboarding_checklist(
+            salt=_SALT,
+            test_results={
+                "api_endpoints_tested": True,
+                "load_test_passed": False,  # failure
+                "security_audit_passed": True,
+            },
+        )
+        items_by_name = {item.name: item for item in checklist.items}
+        assert items_by_name["load_test_passed"].status == "FAIL"
+        assert checklist.all_passed is False
+
 
 # ---- Sample Data Package ----
 
