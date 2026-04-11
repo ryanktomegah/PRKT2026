@@ -19,6 +19,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from decimal import Decimal
 from typing import Any, Optional
@@ -60,12 +61,25 @@ try:
     def _make_rate_limit_dep(limiter: TokenBucketRateLimiter):
         """Create a FastAPI dependency for rate limiting.
 
-        Uses client IP as the rate-limit key (placeholder for Sprint 6
-        RegulatorSubscriptionToken-based keying).
+        Uses the first IP from X-Forwarded-For (proxy-aware) or X-Real-IP
+        as the rate-limit key, falling back to the direct peer IP.
+        In multi-replica deployments this limiter is per-pod (in-memory);
+        see B2-11 comments in rate_limiter.py for Redis upgrade path.
         """
 
         async def _check_rate(request: Request, response: Response):
-            key = request.client.host if request.client else "unknown"
+            # Proxy-aware: use X-Forwarded-For first IP, then X-Real-IP,
+            # then fall back to peer IP.  Prevents N-replica rate collapse
+            # where a single proxy IP would be keyed N times.
+            forwarded_for = request.headers.get("x-forwarded-for", "")
+            if forwarded_for:
+                key = forwarded_for.split(",")[0].strip()
+            else:
+                real_ip = request.headers.get("x-real-ip", "")
+                if real_ip:
+                    key = real_ip.strip()
+                else:
+                    key = request.client.host if request.client else "unknown"
             allowed, remaining = limiter.check_and_consume_with_remaining(key)
             response.headers["X-RateLimit-Remaining"] = str(remaining)
             if not allowed:
@@ -141,7 +155,9 @@ try:
                 _append(value)
 
         if request.method.upper() == "POST" and request.url.path.endswith("/stress-test"):
-            body = await request.body()
+            # Read body once and cache it so downstream handlers can re-read
+            # via request.body() without re-consuming the stream.
+            body = await request.body()  # FastAPI caches; safe to call multiple times
             if body:
                 try:
                     payload = json_stdlib.loads(body)
@@ -149,11 +165,23 @@ try:
                     for shock in shocks:
                         if isinstance(shock, dict):
                             _append(shock.get("corridor"))
-                except Exception:
+                except (ValueError, json_stdlib.JSONDecodeError) as e:
                     # Body validation is handled by FastAPI endpoint parsing.
-                    pass
+                    logger.debug("Could not parse corridors from request body: %s", e)
 
         return corridors
+
+    # Per-regulator lock map for atomic budget check+consume (B2-03).
+    # Prevents TOCTOU race where two concurrent requests both pass the budget
+    # pre-check before either has recorded consumption.
+    _regulator_locks: dict[str, threading.Lock] = {}
+    _regulator_locks_meta = threading.Lock()
+
+    def _get_regulator_lock(regulator_id: str) -> threading.Lock:
+        with _regulator_locks_meta:
+            if regulator_id not in _regulator_locks:
+                _regulator_locks[regulator_id] = threading.Lock()
+            return _regulator_locks[regulator_id]
 
     def _make_regulator_subscription_dep(
         signing_key: bytes,
@@ -163,6 +191,8 @@ try:
 
         async def _check_regulator(request: Request):
             auth_header = request.headers.get("authorization", "")
+            # B2-17: Return 401 immediately if Authorization header is missing
+            # or not a Bearer token.  Do not fall through unauthenticated.
             if not auth_header.startswith("Bearer "):
                 raise HTTPException(
                     status_code=401,
@@ -172,8 +202,8 @@ try:
             encoded = auth_header[len("Bearer "):].strip()
             try:
                 token = decode_regulator_token(encoded)
-            except ValueError:
-                raise HTTPException(status_code=401, detail="Invalid regulator token")
+            except ValueError as exc:
+                raise HTTPException(status_code=401, detail="Invalid regulator token") from exc
 
             if not verify_regulator_token(token, signing_key):
                 raise HTTPException(status_code=401, detail="Invalid regulator token")
@@ -200,15 +230,25 @@ try:
             epsilon_cost = _epsilon_cost_for_endpoint(request.url.path)
             billing_amount = _billing_amount_for_endpoint(request.url.path)
 
-            if query_metering is not None:
-                try:
-                    query_metering.assert_within_budget(
-                        token=token, epsilon_cost=epsilon_cost
-                    )
-                except QueryBudgetExceededError as exc:
-                    raise HTTPException(status_code=429, detail=str(exc))
-                except PrivacyBudgetExceededError as exc:
-                    raise HTTPException(status_code=429, detail=str(exc))
+            # B2-03: Acquire per-regulator lock before check+consume to prevent
+            # TOCTOU race where concurrent requests both pass the budget gate.
+            reg_lock = _get_regulator_lock(token.regulator_id)
+            with reg_lock:
+                if query_metering is not None:
+                    try:
+                        query_metering.assert_within_budget(
+                            token=token, epsilon_cost=epsilon_cost
+                        )
+                    except QueryBudgetExceededError as exc:
+                        raise HTTPException(
+                            status_code=429,
+                            detail="Query budget exceeded",
+                        ) from exc
+                    except PrivacyBudgetExceededError as exc:
+                        raise HTTPException(
+                            status_code=429,
+                            detail="Privacy budget exceeded",
+                        ) from exc
 
             started = time.monotonic()
             try:
@@ -423,18 +463,29 @@ try:
                 content, content_type = regulatory_service.render_report(
                     report_id, fmt=format
                 )
-            except ValueError:
-                raise HTTPException(status_code=404, detail="Report not found")
-            except ReportIntegrityError:
+            except ValueError as exc:
+                # B2-16: use raise-from to preserve exception chain
+                raise HTTPException(status_code=404, detail="Report not found") from exc
+            except ReportIntegrityError as exc:
+                # B2-16: use raise-from; B2-15: generic message hides internal detail
+                logger.error("Report integrity check failed for %s: %s", report_id, exc)
                 raise HTTPException(
                     status_code=500,
                     detail="Report integrity check failed",
-                )
-            except ImportError:
+                ) from exc
+            except ImportError as exc:
+                # B2-16: use raise-from
                 raise HTTPException(
                     status_code=501,
                     detail="PDF generation not available (fpdf2 not installed)",
-                )
+                ) from exc
+            except Exception as exc:
+                # B2-15: catch-all to prevent domain/stack-trace leak to client
+                logger.error("Unexpected error rendering report %s: %s", report_id, exc)
+                raise HTTPException(
+                    status_code=500,
+                    detail="An internal error occurred while retrieving the report",
+                ) from exc
 
             if format == "json":
                 return json_stdlib.loads(content)

@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from lip.c2_pd_model.fee import compute_loan_fee
 from lip.c2_pd_model.tier_assignment import Tier
+from lip.common.constants import CREDIT_TIER_2_MIN_BPS, CREDIT_TIER_3_MIN_BPS
 from lip.common.known_entity_registry import KnownEntityRegistry
 from lip.risk.portfolio_risk import PortfolioRiskEngine
 
@@ -33,10 +34,13 @@ def _tier_from_fee_bps(fee_bps: int) -> int:
     Tier 1: 300–539 bps  (investment-grade, listed)
     Tier 2: 540–899 bps  (private company, balance-sheet data)
     Tier 3: 900+ bps     (thin file)
+
+    Boundaries defined by CREDIT_TIER_2_MIN_BPS / CREDIT_TIER_3_MIN_BPS
+    in lip/common/constants.py.
     """
-    if fee_bps < 540:
+    if fee_bps < CREDIT_TIER_2_MIN_BPS:
         return 1
-    if fee_bps < 900:
+    if fee_bps < CREDIT_TIER_3_MIN_BPS:
         return 2
     return 3
 
