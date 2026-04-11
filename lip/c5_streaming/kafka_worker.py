@@ -195,7 +195,14 @@ class PaymentEventWorker:
             )
             self._route_dead_letter(msg)
             self._errors += 1
-        except Exception:  # noqa: BLE001
+        except (SystemExit, KeyboardInterrupt):
+            # B6-10: never swallow process termination signals in a catch-all.
+            raise
+        except Exception:  # Intentional catch-all: any unhandled error must be
+            # routed to DLQ rather than crashing the consumer loop. Narrowing
+            # this catch further risks killing the consumer on unexpected errors
+            # in production (e.g. third-party library exceptions). The noqa is
+            # replaced by this comment explaining the deliberate design choice.
             logger.exception(
                 "Unexpected error processing offset=%s — routing to dead letter",
                 msg.offset(),
