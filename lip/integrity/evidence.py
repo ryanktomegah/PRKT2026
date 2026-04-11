@@ -126,7 +126,12 @@ def _canonical_json(model: BaseModel) -> bytes:
     keys, ``default=str`` for non-JSON types (datetime, Decimal, UUID), and
     the signature field excluded so the model can be signed in place.
     """
-    payload = model.model_dump(mode="json")
+    # Use model_dump() without mode="json" so that Decimal values remain as
+    # Decimal objects and are serialised as str by default=str.  mode="json"
+    # would convert Decimals to float internally before default= is called,
+    # losing precision and producing floating-point representation instead of
+    # the canonical string form (e.g. "0.30" vs 0.3000000000000000111...).
+    payload = model.model_dump()
     payload.pop("signature", None)
     return json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
 

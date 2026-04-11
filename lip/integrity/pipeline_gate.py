@@ -2,20 +2,33 @@
 
 Runs at LIPPipeline construction time (NOT per inference — the 94ms SLO is
 sacred). Aggregates the integrity sub-systems into a single ``check()``
-method that returns an ``IntegrityGateResult``. v1 is warn-only: failures
-log a warning but do not block pipeline startup. Future work: convert to
-hard-block once all components have been migrated.
+method that returns an ``IntegrityGateResult``.
+
+The gate is blocking: when integrity checks fail, ``check()`` raises
+``IntegrityGateError`` so the pipeline cannot start in a degraded state.
+Call ``check()`` and handle ``IntegrityGateError`` at construction time.
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from lip.integrity.claims_registry import ClaimsRegistry
 from lip.integrity.oss_tracker import OSSAttributionRegistry
 
 logger = logging.getLogger(__name__)
+
+
+class IntegrityGateError(Exception):
+    """Raised by IntegrityGate.check() when one or more integrity checks fail.
+
+    Contains the list of issues so callers can log a structured error.
+    """
+
+    def __init__(self, issues: list[str]) -> None:
+        super().__init__(f"Integrity gate failed with {len(issues)} issue(s): {issues}")
+        self.issues = issues
 
 
 @dataclass(frozen=True)
@@ -50,7 +63,14 @@ class IntegrityGate:
         self.enabled = enabled
 
     def check(self) -> IntegrityGateResult:
-        """Run all integrity checks. Always returns a result; never raises."""
+        """Run all integrity checks and raise IntegrityGateError if any fail.
+
+        Raises
+        ------
+        IntegrityGateError
+            If one or more integrity checks fail. The gate is blocking — a
+            pipeline must not start in a degraded state.
+        """
         if not self.enabled:
             return IntegrityGateResult(
                 gate_passed=True,
@@ -82,12 +102,25 @@ class IntegrityGate:
                 logger.warning("OSS scan failed: %s", exc)
                 issues.append(f"OSS scan error: {exc}")
 
-        # Claims/evidence check
+        # Claims/evidence check (including model evidence age gate)
         claims_count = 0
         evidence_count = 0
         if self._claims is not None:
             claims_count = self._claims.claim_count()
             evidence_count = self._claims.evidence_count()
+
+            # B1-07: enforce model_evidence_max_age_hours against registered evidence
+            now = datetime.now(timezone.utc)
+            for ev in self._claims._evidence.values():
+                age = now - ev.created_at
+                if age > self._max_age:
+                    age_hours = age.total_seconds() / 3600.0
+                    max_hours = self._max_age.total_seconds() / 3600.0
+                    issues.append(
+                        f"Evidence {ev.evidence_id!r} is {age_hours:.1f}h old "
+                        f"(max {max_hours:.0f}h) — model evidence has exceeded its "
+                        "freshness window."
+                    )
 
         gate_passed = not issues
         result = IntegrityGateResult(
@@ -101,14 +134,15 @@ class IntegrityGate:
         )
 
         if not gate_passed:
-            logger.warning("Integrity gate failed: %s", issues)
-        else:
-            logger.info(
-                "Integrity gate passed: %d packages, %d claims, %d evidence records",
-                oss_count,
-                claims_count,
-                evidence_count,
-            )
+            logger.error("Integrity gate BLOCKED pipeline startup: %s", issues)
+            raise IntegrityGateError(issues)
+
+        logger.info(
+            "Integrity gate passed: %d packages, %d claims, %d evidence records",
+            oss_count,
+            claims_count,
+            evidence_count,
+        )
         return result
 
     def is_healthy(self) -> bool:
