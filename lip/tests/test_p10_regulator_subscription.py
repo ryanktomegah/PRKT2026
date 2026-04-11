@@ -119,7 +119,7 @@ class TestRegulatoryQueryMetering:
             _make_regulator_token(query_budget_monthly=1, privacy_budget_allocation=1.0),
             _KEY,
         )
-        meter = RegulatoryQueryMetering(single_replica=True)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         meter.record_query(
             token=token,
             endpoint="/api/v1/regulatory/metadata",
@@ -143,7 +143,7 @@ class TestRegulatoryQueryMetering:
             _make_regulator_token(query_budget_monthly=10, privacy_budget_allocation=0.05),
             _KEY,
         )
-        meter = RegulatoryQueryMetering(single_replica=True)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         meter.record_query(
             token=token,
             endpoint="/api/v1/regulatory/metadata",

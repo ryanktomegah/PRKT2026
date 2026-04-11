@@ -51,6 +51,8 @@ class RegulatoryQueryMetering:
         *,
         single_replica: bool = False,
     ) -> None:
+        # single_replica is checked first so that callers who omit it get the
+        # informative "single_replica=True required" error, not a key error.
         if not single_replica:
             raise ValueError(
                 "RegulatoryQueryMetering uses in-memory state that resets on "
@@ -58,12 +60,22 @@ class RegulatoryQueryMetering:
                 "single_replica=True to acknowledge single-replica constraint, "
                 "or configure a Redis-backed store (B3-04)."
             )
-        if single_replica:
-            import logging
-            logging.getLogger(__name__).warning(
-                "RegulatoryQueryMetering running with single_replica=True — "
-                "state will not survive restarts or scale across replicas"
+        # B3-08: an empty HMAC key produces trivially forgeable audit entries.
+        # Callers must supply a real secret, e.g. loaded from an env var or
+        # secrets manager. The default b"" is left only to avoid a TypeError
+        # on the common test that calls RegulatoryQueryMetering() (no args)
+        # which must still get the single_replica ValueError above.
+        if not metering_key:
+            raise ValueError(
+                "metering_key must be non-empty bytes. An empty key produces "
+                "trivially forgeable HMAC audit entries. Load the signing key "
+                "from an env var or secrets manager (B3-08)."
             )
+        import logging
+        logging.getLogger(__name__).warning(
+            "RegulatoryQueryMetering running with single_replica=True — "
+            "state will not survive restarts or scale across replicas"
+        )
         self._metering_key = metering_key
         self._entries: list[QueryMeterEntry] = []
         self._monthly_queries: dict[tuple[str, str], int] = {}
