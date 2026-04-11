@@ -317,6 +317,70 @@ class TestAgentCanaryIntegration:
 # GoOfferRouterClient.close() test
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# B4-09: gRPC TLS default channel selection
+# ---------------------------------------------------------------------------
+
+
+class TestGoRouterTLSDefault:
+    """B4-09: verify the gRPC channel is TLS by default; insecure requires opt-in."""
+
+    def test_secure_channel_used_by_default(self):
+        """No env var, no insecure kwarg → ssl_channel_credentials + secure_channel."""
+        client = GoOfferRouterClient(addr="localhost:50057", insecure=False)
+        mock_grpc = MagicMock()
+        mock_grpc.ssl_channel_credentials.return_value = MagicMock(name="creds")
+        mock_grpc.secure_channel.return_value = MagicMock(name="secure_ch")
+        mock_grpc.insecure_channel.return_value = MagicMock(name="insecure_ch")
+
+        channel = client._get_channel(mock_grpc)
+
+        mock_grpc.ssl_channel_credentials.assert_called_once()
+        mock_grpc.secure_channel.assert_called_once()
+        mock_grpc.insecure_channel.assert_not_called()
+        assert channel is mock_grpc.secure_channel.return_value
+
+    def test_insecure_kwarg_forces_plaintext(self):
+        """insecure=True → grpc.insecure_channel is used and TLS is skipped."""
+        client = GoOfferRouterClient(addr="localhost:50057", insecure=True)
+        mock_grpc = MagicMock()
+
+        channel = client._get_channel(mock_grpc)
+
+        mock_grpc.insecure_channel.assert_called_once_with("localhost:50057")
+        mock_grpc.secure_channel.assert_not_called()
+        mock_grpc.ssl_channel_credentials.assert_not_called()
+        assert channel is mock_grpc.insecure_channel.return_value
+
+    def test_grpc_insecure_env_var_enables_plaintext(self, monkeypatch):
+        """GRPC_INSECURE=true in env → client defaults to insecure mode."""
+        monkeypatch.setenv("GRPC_INSECURE", "true")
+        client = GoOfferRouterClient(addr="localhost:50057")
+        assert client._insecure is True
+
+        mock_grpc = MagicMock()
+        client._get_channel(mock_grpc)
+        mock_grpc.insecure_channel.assert_called_once()
+        mock_grpc.secure_channel.assert_not_called()
+
+    def test_grpc_insecure_env_var_false_keeps_tls(self, monkeypatch):
+        """GRPC_INSECURE=false (or unset) → client defaults to TLS."""
+        monkeypatch.delenv("GRPC_INSECURE", raising=False)
+        client = GoOfferRouterClient(addr="localhost:50057")
+        assert client._insecure is False
+
+        mock_grpc = MagicMock()
+        client._get_channel(mock_grpc)
+        mock_grpc.secure_channel.assert_called_once()
+        mock_grpc.insecure_channel.assert_not_called()
+
+    def test_explicit_insecure_false_overrides_env_var(self, monkeypatch):
+        """insecure=False kwarg beats GRPC_INSECURE=true env var."""
+        monkeypatch.setenv("GRPC_INSECURE", "true")
+        client = GoOfferRouterClient(addr="localhost:50057", insecure=False)
+        assert client._insecure is False
+
+
 class TestGoOfferRouterClientClose:
     def test_close_is_idempotent(self):
         """close() can be called multiple times without error."""
