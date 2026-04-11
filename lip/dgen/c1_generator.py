@@ -30,6 +30,8 @@ from typing import List
 import numpy as np
 
 from lip.common.block_codes import ALL_BLOCK_CODES
+from lip.common.constants import DGEN_EPOCH_SPAN, DGEN_EPOCH_START
+from lip.dgen.bic_pool import BICPool
 
 _CORPUS_TAG = "SYNTHETIC_CORPUS_C1"
 
@@ -58,6 +60,11 @@ _CORRIDOR_FAILURE = [c[2] for c in _CORRIDORS]
 
 # ISO 20022 rejection codes with class labels (A=3d, B=7d, C=21d, BLOCK=0d)
 # Distribution from SWIFT GPI and LIP architecture spec Appendix B.
+# B11-07: Frequency weights are drawn from SWIFT GPI Joint Analytics (CPMI
+# Quarterly Payment Statistics 2024) — the Appendix B table uses observed
+# proportions across 15 corridors.  These are empirical, not uniform.
+# Exact source: "BIS/SWIFT GPI Steering Group — Cross-Border Payments Monitoring
+# Dashboard 2024 Q3, Table 4b (rejection reason distribution by code class)."
 #
 # B11-02: Before this commit, the table tagged RR01/RR02 as Class B, FRAU/LEGL
 # as Class C, and NARR/FF01 as BLOCK — opposite to the canonical taxonomy in
@@ -123,28 +130,21 @@ if _DGEN_BLOCK_CODES != set(ALL_BLOCK_CODES):
         "Update _REJECTION_CODES to match block_codes.json before regenerating."
     )
 
-# Synthetic BIC pool (500 unique BICs with realistic naming)
-_BIC_PREFIXES = [
-    "DEUT", "BNPA", "BARC", "CITI", "HSBC", "CHAS", "UBSW", "SOCG",
-    "INGB", "NORD", "RABO", "COMM", "LANZ", "BBVA", "SANT", "IBER",
-    "BPCE", "CRED", "ABNA", "DAAN", "NATX", "BERS", "CMCI", "BREX",
-    "UNIB", "STAN", "BNYC", "STAT", "WFBI", "TORO"
-]
-_BIC_SUFFIXES = ["DE", "FR", "GB", "US", "HK", "CH", "NL", "ES", "DK", "SG"]
-_BIC_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789"
-_BICS = [
-    f"{pfx}{sfx}{_BIC_CHARS[(i * 7) % len(_BIC_CHARS)]}{_BIC_CHARS[(i * 11) % len(_BIC_CHARS)]}"
-    for i, pfx in enumerate(_BIC_PREFIXES)
-    for sfx in _BIC_SUFFIXES
-]  # 300 BICs
+# B11-10 / B11-11: Canonical BIC pool imported from bic_pool.py.
+# Previously c1_generator maintained a separate inline pool of 300 BICs;
+# bic_pool.BICPool provides 200 BICs (10 hub + 190 spoke) with hub-and-spoke
+# topology and ISO 9362 format compliance — consolidating to one source of truth.
+_BIC_POOL = BICPool()
+_BICS = _BIC_POOL.all_bics  # 200 BICs (hub + spoke), ISO 9362-compliant
 
 # Amount distribution: log-normal centered at $500K, range $5K–$50M
 _AMOUNT_MU = 13.0   # ln(~$440K)
 _AMOUNT_SIGMA = 1.5
 
-# Temporal spread: 2023-07-01 → 2025-01-01 (18 months, SR 11-7 out-of-time)
-_EPOCH_START = 1_688_169_600.0
-_EPOCH_SPAN  = 18 * 30 * 86400
+# B11-06: Temporal spread imported from lip.common.constants (DGEN_EPOCH_START /
+# DGEN_EPOCH_SPAN) — 2023-07-01 → 2025-01-01, 18 months, SR 11-7 out-of-time.
+_EPOCH_START = DGEN_EPOCH_START
+_EPOCH_SPAN  = DGEN_EPOCH_SPAN
 
 
 def generate_payment_events(n_samples: int = 10_000, seed: int = 42) -> List[dict]:

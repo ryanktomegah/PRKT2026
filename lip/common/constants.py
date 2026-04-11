@@ -277,6 +277,12 @@ PROCESSOR_PERFORMANCE_BASELINE_PCT = Decimal("0.80")     # 80% of projected annu
 CONTAINER_HEARTBEAT_INTERVAL_SECONDS = 60   # heartbeat to BPI telemetry endpoint
 REVENUE_METERING_SYNC_INTERVAL_SECONDS = 300  # 5-minute revenue sync
 
+# ── DGEN temporal spread (SR 11-7 out-of-time validation, B11-06) ────────────
+# 18-month window: 2023-07-01 00:00:00 UTC → 2025-01-01 (approx).
+# Named constant replaces magic literals across all DGEN generators.
+DGEN_EPOCH_START: float = 1_688_169_600.0  # 2023-07-01 00:00:00 UTC
+DGEN_EPOCH_SPAN: float = 18 * 30 * 86_400  # ~18 months in seconds
+
 # ── C3 PaymentWatchdog stuck-payment detection ─────────────────────────────────
 # Fallback TTL (seconds) for non-terminal states not listed in the per-state
 # TTL dict. Equals 2× the Class B 7-day maturity window.
