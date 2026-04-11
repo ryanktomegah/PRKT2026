@@ -30,6 +30,7 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
 
 # Artifacts — model binaries and training outputs
 artifacts/
@@ -51,3 +52,6 @@ lip/c3/rust_state_machine/Cargo.lock
 lip/c6_aml_velocity/rust_velocity/target/
 lip/c6_aml_velocity/rust_velocity/Cargo.lock
 pytest-of-*/
+
+# PyTorch inductor compilation cache
+torchinductor_*/
