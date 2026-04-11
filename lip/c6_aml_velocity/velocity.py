@@ -413,6 +413,19 @@ class VelocityChecker:
         # threads within the same process (EPG-25). Redis path uses Lua instead.
         self._check_record_lock = threading.Lock()
 
+    def set_redis_client(self, redis_client) -> None:
+        """Wire a Redis client into this VelocityChecker and its RollingWindow.
+
+        Use this public setter instead of mutating ``_redis`` and
+        ``_window._redis`` directly from outside the class (B7-04).
+
+        Args:
+            redis_client: A redis.Redis / redis.cluster.RedisCluster instance.
+        """
+        self._redis = redis_client
+        self._window._redis = redis_client
+        logger.info("VelocityChecker: Redis client set via set_redis_client()")
+
     def _hash_entity(self, entity_id: str) -> str:
         """Compute SHA-256(entity_id + salt) for the entity identifier.
 
@@ -507,8 +520,9 @@ class VelocityChecker:
         dollar_cap = dollar_cap_override if dollar_cap_override is not None else Decimal("0")
         count_cap = count_cap_override if count_cap_override is not None else 0
 
-        # EPG-16: 0 means unlimited — skip cap enforcement entirely.
-        if dollar_cap > 0 and vol + amount > dollar_cap:
+        # EPG-16: 0 = unlimited — explicitly guard before enforcing caps.
+        # A cap of 0 must NEVER be treated as "block all"; it means no limit.
+        if dollar_cap != 0 and vol + amount > dollar_cap:
             return VelocityResult(
                 passed=False, reason="DOLLAR_CAP_EXCEEDED",
                 entity_id_hash=entity_hash, dollar_volume_24h=vol,

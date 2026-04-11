@@ -152,8 +152,7 @@ class AMLChecker:
         # This allows the production entrypoint to pass redis_client=create_redis_client()
         # without requiring callers to reconstruct the VelocityChecker themselves.
         if redis_client is not None:
-            velocity_checker._redis = redis_client
-            velocity_checker._window._redis = redis_client
+            velocity_checker.set_redis_client(redis_client)
             logger.info("AMLChecker: Redis client wired into VelocityChecker")
         self._velocity = velocity_checker
         if sanctions_screener is not None:

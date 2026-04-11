@@ -126,6 +126,13 @@ class SanctionsScreener:
         if lists_path:
             self._load_lists(lists_path)
         else:
+            # B7-12: Log WARNING when falling back to mock sanctions data at startup.
+            # Silent degradation in a security-critical component is not acceptable.
+            logger.warning(
+                "SanctionsScreener: no lists_path provided — falling back to MOCK sanctions data. "
+                "This is acceptable in unit tests only. In production, set LIP_SANCTIONS_PATH "
+                "to a real sanctions snapshot or pass lists_path= explicitly."
+            )
             self._lists = {k: set(v) for k, v in MOCK_SANCTIONS_ENTRIES.items()}
 
     def _load_lists(self, path: str) -> None:
