@@ -91,11 +91,12 @@ class TestNormalizeSwift(unittest.TestCase):
         event = self.n.normalize_swift(msg)
         self.assertEqual(event.sending_bic, "FALLBACKBIC")
 
-    def test_invalid_amount_defaults_to_zero(self):
+    def test_invalid_amount_raises_value_error(self):
+        # B6-11: _safe_decimal now raises on unparseable input (fail-closed)
         msg = self._make_msg()
         msg["TxInfAndSts"]["OrgnlTxRef"]["Amt"]["InstdAmt"] = {"value": "not_a_number", "Ccy": "USD"}
-        event = self.n.normalize_swift(msg)
-        self.assertEqual(event.amount, Decimal("0"))
+        with self.assertRaises(ValueError):
+            self.n.normalize_swift(msg)
 
     def test_raw_source_preserved(self):
         msg = self._make_msg()
@@ -269,14 +270,15 @@ class TestNormalizeDispatch(unittest.TestCase):
 
     def test_dispatch_swift(self):
         msg = {
-            "GrpHdr": {"MsgId": "X", "CreDtTm": None},
+            "GrpHdr": {"MsgId": "X", "CreDtTm": "2025-06-15T10:00:00"},
             "TxInfAndSts": {"OrgnlTxRef": {"Amt": {"InstdAmt": {"value": "100", "Ccy": "USD"}}}},
         }
         event = self.n.normalize("SWIFT", msg)
         self.assertEqual(event.rail, "SWIFT")
 
     def test_dispatch_case_insensitive(self):
-        msg = {"messageId": "Y", "amount": {"value": "50", "currency": "USD"}}
+        # B6-12: must include a valid timestamp — _safe_datetime is now fail-closed
+        msg = {"messageId": "Y", "timestamp": "2025-06-15T10:00:00", "amount": {"value": "50", "currency": "USD"}}
         event = self.n.normalize("fednow", msg)
         self.assertEqual(event.rail, "FEDNOW")
 
@@ -285,8 +287,9 @@ class TestNormalizeDispatch(unittest.TestCase):
             self.n.normalize("PIGEONPOST", {})
 
     def test_convenience_function(self):
+        # B6-12: CreDtTm must be a valid timestamp — None now raises ValueError
         msg = {
-            "GrpHdr": {"MsgId": "Z", "CreDtTm": None},
+            "GrpHdr": {"MsgId": "Z", "CreDtTm": "2025-06-15T10:00:00"},
             "TxInfAndSts": {"OrgnlTxRef": {"Amt": {"InstdAmt": {"value": "200", "Ccy": "USD"}}}},
         }
         event = normalize_event("SWIFT", msg)

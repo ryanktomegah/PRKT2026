@@ -140,11 +140,15 @@ def maturity_days(rejection_class: RejectionClass) -> int:
 
 
 def is_dispute_block(code: str) -> bool:
-    """Return True if the rejection code maps to the BLOCK class."""
+    """Return True if the rejection code maps to the BLOCK class.
+
+    Unknown codes return True (fail-closed) — an unrecognised rejection code
+    must not be silently allowed through the bridge gate.
+    """
     try:
         return classify_rejection_code(code) is RejectionClass.BLOCK
     except ValueError:
-        return False
+        return True
 
 
 def get_all_codes_for_class(cls: RejectionClass) -> list[str]:

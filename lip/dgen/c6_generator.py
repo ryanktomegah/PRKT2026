@@ -25,6 +25,7 @@ NOTE: This file generates training patterns — NOT sanctions screening data.
 """
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import List
@@ -33,9 +34,29 @@ import numpy as np
 
 _CORPUS_TAG = "SYNTHETIC_CORPUS_C6"
 
-# CTR/STR thresholds (CIPHER: structuring targets amounts just below these)
-_CTR_THRESHOLD_USD = 10_000.0
-_STR_THRESHOLD_EUR = 10_000.0
+# B11-04 CIPHER: AML typology thresholds MUST NOT be hardcoded in source.
+# These values are loaded from environment variables at generation time.
+# Set AML_THRESHOLD_CTR_USD and AML_THRESHOLD_STR_EUR before calling
+# generate_aml_corpus(). Raise loudly if unset — silent defaults would
+# constitute a committed threshold value in disguise.
+def _load_aml_thresholds() -> tuple[float, float]:
+    """Load AML detection thresholds from environment. Raises ValueError if unset."""
+    ctr_raw = os.environ.get("AML_THRESHOLD_CTR_USD")
+    str_raw = os.environ.get("AML_THRESHOLD_STR_EUR")
+    if ctr_raw is None:
+        raise ValueError(
+            "AML_THRESHOLD_CTR_USD environment variable is not set. "
+            "Set it before generating the C6 AML corpus. "
+            "Never hardcode threshold values in source (CIPHER rule)."
+        )
+    if str_raw is None:
+        raise ValueError(
+            "AML_THRESHOLD_STR_EUR environment variable is not set. "
+            "Set it before generating the C6 AML corpus. "
+            "Never hardcode threshold values in source (CIPHER rule)."
+        )
+    return float(ctr_raw), float(str_raw)
+
 
 # High-risk jurisdiction codes (fictional BIC-8s for synthetic purposes).
 # B11-09: all entries must conform to ISO 9362 BIC format (8 or 11 chars).
@@ -96,10 +117,23 @@ def _normal_transaction(rng: np.random.Generator, entity_id: str, ts: float) -> 
     }
 
 
-def _structuring_transaction(rng: np.random.Generator, entity_id: str, ts: float) -> dict:
-    """Structuring: amounts clustered just below CTR threshold."""
-    # Amounts between $8,500–$9,999 (USD) or €8,500–€9,999 (EUR)
-    threshold = rng.choice([_CTR_THRESHOLD_USD, _STR_THRESHOLD_EUR])
+def _structuring_transaction(
+    rng: np.random.Generator,
+    entity_id: str,
+    ts: float,
+    ctr_threshold: float,
+    str_threshold: float,
+) -> dict:
+    """Structuring: amounts clustered just below reporting threshold.
+
+    Parameters
+    ----------
+    ctr_threshold, str_threshold:
+        Loaded from environment at generation time (B11-04 CIPHER rule).
+        Never hardcoded in source.
+    """
+    # Cluster tightly below the applicable threshold
+    threshold = rng.choice([ctr_threshold, str_threshold])
     # Cluster tightly below threshold
     amount = float(rng.uniform(threshold * 0.85, threshold * 0.999))
 
@@ -262,6 +296,9 @@ def generate_aml_corpus(
     -------
     List of dicts with AML features + aml_flag (0=clean, 1=flagged).
     """
+    # B11-04 CIPHER: Load thresholds from environment — raises ValueError if unset.
+    ctr_threshold, str_threshold = _load_aml_thresholds()
+
     rng = np.random.default_rng(seed)
     ts_now = datetime.now(tz=timezone.utc).isoformat() + "Z"
 
@@ -283,7 +320,7 @@ def generate_aml_corpus(
         if pattern == "normal":
             rec = _normal_transaction(rng, entity_id, ts)
         elif pattern == "structuring":
-            rec = _structuring_transaction(rng, entity_id, ts)
+            rec = _structuring_transaction(rng, entity_id, ts, ctr_threshold, str_threshold)
         elif pattern == "velocity":
             rec = _velocity_abuse_transaction(rng, entity_id, ts)
         elif pattern == "layering":

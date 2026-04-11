@@ -70,6 +70,13 @@ class RegulatoryAnonymizer:
         self._suppression_count = 0
         self._total_corridors_evaluated = 0
 
+    # -- Public Accessors ------------------------------------------------------
+
+    @property
+    def epsilon(self) -> Decimal:
+        """The differential privacy epsilon parameter (public accessor)."""
+        return self._epsilon
+
     # -- Layer 2: k-Anonymity --------------------------------------------------
 
     def _enforce_k_anonymity(self, corridor: str, bank_hashes: Set[str]) -> bool:

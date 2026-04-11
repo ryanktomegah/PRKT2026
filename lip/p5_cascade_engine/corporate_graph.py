@@ -57,6 +57,8 @@ class CascadeGraph:
     edge_count: int = 0
     avg_dependency_score: float = 0.0
     max_cascade_centrality_node: str = ""
+    corridor_to_corporates: Dict[str, List[str]] = field(default_factory=dict)
+    """Maps currency-pair corridor (e.g. 'EUR_USD') to corporate IDs with volume on it."""
 
     def get_downstream_dependents(
         self, corporate_id: str, threshold: float = 0.2
@@ -70,7 +72,7 @@ class CascadeGraph:
 
     def get_corporates_on_corridor(self, corridor: str) -> List[str]:
         """Return corporate IDs with payment volume on the given corridor."""
-        return []
+        return list(self.corridor_to_corporates.get(corridor, []))
 
     def compute_centrality(self) -> None:
         """Compute betweenness centrality for all nodes (Brandes algorithm)."""

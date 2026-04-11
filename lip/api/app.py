@@ -59,7 +59,8 @@ try:
 
         # Core components
         kill_switch = KillSwitch()
-        BorrowerRegistry(redis_client=redis_client)  # init loads from Redis; shared via C7 config
+        # B2-13: Store in app state so the registry is reachable and not silently GC'd.
+        borrower_registry = BorrowerRegistry(redis_client=redis_client)
         known_entity_registry = KnownEntityRegistry(redis_client=redis_client)
         notification_service = NotificationService(redis_client=redis_client)
         regulatory_reporter = RegulatoryReporter(redis_client=redis_client)
@@ -105,23 +106,49 @@ try:
             kill_switch=kill_switch,
         )
 
-        # Auth dependency (optional — no key = no auth enforcement)
-        hmac_key_hex = os.environ.get("LIP_API_HMAC_KEY", "")
-        auth_dep = None
+        # Auth dependency — fail-closed: if no key is configured, all protected
+        # endpoints return 401 rather than allowing unauthenticated access (B2-01).
+        hmac_key_hex = os.environ.get("LIP_API_HMAC_KEY", "").strip()
         if hmac_key_hex:
-            hmac_key = hmac_key_hex.encode() if len(hmac_key_hex) < 64 else bytes.fromhex(hmac_key_hex)
+            # B2-05 / B2-06: Try base64 first, then hex.  Raise on both failures
+            # rather than silently falling back to UTF-8 encoding.
+            hmac_key: bytes
+            try:
+                import base64 as _base64
+                hmac_key = _base64.b64decode(hmac_key_hex, validate=True)
+                logger.debug("LIP_API_HMAC_KEY decoded as base64 (%d bytes)", len(hmac_key))
+            except Exception:
+                try:
+                    hmac_key = bytes.fromhex(hmac_key_hex)
+                    logger.debug("LIP_API_HMAC_KEY decoded as hex (%d bytes)", len(hmac_key))
+                except ValueError as exc:
+                    raise RuntimeError(
+                        "LIP_API_HMAC_KEY is neither valid base64 nor valid hex. "
+                        "Refusing to start with an unparseable key."
+                    ) from exc
             auth_dep = make_hmac_dependency(hmac_key)
+        else:
+            # No key configured: install a deny-all dependency so protected
+            # routes return 401 instead of being silently open.
+            from lip.api.auth import make_deny_all_dependency
+            auth_dep = make_deny_all_dependency()
+            logger.warning(
+                "LIP_API_HMAC_KEY is not set — all authenticated endpoints will "
+                "return 401. Set this variable to enable API access."
+            )
 
         regulator_signing_key = None
         regulator_key_hex = os.environ.get("LIP_REGULATOR_SUBSCRIPTION_KEY_HEX", "").strip()
         if regulator_key_hex:
             try:
                 regulator_signing_key = bytes.fromhex(regulator_key_hex)
-            except ValueError:
-                logger.warning(
-                    "LIP_REGULATOR_SUBSCRIPTION_KEY_HEX is not valid hex; using raw bytes fallback"
-                )
-                regulator_signing_key = regulator_key_hex.encode("utf-8")
+            except ValueError as exc:
+                # B2-06: Do not fall back to raw UTF-8 bytes — raise at startup so
+                # the misconfiguration is surfaced immediately.
+                raise RuntimeError(
+                    "LIP_REGULATOR_SUBSCRIPTION_KEY_HEX is not valid hex. "
+                    "Refusing to start with an unparseable regulator signing key."
+                ) from exc
 
         # Lifespan for startup/shutdown
         @asynccontextmanager
@@ -146,6 +173,10 @@ try:
             version="1.0.0",
             lifespan=lifespan,
         )
+        # B2-13: Store shared components in app state so they are reachable
+        # from middleware, background tasks, or future endpoints.
+        application.state.borrower_registry = borrower_registry
+        application.state.known_entity_registry = known_entity_registry
 
         # Mount routers
         application.include_router(
@@ -170,10 +201,16 @@ try:
             prefix="/known-entities",
         )
 
-        # Prometheus /metrics scraping endpoint — no auth required
+        # Prometheus /metrics scraping endpoint — protected by HMAC auth (B2-08).
+        # Prometheus scrapers must be configured with a valid Authorization header.
+        from fastapi import Depends
         from fastapi.responses import PlainTextResponse
 
-        @application.get("/metrics", response_class=PlainTextResponse)
+        @application.get(
+            "/metrics",
+            response_class=PlainTextResponse,
+            dependencies=[Depends(auth_dep)],
+        )
         def prometheus_metrics():
             """Prometheus-compatible metrics scraping endpoint."""
             return metrics_collector.generate_latest()

@@ -38,9 +38,11 @@ from typing import List
 import numpy as np
 
 from lip.c2_pd_model.fee import compute_loan_fee
+from lip.common.constants import FEE_FLOOR_BPS as _FEE_FLOOR_BPS_DECIMAL
 
-# Canonical constants (QUANT-controlled)
-_FEE_FLOOR_BPS = 300
+# B11-14: FEE_FLOOR_BPS imported from lip.common.constants (canonical value 300 bps).
+# Stored as int for use in max() and int arithmetic in fee computation.
+_FEE_FLOOR_BPS = int(_FEE_FLOOR_BPS_DECIMAL)
 _MATURITY_DAYS = {"CLASS_A": 3, "CLASS_B": 7, "CLASS_C": 21}
 _RAILS = ["SWIFT", "FEDNOW", "RTP", "SEPA", "BUFFER"]
 _CORRIDORS = [

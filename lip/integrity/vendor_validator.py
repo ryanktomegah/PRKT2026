@@ -221,7 +221,7 @@ class VendorIntegrityValidator:
         zeros = sum(1 for r in vendor_reports if r.incidents_found == 0)
         ratio = zeros / total
         return ZeroIncidentResult(
-            is_anomalous=ratio > self._zero_incident_threshold,
+            is_anomalous=ratio >= self._zero_incident_threshold,
             vendor_id=vendor_id,
             total_reports=total,
             reports_with_zero_incidents=zeros,

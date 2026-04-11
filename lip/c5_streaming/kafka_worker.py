@@ -160,17 +160,18 @@ class PaymentEventWorker:
 
     def _process_message(self, msg: Any) -> None:
         """
-        Decode → normalise → pipeline → produce.
+        Decode → normalise → pipeline → produce → commit offset.
 
-        Errors are caught and counted but do not stop the consumer loop.
-        The problematic message is NOT committed so it will be reprocessed
-        on restart (exactly-once semantics relies on idempotent producer +
-        transactional offsets; see kafka_config.py).
+        Offset is committed only after successful processing (including null-value
+        tombstones, which are skipped but safe to advance past). On any error path
+        the offset is NOT committed so the message is redelivered on restart.
+        enable.auto.commit=False is set in KafkaConfig.to_consumer_config().
         """
         try:
             raw_bytes = msg.value()
             if raw_bytes is None:
                 logger.warning("Received null-value message — skipping offset=%s", msg.offset())
+                self._consumer.commit(message=msg)
                 return
 
             raw: dict = json.loads(raw_bytes.decode("utf-8"))
@@ -186,6 +187,7 @@ class PaymentEventWorker:
                 self._produce_with_retry(out_topic, key_bytes, value_bytes)
 
             self._processed += 1
+            self._consumer.commit(message=msg)
 
         except json.JSONDecodeError as exc:
             logger.error(

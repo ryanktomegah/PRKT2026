@@ -351,7 +351,7 @@ class ClassifierModel:
         else:
             raw_score = neural_prob
 
-        if calibrate and self.calibrator._is_fitted:
+        if calibrate and getattr(self.calibrator, '_is_fitted', False):
             return float(self.calibrator.predict(np.array([raw_score]))[0])
 
         return raw_score
@@ -473,7 +473,7 @@ class ClassifierModel:
         if self.lgbm_model is not None:
             secure_pickle.dump(self.lgbm_model, os.path.join(path, "lgbm.pkl"))
         # Persist calibrator state so it survives save/load cycle
-        if self.calibrator._is_fitted:
+        if getattr(self.calibrator, '_is_fitted', False):
             secure_pickle.dump(self.calibrator, os.path.join(path, "calibrator.pkl"))
         logger.info("ClassifierModel saved to %s", path)
 
@@ -515,7 +515,7 @@ class ClassifierModel:
         cal_path = os.path.join(path, "calibrator.pkl")
         if os.path.exists(cal_path):
             self.calibrator = secure_pickle.load(cal_path)
-            logger.info("Calibrator loaded (fitted=%s)", self.calibrator._is_fitted)
+            logger.info("Calibrator loaded (fitted=%s)", getattr(self.calibrator, '_is_fitted', False))
         logger.info("ClassifierModel loaded from %s", path)
 
     def save_weights(self, npz_path: str) -> None:

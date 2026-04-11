@@ -30,6 +30,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from lip.common.block_codes import ALL_BLOCK_CODES
+
 if TYPE_CHECKING:
     import pandas as pd
 
@@ -436,6 +438,52 @@ def _check_aml_flag_rate(df: "pd.DataFrame") -> ValidationCheck:
     )
 
 
+def _check_epg19_block_code_presence(df: "pd.DataFrame") -> ValidationCheck:
+    """B11-05: Verify EPG-19 BLOCK codes appear at non-zero frequency in RJCT records.
+
+    The chi-square test fits observed rejection code frequencies against BIS/SWIFT
+    GPI priors. If a prior code has weight=0 or is absent from the priors table,
+    the chi-square fit will silently exert pressure to suppress it from the
+    generated corpus (EPG-19 concern: compliance-hold codes getting squeezed out).
+
+    This check runs INDEPENDENTLY of the chi-square test: it verifies that every
+    code in the canonical BLOCK list (ALL_BLOCK_CODES from lip.common.block_codes)
+    appears at least once in the RJCT sub-corpus. A chi-square pass combined with
+    a failure here means the priors are miscalibrated to exclude compliance-hold
+    codes — which would be a training data defect for C1.
+
+    Applied to RJCT records only (label=1).
+    """
+    rjct_df = df[df["label"] == 1] if "label" in df.columns else df
+    if "rejection_code" not in rjct_df.columns:
+        return ValidationCheck(
+            "epg19_block_code_presence",
+            False,
+            "rejection_code column missing from RJCT records",
+            {},
+        )
+
+    present_codes = set(rjct_df["rejection_code"].dropna().unique())
+    block_codes = set(ALL_BLOCK_CODES)
+    missing = sorted(block_codes - present_codes)
+
+    ok = len(missing) == 0
+    msg = (
+        f"All {len(block_codes)} EPG-19 BLOCK codes present in RJCT corpus"
+        if ok
+        else (
+            f"{len(missing)}/{len(block_codes)} EPG-19 BLOCK codes absent from corpus: "
+            f"{missing} — chi-square fitting may be suppressing compliance-hold codes"
+        )
+    )
+    return ValidationCheck(
+        "epg19_block_code_presence",
+        ok,
+        msg,
+        {"block_codes_total": len(block_codes), "missing_codes": missing},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -488,6 +536,12 @@ def validate_payments(df: "pd.DataFrame") -> ProductionValidationReport:
 
     print("    [Validation] class_ratio (RJCT records)...", end=" ", flush=True)
     report.checks.append(_check_class_ratio(df))
+    print("done")
+
+    # B11-05: EPG-19 check runs independently of chi-square — separate pass
+    # to ensure compliance-hold BLOCK codes are not suppressed by prior fitting.
+    print("    [Validation] epg19_block_code_presence (RJCT records)...", end=" ", flush=True)
+    report.checks.append(_check_epg19_block_code_presence(df))
     print("done")
 
     return report

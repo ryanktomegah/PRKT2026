@@ -1,13 +1,18 @@
 """Canonical constants for LIP — Architecture Spec v1.2 Appendix A."""
 from decimal import Decimal
 
-# ── Market sizing (FXC Intelligence 2024) ─────────────────────────────────────
-MARKET_SIZE_USD = 31_700_000_000_000          # $31.7T annual cross-border volume
-
 # ── Failure-rate assumptions ──────────────────────────────────────────────────
 FAILURE_RATE_CONSERVATIVE = Decimal("0.030")   # 3.0%
 FAILURE_RATE_MIDPOINT     = Decimal("0.035")   # 3.5%
 FAILURE_RATE_UPSIDE       = Decimal("0.040")   # 4.0%
+
+# ── Credit tier boundaries (annualised fee bps) ──────────────────────────────
+# Used in portfolio_router._tier_from_fee_bps to classify loans by credit tier.
+# Tier 1: 300–539 bps  (investment-grade, listed)
+# Tier 2: 540–899 bps  (private company, balance-sheet data)
+# Tier 3: 900+ bps     (thin file)
+CREDIT_TIER_2_MIN_BPS = 540   # lower boundary for Tier 2 (inclusive)
+CREDIT_TIER_3_MIN_BPS = 900   # lower boundary for Tier 3 (inclusive)
 
 # ── Fee parameters ────────────────────────────────────────────────────────────
 FEE_FLOOR_BPS              = Decimal("300")    # 300 bps annualized floor
@@ -90,7 +95,8 @@ HPA_SCALE_OUT_QUEUE_DEPTH = 100
 HPA_SCALE_IN_QUEUE_DEPTH  = 20
 
 # ── Latency SLO ───────────────────────────────────────────────────────────────
-LATENCY_SLO_MS = 94                       # ≤ 94ms end-to-end SLO (Architecture Spec v1.2)
+# Alias for LATENCY_P99_TARGET_MS — kept for backward compatibility.
+LATENCY_SLO_MS = LATENCY_P99_TARGET_MS   # ≤ 94ms end-to-end SLO (Architecture Spec v1.2)
 
 # ── UETR TTL ──────────────────────────────────────────────────────────────────
 UETR_TTL_BUFFER_DAYS = 45                 # buffer beyond maturity for UETR deduplication window
@@ -106,7 +112,7 @@ PLATFORM_ROYALTY_RATE = Decimal("0.30")   # 30% of fee_repaid_usd → BPI techno
 
 # ── Deployment phase fee shares (QUANT authority — do not change without sign-off) ─────────
 # Phase 1 (Licensor): bank funds 100%, BPI earns IP royalty — 30% of fee
-PHASE_1_BPI_FEE_SHARE              = Decimal("0.30")   # == PLATFORM_ROYALTY_RATE (backward compat)
+PHASE_1_BPI_FEE_SHARE              = PLATFORM_ROYALTY_RATE   # alias — canonical value is PLATFORM_ROYALTY_RATE
 PHASE_1_INCOME_TYPE                = "ROYALTY"
 
 # Phase 2 (Hybrid): 30% bank / 70% BPI capital. BPI earns co-lending return — 55% of fee
@@ -160,7 +166,37 @@ SETTLEMENT_P95_CLASS_C_HOURS = 170.67  # Liquidity/sanctions/investigation — B
 MIN_LOAN_AMOUNT_CLASS_A_USD = Decimal("1500000")  # Class A (routing errors, 3-day maturity)
 MIN_LOAN_AMOUNT_CLASS_B_USD = Decimal("700000")   # Class B (compliance holds, 7-day maturity)
 MIN_LOAN_AMOUNT_CLASS_C_USD = Decimal("500000")   # Class C (liquidity/sanctions, 21-day maturity)
-MIN_LOAN_AMOUNT_USD         = Decimal("500000")   # legacy default for unlabelled / unknown class
+MIN_LOAN_AMOUNT_USD         = Decimal("500000")   # legacy default for backward compatibility only
+
+
+def get_min_loan_amount(loan_class: str) -> Decimal:
+    """Return the minimum loan amount for *loan_class*.
+
+    Raises ValueError for unknown classes — silently defaulting to the lowest
+    tier would allow sub-threshold loans to slip through for unrecognised
+    rejection classes.
+
+    Parameters
+    ----------
+    loan_class:
+        One of ``"A"``, ``"B"``, or ``"C"`` (case-sensitive).
+
+    Raises
+    ------
+    ValueError
+        If *loan_class* is not a recognised class.
+    """
+    _CLASS_MAP: dict = {
+        "A": MIN_LOAN_AMOUNT_CLASS_A_USD,
+        "B": MIN_LOAN_AMOUNT_CLASS_B_USD,
+        "C": MIN_LOAN_AMOUNT_CLASS_C_USD,
+    }
+    if loan_class not in _CLASS_MAP:
+        raise ValueError(
+            f"Unknown loan class {loan_class!r}; expected one of {list(_CLASS_MAP)}.  "
+            "Silently defaulting to the lowest tier is not permitted."
+        )
+    return _CLASS_MAP[loan_class]
 
 # MIN_CASH_FEE_USD: coherent safety net at the Class A boundary value.
 # $500K × 400bps × 3/365 = $164.38 → rounded down to $150 with ~9% headroom.
@@ -240,6 +276,18 @@ PROCESSOR_PERFORMANCE_BASELINE_PCT = Decimal("0.80")     # 80% of projected annu
 # Container lifecycle intervals (P3 blueprint §2.5)
 CONTAINER_HEARTBEAT_INTERVAL_SECONDS = 60   # heartbeat to BPI telemetry endpoint
 REVENUE_METERING_SYNC_INTERVAL_SECONDS = 300  # 5-minute revenue sync
+
+# ── DGEN temporal spread (SR 11-7 out-of-time validation, B11-06) ────────────
+# 18-month window: 2023-07-01 00:00:00 UTC → 2025-01-01 (approx).
+# Named constant replaces magic literals across all DGEN generators.
+DGEN_EPOCH_START: float = 1_688_169_600.0  # 2023-07-01 00:00:00 UTC
+DGEN_EPOCH_SPAN: float = 18 * 30 * 86_400  # ~18 months in seconds
+
+# ── C3 PaymentWatchdog stuck-payment detection ─────────────────────────────────
+# Fallback TTL (seconds) for non-terminal states not listed in the per-state
+# TTL dict. Equals 2× the Class B 7-day maturity window.
+# QUANT + NOVA sign-off required to change — affects PagerDuty alert volume.
+C3_WATCHDOG_FALLBACK_TTL_SECONDS: float = 14 * 86_400  # 14 days
 
 # Revenue shortfall alerting
 REVENUE_SHORTFALL_ALERT_PCT = Decimal("0.50")  # alert when trailing 90d < 50% of annualized min

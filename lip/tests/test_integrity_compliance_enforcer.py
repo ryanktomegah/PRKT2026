@@ -26,7 +26,7 @@ def test_wrap_report_binds_data_hash():
     enf = _enf()
     live_data = {"auc": 0.887, "f2": 0.62, "n_samples": 10_000}
 
-    def generator() -> dict:
+    def generator(live_data: dict) -> dict:  # noqa: ARG001
         return {"summary": "Model approved", "auc": 0.887}
 
     report, evidence = enf.wrap_report_generation(generator, live_data, source_module="C1")
@@ -41,7 +41,7 @@ def test_proof_of_freshness_matches_round_trip():
     enf = _enf()
     live_data = {"k": "v", "n": 42}
 
-    _, evidence = enf.wrap_report_generation(lambda: "rpt", live_data)
+    _, evidence = enf.wrap_report_generation(lambda _d: "rpt", live_data)
     assert enf.verify_proof_of_freshness(evidence, live_data) is True
 
 
@@ -49,7 +49,7 @@ def test_proof_of_freshness_tampered_data_fails():
     enf = _enf()
     live_data = {"auc": 0.887}
 
-    _, evidence = enf.wrap_report_generation(lambda: "rpt", live_data)
+    _, evidence = enf.wrap_report_generation(lambda _d: "rpt", live_data)
 
     tampered = {"auc": 0.999}  # different data
     assert enf.verify_proof_of_freshness(evidence, tampered) is False

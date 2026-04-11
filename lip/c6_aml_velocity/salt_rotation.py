@@ -20,10 +20,6 @@ logger = logging.getLogger(__name__)
 ROTATION_INTERVAL_DAYS = 365
 OVERLAP_DAYS = 30
 
-# Rotation epoch validation hash — first 16 hex chars of the epoch zero digest.
-# Guards against accidental epoch-counter resets during salt rotation failover.
-_ROTATION_EPOCH_HASH: str = "d4fb9a0fe76fd218"
-
 
 @dataclass
 class SaltRecord:

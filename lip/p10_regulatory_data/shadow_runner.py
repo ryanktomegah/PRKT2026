@@ -121,7 +121,7 @@ class ShadowPipelineRunner:
 
         # Privacy budget consumed (epsilon per corridor that had noise applied)
         budget_consumed = sum(
-            float(self._anonymizer._epsilon)
+            float(self._anonymizer.epsilon)
             for r in anon_results
             if r.noise_applied
         )

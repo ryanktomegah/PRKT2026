@@ -161,18 +161,24 @@ class KillSwitch:
         """
         if self._kms_client is None:
             return KMSState.AVAILABLE
+        # B4-04: Wrap the entire check→write state transition in a single lock acquisition
+        # to prevent data races on _kms_state and _kms_unavailable_since.
         try:
             self._kms_client.ping()
-            if self._kms_state == KMSState.UNAVAILABLE:
-                logger.info("KMS recovered after %.1fs gap", self.kms_unavailable_gap_seconds() or 0)
-                self._kms_state = KMSState.AVAILABLE
-                self._kms_unavailable_since = None
+            with self._state_lock:
+                if self._kms_state == KMSState.UNAVAILABLE:
+                    logger.info("KMS recovered after %.1fs gap", self.kms_unavailable_gap_seconds() or 0)
+                    self._kms_state = KMSState.AVAILABLE
+                    self._kms_unavailable_since = None
+                result = self._kms_state
         except Exception as exc:
-            if self._kms_state == KMSState.AVAILABLE:
-                self._kms_unavailable_since = datetime.now(tz=timezone.utc)
-                logger.error("KMS unavailable: %s", exc)
-            self._kms_state = KMSState.UNAVAILABLE
-        return self._kms_state
+            with self._state_lock:
+                if self._kms_state == KMSState.AVAILABLE:
+                    self._kms_unavailable_since = datetime.now(tz=timezone.utc)
+                    logger.error("KMS unavailable: %s", exc)
+                self._kms_state = KMSState.UNAVAILABLE
+                result = self._kms_state
+        return result
 
     def get_status(self) -> KillSwitchStatus:
         """Return a point-in-time snapshot of kill switch and KMS state.

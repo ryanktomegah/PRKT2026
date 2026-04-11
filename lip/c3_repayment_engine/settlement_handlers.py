@@ -367,6 +367,133 @@ class BufferSettlementHandler:
         )
 
 
+# ── Shared ISO 20022 field extraction helpers (B5-05) ────────────────────────
+# Single canonical implementation — imported by state_machine_bridge.py to
+# avoid duplicated parsing logic across the two files.
+
+def extract_camt054_fields_from_dict(raw_message: dict) -> dict:
+    """Extract normalised fields from a camt.054 dict.
+
+    Accepts both nested ISO 20022 key structure and flat dicts (used
+    by test/mock payloads).
+
+    Returns:
+        dict with keys: uetr, individual_payment_id, amount, currency,
+            settlement_time (str|None), rejection_code (str|None).
+
+    Raises:
+        ValueError: On parse failure.
+    """
+    try:
+        notification = (
+            raw_message.get("BkToCstmrDbtCdtNtfctn", raw_message)
+            .get("Ntfctn", [raw_message])[0]
+        )
+        entry = notification.get("Ntry", [{}])[0]
+        txn_details = entry.get("NtryDtls", {}).get("TxDtls", {})
+
+        uetr = (
+            txn_details.get("Refs", {}).get("UETR")
+            or raw_message.get("uetr", "")
+        )
+        individual_payment_id = (
+            txn_details.get("Refs", {}).get("EndToEndId")
+            or raw_message.get("individual_payment_id", uetr)
+        )
+        amount_raw = (
+            entry.get("Amt", {}).get("#text")
+            or entry.get("Amt")
+            or raw_message.get("amount", "0")
+        )
+        currency = (
+            entry.get("Amt", {}).get("@Ccy")
+            or raw_message.get("currency", "USD")
+        )
+        settlement_time = (
+            txn_details.get("SttlmInf", {}).get("SttlmDt")
+            or raw_message.get("settlement_time")
+        )
+        rejection_code = (
+            txn_details.get("RtrInf", {}).get("Rsn", {}).get("Cd")
+            or raw_message.get("rejection_code")
+        )
+    except Exception as exc:
+        raise ValueError(f"camt.054 field extraction failed: {exc}") from exc
+
+    return {
+        "uetr": uetr or "",
+        "individual_payment_id": individual_payment_id or "",
+        "amount": str(amount_raw),
+        "currency": currency or "USD",
+        "settlement_time": settlement_time,
+        "rejection_code": rejection_code,
+    }
+
+
+def extract_pacs008_fields_from_dict(raw_message: dict) -> dict:
+    """Extract normalised fields from a pacs.008 dict.
+
+    Returns:
+        dict with keys: uetr, end_to_end_id, amount, currency,
+            settlement_date (str|None), debtor_bic (str|None),
+            creditor_bic (str|None).
+
+    Raises:
+        ValueError: On parse failure.
+    """
+    try:
+        tx_info = (
+            raw_message.get("FIToFICstmrCdtTrf", {})
+            .get("CdtTrfTxInf", [{}])[0]
+        )
+        uetr = (
+            tx_info.get("PmtId", {}).get("UETR")
+            or raw_message.get("uetr")
+            or raw_message.get("UETR", "")
+        )
+        end_to_end_id = (
+            tx_info.get("PmtId", {}).get("EndToEndId")
+            or raw_message.get("EndToEndId")
+            or raw_message.get("end_to_end_id", uetr)
+        )
+        amt_node = tx_info.get("IntrBkSttlmAmt", {})
+        if isinstance(amt_node, dict):
+            amount = (
+                amt_node.get("#text")
+                or amt_node.get("amount")
+                or raw_message.get("amount", "0")
+            )
+            currency = amt_node.get("@Ccy") or raw_message.get("currency", "USD")
+        else:
+            amount = raw_message.get("amount", "0")
+            currency = raw_message.get("currency", "USD")
+        settlement_date = (
+            tx_info.get("IntrBkSttlmDt")
+            or raw_message.get("settlement_date")
+            or raw_message.get("IntrBkSttlmDt")
+        )
+        debtor_bic = (
+            tx_info.get("DbtrAgt", {}).get("FinInstnId", {}).get("BICFI")
+            or raw_message.get("debtor_bic")
+        )
+        creditor_bic = (
+            tx_info.get("CdtrAgt", {}).get("FinInstnId", {}).get("BICFI")
+            or raw_message.get("creditor_bic")
+        )
+    except Exception as exc:
+        raise ValueError(f"pacs.008 field extraction failed: {exc}") from exc
+
+    return {
+        "uetr": uetr or "",
+        "end_to_end_id": end_to_end_id or "",
+        "amount": str(amount),
+        "currency": currency or "USD",
+        "settlement_date": settlement_date,
+        "debtor_bic": debtor_bic,
+        "creditor_bic": creditor_bic,
+    }
+
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 class SettlementHandlerRegistry:

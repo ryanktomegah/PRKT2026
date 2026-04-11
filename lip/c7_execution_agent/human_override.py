@@ -7,6 +7,7 @@ Three-entity role mapping:
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
 import logging
+import threading
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -109,6 +110,9 @@ class HumanOverrideInterface:
         # human response. Default is DECLINE (conservative); licensees may
         # configure OFFER for low-PD edge cases where speed outweighs review.
         self.timeout_action = timeout_action
+        # B4-03: Lock protects all reads/writes to shared dicts (_pending,
+        # _responses, _context_store) against concurrent dict mutation.
+        self._lock = threading.Lock()
         self._pending: Dict[str, HumanOverrideRequest] = {}
         self._responses: Dict[str, HumanOverrideResponse] = {}
         # EPG-26: stores original payment context keyed by override_request_id
@@ -149,7 +153,8 @@ class HumanOverrideInterface:
             requested_at=now,
             expires_at=now + timedelta(seconds=self._timeout_seconds),
         )
-        self._pending[request_id] = req
+        with self._lock:
+            self._pending[request_id] = req
         logger.info("Override requested: %s uetr=%s confidence=%.2f", request_id, uetr, ai_confidence)
         return req
 
@@ -196,8 +201,9 @@ class HumanOverrideInterface:
             justification=justification,
             decided_at=datetime.now(tz=timezone.utc),
         )
-        self._responses[request_id] = resp
-        self._pending.pop(request_id, None)
+        with self._lock:
+            self._responses[request_id] = resp
+            self._pending.pop(request_id, None)
         logger.info("Override response: %s decision=%s operator=%s", request_id, decision, operator_id)
         return resp
 
@@ -211,7 +217,11 @@ class HumanOverrideInterface:
             ``True`` if the request is in :attr:`_pending` and within its
             timeout window; ``False`` otherwise.
         """
-        return request_id in self._pending and not self.is_expired(request_id)
+        with self._lock:
+            req = self._pending.get(request_id)
+            if req is None:
+                return False
+            return datetime.now(tz=timezone.utc) <= req.expires_at
 
     def is_expired(self, request_id: str) -> bool:
         """Return True when the override request has passed its expiry time.
@@ -225,7 +235,8 @@ class HumanOverrideInterface:
             ``True`` if expired or unknown; ``False`` if still within the
             timeout window.
         """
-        req = self._pending.get(request_id)
+        with self._lock:
+            req = self._pending.get(request_id)
         if req is None:
             return True
         return datetime.now(tz=timezone.utc) > req.expires_at
@@ -250,14 +261,18 @@ class HumanOverrideInterface:
                 pending).  Prevents premature resolution.
             ValueError: If the request ID is unknown (defensive).
         """
-        if request_id not in self._pending and request_id not in self._responses:
+        with self._lock:
+            in_pending = request_id in self._pending
+            in_responses = request_id in self._responses
+        if not in_pending and not in_responses:
             raise ValueError(f"Unknown override request: {request_id}")
-        if request_id in self._pending and not self.is_expired(request_id):
+        if in_pending and not self.is_expired(request_id):
             raise ValueError(
                 f"Override request {request_id} has not yet expired; cannot resolve."
             )
         # Remove from pending if still there (clean up)
-        self._pending.pop(request_id, None)
+        with self._lock:
+            self._pending.pop(request_id, None)
         logger.info(
             "Override expired: %s resolved as %s", request_id, self.timeout_action
         )
@@ -274,7 +289,23 @@ class HumanOverrideInterface:
             insertion time.
         """
         now = datetime.now(tz=timezone.utc)
-        return [r for r in self._pending.values() if r.expires_at > now]
+        with self._lock:
+            return [r for r in self._pending.values() if r.expires_at > now]
+
+    def get_all_pending_requests(self) -> List[HumanOverrideRequest]:
+        """Return all pending override requests including expired ones.
+
+        Unlike :meth:`get_pending_overrides` this method does NOT filter by
+        expiry time.  Used by :class:`OverrideSweeper` to find requests that
+        need to be resolved on timeout.  Returns a snapshot under the lock so
+        callers see a consistent point-in-time view.
+
+        Returns:
+            List of all :class:`HumanOverrideRequest` objects currently in
+            :attr:`_pending`, regardless of expiry status.
+        """
+        with self._lock:
+            return list(self._pending.values())
 
     # ── EPG-26: re-entry context store ──────────────────────────────────────
 
@@ -290,7 +321,8 @@ class HumanOverrideInterface:
             event: Original ``NormalizedEvent`` (or any picklable context) to
                 preserve for re-processing.
         """
-        self._context_store[request_id] = event
+        with self._lock:
+            self._context_store[request_id] = event
         logger.debug("Context stored for re-entry: request_id=%s", request_id)
 
     def pop_context(self, request_id: str) -> Optional[Any]:
@@ -305,4 +337,5 @@ class HumanOverrideInterface:
         Returns:
             The previously stored event, or ``None``.
         """
-        return self._context_store.pop(request_id, None)
+        with self._lock:
+            return self._context_store.pop(request_id, None)

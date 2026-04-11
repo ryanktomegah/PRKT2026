@@ -228,7 +228,7 @@ class InferenceEngine:
         # --- Run inference (legacy dict path) ---
         try:
             raw_result = self.predict(request.to_dict())
-        except Exception as exc:  # noqa: BLE001
+        except (ValueError, TypeError, RuntimeError, KeyError) as exc:  # noqa: BLE001
             logger.exception("C1 inference runtime error for payment_id=%s", request.payment_id)
             return ClassifyError(
                 error_type="INFERENCE_ERROR",

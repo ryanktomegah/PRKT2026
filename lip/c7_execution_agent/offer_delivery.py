@@ -107,6 +107,16 @@ class OfferDeliveryService:
         on_expire: Optional[Callable[[LoanOfferExpiry], None]] = None,
         delivery_endpoint: Optional[str] = None,
     ) -> None:
+        # B4-05: PROD-BLOCKER — delivery state is in-memory only.
+        # Pod restarts, OOM kills, or horizontal scaling will lose all pending
+        # deliveries. Before production deployment, replace _pending/_acceptances/
+        # _rejections/_expiries with a durable store (e.g. Redis or PostgreSQL)
+        # so offer state survives restarts and is visible across replicas.
+        logger.warning(
+            "OfferDeliveryService initialised with IN-MEMORY state. "
+            "Pod restarts will lose all pending deliveries. "
+            "PROD-BLOCKER: wire a durable store before production deployment."
+        )
         self._on_accept = on_accept
         self._on_reject = on_reject
         self._on_expire = on_expire

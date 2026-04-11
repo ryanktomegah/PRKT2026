@@ -58,7 +58,7 @@ def _ngrams(text: str, n: int) -> set[str]:
     return {normalised[i : i + n] for i in range(len(normalised) - n + 1)}
 
 
-def jaccard_similarity(text_a: str, text_b: str, ngram_size: int = 3) -> float:
+def jaccard_similarity(text_a: str, text_b: str, ngram_size: int = 6) -> float:
     """Return the Jaccard similarity of the character n-gram sets of two texts.
 
     Returns 1.0 for identical inputs, 0.0 for disjoint inputs. Used as the
@@ -124,7 +124,7 @@ class ComplianceEvidenceEnforcer:
         data that produced it. Tampering with either the report or the
         live_data invalidates the proof.
         """
-        report = generator(*args, **kwargs)
+        report = generator(live_data, *args, **kwargs)
         data_hash = compute_proof_of_freshness(live_data)
         record = EvidenceRecord(
             evidence_id=evidence_id or f"compliance-{utcnow().isoformat()}",

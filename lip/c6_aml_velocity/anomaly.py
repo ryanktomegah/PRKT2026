@@ -128,9 +128,10 @@ class AnomalyDetector:
             :class:`AnomalyResult` with the anomaly flag and raw score.
         """
         if not self._fitted:
-            logger.warning(
-                "AnomalyDetector.predict() called before fit() — returning is_anomaly=False. "
-                "Call fit() with historical transactions before using the detector in production."
+            raise RuntimeError(
+                "AnomalyDetector.predict() called before fit(). "
+                "Call fit() with historical transactions before using the detector in production. "
+                "Silent False would allow anomalous transactions to pass unflagged (B7-08)."
             )
         features = self._extract_features(transaction)
         if self._model is not None:

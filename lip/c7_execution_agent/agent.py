@@ -39,6 +39,7 @@ from lip.common.fx_risk_policy import FXRiskConfig
 from lip.common.governing_law import bic_to_jurisdiction, law_for_jurisdiction
 from lip.common.known_entity_registry import KnownEntityRegistry
 from lip.common.redis_factory import create_redis_client
+from lip.common.swift_disbursement import build_disbursement_message
 
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
@@ -226,7 +227,18 @@ class ExecutionAgent:
           decision_entry_id — str or None
           halt_reason      — str or None
         """
-        uetr = payment_context.get("uetr", str(uuid.uuid4()))
+        # B4-02: UETR is required for dedup — never generate a random UUID to fill in a
+        # missing UETR; doing so defeats idempotency and allows duplicate offers.
+        uetr = payment_context.get("uetr")
+        if not uetr:
+            logger.error("process_payment called with missing or empty uetr — declining fail-closed")
+            return {
+                "status": "DECLINE",
+                "loan_offer": None,
+                "decision_entry_id": None,
+                "halt_reason": "missing_uetr",
+            }
+        uetr = str(uetr)
         individual_payment_id = payment_context.get("individual_payment_id", "")
         tenant_id = str(payment_context.get("tenant_id", ""))
 
@@ -254,7 +266,7 @@ class ExecutionAgent:
             fee_bps = int(payment_context.get("fee_bps", int(FEE_FLOOR_BPS)))
             loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
             dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
-            aml_passed = bool(payment_context.get("aml_passed", True))
+            aml_passed = bool(payment_context.get("aml_passed", False))
 
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "BLOCK",
@@ -273,7 +285,8 @@ class ExecutionAgent:
         fee_bps = int(payment_context.get("fee_bps", int(FEE_FLOOR_BPS)))
         loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
         dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
-        aml_passed = bool(payment_context.get("aml_passed", True))
+        # B4-01: CIPHER authority — missing AML result must fail-closed (never default True)
+        aml_passed = bool(payment_context.get("aml_passed", False))
 
         # 2. AML / dispute block
         if not aml_passed:
@@ -559,7 +572,7 @@ class ExecutionAgent:
 
         # GAP-06: Build SWIFT pacs.008 disbursement message so ELO can populate
         # EndToEndId and RmtInf/Ustrd on the outbound bridge credit transfer.
-        from lip.common.swift_disbursement import build_disbursement_message
+        # (build_disbursement_message is imported at module level)
         swift_msg = build_disbursement_message(uetr, loan_id, capped)
 
         # EPG-14 (REX, 2026-03-18): Derive governing law from the enrolled originating

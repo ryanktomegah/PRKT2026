@@ -11,6 +11,16 @@ Design rationale (ARIA + REX):
   lexical diversity for a 4-class classifier without external LLM dependency.
 - Fully reproducible (seed-controlled) → EU AI Act Art.10 traceability.
 
+B11-08 CIRCULAR BIAS WARNING:
+  If templates are designed by inspecting the Llama-3 classifier's feature
+  importances or attention patterns, the corpus will mirror the classifier's
+  decision boundary — inflating training metrics without improving real-world
+  performance. Templates MUST be authored from real-world payment operations
+  language (e.g., SWIFT correspondent banking messages, ICC dispute rules)
+  independently of any classifier output. If a held-out template set is
+  available (templates never seen during classifier training), reserve it as
+  the primary evaluation set to detect this exact form of circularity.
+
 Four classes (matches DisputeClass taxonomy):
   NOT_DISPUTE      — routine payment confirmations and queries
   DISPUTE_CONFIRMED — explicit dispute language, fraud claims, reversal demands

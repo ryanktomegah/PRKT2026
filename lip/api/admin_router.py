@@ -213,11 +213,21 @@ try:
                 )
 
         # ── Stress testing endpoints (Phase 2.6) ──────────────────────────
+        _STRESS_TEST_MAX_ITERATIONS = 100
+        _STRESS_TEST_MAX_SECONDS = 10
+
         if risk_engine is not None:
             @router.post("/stress-test")
-            def run_stress_test(num_simulations: int = 1000) -> Dict:
-                """Run Monte Carlo VaR stress test on current portfolio."""
+            def run_stress_test(num_simulations: int = 100) -> Dict:
+                """Run Monte Carlo VaR stress test on current portfolio.
+
+                Hard limits: max 100 iterations, max 10s wall time.
+                Returns 400 if requested limits exceed caps.
+                """
                 import json as _json
+                import threading
+
+                from fastapi import HTTPException as _HTTPException
 
                 from lip.risk.stress_testing import (
                     export_var_report_json,
@@ -227,10 +237,19 @@ try:
                     MCPosition,
                 )
 
+                if num_simulations > _STRESS_TEST_MAX_ITERATIONS:
+                    raise _HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"num_simulations exceeds maximum allowed value "
+                            f"({_STRESS_TEST_MAX_ITERATIONS})"
+                        ),
+                    )
+
                 positions = [
                     MCPosition(
                         loan_id=pos.loan_id,
-                        principal=float(pos.principal),
+                        principal=Decimal(str(pos.principal)),
                         pd=pos.pd,
                         lgd=pos.lgd,
                         corridor=pos.corridor,
@@ -238,29 +257,60 @@ try:
                     )
                     for pos in risk_engine.positions
                 ]
-                report = generate_daily_var_report(positions, num_simulations=num_simulations)
-                return _json.loads(export_var_report_json(report))
+
+                result_holder: Dict = {}
+                error_holder: list = []
+
+                def _run():
+                    try:
+                        report = generate_daily_var_report(
+                            positions, num_simulations=num_simulations
+                        )
+                        result_holder["report"] = report
+                    except Exception as exc:  # noqa: BLE001
+                        error_holder.append(exc)
+
+                t = threading.Thread(target=_run, daemon=True)
+                t.start()
+                t.join(timeout=_STRESS_TEST_MAX_SECONDS)
+                if t.is_alive():
+                    raise _HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Stress test exceeded maximum allowed duration "
+                            f"({_STRESS_TEST_MAX_SECONDS}s)"
+                        ),
+                    )
+                if error_holder:
+                    raise error_holder[0]
+
+                return _json.loads(export_var_report_json(result_holder["report"]))
 
         # ── Model card generation endpoint (Phase 2.7) ────────────────────
         @router.post("/model-card")
         def generate_model_card_endpoint(
             component: str = "C1",
         ) -> Dict:
-            """Generate a regulatory model card for the specified component."""
-            import json as _json
+            """Generate a regulatory model card for the specified component.
 
-            from lip.compliance.model_card_generator import (
-                export_model_card_json,
-                generate_model_card,
-            )
+            Returns 501 if real model card data is not available.
+            Never returns forged or placeholder regulatory documentation.
+            """
+            from fastapi import HTTPException as _HTTPException
 
-            card = generate_model_card(
-                component=component,
-                model_metadata={"component": component},
-                training_results={"is_synthetic": True},
-                evaluation_results={"metrics": {}},
+            # Model card generation requires validated training results and
+            # evaluation metrics from the live model registry. Returning
+            # placeholder data would constitute forged SR 11-7 documentation.
+            # When a real model card pipeline is wired, replace this guard.
+            raise _HTTPException(
+                status_code=501,
+                detail=(
+                    f"Model card for component '{component}' is not available. "
+                    "Real training results and evaluation metrics must be "
+                    "provided by the model registry before a regulatory model "
+                    "card can be generated."
+                ),
             )
-            return _json.loads(export_model_card_json(card))
 
         return router
 
