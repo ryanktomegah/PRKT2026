@@ -6,6 +6,7 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -96,7 +97,7 @@ func StartMetricsServer(addr string) {
 	})
 	go func() {
 		if err := http.ListenAndServe(addr, mux); err != nil && err != http.ErrServerClosed {
-			panic("metrics server failed: " + err.Error())
+			slog.Error("metrics server failed", "addr", addr, "error", err)
 		}
 	}()
 }

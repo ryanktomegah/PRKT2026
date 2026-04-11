@@ -59,21 +59,18 @@ func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloo
 	}
 	dialOpts := []grpc.DialOption{
 		transportCreds,
-		grpc.WithBlock(),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
-	c1, err := grpc.DialContext(ctx, c1Addr, dialOpts...)
+	c1, err := grpc.NewClient(c1Addr, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial c1 at %s: %w", c1Addr, err)
 	}
-	c2, err := grpc.DialContext(ctx, c2Addr, dialOpts...)
+	c2, err := grpc.NewClient(c2Addr, dialOpts...)
 	if err != nil {
 		_ = c1.Close()
 		return nil, fmt.Errorf("dial c2 at %s: %w", c2Addr, err)
 	}
-	c6, err := grpc.DialContext(ctx, c6Addr, dialOpts...)
+	c6, err := grpc.NewClient(c6Addr, dialOpts...)
 	if err != nil {
 		_ = c1.Close()
 		_ = c2.Close()

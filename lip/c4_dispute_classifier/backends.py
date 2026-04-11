@@ -36,7 +36,7 @@ _api_circuit_breaker = CircuitBreaker(
 
 # Default models for known free providers
 _GITHUB_MODELS_DEFAULT = "Mistral-7B-Instruct"
-_GROQ_DEFAULT = "mistral-saba-24b"
+_GROQ_DEFAULT = "qwen/qwen3-32b"
 _GITHUB_BASE_URL = "https://models.inference.ai.azure.com"
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
@@ -123,8 +123,23 @@ class OpenAICompatibleBackend:
                 )
                 return response.choices[0].message.content.strip()
             except Exception as exc:
-                exc_type = type(exc).__name__
-                if "Timeout" in exc_type or "timeout" in exc_type.lower():
+                # B10-16: Detect timeout exceptions robustly.
+                # Primary: isinstance check on openai-specific types (preferred).
+                # Fallback: class-name check for non-openai TimeoutError subclasses
+                #           and test stubs that can't inherit from openai types.
+                _is_timeout = isinstance(exc, TimeoutError)
+                if not _is_timeout:
+                    try:
+                        import openai as _openai  # noqa: PLC0415
+                        _is_timeout = isinstance(
+                            exc,
+                            (_openai.APITimeoutError, _openai.APIConnectionError),
+                        )
+                    except ImportError:
+                        pass
+                if not _is_timeout:
+                    _is_timeout = "Timeout" in type(exc).__name__
+                if _is_timeout:
                     raise TimeoutError(
                         f"OpenAICompatibleBackend: request timed out after {effective_timeout}s"
                     ) from exc

@@ -10,7 +10,7 @@ Three-entity role mapping:
 import json as _json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path as _Path
 from typing import Optional
@@ -162,43 +162,68 @@ def _compute_telemetry_eligibility(event: 'NormalizedEvent') -> bool:
 
 
 def _safe_decimal(value) -> Decimal:
-    """Coerce ``value`` to :class:`~decimal.Decimal`, returning ``Decimal('0')`` on failure.
+    """Coerce ``value`` to :class:`~decimal.Decimal`.
+
+    ``None`` is treated as an absent optional field and returns ``Decimal('0')``
+    with a WARNING logged — callers that expect None-as-zero must handle the
+    logged warning and document that the zero is intentional.
+
+    Any non-None value that cannot be parsed raises :class:`ValueError` with
+    context about what failed, so corrupt data surfaces immediately rather than
+    being silently replaced by a zero that would corrupt downstream loan math.
 
     Args:
-        value: Numeric value to convert (int, float, str, or Decimal).
+        value: Numeric value to convert (int, float, str, or Decimal), or None.
 
     Returns:
         Parsed :class:`~decimal.Decimal`, or ``Decimal('0')`` when ``value``
-        is ``None``, non-numeric, or raises :class:`~decimal.InvalidOperation`.
+        is ``None``.
+
+    Raises:
+        ValueError: When ``value`` is non-None but cannot be parsed as a Decimal.
     """
+    if value is None:
+        logger.warning("_safe_decimal received None — returning Decimal('0')")
+        return Decimal('0')
     try:
         return Decimal(str(value))
-    except (InvalidOperation, TypeError):
-        return Decimal('0')
+    except (InvalidOperation, TypeError) as exc:
+        raise ValueError(
+            f"Cannot parse {value!r} (type {type(value).__name__}) as Decimal: {exc}"
+        ) from exc
 
 
 def _safe_datetime(value) -> datetime:
-    """Coerce ``value`` to a :class:`~datetime.datetime`, falling back to UTC now.
+    """Coerce ``value`` to a :class:`~datetime.datetime`.
 
-    Accepts an existing :class:`~datetime.datetime` (returned as-is),
-    an ISO 8601 string, or any value that can be converted to a string
-    understood by :func:`~datetime.datetime.fromisoformat`.
+    Accepts an existing :class:`~datetime.datetime` (returned as-is) or an
+    ISO 8601 string.  Raises :class:`ValueError` for absent or unparseable
+    values — never substitutes ``datetime.now()`` for a missing event timestamp,
+    as that would corrupt time-series analytics and loan maturity calculations.
 
     Args:
-        value: Datetime value to parse (datetime, str, or None).
+        value: Datetime value to parse (datetime or str).
 
     Returns:
-        Parsed :class:`~datetime.datetime`, or ``datetime.now(UTC)`` when
-        ``value`` is ``None``, empty, or cannot be parsed.
+        Parsed :class:`~datetime.datetime`.
+
+    Raises:
+        ValueError: When ``value`` is ``None``, empty, or cannot be parsed as
+            an ISO 8601 datetime.
     """
     if isinstance(value, datetime):
         return value
-    if value:
-        try:
-            return datetime.fromisoformat(str(value))
-        except (ValueError, TypeError):
-            pass
-    return datetime.now(tz=timezone.utc)
+    if not value:
+        raise ValueError(
+            f"_safe_datetime received absent/empty value {value!r} — "
+            "event timestamp is required; never substitute datetime.now()"
+        )
+    try:
+        return datetime.fromisoformat(str(value))
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f"Cannot parse {value!r} (type {type(value).__name__}) as ISO 8601 datetime: {exc}"
+        ) from exc
 
 
 class EventNormalizer:
