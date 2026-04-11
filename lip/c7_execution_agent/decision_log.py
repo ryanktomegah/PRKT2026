@@ -25,6 +25,7 @@ import logging
 import uuid
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
+from decimal import Decimal
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -130,4 +131,13 @@ class DecisionLogger:
     def _entry_to_canonical_json(self, entry: DecisionLogEntryData) -> bytes:
         d = asdict(entry)
         d.pop("entry_signature", None)
-        return json.dumps(d, sort_keys=True, default=str).encode()
+
+        def _canonical_default(obj):
+            # B4-08: Explicitly serialize Decimal as string to preserve type info
+            # in the canonical JSON. Avoid the catch-all default=str which silently
+            # stringifies any unknown type (masks bugs in the audit log encoder).
+            if isinstance(obj, Decimal):
+                return str(obj)
+            raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+        return json.dumps(d, sort_keys=True, default=_canonical_default).encode()

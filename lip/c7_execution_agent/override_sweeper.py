@@ -9,6 +9,11 @@ import logging
 import threading
 from typing import Any, Optional
 
+try:
+    from lip.common.notification_service import NotificationEventType as _NotificationEventType
+except ImportError:
+    _NotificationEventType = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,8 +67,11 @@ class OverrideSweeper:
     def sweep_once(self) -> int:
         """Run a single sweep and return the number of expired requests resolved."""
         resolved = 0
-        # Get all pending requests — we check each for expiry
-        pending = list(self._override._pending.values())
+        # B4-15: Use the public get_all_pending_requests() method instead of
+        # accessing the private _pending attribute directly. This method returns
+        # all pending requests (including expired ones) under the lock, giving
+        # us a consistent snapshot without coupling to internal representation.
+        pending = self._override.get_all_pending_requests()
         for req in pending:
             if not self._override.is_expired(req.request_id):
                 continue
@@ -79,13 +87,13 @@ class OverrideSweeper:
                 )
 
                 # Notify if notification service is wired
-                if self._notification_service is not None:
+                # B4-16: NotificationEventType imported at module level (not inside method)
+                if self._notification_service is not None and _NotificationEventType is not None:
                     try:
-                        from lip.common.notification_service import NotificationEventType
                         event_type = (
-                            NotificationEventType.LOAN_DECLINED
+                            _NotificationEventType.LOAN_DECLINED
                             if action == "DECLINE"
-                            else NotificationEventType.OFFER_ACCEPTED
+                            else _NotificationEventType.OFFER_ACCEPTED
                         )
                         self._notification_service.notify(
                             event_type=event_type,

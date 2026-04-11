@@ -9,6 +9,7 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -160,6 +161,8 @@ func NewMetrics() *Metrics {
 
 // StartMetricsServer starts the Prometheus HTTP endpoint in a background
 // goroutine. The server runs until the process exits.
+// B4-13: Uses log/slog for error reporting instead of panic so a metrics
+// endpoint failure degrades observability without crashing the offer router.
 func StartMetricsServer(addr string) {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
@@ -169,7 +172,11 @@ func StartMetricsServer(addr string) {
 	})
 	go func() {
 		if err := http.ListenAndServe(addr, mux); err != nil && err != http.ErrServerClosed {
-			panic("c7 metrics server failed: " + err.Error())
+			// B4-13: Log error and return rather than panicking — a metrics server
+			// failure must not crash the offer router. Observability degrades
+			// gracefully; the router continues processing offers.
+			slog.Error("c7 metrics server failed — metrics endpoint unavailable",
+				"addr", addr, "err", err)
 		}
 	}()
 }
