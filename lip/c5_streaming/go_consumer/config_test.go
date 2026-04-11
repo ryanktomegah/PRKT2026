@@ -9,6 +9,8 @@ import (
 func TestLoadConfigDefaults(t *testing.T) {
 	// Ensure no stray env vars from other tests
 	clearEnv()
+	// B6-05: default protocol is SSL, but unit tests have no certs; use PLAINTEXT.
+	t.Setenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
 	cfg, err := LoadConfig()
 	if err != nil {
 		t.Fatalf("LoadConfig failed with defaults: %v", err)
@@ -32,6 +34,8 @@ func TestLoadConfigDefaults(t *testing.T) {
 
 func TestLoadConfigEnvOverride(t *testing.T) {
 	clearEnv()
+	// B6-05: default protocol is SSL; override to PLAINTEXT for this non-SSL test.
+	t.Setenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
 	t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "broker1:9092,broker2:9092")
 	t.Setenv("KAFKA_GROUP_ID", "test-group")
 	t.Setenv("NUM_WORKERS", "4")
@@ -63,6 +67,7 @@ func TestLoadConfigInvalidNumWorkers(t *testing.T) {
 
 func TestKafkaConsumerConfigMap(t *testing.T) {
 	clearEnv()
+	t.Setenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
 	cfg, _ := LoadConfig()
 	m := cfg.KafkaConsumerConfigMap()
 
@@ -76,6 +81,7 @@ func TestKafkaConsumerConfigMap(t *testing.T) {
 
 func TestKafkaProducerConfigMap(t *testing.T) {
 	clearEnv()
+	t.Setenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
 	cfg, _ := LoadConfig()
 	m := cfg.KafkaProducerConfigMap()
 
