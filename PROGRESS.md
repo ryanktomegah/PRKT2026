@@ -674,7 +674,7 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 
 - **Cache cleared**: ~360 MB of `pytest-of-tomegah/`, `.mypy_cache/`, `torchinductor_tomegah/` deleted
 - **`.gitignore` fixed**: Added `.mypy_cache/` and `torchinductor_*/` patterns
-- **`consolidation files/` dissolved**: 45 files decomposed into `docs/legal/patent/`, `docs/engineering/specs/`, `docs/engineering/blueprints/`, `docs/legal/governance/`, `docs/engineering/research/`, `docs/business/`, `docs/operations/`
+- **Legacy `consolidation-files` directory dissolved**: 45 files decomposed into `docs/legal/patent/`, `docs/engineering/specs/`, `docs/engineering/blueprints/`, `docs/legal/governance/`, `docs/engineering/research/`, `docs/business/`, `docs/operations/`
 - **Root decluttered**: `CLIENT_PERSPECTIVE_ANALYSIS.md`, `LIP_COMPLETE_NARRATIVE.md`, `EPIGNOSIS_ARCHITECTURE_REVIEW.md` moved to `docs/`; root now has only `README.md`, `CLAUDE.md`, `PROGRESS.md`, and config files
 - **Audience-based docs structure**: `docs/engineering/`, `docs/legal/`, `docs/business/`, `docs/operations/`, `docs/models/`
 - **Duplicates removed**: `BPI_Gap_Analysis_v2.0 (1).md`, two `.docx` binaries, legacy `scripts/train_all.py`
