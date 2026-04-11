@@ -646,3 +646,49 @@ All have realistic failure rates and settlement parameters. Channel mixes sum to
 - ~~C4 docstrings/manifests~~ → DONE (Groq reality documented, dual-mode K8s)
 - ~~CI httpx dependency~~ → DONE (added to requirements-ml.txt + pyproject.toml)
 - Cloud deployment — K8s manifests hardened; ready for pilot bank onboarding
+
+---
+
+## Session: Hardening Sprint — Code Review Day + B1–B13 Remediation (2026-04-01 to 2026-04-10)
+
+**Focus:** Security, correctness, and robustness hardening following comprehensive code review (2026-04-08, 13 batches, 30+ findings). Repository reorganisation to audience-based documentation structure.
+
+### Completed — Security & Correctness (B-series findings)
+
+- **B3-02**: Fixed unsigned HMAC fields — `dataclasses.fields()` introspection now auto-includes new `LicenseToken` fields in canonical signed payload
+- **B3-01**: TOCTOU race in differential privacy budget accounting addressed with atomic operations
+- **B6-01**: Compliance BLOCK code drift resolved — single source of truth via `_COMPLIANCE_HOLD_CODES` frozenset in `agent.py` (EPG-19 defence-in-depth Layer 2)
+- **B6-02**: Kafka offset commit fixed on error paths (was committing before processing)
+- **B8-01/02**: Federated learning DP composition bound and fail-open privacy fallback hardened
+- **B9-01**: Intervention fee floor violation patched (was 200 bps path, now enforces `FEE_FLOOR_BPS = 300`)
+- **B10-01/02**: Pickle deserialization RCE risk addressed via `secure_pickle.py` with hash verification
+- **B11-01/02**: DGEN mislabelling issues corrected in synthetic data generators
+- AML encapsulation tightened (CIPHER review findings)
+- Fail-closed defaults enforced across all pipeline gates
+- `Decimal` precision used throughout fee arithmetic (no more float drift)
+- Rust/Go compilation errors resolved; CI pipeline repaired
+- HMAC enforcement across all signed structures verified
+- Sanctions screening edge cases hardened (C6)
+
+### Completed — Repository Reorganisation (2026-04-10)
+
+- **Cache cleared**: ~360 MB of `pytest-of-tomegah/`, `.mypy_cache/`, `torchinductor_tomegah/` deleted
+- **`.gitignore` fixed**: Added `.mypy_cache/` and `torchinductor_*/` patterns
+- **`consolidation files/` dissolved**: 45 files decomposed into `docs/legal/patent/`, `docs/engineering/specs/`, `docs/engineering/blueprints/`, `docs/legal/governance/`, `docs/engineering/research/`, `docs/business/`, `docs/operations/`
+- **Root decluttered**: `CLIENT_PERSPECTIVE_ANALYSIS.md`, `LIP_COMPLETE_NARRATIVE.md`, `EPIGNOSIS_ARCHITECTURE_REVIEW.md` moved to `docs/`; root now has only `README.md`, `CLAUDE.md`, `PROGRESS.md`, and config files
+- **Audience-based docs structure**: `docs/engineering/`, `docs/legal/`, `docs/business/`, `docs/operations/`, `docs/models/`
+- **Duplicates removed**: `BPI_Gap_Analysis_v2.0 (1).md`, two `.docx` binaries, legacy `scripts/train_all.py`
+- **README.md rewritten**: New layout diagram, updated metrics, audience-based navigation
+- **INDEX.md rewritten**: 6 role-based reading paths, complete docs/ map, quick reference table
+
+### Current State (2026-04-10)
+
+**Test suite:** 1284 tests passing, 92% coverage
+
+**Engineering blockers:** None.
+
+**Legal/contractual blockers (non-engineering — not resolved by code):**
+1. Patent non-provisional filing — pending patent counsel engagement
+2. Pilot bank LOI — `hold_bridgeable` API clause language required before RBCx engagement (EPG-04/05)
+3. MRFA B2B clause — unconditional repayment language required (EPG-14)
+4. BPI License Agreement — AML disclosure / indemnification clause (EPG-14)
