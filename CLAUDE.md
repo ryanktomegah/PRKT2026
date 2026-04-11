@@ -24,6 +24,19 @@ After auth, Claude can:
 - Lint: `ruff check lip/` — must be zero errors before commit
 - PYTHONPATH must be set to repo root for imports to resolve
 
+## Documentation Structure
+
+Docs are organised by audience under `docs/`. When you need a file, look here:
+
+| Audience | Directory | Key Files |
+|----------|-----------|-----------|
+| Engineers | `docs/engineering/` | architecture.md, developer-guide.md, api-reference.md, specs/, blueprints/, codebase/ |
+| Legal / Compliance | `docs/legal/` | compliance.md, patent/, decisions/ (EPG register), governance/ |
+| Business | `docs/business/` | CLIENT_PERSPECTIVE_ANALYSIS.md, LIP_COMPLETE_NARRATIVE.md, bank-pilot/, fundraising/ |
+| Operations | `docs/operations/` | deployment.md, Operational-Playbook-v2.1.md |
+| ML Models | `docs/models/` | c1-model-card.md, c2-model-card.md, c1-training-data-card.md |
+| All Roles | `docs/INDEX.md` | Role-based reading paths (banker, engineer, compliance, counsel) |
+
 ## Execution Protocol (Mandatory)
 - Follow `docs/engineering/default-execution-protocol.md` for every task.
 - Required defaults: `codex/*` branch workflow, plan/design before implementation,
