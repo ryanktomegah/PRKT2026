@@ -43,7 +43,7 @@ def _make_token(**overrides) -> LicenseToken:
         "aml_count_cap": 0,
     }
     defaults.update(overrides)
-    return LicenseToken(**defaults)
+    return LicenseToken(**defaults)  # type: ignore[arg-type]
 
 
 class TestCanonicalPayloadCoversAllFields:

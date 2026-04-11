@@ -109,7 +109,7 @@ class TestBudgetRequired:
         )
 
         with pytest.raises(TypeError):
-            CascadeSettlementTrigger(
+            CascadeSettlementTrigger(  # type: ignore[call-arg]
                 cascade_graph=MagicMock(),
                 bic_to_corporate={},
             )
@@ -118,7 +118,7 @@ class TestBudgetRequired:
         from lip.p5_cascade_engine.stress_cascade_bridge import StressCascadeBridge
 
         with pytest.raises(TypeError):
-            StressCascadeBridge(
+            StressCascadeBridge(  # type: ignore[call-arg]
                 cascade_graph=MagicMock(),
                 corridor_to_corporates={},
             )
