@@ -11,7 +11,7 @@ Backend selection via LIP_C4_BACKEND env var:
                   Endpoint: https://models.inference.ai.azure.com
                   Models: Mistral-7B-Instruct (default), mistral-small, etc.
   groq          — Groq API (free tier, requires GROQ_API_KEY)
-                  Models: mistral-saba-24b (default), llama-3.1-8b-instant, etc.
+                  Models: qwen/qwen3-32b (default), llama-3.1-8b-instant, etc.
   openai_compat — Generic OpenAI-compatible endpoint
                   Requires: LIP_C4_BASE_URL, LIP_C4_API_KEY, LIP_C4_MODEL
 

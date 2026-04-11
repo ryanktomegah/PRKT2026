@@ -314,8 +314,8 @@ class PDModel:
             if isinstance(raw, list):
                 raw = raw[1]
             shap_matrix = np.asarray(raw, dtype=np.float64)
-        except Exception as exc:
-            logger.debug("SHAP unavailable (%s); returning zero SHAP values.", exc)
+        except (ImportError, ValueError, TypeError, AttributeError) as exc:
+            logger.debug("SHAP unavailable (%s); returning zero SHAP values.", exc, exc_info=True)
             shap_matrix = np.zeros_like(X)
 
         shap_values_list = [

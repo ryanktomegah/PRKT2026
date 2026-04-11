@@ -404,8 +404,8 @@ class PDTrainingPipeline:
             calibrator.fit(raw_probs, y_val)
             model._calibrator = calibrator  # type: ignore[attr-defined]
             logger.info("Stage 7 — isotonic calibration applied on %d validation samples.", len(y_val))
-        except Exception as exc:
-            logger.warning("Stage 7 calibration skipped (%s).", exc)
+        except (ImportError, ValueError, RuntimeError) as exc:
+            logger.warning("Stage 7 calibration skipped (%s).", exc, exc_info=True)
 
         return model
 
@@ -522,8 +522,8 @@ class PDTrainingPipeline:
                 metrics["ks"] = float(ks_stat)
             else:
                 metrics["ks"] = float("nan")
-        except Exception:
-            # Manual KS
+        except (ImportError, ValueError, TypeError):
+            # Manual KS fallback when scipy is unavailable or ks_2samp fails
             pos_scores = np.sort(pds[y_test == 1])
             neg_scores = np.sort(pds[y_test == 0])
             if len(pos_scores) > 0 and len(neg_scores) > 0:
