@@ -4,12 +4,16 @@ Architecture Spec S11.2: TTL = maturity_days + 45 days
 """
 import hashlib
 import logging
+import time
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 UETR_KEY_PREFIX = "lip:uetr_map:"
 DEFAULT_TTL_DAYS = 45  # Extra retention days beyond maturity window
+
+# Amortized cleanup: sweep in-memory store every N store/lookup calls
+_CLEANUP_INTERVAL = 50
 
 
 def _sha256_hex(value: str) -> str:
@@ -32,7 +36,9 @@ class UETRMappingTable:
 
     def __init__(self, redis_client=None) -> None:
         self._redis = redis_client
-        self._store: dict[str, str] = {}  # fallback in-memory store
+        # In-memory fallback: maps key → (uetr, expiry_timestamp_unix)
+        self._store: dict[str, tuple[str, float]] = {}
+        self._op_count: int = 0  # counter for amortized cleanup
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -55,11 +61,13 @@ class UETRMappingTable:
                 end_to_end_id, uetr, ttl_seconds, maturity_days,
             )
         else:
-            self._store[key] = uetr
+            expiry = time.time() + ttl_seconds
+            self._store[key] = (uetr, expiry)
             logger.debug(
-                "In-memory store: %s → %s (TTL not enforced in fallback)",
-                end_to_end_id, uetr,
+                "In-memory store: %s → %s (TTL=%ds, expires_at=%.0f)",
+                end_to_end_id, uetr, ttl_seconds, expiry,
             )
+            self._maybe_evict()
 
     def lookup(self, end_to_end_id: str) -> Optional[str]:
         """Return the UETR for the given EndToEndId, or None if not found / expired."""
@@ -74,11 +82,17 @@ class UETRMappingTable:
             logger.debug("Redis lookup hit: %s → %s", end_to_end_id, uetr)
             return uetr
 
-        uetr = self._store.get(key)
-        if uetr is None:
+        entry = self._store.get(key)
+        if entry is None:
             logger.debug("In-memory lookup miss: %s", end_to_end_id)
-        else:
-            logger.debug("In-memory lookup hit: %s → %s", end_to_end_id, uetr)
+            return None
+        uetr, expiry = entry
+        if time.time() > expiry:
+            del self._store[key]
+            logger.debug("In-memory lookup expired and evicted: %s", end_to_end_id)
+            return None
+        self._maybe_evict()
+        logger.debug("In-memory lookup hit: %s → %s", end_to_end_id, uetr)
         return uetr
 
     def delete(self, end_to_end_id: str) -> None:
@@ -95,6 +109,23 @@ class UETRMappingTable:
             existed = self._store.pop(key, None) is not None
             logger.debug(
                 "In-memory delete: %s (existed=%s)", end_to_end_id, existed
+            )
+
+    # ── Amortized cleanup ──────────────────────────────────────────────────────
+
+    def _maybe_evict(self) -> None:
+        """Evict expired entries from in-memory store every _CLEANUP_INTERVAL operations."""
+        self._op_count += 1
+        if self._op_count % _CLEANUP_INTERVAL != 0:
+            return
+        now = time.time()
+        expired_keys = [k for k, (_, expiry) in self._store.items() if now > expiry]
+        for k in expired_keys:
+            del self._store[k]
+        if expired_keys:
+            logger.debug(
+                "In-memory TTL cleanup: evicted %d expired entry/entries",
+                len(expired_keys),
             )
 
     # ── Internal helpers ──────────────────────────────────────────────────────
