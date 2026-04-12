@@ -28,7 +28,7 @@ dependencies = [
     "scikit-learn>=1.4.0",
     "pydantic>=2.5.0",
     # Cryptography (AES-256-GCM, HMAC-SHA256)
-    "cryptography>=42.0.0",
+    "cryptography>=44.0.0,<47.0",
     # HTTP / async
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.27.0",

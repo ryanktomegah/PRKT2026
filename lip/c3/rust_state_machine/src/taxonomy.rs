@@ -218,9 +218,14 @@ pub fn maturity_days(cls: RejectionClass) -> u32 {
 }
 
 /// Return `true` if the code maps to `RejectionClass::Block`.
-/// Returns `false` for unknown codes (never raises).
+/// Returns `true` for unknown codes (fail-closed: unrecognised codes
+/// may be compliance holds not yet in the taxonomy).
 pub fn is_block(code: &str) -> bool {
-    matches!(classify(code), Ok(RejectionClass::Block))
+    match classify(code) {
+        Ok(RejectionClass::Block) => true,
+        Ok(_) => false,
+        Err(_) => true,
+    }
 }
 
 // ---------------------------------------------------------------------------

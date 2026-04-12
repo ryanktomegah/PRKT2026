@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir \
     numpy>=1.26.0 \
     pydantic>=2.5.0 \
     redis>=5.0.0 \
-    cryptography>=42.0.0 \
+    cryptography>=44.0.0,<47.0 \
     pyyaml>=6.0
 
 # Copy LIP package
