@@ -244,13 +244,77 @@ class TestCheckAndEmit:
         # In-memory fallback should be empty
         assert len(det.emitted_events) == 0
 
-    def test_kafka_failure_falls_back_to_memory(self):
-        """If Kafka produce() raises, event is stored in emitted_events."""
+    def test_kafka_produce_retries_then_routes_to_dlq(self, monkeypatch):
+        """T2.1: on persistent produce failure, retry then route to DLQ.
+
+        Previously the detector silently buffered the event in-memory on
+        the first failure. That is a silent-drop risk on a risk-alert
+        topic. The new contract is: retry N times with exponential backoff,
+        then publish to ``lip.dead.letter`` with a ``source-topic`` header.
+        """
+        import lip.c5_streaming.stress_regime_detector as srd
+
+        # Don't actually sleep in the retry loop
+        monkeypatch.setattr(srd.time, "sleep", lambda *_: None)
+
         now = 1_000_000.0
         clock: list[float] = [now]
 
         mock_producer = MagicMock()
-        mock_producer.produce.side_effect = RuntimeError("Kafka unavailable")
+        produce_calls: list = []
+
+        def _produce_side_effect(*, topic, key, value, headers=None):
+            produce_calls.append((topic, headers))
+            if topic == StressRegimeDetector.STRESS_TOPIC:
+                raise RuntimeError("Kafka unavailable")
+            # DLQ succeeds
+            return None
+
+        mock_producer.produce.side_effect = _produce_side_effect
+
+        det = StressRegimeDetector(
+            baseline_window_seconds=86400,
+            current_window_seconds=3600,
+            threshold_multiplier=3.0,
+            min_transactions_for_signal=5,
+            time_func=lambda: clock[0],
+            kafka_producer=mock_producer,
+        )
+
+        clock[0] = now - 7200
+        _pump(det, "EUR_USD", n_total=20, n_fail=2)
+        clock[0] = now - 600
+        _pump(det, "EUR_USD", n_total=20, n_fail=15)
+        clock[0] = now
+
+        event = det.check_and_emit("EUR_USD")
+        assert event is not None
+
+        # 3 retries against the stress topic, then 1 DLQ publish = 4 calls
+        stress_attempts = [t for t, _ in produce_calls if t == StressRegimeDetector.STRESS_TOPIC]
+        dlq_attempts = [h for t, h in produce_calls if t == "lip.dead.letter"]
+        assert len(stress_attempts) == 3, (
+            f"expected 3 retries against stress topic, got {len(stress_attempts)}"
+        )
+        assert len(dlq_attempts) == 1, (
+            f"expected 1 DLQ route, got {len(dlq_attempts)}"
+        )
+        assert dlq_attempts[0]["source-topic"] == StressRegimeDetector.STRESS_TOPIC
+
+        # In-memory fallback must stay empty — DLQ succeeded
+        assert det.emitted_events == []
+
+    def test_kafka_and_dlq_both_fail_falls_back_to_memory(self, monkeypatch):
+        """In-memory fallback is a last resort when DLQ is also unreachable."""
+        import lip.c5_streaming.stress_regime_detector as srd
+
+        monkeypatch.setattr(srd.time, "sleep", lambda *_: None)
+
+        now = 1_000_000.0
+        clock: list[float] = [now]
+
+        mock_producer = MagicMock()
+        mock_producer.produce.side_effect = RuntimeError("cluster unreachable")
 
         det = StressRegimeDetector(
             baseline_window_seconds=86400,
