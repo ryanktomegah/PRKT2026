@@ -171,6 +171,84 @@ notes. Each item below is a blocker for pilot go-live, not for pilot demo.
 - Datadog/OpenTelemetry tracing on the critical path (C5 → C1 → C7) to validate the 94ms SLO under load, not just in isolation.
 - Structured logs with UETR + correlation_id on every log line crossing a service boundary.
 
+#### T2.5 — Dependency CVE remediation (Dependabot backlog)
+
+As of 2026-04-11, GitHub Dependabot flags **16 open alerts** on `origin/main`:
+**4 critical, 8 high, 2 medium, 2 low** — all from two packages. The B12-01
+hardening added upper version bounds (preventing supply-chain rollout); this
+work moves the bounds forward after verifying upstream fixes.
+
+**mlflow (13 alerts)** — pinned `mlflow>=2.10.0,<3.0` in `requirements-ml.txt`.
+Actual usage is 3 `log_metric` calls in `lip/c1_failure_classifier/training.py`
+(training-time telemetry, not runtime). Most criticals are against the MLflow
+**tracking server** (RCE, command injection, path traversal, auth bypass) —
+which BPI does not deploy. Attack surface for the client library is narrower,
+but Dependabot flags on package presence regardless.
+
+| Severity | CVE | Summary |
+|----------|-----|---------|
+| Critical | CVE-2026-0545 | FastAPI `/ajax-api/3.0/jobs/*` endpoints missing authN/authZ |
+| Critical | CVE-2025-15379 | Command Injection |
+| Critical | CVE-2025-15036 | Path traversal |
+| Critical | CVE-2026-2635 | Default password authentication bypass |
+| High | CVE-2026-2033 | Tracking server artifact handler directory traversal RCE |
+| High | CVE-2025-15381 | Tracing + Assessments unauthorized access |
+| High | CVE-2025-15031 | Arbitrary file write via tar traversal |
+| High | CVE-2025-14287 | Command injection in `mlflow/sagemaker/__init__.py` |
+| High | CVE-2025-10279 | Temp file created in directory with insecure permissions |
+| High | CVE-2025-14279 | DNS rebinding — missing Origin header validation |
+| High | CVE-2024-37059 | Unsafe deserialization |
+| Medium | CVE-2026-33865 | Stored XSS via YAML parsing of MLmodel artifacts |
+| Medium | CVE-2026-33866 | AJAX endpoint authorization bypass |
+
+**Recommended fix path** (in order of preference):
+
+1. **Remove mlflow from the runtime/training paths** — replace 3 `log_metric`
+   calls with structured logging (stdlib `logging` + JSON formatter, or
+   OpenTelemetry metrics from T2.4). This eliminates the entire dependency.
+   Roughly 10 lines of code change + requirement removal.
+2. If the founder wants to keep mlflow for experimentation, move it to a
+   `requirements-dev.txt` / extras group so it's not in the production
+   wheel. Bump pin to latest fixed version: `mlflow>=3.x,<4.0` (verify
+   latest at time of work; check release notes for CVE coverage).
+3. Document in `docs/operations/security-trust-chain.md` that the MLflow
+   **server** is never deployed inside the BPI cluster — only the client
+   library is used, and only in training-time CI jobs.
+
+**cryptography (3 alerts)** — pinned `cryptography>=42.0.0,<44.0` in
+`requirements.txt`. Used throughout for HMAC, AES-GCM, license tokens,
+secure_pickle. Load-bearing.
+
+| Severity | CVE | Summary |
+|----------|-----|---------|
+| High | CVE-2026-26007 | Missing subgroup validation for SECT elliptic curves — subgroup attack |
+| Low | CVE-2026-34073 | Incomplete DNS name constraint enforcement on peer names |
+| Low | CVE-2024-12797 | Vulnerable OpenSSL bundled in cryptography wheels |
+
+**Recommended fix path**:
+
+1. Verify current latest `cryptography` release patches all three (expect
+   46.x as of April 2026). Read upstream CHANGELOG for the three CVE IDs.
+2. Bump upper bound in `requirements.txt`: `cryptography>=44.0.0,<47.0`
+   (or whatever the next-major-minus-one is at the time of the work).
+3. Re-run full test suite — cryptography touches HMAC paths that must
+   stay signature-compatible for existing license tokens. If the bump
+   changes any canonical output (unlikely but possible), coordinate with
+   CIPHER before merging.
+4. Audit the codebase for SECT curve usage specifically (the high-sev
+   CVE). If we're on NIST P-256 / P-384 or Curve25519 everywhere (which
+   is the likely case — SECT curves are rare in modern crypto), the
+   subgroup attack does not apply to us and the bump is just upstream
+   hygiene.
+
+**Verification step**: after the bumps land, push to main and confirm
+Dependabot closes the alerts on the next scan. Remaining alerts (if any)
+must be explicitly dismissed with justification, not ignored.
+
+**Agent ownership**: CIPHER primary (crypto boundary + security posture),
+FORGE secondary (dependency hygiene + CI impact). QUANT does not sign —
+this is not financial math. REX does not sign — this is not regulatory.
+
 ### Tier 3 — Infrastructure hardening
 
 - **Cloud deployment**: pick GCP or AWS, provision via Terraform (not yet written) or extend Helm charts. GCP is probably the right pick for Canadian/US data residency flexibility; AWS is the bank-familiar option. FORGE makes the call.
@@ -189,12 +267,21 @@ notes. Each item below is a blocker for pilot go-live, not for pilot demo.
 
 | Phase | Scope | Estimated duration (AI-driven) |
 |-------|-------|-------------------------------|
-| **Phase 1 — T1.1 (CBDC normalizer)** | Smallest, most self-contained patent code. Gets a win on the board. | 2–3 days |
+| **Phase 0 — T2.5 (Dependabot CVE remediation)** | Smallest, fastest, clears 16 open alerts on main. Unblocks clean security posture before any other work. | 0.5–1 day |
+| **Phase 1 — T1.1 (CBDC normalizer)** | Smallest patent code. Gets a win on the board. | 2–3 days |
 | **Phase 2 — T2.1 + T2.2 (Kafka + Redis production wiring)** | Pilot-go-live prerequisite. Founder-valuable. | 3–5 days |
 | **Phase 3 — T1.2 (P4 Federated Learning)** | Biggest patent payoff; depends on DP machinery already hardened. | 4–6 days |
 | **Phase 4 — T1.3 (Extensions B + G + A in that order)** | Patent-continuation defensibility. Can run in parallel with Phase 5. | 6–8 days |
 | **Phase 5 — T2.3 + T2.4 (mTLS + observability)** | Pilot-go-live prerequisite. | 3–4 days |
 | **Phase 6 — T3 (cloud deployment)** | Founder + FORGE together. Externally-dependent (cloud account provisioning). | 2–4 weeks including procurement |
+
+**Why Phase 0 goes first:** clearing the Dependabot board is a ~half-day of
+work that removes a persistent red banner on the GitHub repo and a real (if
+narrow) attack surface. Every subsequent phase adds code; starting with a
+clean security posture means any *new* alerts that appear during Phases 1–6
+are attributable to new code, not pre-existing debt. It is also the lowest
+risk: no canonical-constant changes, no patent-language concerns, no ML
+retraining.
 
 Total AI-driven code time: ~3–4 weeks of session-by-session work. Phases 1–5
 all happen in terminal; Phase 6 requires cloud account + some founder
@@ -227,6 +314,7 @@ mistake the user called out in `feedback_verify_semantics_before_assessment.md`.
 - [ ] Read `lip/p10_regulatory_data/anonymizer.py` — reference for DP machinery before implementing T1.2.
 - [ ] Read `lip/c5_streaming/stress_regime_detector.py` — reference point for T1.1.
 - [ ] Read `lip/p5_cascade_engine/cascade_propagation.py` — reference point for Extension B.
+- [ ] Pull live Dependabot list via `gh api repos/ryanktomegah/PRKT2026/dependabot/alerts --paginate` — verify the 2026-04-11 snapshot in T2.5 is still accurate.
 
 Total orientation: 45–75 minutes of reading. This is mandatory.
 
@@ -272,6 +360,7 @@ Per-phase agent sign-offs required:
 | T2.2 Redis | CIPHER (no AML state written in plaintext), FORGE | Multi-replica state + security |
 | T2.3 mTLS | CIPHER, FORGE | Certificate trust chain |
 | T2.4 Observability | FORGE, CIPHER (ensure no PII/UETR leaked to logs unhashed) | Logs can leak |
+| T2.5 Dependabot CVEs | CIPHER (crypto boundary), FORGE (dep hygiene + CI) | 16 open alerts; mlflow + cryptography bumps |
 | T3 Cloud | FORGE, CIPHER (provider security posture), REX (data residency) | Picking a cloud crosses regulatory lines |
 
 ---
@@ -318,6 +407,17 @@ order and build your own mental model:
     reference point if you tackle CBDC normalizer.
 15. Read /Users/tomegah/PRKT2026/lip/p5_cascade_engine/cascade_propagation.py —
     reference point if you tackle Extension B (supply-chain cascades).
+16. Pull live Dependabot alerts to verify the 2026-04-11 snapshot is still
+    current:
+      gh api repos/ryanktomegah/PRKT2026/dependabot/alerts --paginate \
+        -q '.[] | select(.state == "open") |
+            "\(.security_advisory.severity)|\(.dependency.package.ecosystem)|
+             \(.dependency.package.name)|
+             \(.security_advisory.cve_id // .security_advisory.ghsa_id)|
+             \(.security_advisory.summary)"'
+    Expect mlflow (13) and cryptography (3) dominating. If the list has
+    materially changed, treat the live output as source of truth and
+    flag the drift to the founder.
 
 Also check the founder's auto-memory at
 /Users/tomegah/.claude/projects/-Users-tomegah/memory/MEMORY.md
@@ -328,9 +428,11 @@ decisions yourself).
 
 When you finish orientation, report back to the founder with:
 - What you understand the scope to be (Option C per the plan doc).
-- Which phase you propose to start with and why (the plan's Part 4
-  recommends Phase 1 = CBDC normalizer because it's smallest and most
-  self-contained; disagree if you have a reason).
+- Which phase you propose to start with and why. The plan's Part 4
+  recommends Phase 0 = T2.5 Dependabot CVE remediation (half-day, clears
+  the security board before new code lands). Phase 1 = CBDC normalizer
+  is the smallest patent-code item if you prefer to start there. Disagree
+  with either recommendation if you have a reason.
 - The single most important clarifying question, if any. Not ten — one.
 - The agent sign-offs you'll need for your proposed phase.
 
@@ -346,12 +448,22 @@ Tier 2 — Phase-2 production stubs:
   T2.2 Redis-backed multi-replica state (C8 metering, Rust velocity, C6 structuring)
   T2.3 mTLS everywhere + cert-manager
   T2.4 Observability (Prometheus/Grafana wiring, OTel tracing, UETR in logs)
+  T2.5 Dependabot CVE remediation — 16 open alerts on main (4 crit, 8 high,
+       2 med, 2 low). Two packages: mlflow (13 alerts; client-only usage,
+       consider removing) and cryptography (3 alerts; load-bearing, bump
+       upper version bound). Full CVE table and fix paths in plan doc
+       section T2.5. CIPHER + FORGE sign.
 
 Tier 3 — Infrastructure:
   T3 Cloud deployment (GCP or AWS — FORGE picks)
 
-Suggested phasing in plan doc Part 4. Deliver phase-by-phase, not all at once.
-Each phase ends with a codex/* branch, draft PR, commit+push, and founder OK.
+Suggested phasing in plan doc Part 4. Recommended starting point is
+**Phase 0 = T2.5 Dependabot remediation** — half-day of work that clears
+the security board before any new code lands, so future alerts are
+attributable to new code rather than pre-existing debt.
+
+Deliver phase-by-phase, not all at once. Each phase ends with a codex/*
+branch, draft PR, commit+push, and founder OK.
 
 ## Hard constraints (do not negotiate)
 
@@ -434,3 +546,4 @@ says go. Once go: produce a design plan, get approval, then implement.
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-04-11 | Initial draft after B1–B13 sprint closure | Claude Opus 4.6 |
+| 2026-04-11 | Add T2.5 (Dependabot CVE remediation — 16 open alerts); insert Phase 0 at front of phasing table; update paste-ready prompt and orientation checklists to reference live Dependabot fetch | Claude Opus 4.6 |
