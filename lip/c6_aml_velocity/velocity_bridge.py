@@ -100,9 +100,22 @@ class RustVelocityChecker:
               Must be the same salt as used by the enclosing ``AMLChecker``
               to ensure cross-licensee isolation (EPG-24).
         window_seconds: Rolling window length in seconds (default 86400 = 24h).
-        redis_client: Optional Redis client forwarded to the Python fallback.
-                      Ignored when the Rust extension is active (Rust uses
-                      in-process DashMap; Redis wiring is a future extension).
+        redis_client: Optional Redis client. When provided, the bridge routes
+                      all checks through the Python path, which uses Redis
+                      sorted sets + Lua atomic check-and-record for
+                      multi-replica safety (T2.2b). The Rust DashMap path
+                      is bypassed because it has no Redis sync — so using
+                      Redis trades ~1–4ms of latency for distributed
+                      consistency. Set ``redis_client=None`` to keep the
+                      sub-ms Rust path (single-replica only).
+
+    Mode selection matrix:
+
+      redis_client | _RUST_AVAILABLE | Mode                          | Required opt-in
+      ------------ | --------------- | ----------------------------- | ---------------
+      None         | True            | Rust in-memory (sub-ms p99)   | single_replica=True
+      None         | False           | Python in-memory (2–5ms p99)  | single_replica=True
+      <client>     | any             | Python + Redis (multi-replica)| — (safe by default)
     """
 
     RUST_AVAILABLE: bool = _RUST_AVAILABLE
@@ -115,10 +128,12 @@ class RustVelocityChecker:
         *,
         single_replica: bool = False,
     ) -> None:
-        # Rust path is always in-memory (DashMap); Python path is in-memory
-        # when redis_client is None. Both require the single_replica opt-in
-        # unless a Redis backend is configured (B7-02).
-        uses_in_memory = _RUST_AVAILABLE or redis_client is None
+        # T2.2b: a Redis-backed Python path gives multi-replica safety. The
+        # in-memory modes (Rust DashMap or Python deque) remain single-
+        # replica and require the explicit opt-in (B7-02).
+        uses_redis = redis_client is not None
+        uses_in_memory = not uses_redis
+
         if uses_in_memory and not single_replica:
             raise ValueError(
                 "VelocityBridge uses in-memory state that resets on redeploy "
@@ -127,14 +142,27 @@ class RustVelocityChecker:
                 "redis_client for distributed state (B7-02)."
             )
         if uses_in_memory and single_replica:
-            import logging
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "VelocityBridge running with single_replica=True — "
                 "AML velocity state will not survive restarts or scale "
                 "across replicas"
             )
         self._salt = salt
-        if _RUST_AVAILABLE:
+        self._uses_redis = uses_redis
+
+        if uses_redis:
+            # Multi-replica safe path: Python VelocityChecker + Redis Lua.
+            # Rust DashMap has no Redis sync so it is bypassed even when
+            # available; the documented latency cost is ~1–4ms.
+            from lip.c6_aml_velocity.velocity import VelocityChecker
+
+            self._rust_vel = None
+            self._py_vel = VelocityChecker(salt=salt, redis_client=redis_client)
+            logger.info(
+                "VelocityBridge using Python+Redis path — multi-replica "
+                "AML velocity state is now distributed"
+            )
+        elif _RUST_AVAILABLE:
             self._rust_vel = _rust.PyRollingVelocity(
                 window_seconds=window_seconds,
                 salt=list(salt),
@@ -144,7 +172,7 @@ class RustVelocityChecker:
             from lip.c6_aml_velocity.velocity import VelocityChecker
 
             self._rust_vel = None
-            self._py_vel = VelocityChecker(salt=salt, redis_client=redis_client)
+            self._py_vel = VelocityChecker(salt=salt, redis_client=None)
 
     def check(
         self,
@@ -159,7 +187,7 @@ class RustVelocityChecker:
 
         t0 = time.monotonic()
         try:
-            if _RUST_AVAILABLE:
+            if self._rust_vel is not None:
                 return self._check_rust(
                     entity_id, amount, beneficiary_id,
                     dollar_cap_override, count_cap_override,
@@ -208,7 +236,7 @@ class RustVelocityChecker:
         count_cap_override: Optional[int] = None,
     ) -> None:
         """Record a transaction in the rolling window."""
-        if _RUST_AVAILABLE:
+        if self._rust_vel is not None:
             self._rust_vel.record(entity_id, beneficiary_id, float(amount))
         else:
             self._py_vel.record(
@@ -232,7 +260,7 @@ class RustVelocityChecker:
         Python path: acquires ``_check_record_lock`` (thread-safe within
         a single process; use Redis path for multi-worker).
         """
-        if _RUST_AVAILABLE:
+        if self._rust_vel is not None:
             from lip.c6_aml_velocity.velocity import VelocityResult
 
             dollar_cap = float(dollar_cap_override) if dollar_cap_override is not None else 0.0
@@ -258,19 +286,19 @@ class RustVelocityChecker:
 
     def _hash_entity(self, entity_id: str) -> str:
         """Return the hashed entity ID (for test/audit use)."""
-        if _RUST_AVAILABLE:
+        if self._rust_vel is not None:
             return self._rust_vel.hash_id(entity_id)
         return self._py_vel._hash_entity(entity_id)
 
     def get_rust_metrics(self) -> dict:
         """Return Rust-side atomic metric counters (Rust path only; {} on Python path)."""
-        if _RUST_AVAILABLE:
+        if self._rust_vel is not None:
             return dict(self._rust_vel.get_metrics())
         return {}
 
     def flush(self) -> None:
         """Flush all window state (for testing / scheduled resets)."""
-        if _RUST_AVAILABLE:
+        if self._rust_vel is not None:
             self._rust_vel.flush()
         else:
             self._py_vel._window._records.clear()
