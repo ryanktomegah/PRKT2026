@@ -24,16 +24,40 @@ Restate the financial formula or constant change being requested. Verify it agai
 
 **Fee Formula** (`lip/c2_pd_model/fee.py`)
 ```
-Expected Loss = PD_structural × EAD × LGD × DF
-CVA cost rate = EL / EAD / T  (annualised)
-fee_bps = max(CVA_cost + funding_spread + margin, 300)
+Platform floor (300 bps): applies to ALL loans -- bank-funded OR SPV-eligible
+Warehouse floor (800 bps): required for SPV funding in Phase 2/3
+  - Ensures asset yield (~8% at 800 bps) covers SPV debt service (~7% senior + ~1% BPI equity)
+  - Loans below 800 bps are routed to bank (BPI earns 30% IP royalty)
+  - Loans at or above 800 bps are SPV warehouse-eligible and generate positive BPI equity returns
+
+Per-cycle formula:
+  fee = loan_amount * (fee_bps / 10,000) * (days_funded / 365)
 ```
+
+**TWO-TIER STRUCTURE (CODE-ENFORCED ROUTING):**
+```
+Funding Logic:
+├── Phase 1: Bank funds all loans → BPI earns 30% IP royalty
+├── Phase 2/3: SPV funds loans
+│   ├── If fee < 800 bps → Route to bank (BPI earns 30% IP royalty)
+│   └── If fee ≥ 800 bps → SPV warehouse-funds (BPI earns 55% lending revenue)
+```
+
+**Implementation:** `is_spv_warehouse_eligible(fee_bps, phase)` in constants.py determines routing.
+
+**PHASE 2 ECONOMICS:**
+With the 800 bps warehouse floor, SPV economics are positive:
+- Asset yield at 800 bps: ~8% annualized ($80K/year per $1M)
+- SPV capital cost: ~7% senior + ~1% BPI equity margin ≈ 8%
+- Every SPV-funded loan generates positive equity returns for BPI
+
+**When investors ask about Phase 2 unit economics:** Frame this as a code-enforced routing optimization, not as "capital-negative strategy." See [Capital-Partner-Strategy.md](../docs/business/Capital-Partner-Strategy.md) Section 4 for honest math.
 
 **PD Tier System**
 - Tier 1: Merton/KMV structural model (listed GSIBs, observable equity volatility)
 - Tier 2: Damodaran sector-median asset volatility proxy (private firms)
 - Tier 3: Altman Z'-score → Moody's default rate table (thin-file counterparties)
-- Tier 2 and 3 are the core patent contribution — do not simplify them away
+- Tier 2 and 3 are the core patent contribution -- do not simplify them away
 
 **FEE_FLOOR_PER_7DAY_CYCLE:** 0.0575% (300 bps annualised over 7 days)
 

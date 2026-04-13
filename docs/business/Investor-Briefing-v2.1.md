@@ -121,6 +121,8 @@ The core of the business model is a patent licensing programme. Any bank, fintec
 
 A parallel revenue stream flows from operating the bridging platform directly — acting as the liquidity provider rather than only the licensor. The platform funds bridge loans from its own capital or from an institutional facility, earns the spread on each loan, and accumulates the proprietary data that makes its models progressively more accurate over time.
 
+**IMPORTANT: The unit economics below show live system output at 706 bps, NOT the 300 bps floor.** The 300 bps floor applies only to lowest-risk counterparties. Typical risk-adjusted pricing ranges from 600–800+ bps depending on C2 model output.
+
 > **UNIT ECONOMICS — A SINGLE BRIDGE LOAN (LIVE SYSTEM OUTPUT)**
 >
 > Advance amount: $2,890,000
@@ -134,6 +136,19 @@ A parallel revenue stream flows from operating the bridging platform directly �
 > Risk structure: Collateral is the payment itself — assigned to lender at disbursement, auto-collected on settlement. Capital is not at risk from borrower willingness to repay; it is at risk only from the underlying payment permanently failing.
 >
 > At scale, a $500M deployment facility cycling at 7-to-14-day durations turns over 26 to 52 times per year — generating annualised returns substantially superior to traditional short-duration lending.
+
+**HONEST ECONOMICS DISCLOSURE — PHASE 2 CAPITAL STRUCTURE**
+
+The capital structure required for Phase 2 involves senior debt at ~7% and mezzanine at ~12% (total ~6.55% cost of capital). At 400 bps fee floor, the asset pool yields ~4% annualized — structurally insufficient to service the debt.
+
+**Phase 2 is therefore capital-negative by design as a data acquisition and market entry strategy.** The economics are intentionally negative to:
+1. Generate 12–18 months of auditable loan performance data
+2. Prove the lending model works in production with real SWIFT traffic
+3. Create the performance record required for securitization (which reduces capital cost from ~12% to ~5–6%)
+
+Phase 2 economics only become sustainable at Phase 3 — after securitization lowers the cost of capital and fee rates reflect actual risk-adjusted pricing (typically 600–800+ bps), not the floor.
+
+See [Unit-Economics-Exhibit.md](Unit-Economics-Exhibit.md) Section 9 for detailed breakeven analysis.
 
 ### 4.3 Portfolio Sale Value — The Exit Scenario
 
