@@ -679,7 +679,9 @@ class TestTemporalClustering:
 
         from lip.dgen.iso20022_payments import _EPOCH_SPAN, _EPOCH_START
         parsed = pd.to_datetime(clustered_df["timestamp_utc"], format="ISO8601", utc=True)
-        ts_unix = parsed.astype("int64") // 10**9
+        # pandas >=2.2 preserves parsed precision (ms/us/ns) — normalise to ns
+        # so .astype("int64") // 10**9 yields true unix seconds.
+        ts_unix = parsed.astype("datetime64[ns, UTC]").astype("int64") // 10**9
         # Allow 1-day tolerance for intraday offsets
         tolerance = 86_400
         assert ts_unix.min() >= _EPOCH_START - tolerance

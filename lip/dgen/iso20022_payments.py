@@ -681,9 +681,13 @@ def _inject_temporal_clustering(
     n_burst = max(1, int(len(rjct_senders) * burst_fraction))
     burst_bics = set(rng.choice(rjct_senders, size=n_burst, replace=False).tolist())
 
-    # Parse existing timestamps to unix seconds for arithmetic
+    # Parse existing timestamps to unix seconds for arithmetic.
+    # Force datetime64[ns] — pandas >=2.2 preserves parsed precision (ms/us/ns),
+    # so .astype("int64") would otherwise yield unit-dependent magnitudes.
     ts_unix = (
-        pd.to_datetime(df["timestamp_utc"], utc=True).astype("int64") // 10**9
+        pd.to_datetime(df["timestamp_utc"], utc=True)
+        .astype("datetime64[ns, UTC]")
+        .astype("int64") // 10**9
     ).to_numpy(dtype=np.float64)
     # Use canonical epoch constants — not data-derived — for reproducibility
     # and robustness against timestamp outliers.
