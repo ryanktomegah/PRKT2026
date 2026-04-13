@@ -100,13 +100,14 @@ class StructuringDetector:
                 "or configure a Redis-backed store (B7-10)."
             )
         self._redis = redis_client
+        # entity_hash → {tenant_id: cumulative_volume}; None when Redis-backed.
+        self._registry: Optional[Dict[str, Dict[str, Decimal]]]
         if redis_client is not None:
             self._registry = None
             logger.info(
                 "StructuringDetector running in Redis-backed multi-replica mode"
             )
         else:
-            # entity_hash → {tenant_id: cumulative_volume}
             self._registry = defaultdict(lambda: defaultdict(Decimal))
             logger.warning(
                 "StructuringDetector running with single_replica=True — "
