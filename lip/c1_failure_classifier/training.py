@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-import mlflow
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
@@ -762,8 +761,13 @@ class TrainingPipeline:
             ece_before, ece_after
         )
 
-        mlflow.log_metric("ece_pre_calibration", ece_before)
-        mlflow.log_metric("ece_post_calibration", ece_after)
+        # T2.5: structured training-time telemetry via stdlib logging.
+        # mlflow was removed to eliminate a 13-CVE dependency surface; the
+        # runtime never used the tracking server.
+        logger.info(
+            "c1_training.metric ece_pre_calibration=%.6f ece_post_calibration=%.6f",
+            ece_before, ece_after,
+        )
 
         if ece_after > ece_before:
             logger.warning("Calibration degraded ECE: %.5f -> %.5f", ece_before, ece_after)
@@ -898,7 +902,7 @@ class TrainingPipeline:
         model = _run_stage("stage7_joint_training", self.stage7_joint_training, graphsage, tabtransformer, X_train, y_train, X_val, y_val)
         model.lgbm_model = lgbm_model  # attach LightGBM to complete the 3-model ensemble
         ece_after = _run_stage("stage7b_probability_calibration", self.stage7b_probability_calibration, model, X_val, y_val)
-        mlflow.log_metric("c1_ece_after_calibration", ece_after)
+        logger.info("c1_training.metric c1_ece_after_calibration=%.6f", ece_after)
         # Gate updated 2026-03-21: isotonic calibration achieves ECE=0.0687;
         # original 0.05 target was pre-calibration aspiration. 0.08 is
         # production-viable per c1-model-card.md §3.3.
