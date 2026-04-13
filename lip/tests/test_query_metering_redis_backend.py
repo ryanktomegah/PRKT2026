@@ -61,8 +61,10 @@ class _FakeRedis:
         return True
 
     def incr(self, key: str) -> int:
-        cur = int(self._store.get(key, "0"))
-        cur += 1
+        raw = self._store.get(key, "0")
+        # _store is str | list[str]; counters are always str, narrow explicitly.
+        assert isinstance(raw, str)
+        cur = int(raw) + 1
         self._store[key] = str(cur)
         return cur
 
