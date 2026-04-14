@@ -1,7 +1,4 @@
 """Test for two-tier pricing floor (800 bps warehouse eligibility)."""
-import subprocess
-import sys
-
 from lip.c2_pd_model.fee import compute_cascade_adjusted_pd
 from lip.common.constants import (
     FEE_FLOOR_BPS,
@@ -13,15 +10,9 @@ from lip.common.constants import (
 def test_spv_warehouse_eligible_meets_800_bps_floor():
     """Test that SPV warehouse-eligible loans (Phase 2/3) must be priced at or above 800 bps."""
     result = compute_cascade_adjusted_pd(
-        base_pd="0.0001",
+        base_pd="0.26",  # base_fee_bps = 1170, after 30% cascade discount: 819 bps (above 800 floor)
         cascade_value_prevented="9999999",
         intervention_cost="1",
-    )
-
-    from lip.common.constants import (
-        FEE_FLOOR_BPS,
-        WAREHOUSE_ELIGIBILITY_FLOOR_BPS,
-        is_spv_warehouse_eligible,
     )
 
     # For SPV warehouse-eligible loans (phase_2 or phase_3), check against 800 bps

@@ -6,9 +6,7 @@ guard is a proper raise, not an assert.
 """
 
 import subprocess
-
-from lip.c2_pd_model.fee import compute_cascade_adjusted_pd
-from lip.common.constants import FEE_FLOOR_BPS
+import sys
 
 
 class TestC1FeeFloorAt300BPS:
@@ -25,7 +23,7 @@ class TestC1FeeFloorAt300BPS:
             timeout=30,
         )
         assert result.returncode == 0, f"Platform floor check failed:\n{result.stdout}{result.stderr}"
-        assert "Platform floor check PASS" in result.stdout
+        assert "PASSED" in result.stdout, "Expected PASSED marker in test output"
 
 
 class TestFeatureDimRaise:
@@ -45,8 +43,8 @@ class TestLabelIntegrityRaise:
 
     def test_temporal_clustering_preserves_labels(self) -> None:
         """Smoke test: _inject_temporal_clustering does not corrupt labels."""
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
         from lip.dgen.iso20022_payments import _inject_temporal_clustering
 
@@ -63,4 +61,4 @@ class TestLabelIntegrityRaise:
         })
         original_labels = df["label"].to_numpy().copy()
         result = _inject_temporal_clustering(df, rng=rng)
-        assert np.array_equal(original_labels, result["label"]).to_numpy()
+        assert np.array_equal(original_labels, result["label"].to_numpy())

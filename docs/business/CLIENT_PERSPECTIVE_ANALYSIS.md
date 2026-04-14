@@ -17,7 +17,7 @@ FedNow, RTP, or SEPA, LIP automatically assesses the failure in under 94 millise
 eligible, arranges a short-term bridge loan to fund the payment immediately — before the
 settlement delay causes downstream damage to the bank's counterparty relationships. The bank
 (or a capital partner) provides the loan funds; LIP provides the intelligence and orchestration.
-BPI, the technology licensor, earns 15% of every bridge loan fee collected.
+BPI, the technology licensor, earns 30% of every bridge loan fee collected.
 
 **Three things LIP gets right from day one:**
 1. The core classification pipeline (C1→C7) is technically sound, latency-tested, and defensively
@@ -49,7 +49,7 @@ go-live expectations are set.
 **Fee disbursement model:** The bridge loan always disburses the **full original payment
 amount** to the receiver. The fee is collected separately at repayment via automatic sweep.
 The receiver's accounts receivable balance correctly. The fee is NEVER deducted from the
-disbursement amount (see GAP-17). Bridgepoint's 15% royalty is extracted from the fee only —
+disbursement amount (see GAP-17). Bridgepoint's 30% royalty is extracted from the fee only —
 never from the principal.
 
 **The five critical gaps that must be resolved before any bank deploys LIP:**
@@ -66,7 +66,7 @@ never from the principal.
 4. **GAP-04** — There is no retry detection. If a bank's treasury team manually re-submits a
    failed payment (standard operating procedure), LIP will fund a bridge loan for the original
    failure at the same time the retry succeeds — resulting in double-funding the beneficiary.
-5. **GAP-05** — The 15% BPI royalty is calculated correctly but never collected. There is no
+5. **GAP-05** — The 30% BPI royalty is calculated correctly but never collected. There is no
    payment instruction, invoice trigger, or settlement mechanism to transfer BPI's share of the
    fee. The royalty exists as a number in a log.
 
@@ -273,7 +273,7 @@ royalties, responding to incidents, and managing license renewals.
 
 **What they need:**
 - Real-time per-licensee health dashboard (TPS, offer rate, block rate, default rate)
-- Royalty accrual tracker (total fees repaid × 15% = BPI revenue)
+- Royalty accrual tracker (total fees repaid × 30% = BPI revenue)
 - License expiry alerts (licensee token expires in 30 days)
 - Incident response access (ability to remotely activate kill switch on licensee instance)
 
@@ -283,7 +283,7 @@ instances.
 
 **The revenue gap:** Every RepaymentConfirmation contains `platform_royalty_usd`. This
 number is calculated correctly. But there is no mechanism to collect it. BPI's revenue model
-depends on 15% of every fee repaid — yet there is no invoice trigger, no payment instruction,
+depends on 30% of every fee repaid — yet there is no invoice trigger, no payment instruction,
 no settlement account, and no reconciliation report. This is **GAP-05**, and it means BPI has
 zero revenue from deployed instances until this is built.
 
@@ -875,8 +875,8 @@ constants are a disciplined approach to preventing accidental fee erosion.
 | Tier 3 | Thin file, limited data, ratio scoring only | 8%–15% | 900–1,500 bps (9.0%–15.0%) |
 
 Dollar impact on a $5M, 7-day CLASS_B bridge:
-- Tier 1 at 540 bps: **$5,178** fee. BPI royalty: **$777**. Bank keeps: **$4,401**.
-- Tier 2 at 900 bps: **$8,630** fee. BPI royalty: **$1,295**. Bank keeps: **$7,335**.
+- Tier 1 at 540 bps: **$5,178** fee. BPI royalty: **$1,553**. Bank keeps: **$3,625**.
+- Tier 2 at 900 bps: **$8,630** fee. BPI royalty: **$2,589**. Bank keeps: **$6,041**.
 - Tier 3 at 1,500 bps: **$14,383** fee. BPI royalty: **$2,157**. Bank keeps: **$12,226**.
 
 Fee collection mechanism (enforced through three overlapping protections):

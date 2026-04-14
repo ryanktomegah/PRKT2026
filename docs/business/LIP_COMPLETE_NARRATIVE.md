@@ -395,7 +395,7 @@ These values require QUANT sign-off to change. They are the load-bearing numbers
 | Failure threshold τ* | 0.110 | Calibrated, F2-optimal, isotonic |
 | Fee floor | 300 bps (annualised) | QUANT — non-negotiable |
 | Latency SLO | ≤ 94ms p99 end-to-end | FORGE + QUANT |
-| Platform royalty | 15% of fee collected | Phase 1 only |
+| Platform royalty | 30% of fee collected | Phase 1 only |
 | UETR TTL buffer | 45 days beyond maturity | NOVA |
 | Salt rotation | 365 days, 30-day overlap | CIPHER |
 | Decision log retention | 7 years | REX (SR 11-7) |

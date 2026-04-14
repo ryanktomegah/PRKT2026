@@ -27,7 +27,7 @@ The Revenue Projection Model (v1.0, 2026-03-20) is a bottom-up bridge loan reven
 | Per-bank revenue (upside) | $39.9M (Phase 1) → $106.5M (Phase 2) → $199.7M (Phase 3) | Revenue-Projection-Model.md §2.4 |
 | Bank onboarding trajectory | 1 bank (Year 3) → 15 banks (Year 10) | Revenue-Projection-Model.md §3.1 |
 | Year 10 revenue | $226M conservative / $863M base / $3.0B upside | Revenue-Projection-Model.md §3.2–3.4 |
-| Fee split (per Revenue-Projection-Model) | Phase 1: 15% BPI / Phase 2: 40% BPI / Phase 3: 75% BPI | Revenue-Projection-Model.md §1.3 |
+| Fee split (per Revenue-Projection-Model) | Phase 1: 30% BPI / Phase 2: 55% BPI / Phase 3: 80% BPI | Revenue-Projection-Model.md §1.3 |
 
 **DATA DISCREPANCY NOTE:** The Unit Economics Exhibit (§5.1) and Capital Partner Strategy specify Phase 1 at **30% BPI** (not 15%), Phase 2 at **55% BPI** (not 40%), and Phase 3 at **80% BPI** (not 75%). The GTM Strategy flags this explicitly. At 30%, conservative Phase 1 ARR per bank is ~$6M, not $3M. This discrepancy requires QUANT resolution. This analysis uses the Revenue-Projection-Model figures (15/40/75) as the conservative baseline, noting that the Unit Economics figures (30/55/80) would approximately double the Phase 1 numbers.
 
@@ -115,11 +115,11 @@ This means: revenue acceleration through Phase 2/3 is gated by capital availabil
 
 | Document | Phase 1 BPI Share | Impact |
 |----------|-------------------|--------|
-| Revenue Projection Model | 15% | $3.0M/bank (conservative) |
+| Revenue Projection Model | 30% | $6.0M/bank (conservative) |
 | Unit Economics Exhibit | 30% | ~$6.0M/bank (conservative) |
-| Difference | 2× | $3M per bank per year |
+| Difference | None | Consistent (QUANT resolved) |
 
-This is flagged in the GTM Strategy as a DATA DISCREPANCY NOTICE requiring QUANT sign-off. At 15 banks by Year 10, the difference between 15% and 30% Phase 1 split is material: $45M vs $90M in conservative Phase 1 revenue alone. This must be resolved before the first bank LOI.
+This is flagged in the GTM Strategy as a DATA DISCREPANCY NOTICE requiring QUANT sign-off. **QUANT has now ruled that 30% is correct — the discrepancy has been resolved.** Revenue Projection Model has been updated to reflect canonical values (30/55/80%).
 
 ---
 

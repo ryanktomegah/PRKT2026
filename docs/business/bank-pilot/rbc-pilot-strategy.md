@@ -175,7 +175,7 @@ Answering Sid Paquette's three questions:
 - Corridor economics example: $1M EUR→USD payment, Class A failure, 300 bps fee = $246 per loan
 - At scale: 3,000 bridgeable failures/month × $200 avg fee = $600K/month = $7.2M/year (per bank)
 - RBC Phase 1 share (85%): $6.1M/year
-- BPI share (15% royalty): $1.1M/year
+- BPI share (30% royalty): $2.2M/year
 - Market size: top 20 global banks × $5-10M/year each = $100-200M TAM
 
 ### Slide 5-6: Why BPI
