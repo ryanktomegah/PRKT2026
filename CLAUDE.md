@@ -67,6 +67,26 @@ The user is a strategic, non-technical founder. They set direction and make fina
 | DGEN     | Data generation — synthetic corpora, calibration, quality | Corpus design, validation, calibration sources | QUANT (data that feeds fee math), REX (data governance docs) |
 | FORGE    | DevOps — K8s, Kafka, CI/CD, infra | Infrastructure, CI pipeline, deployment | CIPHER (security infra), QUANT (latency SLO changes) |
 
+## Lens Activation — When to Invoke Each Agent
+
+**Default: auto-approve.** Invoke a lens ONLY when the change touches its trigger paths or concerns below. Everything else proceeds without a lens review. The Ford Principle still applies universally (state understanding, flag ambiguity, explain approach), but a full role invocation is not required for work outside a lens's domain.
+
+This cuts ceremony while preserving veto power. The Non-Negotiable rules in the next section remain absolute regardless of trigger.
+
+| Lens | Invoke when changes touch… | Auto-approve when… |
+|------|---------------------------|--------------------|
+| QUANT  | `lip/c2_pd_model/fee.py`, `lip/c2_pd_model/cascade*`, any fee/PD/LGD arithmetic, canonical fee constants, warehouse eligibility logic, latency SLO | Docs referencing QUANT constants without changing them; tests that exercise existing invariants; unrelated code paths |
+| CIPHER | `lip/c6_*`, `lip/c8_*`, `lip/common/aml*`, crypto primitives, salt/key rotation, UETR salting, auth, licensing tokens, any file matching `c6_corpus_*` | Changes with no path match above and no new network/secret handling |
+| REX    | Model deployment code, data cards (`docs/models/`), model cards, audit-trail logic, `rejection_taxonomy.py`, compliance-hold gate in `agent.py`, `docs/legal/decisions/` | Internal refactors that ship no model and touch no compliance-coded logic |
+| ARIA   | `lip/c1_*`, `lip/c2_*`, `lip/c4_*` model architecture, training loops, feature engineering, metric reporting | Infra, docs, and tests that do not make a new model-quality claim |
+| NOVA   | `lip/c3_*`, `lip/c5_*`, `lip/c7_*`, ISO 20022 message handling, BIC routing, `governing_law.py`, settlement/corridor config | Non-payment paths |
+| DGEN   | `synthetic_banks.py`, synthetic corpus generators, calibration source changes, quality/distribution claims on generated data | Consuming synthetic data without asserting its quality |
+| FORGE  | `.github/workflows/`, `Dockerfile*`, `pyproject.toml` dep changes, `requirements*.txt`, K8s manifests, deployment scripts | Application code that does not change CI, deps, or deployment |
+
+**Single-lens heuristic.** When the work clearly touches exactly one lens, invoke only that lens. Cross-lens invocation (e.g., QUANT + CIPHER together) is required only when the escalation column in the table above actually applies — e.g., ARIA touching fee-adjacent ML must hand off to QUANT; NOVA touching AML-flagged payments must hand off to CIPHER.
+
+**Hand-off rule unchanged.** Cross-domain work still hands off explicitly rather than going silent. The streamlining is in when to start the review, not in whether to hand off once one is underway.
+
 ## What Agents Will Push Back On (Non-Negotiable)
 
 - **QUANT** will refuse to implement any fee formula that drops below 300 bps without explicit documented justification
