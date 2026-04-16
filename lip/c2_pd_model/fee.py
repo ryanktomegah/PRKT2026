@@ -21,13 +21,8 @@ from typing import Union
 from lip.common.constants import (
     FEE_FLOOR_BPS,
     FEE_FLOOR_PER_7DAY_CYCLE,  # noqa: F401 — re-exported for test consumers
-    FEE_FLOOR_TIER_SMALL_BPS,
-    FEE_FLOOR_TIER_MID_BPS,
-    FEE_TIER_MID_THRESHOLD_USD,
-    MIN_LOAN_AMOUNT_USD,
     PLATFORM_ROYALTY_RATE,
     WAREHOUSE_ELIGIBILITY_FLOOR_BPS,
-    is_spv_warehouse_eligible,
 )
 from lip.p5_cascade_engine.constants import CASCADE_DISCOUNT_CAP
 
@@ -210,9 +205,7 @@ def compute_tiered_fee_floor(loan_amount: Decimal) -> Decimal:
     Decimal
         Annualized fee floor in basis points (platform minimum of 300 bps).
     """
-    amount = Decimal(str(loan_amount))
-
-    # Platform floor applies to all loans
+    Decimal(str(loan_amount))  # validate that argument coerces cleanly
     return FEE_FLOOR_BPS
 
 

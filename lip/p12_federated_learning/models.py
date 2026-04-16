@@ -319,6 +319,9 @@ class FederatedModel(nn.Module):
         SharedModel instance (federated via Flower).
     """
 
+    local: LocalModel
+    shared: SharedModel
+
     def __init__(self, local_model: LocalModel, shared_model: SharedModel) -> None:
         super().__init__()
         self.local = local_model

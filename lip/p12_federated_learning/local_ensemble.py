@@ -137,7 +137,7 @@ class LocalEnsemble:
                 # Get embeddings from PyTorch model
                 # For FederatedModel, we need to extract local + shared representations
                 # We'll access the internal structure to get the embeddings
-                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)
+                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)  # type: ignore[operator]
 
                 # Concatenate local embeddings
                 emb = torch.cat([h2, tab_emb], dim=1)  # (B, 384 + 256 = 640)
@@ -199,7 +199,7 @@ class LocalEnsemble:
         if self.lgbm_model is not None:
             # Get embeddings for LightGBM
             with torch.no_grad():
-                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)
+                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)  # type: ignore[operator]
                 emb = torch.cat([h2, tab_emb], dim=1).numpy().reshape(1, -1)
 
             lgbm_prob = self.lgbm_model.predict_proba(emb)[0, 1]
@@ -249,7 +249,7 @@ class LocalEnsemble:
         # LightGBM prediction (if model exists)
         if self.lgbm_model is not None:
             with torch.no_grad():
-                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)
+                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)  # type: ignore[operator]
                 emb = torch.cat([h2, tab_emb], dim=1).numpy()  # (B, 640)
 
             lgbm_prob = self.lgbm_model.predict_proba(emb)[:, 1]
@@ -333,7 +333,7 @@ def initialize_local_lgbm(
     with torch.no_grad():
         for batch in train_loader:
             node_feat, tab_feat, neighbor_feats, label = batch
-            h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)
+            h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)  # type: ignore[operator]
             emb = torch.cat([h2, tab_emb], dim=1)
             embeddings.append(emb.cpu().numpy())
             labels.append(label.cpu().numpy())
@@ -396,7 +396,7 @@ def verify_ensemble_correctness(
 
             # LightGBM predictions
             if ensemble.lgbm_model is not None:
-                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)
+                h2, tab_emb = pytorch_model.local(node_feat, tab_feat, neighbor_feats)  # type: ignore[operator]
                 emb = torch.cat([h2, tab_emb], dim=1).numpy()
                 lgbm_prob = ensemble.lgbm_model.predict_proba(emb)[:, 1]
                 lgbm_preds.extend(lgbm_prob.tolist())

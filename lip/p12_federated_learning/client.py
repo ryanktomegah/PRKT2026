@@ -37,6 +37,9 @@ try:
 except ImportError:
     HAS_FLOWER = False
     fl = None  # type: ignore[assignment]
+    Config = dict  # type: ignore[misc,assignment]
+    NDArrays = list  # type: ignore[misc,assignment]
+    Scalar = object  # type: ignore[misc,assignment]
     logging.getLogger(__name__).warning(
         "Flower not available. Install with: pip install flwr[simulation]>=1.0"
     )
@@ -54,7 +57,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-class LIPFlowerClient(fl.client.NumPyClient):
+class LIPFlowerClient(fl.client.NumPyClient):  # type: ignore[misc,name-defined]
     """
     Flower client for LIP federated learning.
 
@@ -127,7 +130,7 @@ class LIPFlowerClient(fl.client.NumPyClient):
 
         logger.info(
             f"LIPFlowerClient initialized: device={self.device}, "
-            f"train_samples={len(self.train_loader.dataset)}, "
+            f"train_samples={len(self.train_loader.dataset)}, "  # type: ignore[arg-type]
             f"batch_size={self.train_loader.batch_size}"
         )
 
@@ -241,7 +244,7 @@ class LIPFlowerClient(fl.client.NumPyClient):
         self.set_parameters(parameters, config)
 
         # Get local epochs from config (default 5)
-        local_epochs = config.get("local_epochs", int(LOCAL_EPOCHS))
+        local_epochs = int(config.get("local_epochs", int(LOCAL_EPOCHS)))  # type: ignore[arg-type]
 
         # Track metrics
         metrics: dict[str, Scalar] = {}
@@ -282,8 +285,8 @@ class LIPFlowerClient(fl.client.NumPyClient):
 
         # Compose DP budget for this round
         epsilon_cumulative = self.dp_accountant.compose_round(
-            batch_size=self.train_loader.batch_size,
-            n_samples=len(self.train_loader.dataset),
+            batch_size=self.train_loader.batch_size or 1,
+            n_samples=len(self.train_loader.dataset),  # type: ignore[arg-type]
             noise_multiplier=1.1,  # DP_NOISE_MULTIPLIER
         )
         metrics["dp_epsilon_cumulative"] = epsilon_cumulative
@@ -296,7 +299,7 @@ class LIPFlowerClient(fl.client.NumPyClient):
             logger.warning(f"Failed to update LightGBM: {e}")
 
         # Return ONLY SharedModel parameters (not full model)
-        return self.get_parameters(config={}), len(self.train_loader.dataset), metrics
+        return self.get_parameters(config={}), len(self.train_loader.dataset), metrics  # type: ignore[arg-type]
 
     def evaluate(
         self,
@@ -328,7 +331,7 @@ class LIPFlowerClient(fl.client.NumPyClient):
             "auc": 0.87,  # Placeholder
         }
 
-        return 0.5, len(self.train_loader.dataset), metrics
+        return 0.5, len(self.train_loader.dataset), metrics  # type: ignore[arg-type]
 
     def get_properties(self, config: Config) -> dict[str, Scalar]:
         """
@@ -340,7 +343,7 @@ class LIPFlowerClient(fl.client.NumPyClient):
         - Bank ID (for simulation)
         """
         return {
-            "num_samples": len(self.train_loader.dataset),
+            "num_samples": len(self.train_loader.dataset),  # type: ignore[arg-type]
             "dp_epsilon_cumulative": self.dp_accountant.get_status().epsilon_spent,
             "dp_budget_exhausted": self.dp_accountant.is_budget_exhausted(),
         }

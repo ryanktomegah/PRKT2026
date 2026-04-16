@@ -27,7 +27,11 @@ logger = logging.getLogger(__name__)
 # package root in dp-accounting >= 0.4; the concrete accountants
 # (rdp.RdpAccountant) remain in their submodules.
 try:
-    from dp_accounting import GaussianDpEvent, PoissonSampledDpEvent, rdp
+    from dp_accounting import (  # type: ignore[import-untyped]
+        GaussianDpEvent,
+        PoissonSampledDpEvent,
+        rdp,
+    )
     HAS_DP_ACCOUNTING = True
 except ImportError:
     HAS_DP_ACCOUNTING = False

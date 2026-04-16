@@ -33,8 +33,8 @@ try:
 except ImportError:
     HAS_FLOWER = False
     fl = None  # type: ignore[assignment]
-    FedProx = None  # type: ignore[assignment]
-    ServerConfig = None  # type: ignore[assignment]
+    FedProx = None  # type: ignore[assignment,misc]
+    ServerConfig = None  # type: ignore[assignment,misc]
     logging.getLogger(__name__).warning(
         "Flower not available. Install with: pip install flwr[simulation]>=1.0"
     )
@@ -253,11 +253,13 @@ def run_mu_sweep(
             logger.info(f"Running simulation: μ={mu}, seed={seed}")
             logger.info(f"{'='*60}")
 
-            # Create strategy
+            # Create strategy. FedProx uses `proximal_mu` for the μ coefficient
+            # and `on_fit_config_fn` to forward per-round config to clients.
             strategy = FedProx(
-                mu=mu,
+                proximal_mu=mu,
                 min_fit_clients=MIN_FIT_CLIENTS,
                 fraction_fit=SAMPLE_FRACTION,
+                on_fit_config_fn=lambda rnd: {"local_epochs": LOCAL_EPOCHS},
             )
 
             # Define client function
@@ -270,16 +272,12 @@ def run_mu_sweep(
                     mu=mu,
                 )
 
-            # Run simulation
-            hist = fl.simulation.start_simulation(
+            # Run simulation (guarded by HAS_FLOWER raise at top of function)
+            assert fl is not None  # noqa: S101 — mypy narrowing after HAS_FLOWER guard
+            hist = fl.simulation.start_simulation(  # type: ignore[attr-defined]
                 client_fn=client_fn,
                 num_clients=len(banks),
-                config=ServerConfig(
-                    num_rounds=num_rounds,
-                    fit_config={
-                        "local_epochs": LOCAL_EPOCHS,
-                    },
-                ),
+                config=ServerConfig(num_rounds=num_rounds),
                 strategy=strategy,
                 client_resources={
                     "num_cpus": 2,
@@ -432,16 +430,16 @@ def compute_convergence_stats(
                         break
 
         if auc_values:
-            auc_mean = np.mean(auc_values)
-            auc_std = np.std(auc_values)
+            auc_mean = float(np.mean(auc_values))
+            auc_std = float(np.std(auc_values))
             converged = auc_mean >= target_auc
-            rounds_to_target_val = np.mean([50]) if converged else np.nan  # Placeholder
+            rounds_to_target_val = 50.0 if converged else float("nan")  # Placeholder
 
             stats[mu] = {
                 "auc_mean": auc_mean,
                 "auc_std": auc_std,
                 "rounds_to_target": rounds_to_target_val,
-                "converged": converged,
+                "converged": float(converged),
             }
 
     return stats

@@ -29,8 +29,8 @@ from torch.utils.data import DataLoader
 
 # Try to import Opacus; provide helpful error if unavailable
 try:
-    from opacus import PrivacyEngine
-    from opacus.optimizers import DPOptimizer
+    from opacus import PrivacyEngine  # type: ignore[import-untyped]
+    from opacus.optimizers import DPOptimizer  # type: ignore[import-untyped]
     HAS_OPACUS = True
 except ImportError:
     HAS_OPACUS = False
@@ -61,8 +61,8 @@ def attach_privacy_engine(
     data_loader: DataLoader,
     noise_multiplier: float = DP_NOISE_MULTIPLIER,
     max_grad_norm: float = DP_CLIP_NORM,
-    alphas: float = DP_EPSILON,
-    delta: float = DP_DELTA,
+    alphas: float = float(DP_EPSILON),
+    delta: float = float(DP_DELTA),
 ) -> PrivacyEngine:
     """
     Attach Opacus PrivacyEngine to optimizer for DP-SGD.
@@ -110,7 +110,7 @@ def attach_privacy_engine(
     if batch_size is None:
         raise ValueError("DataLoader must have batch_size attribute")
 
-    sample_size = len(data_loader.dataset)
+    sample_size = len(data_loader.dataset)  # type: ignore[arg-type]
     if sample_size <= 0:
         raise ValueError(f"Invalid sample size: {sample_size}")
 
@@ -249,7 +249,7 @@ def validate_dp_compatibility(
         result["batch_size"] = batch_size
 
     # Check sample size
-    sample_size = len(data_loader.dataset)
+    sample_size = len(data_loader.dataset)  # type: ignore[arg-type]
     if sample_size <= 0:
         result["errors"].append(f"Invalid sample size: {sample_size}")
         result["compatible"] = False
@@ -292,8 +292,8 @@ def compute_dp_noise_scale(
 
 
 def get_noise_multiplier_for_epsilon(
-    target_epsilon: float = DP_EPSILON,
-    target_delta: float = DP_DELTA,
+    target_epsilon: float = float(DP_EPSILON),
+    target_delta: float = float(DP_DELTA),
     batch_size: int = 256,
     sample_size: int = 50_000,
     max_grad_norm: float = DP_CLIP_NORM,
@@ -381,7 +381,7 @@ def get_privacy_spent(
             "Opacus required. Install with: pip install opacus>=0.14"
         )
 
-    from dp_accounting import dp_event, rdp
+    from dp_accounting import dp_event, rdp  # type: ignore[import-untyped]
 
     accountant = rdp.RdpAccountant()
     sampling_prob = min(1.0, batch_size / sample_size)

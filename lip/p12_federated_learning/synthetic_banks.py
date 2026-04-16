@@ -251,7 +251,9 @@ class SyntheticBankDataset(Dataset):
     def __len__(self) -> int:
         return len(self.bank_data.labels)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, ...]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
         """
         Get a single sample.
 
