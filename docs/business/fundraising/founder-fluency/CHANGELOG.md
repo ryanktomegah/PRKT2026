@@ -19,3 +19,4 @@ Categories:
 - [names] Appendix-names.md populated with people, firms, regulators, standards, prior art, and internal frameworks.
 - [narrative] Technical narrative.md written: 4 tiers (30s/2min/5min/deep-dive) with 5 anchors. Voice rulebook pass complete.
 - [drill] Technical drill.md populated with 24 questions (8 Warm + 8 Probing + 4 Adversarial + 4 Crushing). Exceeds 20-question launch floor.
+- [bear-case] Technical bear-case.md populated: Master Index + META-02 + META-03 + B-TECH-01 through B-TECH-05. Drill linkage cross-checked.
