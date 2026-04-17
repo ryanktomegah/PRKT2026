@@ -26,3 +26,4 @@ Categories:
 - [structural] Cross-volume META-01 references added to Technical and Market bear-case.md files.
 - [structural] Trimmed Patent narrative (Tiers B/C/D) and Patent drill Gold answers to spec word-count ranges.
 - [narrative] Market narrative.md written: 4 tiers with market/timing-specific anchors.
+- [drill] Market drill.md populated with 24 questions (8 Warm + 8 Probing + 4 Adversarial + 4 Crushing). Every TAM number traced to appendix-numbers.md.
