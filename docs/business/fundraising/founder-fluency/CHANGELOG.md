@@ -24,3 +24,4 @@ Categories:
 - [drill] Patent drill.md populated with 24 questions (8 Warm + 8 Probing + 4 Adversarial + 4 Crushing). EPG-21 scrub enforced.
 - [bear-case] Patent bear-case.md populated: META-01 master entry (extra care for RBC IP clause) + B-PAT-01 through B-PAT-06.
 - [structural] Cross-volume META-01 references added to Technical and Market bear-case.md files.
+- [structural] Trimmed Patent narrative (Tiers B/C/D) and Patent drill Gold answers to spec word-count ranges.
