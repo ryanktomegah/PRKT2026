@@ -15,3 +15,5 @@ Categories:
 ## 2026-04-17
 
 - [structural] Phase 0 scaffolding complete: folder structure, README, CHANGELOG, stub files for all volumes and appendices.
+- [numbers] Appendix-numbers.md populated with 149 canonical figures across Product/Technical, Economics, Market, Traction, and Compliance categories.
+- [names] Appendix-names.md populated with people, firms, regulators, standards, prior art, and internal frameworks.
