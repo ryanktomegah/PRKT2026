@@ -110,7 +110,22 @@ UETR_TTL_BUFFER_DAYS = 45                 # buffer beyond maturity for UETR dedu
 # ── Maturity — BLOCK class ────────────────────────────────────────────
 MATURITY_BLOCK_DAYS = 0                   # BLOCK rejection class: no bridge loan, immediate close
 
-# ── Corridor buffer window ─────────────────────────────────────────────
+# ── CBDC rail maturity (P5 patent, differential maturity by rail) ────────────
+# CBDC transactions achieve programmatic finality in minutes; the 4-hour buffer
+# covers cross-chain interoperability delays and smart contract retry windows.
+# Legacy rails use the existing CLASS_A/B/C day-based maturity via UETR TTL.
+# NOVA sign-off required to change — affects settlement timing assumptions.
+RAIL_MATURITY_HOURS: dict[str, float] = {
+    "SWIFT": float(UETR_TTL_BUFFER_DAYS * 24),   # 1080h (45 days)
+    "FEDNOW": 24.0,                                # same-day domestic
+    "RTP": 24.0,                                   # same-day domestic
+    "SEPA": float(UETR_TTL_BUFFER_DAYS * 24),     # 1080h (45 days)
+    "CBDC_ECNY": 4.0,                             # PBoC e-CNY
+    "CBDC_EEUR": 4.0,                             # ECB experimental e-EUR
+    "CBDC_SAND_DOLLAR": 4.0,                      # CBB Sand Dollar
+}
+
+# ── Corridor buffer window ─────────────────────────────────────────────────────
 CORRIDOR_BUFFER_WINDOW_DAYS = 90          # rolling window for corridor risk / embedding lookback
 
 # ── Platform royalty (BPI technology licensor fee) ────────────────────────────
