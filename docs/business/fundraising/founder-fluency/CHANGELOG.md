@@ -29,3 +29,4 @@ Categories:
 - [drill] Market drill.md populated with 24 questions (8 Warm + 8 Probing + 4 Adversarial + 4 Crushing). Every TAM number traced to appendix-numbers.md.
 - [bear-case] Market bear-case.md populated: Master Index + META-01/META-02 cross-refs + B-MKT-01 through B-MKT-07. Drill linkage cross-checked.
 - [structural] Phase 4 complete — all three volumes (Technical, Patent, Market) fully populated with narrative + drill + bear-case.
+- [narrative] Master narrative 00-master-narrative.md written: braided pitch across all three volumes. Braid rule enforced (no topic monopolises more than 30 seconds without crossing).
