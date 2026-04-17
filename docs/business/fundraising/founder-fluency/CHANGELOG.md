@@ -21,3 +21,4 @@ Categories:
 - [drill] Technical drill.md populated with 24 questions (8 Warm + 8 Probing + 4 Adversarial + 4 Crushing). Exceeds 20-question launch floor.
 - [bear-case] Technical bear-case.md populated: Master Index + META-02 + META-03 + B-TECH-01 through B-TECH-05. Drill linkage cross-checked.
 - [narrative] Patent narrative.md written: 4 tiers with IP-specific anchors. EPG-21 language scrub enforced throughout.
+- [drill] Patent drill.md populated with 24 questions (8 Warm + 8 Probing + 4 Adversarial + 4 Crushing). EPG-21 scrub enforced.
