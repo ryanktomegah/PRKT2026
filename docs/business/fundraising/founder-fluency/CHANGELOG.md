@@ -25,3 +25,4 @@ Categories:
 - [bear-case] Patent bear-case.md populated: META-01 master entry (extra care for RBC IP clause) + B-PAT-01 through B-PAT-06.
 - [structural] Cross-volume META-01 references added to Technical and Market bear-case.md files.
 - [structural] Trimmed Patent narrative (Tiers B/C/D) and Patent drill Gold answers to spec word-count ranges.
+- [narrative] Market narrative.md written: 4 tiers with market/timing-specific anchors.
