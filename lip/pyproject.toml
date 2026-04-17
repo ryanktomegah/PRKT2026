@@ -74,6 +74,13 @@ survival = [
     # Deep survival models (DeepSurv upgrade path)
     # "pycox>=0.2.0",
 ]
+fl = [
+    # P4 / P12 Federated Learning: Flower (simulation) + Opacus DP-SGD + Rényi DP accounting
+    "flwr[simulation]>=1.0",
+    "opacus>=1.5",
+    "dp-accounting>=0.4",
+    "torch>=2.6.0",
+]
 data = [
     # Production data pipeline: iso20022_payments, aml_production, web_inspector
     "pandas>=2.1.0",
@@ -84,7 +91,7 @@ data = [
     "fpdf2>=2.7.0",
 ]
 dev = [
-    "pytest>=8.0.0",
+    "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",

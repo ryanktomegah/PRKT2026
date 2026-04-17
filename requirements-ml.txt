@@ -5,6 +5,11 @@
 # ── C1 Neural Components (PyTorch port for 100K+ sample training) ─────────────
 torch>=2.6.0,<3.0
 
+# ── P4 / P12 Federated Learning (Flower + Opacus DP-SGD + Rényi DP accounting) ─
+flwr[simulation]>=1.0,<2.0
+opacus>=1.5,<2.0
+dp-accounting>=0.4,<1.0
+
 # ── C2 PD Model ──────────────────────────────────────────────────────────────
 lightgbm>=4.3.0,<5.0
 shap>=0.44.0,<1.0
@@ -25,7 +30,7 @@ optuna>=3.5.0,<4.0
 prometheus-client>=0.19.0,<1.0
 
 # ── Dev / Test ───────────────────────────────────────────────────────────────
-pytest>=8.0.0,<9.0
+pytest>=9.0.3
 pytest-cov>=4.0.0,<6.0
 ruff>=0.3.0,<1.0
 mypy>=1.8.0,<2.0

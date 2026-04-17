@@ -494,11 +494,12 @@ class TestScenario8FeeArithmetic:
         assert abs(fee_14 - 2 * fee_7) <= Decimal("0.02")
 
     def test_pipeline_fee_bps_used_in_loan_offer(self):
-        """Pipeline propagates fee_bps from C2; tiered floor applied in loan offer.
+        """Pipeline propagates fee_bps from C2; platform floor applied in loan offer.
 
-        C2 emits 300 bps.  At $1M (mid tier $500K–$2M) the tiered floor raises it
-        to 400 bps in the offer.  result.fee_bps preserves the raw C2 value (300);
-        result.loan_offer["fee_bps"] reflects the effective floor (400).
+        Post-256e808 the tiered-by-principal schedule was flattened —
+        ``compute_tiered_fee_floor`` returns 300 bps (FEE_FLOOR_BPS) for every
+        loan size. C2 emits 300 bps; the offer reflects the same 300 bps
+        platform floor. Warehouse eligibility (800 bps) is a separate gate.
         """
         pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
         event = make_event(rejection_code="CURR", amount=Decimal("1000000"))
@@ -506,7 +507,7 @@ class TestScenario8FeeArithmetic:
         assert result.outcome == "FUNDED"
         assert result.fee_bps == 300                       # C2 output preserved
         assert result.loan_offer is not None
-        assert result.loan_offer["fee_bps"] == 400         # tiered floor: mid tier
+        assert result.loan_offer["fee_bps"] == 300         # canonical platform floor
 
     def test_below_threshold_skips_fee_computation(self):
         pipeline = _make_pipeline(failure_probability=0.05)  # below 0.110

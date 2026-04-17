@@ -407,7 +407,13 @@ class TestLoanAmountAndFeeGates:
     # ── Tiered fee floors ─────────────────────────────────────────────────────
 
     def test_tiered_fee_floor_mid_tier_applied(self):
-        """$1M CLASS_B loan: 400bps mid-tier floor must override a low C2 fee_bps."""
+        """$1M CLASS_B loan: canonical 300 bps platform floor must override a low C2 fee_bps.
+
+        Post-256e808 the tiered-by-principal schedule was flattened —
+        ``compute_tiered_fee_floor`` now returns 300 bps (FEE_FLOOR_BPS) for all
+        loan sizes. Warehouse eligibility (800 bps) is enforced separately
+        via ``is_spv_warehouse_eligible`` at origination.
+        """
         cfg = ExecutionConfig(require_human_review_above_pd=0.99)
         ks = KillSwitch()
         dl = DecisionLogger(hmac_key=_HMAC_KEY)
@@ -415,7 +421,7 @@ class TestLoanAmountAndFeeGates:
         ctx = self._ctx("1000000", maturity_days=7, fee_bps=100, rejection_class="CLASS_B")
         result = agent.process_payment(ctx)
         if result["status"] == "OFFER":
-            assert result["loan_offer"]["fee_bps"] >= 400
+            assert result["loan_offer"]["fee_bps"] >= 300
 
     def test_tiered_fee_floor_large_tier_applied(self):
         """$5M loan uses the canonical 300bps floor."""
