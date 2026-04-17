@@ -96,6 +96,7 @@ Single source of truth for every person, firm, regulator, standard, or prior-art
 | MRFA (Master Receivables Financing Agreement) | The legal instrument between BPI and borrowing bank | B2B interbank structure; originating bank is borrower, not end-customer (EPG-14) |
 | EPG decisions (EPG-04 through EPG-21) | EPIGNOSIS architecture review register | Demonstrates governance maturity in diligence; key decisions: EPG-04/05 (hold_bridgeable API), EPG-14 (BIC governing law), EPG-16 (AML caps), EPG-17 (license token), EPG-18 (EU AI Act), EPG-19 (compliance-hold NEVER), EPG-20/21 (patent counsel) |
 | EPG-04 / EPG-05 | hold_bridgeable certification strategy — FATF-compliant alternative to asking for hold reason | Unlocks Class B revenue; required in pilot LOI before legal review |
+| EPG-09/10 | outcome="COMPLIANCE_HOLD" distinct from "DECLINED"; compliance_hold=True flag on PipelineResult | Shows LIP distinguishes regulatory holds from credit declines — separate risk-reporting pathway |
 | EPG-14 | B2B interbank structure; governing law from BIC chars 4–5 | Borrower is originating bank BIC, not end-customer |
 | EPG-16 | AML caps: default 0 (unlimited); set per-licensee via C8 token | Replaces inoperable retail $1M cap at correspondent banking scale |
 | EPG-17 | License token must contain explicit aml_dollar_cap_usd and aml_count_cap JSON fields | |
