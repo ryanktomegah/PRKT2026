@@ -2,6 +2,10 @@
 
 **How to read this file:** Each entry below names a real weakness, writes an honest structured answer, and flags the don't-say traps. Master Index ranks entries by `(likelihood of being asked) × (severity if fumbled)`. Spend 50% of drill time on ranks 1-3.
 
+## Cross-volume META references
+
+See also: **META-01 (RBC IP clause)** — master entry in `02-patent-ip/bear-case.md`. Referenced here because the founder-employment angle intersects with the non-technical founder question (META-03).
+
 ## Master Index
 
 | Rank | ID | Weakness | Resolution event |
