@@ -1,3 +1,4 @@
+# author_date_iso | author_name | short_hash | subject  (filter: weekend OR weekday 18:00–08:59)
 2026-04-17 21:31:42 -0700|Tomegah Ryan|36d7295|chore(review): scaffold pre-lawyer review directories and Fix Log
 2026-04-17 21:26:32 -0700|Tomegah Ryan|4bbda87|docs(pre-lawyer-review): add 28-day implementation plan
 2026-04-17 19:04:47 -0700|Tomegah Ryan|333fdc4|docs(pre-lawyer-review): add 4-week pre-lawyer review design spec
