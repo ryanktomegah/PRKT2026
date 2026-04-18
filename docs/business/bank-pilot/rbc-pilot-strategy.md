@@ -1,6 +1,6 @@
-# RBC Pilot Strategy — Internal Planning Document
+# RBC Pilot Strategy — BPI Planning Document
 
-> **CONFIDENTIAL — BPI internal use only. Do NOT share with RBC or any external party.**
+> **DRAFT — BPI internal use only. Do NOT share with RBC or any external party.**
 > This document plans the approach for engaging RBC as BPI's first pilot bank customer.
 > Execution gated on: (1) IP resolution, (2) patent filing, (3) clean separation from RBC employment.
 
@@ -44,7 +44,7 @@ RBC is the **#1 clearer for CAD payments** and has won multiple awards for treas
 - Founded 2017, based in Toronto
 - Invests in: **B2B payments, fintech, AI/ML, cybersecurity**
 - Investment stages: seed through later-stage
-- Key question from Sid Paquette: *"What's the problem, what's the size of the prize, and why are you best suited to solve it?"*
+- RBCx intake focuses on three questions: the problem, the size of the prize, and why the team is best suited to solve it [rbcx.com intake guidance]
 - Website: rbcx.com — has "Connect With An Advisor" intake process
 
 ---
@@ -105,7 +105,7 @@ RBC is a D-SIB (Domestic Systemically Important Bank) regulated by OSFI. Key gui
 - Newly formed (Feb 2026), actively looking for AI use cases to prove value
 - Reports directly to CEO — can bypass business unit politics
 - LIP is an AI-native platform (ML classification, PD models, anomaly detection)
-- RBC wants $1B in AI-generated enterprise value by 2027 — LIP is a tangible use case
+- AI Group is actively seeking demonstrable AI use cases with revenue impact — LIP is a tangible use case
 
 **How to approach:**
 1. Borealis AI Vancouver lab is local — attend events, network
@@ -157,7 +157,7 @@ Phase 5 — Pilot Deployment
 
 ## 5. Pitch Deck Structure (For RBCx / Transaction Banking)
 
-Answering Sid Paquette's three questions:
+Structured around RBCx's three intake questions:
 
 ### Slide 1-2: The Problem
 

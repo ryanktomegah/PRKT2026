@@ -745,9 +745,9 @@ Interface: CoreBankingAdapter (Go interface)
   GetLoanStatus(ctx context.Context, loanReference string) (LoanStatus, error)
 
 Implementations (one per bank deployment):
-  CitiCoreAdapter        — implements CoreBankingAdapter for Citi
-  RBCCoreAdapter         — implements CoreBankingAdapter for RBC
-  BNSCoreAdapter         — implements CoreBankingAdapter for BNS
+  BankACoreAdapter       — implements CoreBankingAdapter for Bank A
+  BankBCoreAdapter       — implements CoreBankingAdapter for Bank B
+  BankCCoreAdapter       — implements CoreBankingAdapter for Bank C
   [etc. — one per pilot bank]
 
 Adapter selection: Kubernetes ConfigMap "bank_id" variable

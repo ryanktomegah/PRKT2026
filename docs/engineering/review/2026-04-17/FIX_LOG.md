@@ -11,4 +11,110 @@ Format per entry:
 
 ---
 
-(No entries yet — Day 1 of review.)
+## FIX-001 — 2026-04-17
+
+- **Severity:** Critical
+- **Problem:** `docs/business/bank-pilot/rbc-pilot-strategy.md:17` contained the phrase "your former division" in the Erica Nielsen row — a first-person admission that Ryan's internal RBC history was used to author the document. Direct leakage vector.
+- **Fix:** Removed "your former division" from the Erica Nielsen row. New text: `LOW — retail-focused, not relevant to LIP`.
+- **Commit:** 63096ed
+- **Verification:** `grep -n "your former division" docs/business/bank-pilot/rbc-pilot-strategy.md` returns zero results.
+
+---
+
+## FIX-002 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/bank-pilot/rbc-pilot-strategy.md` was titled "Internal Planning Document" and headered "CONFIDENTIAL — BPI internal use only" — the "Internal" label and "CONFIDENTIAL" framing, if ever produced in litigation, reinforces that the document is an insider's operational plan rather than a post-separation founder's external strategy.
+- **Fix:** Changed title to "BPI Planning Document"; changed header label from "CONFIDENTIAL" to "DRAFT".
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** File header now reads `DRAFT — BPI internal use only`.
+
+---
+
+## FIX-003 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/bank-pilot/rbc-pilot-strategy.md:47` attributed a verbatim personal quote to Sid Paquette ("What's the problem, what's the size of the prize, and why are you best suited to solve it?") — sounds like corridor/internal knowledge rather than a published public source.
+- **Fix:** Replaced with neutral paraphrase citing rbcx.com intake guidance as the reference. Also removed matching first-person Sid Paquette attribution in Section 5 header.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No quoted phrase directly attributed to Sid Paquette by name in the file.
+
+---
+
+## FIX-004 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/bank-pilot/rbc-pilot-strategy.md:108` stated "RBC wants $1B in AI-generated enterprise value by 2027" — a specific internal financial target with no verifiable public source. Sounds like internal corridor knowledge.
+- **Fix:** Replaced with "AI Group is actively seeking demonstrable AI use cases with revenue impact" — a neutral, publicly supportable characterisation.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No "$1B" AI target language in the file.
+
+---
+
+## FIX-005 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/GTM-Strategy-v1.0.md:185` listed "institutional knowledge of internal processes and people" as a *reason* RBC is the first target — an explicit self-incriminating statement that insider access was a selection criterion.
+- **Fix:** Replaced with "Founder has prior banking experience" — neutral framing that conveys relevant background without claiming insider advantage.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No "institutional knowledge of internal processes" language in the file.
+
+---
+
+## FIX-006 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/GTM-Strategy-v1.0.md:186` contained "hunting for AI-generated P&L use cases" — internal-corridor framing with no public source attributable.
+- **Fix:** Replaced with "mandate to scale AI use cases across the enterprise" — a neutral characterisation consistent with publicly reported AI Group mandate.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** Phrase "hunting for AI-generated P&L" no longer present.
+
+---
+
+## FIX-007 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/GTM-Strategy-v1.0.md:189` attributed verbatim personal questions to Sid Paquette by name ("What's the problem? What's the size of the prize? Why are you best suited to solve it?").
+- **Fix:** Replaced with neutral paraphrase citing RBCx's intake questions without direct personal attribution.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No quoted phrase attributed to Sid Paquette in the row.
+
+---
+
+## FIX-008 — 2026-04-17
+
+- **Severity:** High
+- **Problem:** `docs/business/GTM-Strategy-v1.0.md:194` stated "Bruce Ross's AI Group needs demonstrable AI P&L by 2027" — specific internal performance target with no public source.
+- **Fix:** Replaced with "Bruce Ross's AI Group is actively seeking AI use cases with measurable revenue impact" — neutral, publicly supportable.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No "2027" AI P&L deadline language in the row.
+
+---
+
+## FIX-009 — 2026-04-17
+
+- **Severity:** Critical
+- **Problem:** `docs/business/GTM-Strategy-v1.0.md:196` (Founder framing) included "The Credit Management desk handles the fallout after these failures — I know what those conversations look like" — a direct admission that internal RBC operational knowledge (from Ryan's Credit Management Resolution Officer role) was used to frame the pitch. This is direct insider-knowledge leakage.
+- **Fix:** Replaced the entire Founder framing with approved language from rbc-pilot-strategy.md Section 6, which uses only post-separation framing ("I have experience in Canadian banking operations, including at RBC. After leaving…").
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No reference to "Credit Management desk" or internal operational conversations in the row.
+
+---
+
+## FIX-010 — 2026-04-17
+
+- **Severity:** Medium (patent hygiene)
+- **Problem:** `docs/engineering/specs/BPI_C7_Component_Spec_v1.0_Part1.md:748-750` listed `RBCCoreAdapter`, `CitiCoreAdapter`, `BNSCoreAdapter` as example implementation class names in a patent-claim-adjacent spec. Per EPG-20/21, specs must not name specific banks in claim-bearing passages.
+- **Fix:** Renamed all three to generic placeholders: `BankACoreAdapter`, `BankBCoreAdapter`, `BankCCoreAdapter`.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No bank-name-prefixed adapter names in the file.
+
+---
+
+## FIX-011 — 2026-04-17
+
+- **Severity:** Medium (patent hygiene)
+- **Problem:** `docs/engineering/specs/BPI_C7_Component_Spec_v1.0_Part2.md:689` referenced `CitiCoreAdapter`, `RBCCoreAdapter` by name in the same patent-adjacent spec (Section 18.2).
+- **Fix:** Replaced with `BankACoreAdapter`, `BankBCoreAdapter`.
+- **Commit:** (bundled in Task 2.2 findings commit)
+- **Verification:** No bank-name-prefixed adapter names in Part2.md.

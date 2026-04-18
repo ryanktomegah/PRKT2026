@@ -182,18 +182,18 @@ Phase 2 economics require Tier 1 volume. As the Revenue Projection Model shows, 
 
 | Attribute | Detail |
 |-----------|--------|
-| Why first | Founder's former employer; institutional knowledge of internal processes and people; three named entry doors already mapped; RBC just launched a new Transaction Banking business unit (confirmed McKinsey 2025) |
-| 2024–2026 developments | Acquired HSBC Bank Canada (2024), strengthening correspondent banking position significantly; Net income $16.2B FY2024 (+11% YoY); AI Group (Bruce Ross) formed February 2026, CEO-direct, hunting for AI-generated P&L use cases; new Transaction Banking unit launched per McKinsey Global Payments 2025 |
+| Why first | Founder has prior banking experience; three named entry doors already mapped; RBC just launched a new Transaction Banking business unit (confirmed McKinsey 2025) |
+| 2024–2026 developments | Acquired HSBC Bank Canada (2024), strengthening correspondent banking position significantly; Net income $16.2B FY2024 (+11% YoY); AI Group (Bruce Ross) formed February 2026, CEO-direct, mandate to scale AI use cases across the enterprise; new Transaction Banking unit launched per McKinsey Global Payments 2025 |
 | Annual cross-border volume estimate | ~$800B–$1.2T (Canada's largest bank by assets; largest CAD clearer; HSBC Canada corridor book added) |
 | Phase 1 BPI ARR (conservative, at 30%) | ~$4.8M–$7.2M/year |
-| Entry — Door 1 (recommended) | **RBCx** via rbcx.com "Connect With An Advisor"; tailored to Sid Paquette's three questions: "What's the problem? What's the size of the prize? Why are you best suited to solve it?" |
+| Entry — Door 1 (recommended) | **RBCx** via rbcx.com "Connect With An Advisor"; structured around RBCx's three intake questions: the problem, the size of the prize, and why BPI is best suited to solve it |
 | Entry — Door 2 | New Transaction Banking unit VP-level via warm intro from RBCx; Derek Neldner group (Capital Markets) |
 | Entry — Door 3 | **Bruce Ross, AI Group** (Feb 2026, CEO-direct); connect via Borealis AI Vancouver events or SIBOS Miami |
 | Urgency lever | "We're in conversations with TD Bank and BMO. RBC is our first choice as Canadian pilot partner — you're Canada's #1 correspondent bank and the OSFI E-23 pre-compliance makes this uniquely efficient for your MRM team. But this 90-day window is real." |
 | OSFI E-23 angle | E-23 published September 2025; effective May 2027; LIP ships with C1/C2 model cards and validation records that satisfy E-23 requirements. RBC's MRM team validates, they don't build. Saves 3-6 months and $500K+ in consulting. |
-| AI Group angle | Bruce Ross's AI Group needs demonstrable AI P&L by 2027. LIP generates $5,033 revenue in 45 milliseconds from a payment failure — with C1 (GraphSAGE + TabTransformer + LightGBM) classification powering the detection. This is the AI use case that has a revenue line. |
+| AI Group angle | Bruce Ross's AI Group is actively seeking AI use cases with measurable revenue impact. LIP generates $5,033 revenue in 45 milliseconds from a payment failure — with C1 (GraphSAGE + TabTransformer + LightGBM) classification powering the detection. This is the AI use case that has a revenue line. |
 | Transaction Banking angle | McKinsey confirmed RBC just invested in a new Transaction Banking unit. The head of that unit needs products to differentiate. LIP is a product — not a tool, not infrastructure — that they can offer to corporate clients under the RBC brand. |
-| Founder framing | "I'm a former RBC employee. After leaving, I founded BPI to build a solution to a problem I watched cause real harm to your corporate clients. The Credit Management desk handles the fallout after these failures — I know what those conversations look like. I'm approaching RBC first because I know the operational reality and I believe in solving it at the institution where I first saw it." |
+| Founder framing | "I have experience in Canadian banking operations, including at RBC. After leaving, I founded BPI to build a solution to a problem that causes real harm to corporate clients. I understand the operational reality of payment failures and believe RBC is uniquely positioned to be the first to solve it at scale." |
 
 > ⚠️ **RBC framing rule:** All RBC references must be framed as post-resignation, post-separation, external vendor. No reference to work performed at RBC. No RBC data or IP. See `rbc-pilot-strategy.md` Section 6 for approved framing language.
 

@@ -194,3 +194,95 @@ No fixes were applied in Task 2.1. Raw scan outputs are preserved in the sibling
 - `rbc-bic-matches.txt`
 - `rbc-job-title-matches.txt`
 - `rbc-search-terms.md` (source-of-truth for the patterns used)
+
+---
+
+## 10. Bank-pilot kit review (Task 2.2)
+
+**Review date:** 2026-04-17
+**Files reviewed end-to-end:**
+
+| File | Classification | Finding summary |
+|------|---------------|----------------|
+| `docs/business/bank-pilot/rbc-pilot-strategy.md` | C (confirmed contamination) | Multiple contamination items found and fixed; see below |
+| `docs/business/bank-pilot/api-reference.md` | A | Generic technical API reference; no RBC-specific info; BICs in examples are European (DEUTDEDB, BNPAFRPP) — public. Clean. |
+| `docs/business/bank-pilot/demo-walkthrough.md` | A | Demo script uses generic/European BICs; no RBC-specific claims. Clean. |
+| `docs/business/bank-pilot/integration-guide.md` | A | Generic integration guide; no RBC-specific claims; test BICs are synthetic. Clean. |
+| `docs/business/bank-pilot/gcp-demo-setup.md` | A | Cloud infrastructure setup guide; no RBC references at all. Clean. |
+| `docs/business/bank-pilot/legal-prerequisites.md` | A | BC API spec, MRFA clauses, regulatory checklist — all generic, no RBC-specific info. Clean. |
+| `docs/business/bank-pilot/commercial-overview.md` | A | Phase 1/2/3 commercial model; generic bank framing; no RBC-specific data. Minor note: revenue share table has 15%/85% split in one row vs. 30%/70% in narrative — this is a pre-existing internal inconsistency, not contamination. |
+| `docs/business/GTM-Strategy-v1.0.md` | B→fixed | B-2 items resolved; see fixes below |
+| `docs/engineering/specs/BPI_C7_Component_Spec_v1.0_Part1.md` | B→fixed | B-3 item resolved; bank-named adapters genericised |
+| `docs/engineering/specs/BPI_C7_Component_Spec_v1.0_Part2.md` | B→fixed | B-3 item resolved; bank-named adapters genericised |
+
+---
+
+### 10.1 rbc-pilot-strategy.md — Line-by-line findings
+
+**Publicly verifiable (kept, no fix needed):**
+- Dave McKay as RBC CEO — disclosed in RBC IR and annual reports
+- Derek Neldner as CEO & Group Head, Capital Markets — RBC 2024 Annual Report
+- Sean Amato-Gauci, Erica Nielsen, Neil McLaughlin, Naim Kazmi — RBC Group Executive, publicly disclosed
+- Sid Paquette as Head of RBCx — rbcx.com
+- Bruce Ross, AI Group formed Feb 2026 — publicly reported
+- RBC as #1 CAD clearer — BIS/CPSS public statistics, RBC investor presentations
+- Borealis AI labs in Toronto/Montreal/Waterloo/Vancouver — Borealis AI public website
+- Borealis AI Evident AI Index ranking — Evident AI Index 2025, public publication
+- Borealis AI partnerships (MIT, Vector, Cohere, Databricks) — public press releases
+- OSFI E-23, B-10, B-13 guidelines — OSFI public website, all public documents
+- RBCx founded 2017, Toronto — rbcx.com
+- RBCx investment focus areas — rbcx.com
+
+**Contamination found and fixed:**
+
+| Fix ID | Location | Problem | Action |
+|--------|----------|---------|--------|
+| FIX-001 | Line 17 | "your former division" — explicit insider admission | Removed; commit 63096ed |
+| FIX-002 | Lines 1, 3 | "Internal Planning Document" + "CONFIDENTIAL" framing | Softened to "BPI Planning Document" + "DRAFT" |
+| FIX-003 | Line 47 | Direct personal quote attributed to Sid Paquette | Paraphrased without personal attribution |
+| FIX-004 | Line 108 | "$1B in AI-generated enterprise value by 2027" — unverifiable internal target | Struck; replaced with neutral characterisation |
+
+**Open items (low severity — counsel to verify):**
+- "Post Sept 2024 Reorg" (line 9) — specific month; may be publicly confirmed or may be from internal knowledge. No fix applied; logged as RFR-009.
+- "850+ AI developers, 100+ PhDs" (lines 36-37) — likely from Borealis AI public site; no source cited. No fix applied; logged as RFR-010.
+
+---
+
+### 10.2 GTM-Strategy-v1.0.md — B-2 items resolved
+
+| Fix ID | Location | Problem | Action |
+|--------|----------|---------|--------|
+| FIX-005 | L185 | "institutional knowledge of internal processes and people" — explicit insider selection criterion | Replaced with "prior banking experience" |
+| FIX-006 | L186 | "hunting for AI-generated P&L use cases" — internal framing | Replaced with neutral mandate description |
+| FIX-007 | L189 | Verbatim Sid Paquette personal quote | Paraphrased without personal attribution |
+| FIX-008 | L194 | "needs demonstrable AI P&L by 2027" — internal performance target | Replaced with publicly supportable framing |
+| FIX-009 | L196 | "The Credit Management desk handles the fallout… I know what those conversations look like" — direct admission of role-specific insider knowledge used in product framing | Struck; replaced with approved post-separation framing |
+
+---
+
+### 10.3 BPI_C7_Component_Spec_v1.0_Part1.md and Part2.md — B-3 items resolved
+
+| Fix ID | Location | Problem | Action |
+|--------|----------|---------|--------|
+| FIX-010 | Part1.md:748-750 | `RBCCoreAdapter`, `CitiCoreAdapter`, `BNSCoreAdapter` in patent-adjacent spec | All renamed to `BankACoreAdapter`, `BankBCoreAdapter`, `BankCCoreAdapter` |
+| FIX-011 | Part2.md:689 | `CitiCoreAdapter`, `RBCCoreAdapter` in Section 18.2 | Renamed to `BankACoreAdapter`, `BankBCoreAdapter` |
+
+---
+
+### 10.4 Red-Flag Register entries added (Task 2.2)
+
+10 entries total (RFR-001 through RFR-010). Severities:
+- Critical: 3 (RFR-001, RFR-004, RFR-007)
+- High: 4 (RFR-002, RFR-003, RFR-005, RFR-006)
+- Medium: 1 (RFR-008)
+- Low: 2 (RFR-009, RFR-010)
+
+All Critical and High items resolved by fixes. Two Low items remain Open pending counsel verification of public source availability.
+
+**Red-Flag Register is LOCAL ONLY — not committed to git.**
+
+---
+
+### 10.5 Escalation assessment
+
+**No escalation triggered.** The most severe finding (RFR-007 — Credit Management desk admission in GTM-Strategy founder framing) is in a business strategy document, not in `lip/` patent-claim-critical code. Per the escalation criteria in the pre-lawyer review plan, escalation requires contamination in the `lip/` tree. This finding is serious for IP litigation risk but does not meet the technical escalation bar. Counsel briefing note: the removed sentences (RFR-004, RFR-007) are the most litigation-sensitive items found in the entire scan and should be addressed explicitly in the counsel session.
