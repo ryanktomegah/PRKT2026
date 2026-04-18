@@ -30,3 +30,7 @@ Categories:
 - [bear-case] Market bear-case.md populated: Master Index + META-01/META-02 cross-refs + B-MKT-01 through B-MKT-07. Drill linkage cross-checked.
 - [structural] Phase 4 complete — all three volumes (Technical, Patent, Market) fully populated with narrative + drill + bear-case.
 - [narrative] Master narrative 00-master-narrative.md written: braided pitch across all three volumes. Braid rule enforced (no topic monopolises more than 30 seconds without crossing).
+- [drill] Technical drill.md scaled from 24 → 50 questions (Phase 6 full load).
+- [drill] Patent drill.md scaled from 24 → 50 questions (Phase 6 full load). EPG-21 scrub re-verified.
+- [drill] Market drill.md scaled from 24 → 50 questions (Phase 6 full load). Every number traced to appendix-numbers.md.
+- [structural] Phase 6 complete — all three drill banks at full 50-question load (150 total).
