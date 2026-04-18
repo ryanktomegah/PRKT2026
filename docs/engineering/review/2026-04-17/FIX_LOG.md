@@ -146,7 +146,7 @@ Format per entry:
 - **Severity:** High
 - **Problem:** `docs/legal/patent/patent_claims_consolidated.md` lines 9–10 (original numbering) contained a block-quote attestation that explicitly named banned terms: "The terms AML, SAR, OFAC, PEP, money laundering, and tipping-off do not appear in these claims." Per EPG-21, no published patent document may contain any of these regulatory terms, including in self-compliance declarations.
 - **Fix:** Deleted the two-line banned-term name-drop sentence from the block-quote. Retained the opening line referencing the substitution table. Block-quote collapsed from 3 lines to 1.
-- **Commit:** (pending — backfill after commit)
+- **Commit:** 9bdc352
 - **Verification:** `grep -iP '\bAML\b|\bSAR\b|\bOFAC\b|\bPEP\b|money laundering|tipping-off' docs/legal/patent/patent_claims_consolidated.md` returns zero matches.
 
 ---
@@ -158,7 +158,7 @@ Format per entry:
 - **Fix:** Collapsed enumeration to canonical EPG-21 Item 4 pattern.
   - **Before:** `...comprises at least the following ISO 20022 rejection reason codes: RR01, RR02, RR03, RR04, DNOR, CNOR, AG01, and LEGL; wherein each code in the hold-type classification class independently triggers a hold-type classification outcome regardless of any other pipeline conditions.`
   - **After:** `...comprises at least a code in the non-bridgeable set defined in an internal taxonomy external to this claim, wherein each code in the hold-type classification class independently triggers a hold-type classification outcome regardless of any other pipeline conditions.`
-- **Commit:** (pending — backfill after commit)
+- **Commit:** 9bdc352
 - **Verification:** `grep -P '\b(DNOR|CNOR|RR02|RR03|RR04|AG01|LEGL)\b' docs/legal/patent/patent_claims_consolidated.md` returns zero matches. `grep -P '\bRR01\b' docs/legal/patent/patent_claims_consolidated.md` returns exactly 2 matches (CBDC normalization tables, lines 81 and 215 post-edit).
 
 ---
@@ -168,7 +168,7 @@ Format per entry:
 - **Severity:** High
 - **Problem:** `docs/legal/patent/patent_claims_consolidated.md` line 256 (original numbering) — Cross-Patent Notes section contained a self-attestation sentence: "No AML, SAR, OFAC, PEP, or money laundering language appears in any claim." This sentence (a) names banned terms, violating EPG-21, and (b) is a self-compliance declaration that is attorney's work, not claimant's work.
 - **Fix:** Replaced the paragraph with the operational note only. Removed the banned-term name-drop and the self-compliance attestation. Retained the substitution-table reference and the terminology-in-use note.
-- **Commit:** (pending — backfill after commit)
+- **Commit:** 9bdc352
 - **Verification:** `grep -iP '\bAML\b|\bSAR\b|\bOFAC\b|\bPEP\b|money laundering' docs/legal/patent/patent_claims_consolidated.md` returns zero matches.
 
 ---
@@ -178,7 +178,7 @@ Format per entry:
 - **Severity:** High
 - **Problem:** `docs/legal/patent/patent_claims_consolidated.md` line 260 (original numbering) — "What Is Deliberately Not Claimed" section contained: "The enumeration in Family 1 Dependent Claim 4 uses open 'comprising at least' language and covers only the hold-type class, not the hard-block class. The hard-block code list belongs in the specification description only." After FIX-015 collapsed the enumeration, this sentence is (a) factually false (no enumeration remains in the claim) and (b) a self-defending legal argument that does not belong in a claim document.
 - **Fix:** Replaced the stale/false rationale with: "The specific enumeration of ISO 20022 rejection codes that trigger a hold-type outcome is held in the internal taxonomy referenced by the claim, and is not disclosed in any independent or dependent claim." The leading EPG-21 sentence ("Per EPG-21: the specific enumeration…does not appear in any independent claim") was retained.
-- **Commit:** (pending — backfill after commit)
+- **Commit:** 9bdc352
 - **Verification:** No reference to Dependent Claim 4 enumeration in the "What Is Deliberately Not Claimed" section; replaced with taxonomy-reference sentence. Triggered by FIX-015.
 
 ---
