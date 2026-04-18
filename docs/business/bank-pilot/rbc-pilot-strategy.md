@@ -8,17 +8,17 @@
 
 ## 1. RBC Organisational Map (Post Sept 2024 Reorg)
 
-### Group Executive (reports to CEO Dave McKay)
+### Group Executive (reports to CEO Dave McKay [RBC 2024 Annual Report])
 
 | Name | Title | Relevance to LIP |
 |------|-------|-------------------|
-| **Derek Neldner** | CEO & Group Head, RBC Capital Markets | **HIGH** — Transaction Banking (institutional payments, clearing, custody) sits under Capital Markets |
-| **Sean Amato-Gauci** | Group Head, Commercial Banking | **MEDIUM** — commercial clients experience payment failures that LIP would bridge |
-| **Erica Nielsen** | Group Head, Personal Banking | **LOW** — retail-focused, not relevant to LIP |
-| **Neil McLaughlin** | Group Head, Wealth Management | **LOW** — not payments-related |
-| **Bruce Ross** | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
-| **Naim Kazmi** | Group Head, Technology & Operations | **MEDIUM** — infrastructure decisions, tech adoption |
-| **Sid Paquette** | Head, RBCx (venture arm) | **HIGH** — purpose-built to engage with fintechs, invests in B2B payments |
+| **Derek Neldner** [RBC IR site] | CEO & Group Head, RBC Capital Markets | **HIGH** — Transaction Banking (institutional payments, clearing, custody) sits under Capital Markets |
+| **Sean Amato-Gauci** [RBC IR site] | Group Head, Commercial Banking | **MEDIUM** — commercial clients experience payment failures that LIP would bridge |
+| **Erica Nielsen** [RBC IR site] | Group Head, Personal Banking | **LOW** — retail-focused, not relevant to LIP |
+| **Neil McLaughlin** [RBC IR site] | Group Head, Wealth Management | **LOW** — not payments-related |
+| **Bruce Ross** [LinkedIn] | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
+| **Naim Kazmi** [RBC IR site] | Group Head, Technology & Operations | **MEDIUM** — infrastructure decisions, tech adoption |
+| **Sid Paquette** [rbcx.com] | Head, RBCx (venture arm) | **HIGH** — purpose-built to engage with fintechs, invests in B2B payments |
 
 ### Transaction Banking (under Capital Markets)
 
@@ -28,16 +28,16 @@ This is the business unit that actually handles institutional cross-border payme
 - Correspondent banking relationships
 - Trade finance
 
-RBC is the **#1 clearer for CAD payments** and has won multiple awards for treasury and cash management innovation.
+RBC is the **#1 clearer for CAD payments** [RBC 2024 Annual Report] and has won multiple awards for treasury and cash management innovation.
 
 ### RBC Borealis AI
 
-- AI research institute with labs in **Toronto, Montreal, Waterloo, and Vancouver**
-- 850+ AI developers and data engineers, 100+ PhDs
+- AI research institute with labs in **Toronto, Montreal, Waterloo, and Vancouver** [Borealis AI website]
+- 850+ AI developers and data engineers, 100+ PhDs [Borealis AI website]
 - Vancouver lab exists — relevant for local relationship building
-- Ranked **#1 in Canada, #3 globally** for AI maturity (2025 Evident AI Index)
-- Partnerships: MIT FinTechAI@CSAIL, Vector Institute, Cohere, Databricks
-- Focus areas: AI explainability, bias mitigation, financial crime prevention, responsible AI
+- Ranked **#1 in Canada, #3 globally** for AI maturity [Evident AI Index 2025]
+- Partnerships: MIT FinTechAI@CSAIL, Vector Institute, Cohere, Databricks [Borealis AI website]
+- Focus areas: AI explainability, bias mitigation, financial crime prevention, responsible AI [Borealis AI website]
 
 ### RBCx (Venture Arm)
 

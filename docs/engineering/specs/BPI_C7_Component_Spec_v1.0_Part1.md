@@ -749,7 +749,13 @@ Implementations (one per bank deployment):
   BankBCoreAdapter       — implements CoreBankingAdapter for Bank B
   BankCCoreAdapter       — implements CoreBankingAdapter for Bank C
   [etc. — one per pilot bank]
+```
 
+> **Note:** BankA / BankB / BankC are illustrative placeholders. No specific
+> institution is contemplated by these names — any ISO-20022-speaking
+> correspondent bank can be integrated via a CoreBankingAdapter subclass.
+
+```
 Adapter selection: Kubernetes ConfigMap "bank_id" variable
   C7 loads the correct adapter at startup based on bank_id.
   No code changes required for new bank deployment — only a new adapter
