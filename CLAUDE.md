@@ -189,6 +189,7 @@ to calibrate compliance-hold resolution time expectations.
 - Never derive governing law from payment currency — use the enrolled BIC's country code (chars 4–5). Currency is wrong for cross-border correspondent banking. (EPG-14 rule)
 - Always run `ruff check lip/` before committing
 - Always run `python -m pytest lip/tests/` before committing
+- Dispatch subagents **sequentially, one at a time** — never 3+ in parallel for non-trivial tasks. Parallel dispatch on one session burns through the per-window token quota fast, and the most common failure mode is: subagents finish their writes successfully but all hit the rate limit at the commit step, leaving the repo with uncommitted changes on disk. Go one-by-one; let each commit+push land before dispatching the next. If tight parallelism is strictly necessary, keep per-agent work small *and* plan for the controller to finish commits if any subagent rate-limits out.
 - test_e2e_pipeline.py uses in-memory mocks — no live Redis/Kafka required; safe to run locally
 
 ## Test Suite Notes
