@@ -136,5 +136,5 @@ Format per entry:
 - **Severity:** Low
 - **Problem:** Code-quality re-review flagged two defects: (1) blockquote sentence-split in `docs/engineering/specs/BPI_C7_Component_Spec_v1.0_Part2.md` §18.2 — a prior fix had pulled "The adapter layer carries integration" inside the `>` continuation lines while "risk that does not resolve until pilot onboarding." dangled as a loose fragment below the blockquote, rendering as a broken separate paragraph; (2) LinkedIn citation for Bruce Ross in `docs/business/bank-pilot/rbc-pilot-strategy.md` was opaque about why LinkedIn was used instead of the 2024 Annual Report, leaving reader uncertain about source weight.
 - **Fix:** (1) Restructured Part2 blockquote placement using Option A — sentence restored whole before the blockquote; blockquote placed on its own break between the paragraph and the Mitigation block, with no continuation lines trailing into prose. (2) Annotated LinkedIn citation as `[LinkedIn — role formed Feb 2026, post-dates 2024 Annual Report]` to make the source-weight choice transparent.
-- **Commit:** TBD
+- **Commit:** cfa337b
 - **Verification:** Both issues manually re-read in rendered Markdown preview; no `>` prefix missing on any continuation line; no stray sentence fragments dangle.
