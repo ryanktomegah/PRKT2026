@@ -198,5 +198,5 @@ Format per entry:
 - **Severity:** Low
 - **Problem:** `docs/legal/patent/patent_claims_consolidated.md` line 40 — Dependent Claim 4 heading read `### Dependent Claim 4 — Hold-Type Code Enumeration (Open)`. After FIX-015 collapsed the enumeration, the heading misdescribed the claim body (no enumeration remained). Surfaced by Task 3.3 code-quality reviewer as a pre-counsel-session cleanliness item.
 - **Fix:** Heading renamed to `### Dependent Claim 4 — Hold-Type Classification Gate`. Accurately describes the gate-structure claim; avoids the distracting opening question at counsel session about a claim headed "Enumeration" containing no enumeration.
-- **Commit:** (pending — backfill after commit)
+- **Commit:** c9f63bd
 - **Verification:** `grep -n "Dependent Claim 4" docs/legal/patent/patent_claims_consolidated.md` returns the new heading only; no residual "Enumeration (Open)" language.
