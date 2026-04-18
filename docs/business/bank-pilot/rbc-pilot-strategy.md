@@ -14,7 +14,7 @@
 |------|-------|-------------------|
 | **Derek Neldner** | CEO & Group Head, RBC Capital Markets | **HIGH** — Transaction Banking (institutional payments, clearing, custody) sits under Capital Markets |
 | **Sean Amato-Gauci** | Group Head, Commercial Banking | **MEDIUM** — commercial clients experience payment failures that LIP would bridge |
-| **Erica Nielsen** | Group Head, Personal Banking | **LOW** — your former division, retail-focused, not relevant to LIP |
+| **Erica Nielsen** | Group Head, Personal Banking | **LOW** — retail-focused, not relevant to LIP |
 | **Neil McLaughlin** | Group Head, Wealth Management | **LOW** — not payments-related |
 | **Bruce Ross** | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
 | **Naim Kazmi** | Group Head, Technology & Operations | **MEDIUM** — infrastructure decisions, tech adoption |
