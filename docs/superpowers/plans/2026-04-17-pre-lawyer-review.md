@@ -534,6 +534,28 @@ git commit -m "fix(patent): apply EPG-21 language scrub to publishable docs"
 
 ## Day 4 — AI-Agent Contribution Inventory
 
+### Prerequisites (Day 4)
+
+Before running any dump or analysis:
+
+- **Enumerate AI-agent author emails first.** Don't trust the author patterns in the commands below — verify against the actual history:
+  ```bash
+  git log --all --pretty='%ae' | sort -u | grep -iE 'anthropic|copilot|github|bot'
+  ```
+  As of 2026-04-18 the canonical set is:
+  - Claude: `noreply@anthropic.com`
+  - Copilot: `198982749+Copilot@users.noreply.github.com` (the bare string `Copilot` does NOT match any author email)
+  - GitHub Actions bot: `41898282+github-actions[bot]@users.noreply.github.com`
+  If the enumeration surfaces an AI-agent address not in this list (e.g. a per-model Claude address, a forgotten bot), **STOP** and ask the controller whether to include it before committing.
+
+- **Author email (`%ae`), not committer email (`%ce`).** Some AI-authored commits carry a human committer but an AI author (or vice versa). Thaler attribution follows author, not committer.
+
+- **Raw log, not mailmap.** The `.mailmap` at commit `153e398` consolidated human contributor identities. Use `--use-mailmap` where human dedup matters; for AI-agent attribution use raw `git log` (no `--use-mailmap`) so AI authorship is not masked by a mailmap re-attribution to a human.
+
+- **Dump cutoff semantics.** Tasks 4.1 and 4.2's own commits are *not* part of the Day 4 inventory. Run the dump against the state of the branch at Day 4 start (i.e., HEAD before Task 4.1's commit). If the dump needs to be regenerated after Day 4 commits land, exclude them explicitly.
+
+- **Paper-trail search locations for Stop Condition #2 (Task 4.2).** Before concluding a claim-critical AI-authored commit has "no human-prompt paper trail," check all of: (a) prior commits by the user (Ryan) on the same files, (b) `docs/superpowers/plans/` and `docs/superpowers/specs/`, (c) CLAUDE.md rule invocations referenced in commit bodies, (d) PR description or linked issue, (e) the commit body itself for a `Co-Authored-By: ryanktomegah` or `Directed-By:` trailer. Absence across all five = live Thaler risk; missing from some but present in others = documented direction.
+
 ### Task 4.1: Dump AI-authored commits per agent
 
 **Files:**
@@ -543,26 +565,33 @@ git commit -m "fix(patent): apply EPG-21 language scrub to publishable docs"
 
 - [ ] **Step 1: Dump Claude commits with file changes**
 
-Run:
+Run (note: raw log — no `--use-mailmap`):
 ```bash
 git log --all --author='noreply@anthropic.com' --format='%H|%ai|%s' --numstat > docs/engineering/review/2026-04-17/week-1-ip-timing/ai-commits-claude-raw.txt
 ```
 
-Parse into CSV with columns: commit_hash, date, subject, files_changed, insertions, deletions.
+Parse into CSV with columns: `commit_hash, date, subject, files_changed, insertions, deletions`. Parsing notes:
+- `%numstat` emits one tab-separated line per file per commit, with blank-line separators between commits.
+- Binary files render as `-\t-\t<path>` — treat insertions/deletions as `0` (or `NULL`) for the per-commit totals, and record the path in `files_changed`.
+- Merge commits with no file delta produce a header line with no numstat rows — include them with `files_changed=0, insertions=0, deletions=0` so the CSV row count equals the commit count.
 
 - [ ] **Step 2: Same for Copilot**
 
 Run:
 ```bash
-git log --all --author='Copilot' --format='%H|%ai|%s' --numstat > docs/engineering/review/2026-04-17/week-1-ip-timing/ai-commits-copilot-raw.txt
+git log --all --author='198982749+Copilot@users.noreply.github.com' --format='%H|%ai|%s' --numstat > docs/engineering/review/2026-04-17/week-1-ip-timing/ai-commits-copilot-raw.txt
 ```
+
+If this returns empty, double-check by re-running the enumeration from the Prerequisites block — the bare string `Copilot` does NOT match any author email in this repo, so a non-empty result requires the `198982749+` prefix.
 
 - [ ] **Step 3: Same for github-actions bot**
 
 Run:
 ```bash
-git log --all --author='github-actions' --format='%H|%ai|%s' --numstat > docs/engineering/review/2026-04-17/week-1-ip-timing/ai-commits-gha-raw.txt
+git log --all --author='41898282+github-actions\[bot\]@users.noreply.github.com' --format='%H|%ai|%s' --numstat > docs/engineering/review/2026-04-17/week-1-ip-timing/ai-commits-gha-raw.txt
 ```
+
+(Square brackets in the email are regex metacharacters — escape as shown, or use `--author='github-actions\[bot\]'` as a shorter equivalent.)
 
 - [ ] **Step 4: Commit raw dumps**
 
@@ -589,20 +618,31 @@ Sort commits modifying files in `lip/c1_*`, `lip/c2_*`, `lip/c3_*`, `lip/c4_*`, 
 
 - [ ] **Step 2: Load current patent claims**
 
-Read `docs/legal/patent/` publishable materials. Extract the claim elements (1st/2nd step classification + conditional offer, B1/B2 sub-classification, thin-file PD, etc.).
+Read the canonical claims file: **`docs/legal/patent/patent_claims_consolidated.md`** (do NOT infer from the directory — the inventorship matrix must map to the post-EPG-21-scrub claim text, which is scoped to this file).
+
+Also cross-reference the other Publishable patent docs classified in commit `9f4e0c1` if they contain claim elements not in the consolidated file — but `patent_claims_consolidated.md` is the authoritative source for the matrix.
+
+Extract the claim elements (1st/2nd step classification + conditional offer, B1/B2 sub-classification, thin-file PD, etc.). Where the post-scrub claim text has been softened (e.g., "internal taxonomy external to this claim" per Day 3 §112(b) carry-forward), map to the post-scrub wording so the matrix reflects what would actually be filed.
 
 - [ ] **Step 3: Map claim elements to commits**
 
 For each claim element, identify:
 - The commits that introduce the implementation
-- Author of each (human vs. AI agent)
+- Author of each (human vs. AI agent) — use `%ae` from raw log, not mailmap-resolved identity
 - Whether the creative step (novel logic) is human-authored
+- **Time dimension:** the SHA and author of the *last substantive human edit* to the claim-critical file(s) touching that element. "Substantive" excludes formatting, rename-only commits, and lint fixes. An AI-authored element that has been substantively rewritten by a human since its introduction is materially less Thaler-exposed than one still in its AI-authored form.
 
-Table columns: claim element | file(s) | first-introducing commit | author | creative-step author | Thaler risk (Y/N)
+Table columns: `claim element | file(s) | first-introducing commit | author | creative-step author | last_human_substantive_edit_sha | last_human_substantive_edit_author | Thaler risk (Y/N)`
+
+Before marking Thaler risk = Y, apply the paper-trail search from the Day 4 Prerequisites block (five locations: user's prior commits on same files, plans/, specs/, CLAUDE.md invocations in commit bodies, PR/issue links, Co-Authored-By trailer). Record which locations were checked in a short note column or footnote.
 
 - [ ] **Step 4: Flag Thaler-risk claims**
 
-Per Thaler v. Vidal (2022), natural-person inventorship required. Any claim element where the creative step appears AI-authored is a risk. List remediation: rewrite under human direction with documented prompt/commit trail.
+Per Thaler v. Vidal (2022), natural-person inventorship required. Any claim element where the creative step appears AI-authored **AND** the paper-trail search in Step 3 found no human direction **AND** there has been no substantive human edit since introduction is a live Thaler risk.
+
+If any of those three conditions is *not* met (creative step is human, direction trail exists, or a substantive human rewrite has occurred), note the mitigating factor in the matrix but do not mark Thaler risk = Y.
+
+List remediation for confirmed risks: rewrite under human direction with documented prompt/commit trail — this is a legal-evidence recording task for counsel, not a code rewrite for today.
 
 - [ ] **Step 5: Write `inventorship-matrix.md`**
 
