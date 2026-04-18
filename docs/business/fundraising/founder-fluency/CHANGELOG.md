@@ -34,3 +34,4 @@ Categories:
 - [drill] Patent drill.md scaled from 24 → 50 questions (Phase 6 full load). EPG-21 scrub re-verified.
 - [drill] Market drill.md scaled from 24 → 50 questions (Phase 6 full load). Every number traced to appendix-numbers.md.
 - [structural] Phase 6 complete — all three drill banks at full 50-question load (150 total).
+- [bear-case] Patent bear-case.md — added Cross-volume META references block at top: META-02 and META-03 handoff language added so the Patent thread doesn't dead-end when investors chain into traffic / founder-credibility questions. Closes final-review gap flagged in Phase 6 review.

@@ -2,6 +2,13 @@
 
 **How to read this file:** Each entry names a real weakness, writes an honest structured answer, and flags the don't-say traps. Master Index ranks entries by `(likelihood of being asked) × (severity if fumbled)`. META-01 is the single most important entry in the entire Playbook. Spend 50% of drill time on META-01 and B-PAT-01.
 
+## Cross-volume META references
+
+META-01 is owned in this file (below). Two sister-META questions routinely chain off the patent thread in real investor cross-examination and must be handled without losing tempo:
+
+- **META-02 (No production traffic yet)** — master entry in `01-technical-depth/bear-case.md`. Relevant here because investors who doubt the patent will pivot to "how do you defend an IP position you haven't reduced to practice?" — the answer lives in the Technical volume (pilot sequencing + first-live-UETR milestone), but the patent narrative must hand off cleanly rather than re-argue it. When the drill chain is Patent → META-02, say: *"The reduction-to-practice question is real. The answer is the pilot pipeline — covered in the Technical bear-case. The patent position is independent of production volume because the claim is on the mechanism, not on traffic."*
+- **META-03 (Non-technical founder)** — master entry in `01-technical-depth/bear-case.md`. Relevant here because "patent strength" in an investor's mental model is often fused with "founder can defend it in deposition." The handoff: *"I am the named inventor; my counsel, not me, will defend the claim language in prosecution and litigation. The patent doesn't require me to be the technical author of every line — it requires me to be the person who conceived the mechanism, which I am, on a documented timeline that pre-dates RBC employment (META-01)."* The three METAs braid: META-01 establishes conception timeline, META-02 shows the path to reduction-to-practice, META-03 scopes what the founder personally carries vs. what counsel and the team carry.
+
 ## Master Index
 
 | Rank | ID | Weakness | Resolution event |
