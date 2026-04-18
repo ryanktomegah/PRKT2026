@@ -37,7 +37,7 @@ The computer-implemented method of claim 2, further comprising enforcing a defen
 
 wherein the ISO 20022 rejection reason code evaluated at both the primary and secondary gating layers is first normalized from a proprietary payment rail rejection code — from at least one of a FedNow rail, an RTP rail, a SEPA rail, or a CBDC rail — into a canonical ISO 20022 rejection reason code by a streaming normalization component, and the normalized code is used uniformly by both layers.
 
-### Dependent Claim 4 — Hold-Type Code Enumeration (Open)
+### Dependent Claim 4 — Hold-Type Classification Gate
 
 The computer-implemented method of claim 2, wherein the hold-type classification class comprises at least a code in the non-bridgeable set defined in an internal taxonomy external to this claim, wherein each code in the hold-type classification class independently triggers a hold-type classification outcome regardless of any other pipeline conditions.
 

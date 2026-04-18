@@ -190,3 +190,13 @@ Format per entry:
 - **Fix:** No edit applied. INTENTIONALLY RETAINED. Rationale: these occurrences are functional ISO-code mappings in CBDC normalization mechanism descriptions (`CBDC-KYC01 to RR01`), not BLOCK-code enumerations in claim bodies. EPG-21 scope targets claim-body enumerations of BLOCK codes as a circumvention roadmap; single-code appearances in technical mechanism descriptions are not in scope.
 - **Commit:** no commit — decision record only
 - **Verification:** Flag for counsel confirmation during lawyer session. Counsel should confirm whether RR01 appearances in CBDC normalization tables are acceptable or should be obfuscated further.
+
+---
+
+## FIX-019 — 2026-04-18
+
+- **Severity:** Low
+- **Problem:** `docs/legal/patent/patent_claims_consolidated.md` line 40 — Dependent Claim 4 heading read `### Dependent Claim 4 — Hold-Type Code Enumeration (Open)`. After FIX-015 collapsed the enumeration, the heading misdescribed the claim body (no enumeration remained). Surfaced by Task 3.3 code-quality reviewer as a pre-counsel-session cleanliness item.
+- **Fix:** Heading renamed to `### Dependent Claim 4 — Hold-Type Classification Gate`. Accurately describes the gate-structure claim; avoids the distracting opening question at counsel session about a claim headed "Enumeration" containing no enumeration.
+- **Commit:** (pending — backfill after commit)
+- **Verification:** `grep -n "Dependent Claim 4" docs/legal/patent/patent_claims_consolidated.md` returns the new heading only; no residual "Enumeration (Open)" language.
