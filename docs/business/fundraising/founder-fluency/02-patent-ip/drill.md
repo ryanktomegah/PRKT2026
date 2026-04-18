@@ -462,3 +462,502 @@ The 70% rejection rate concentrates on abstract financial result claims. LIP's �
 - ❌ "Our attorneys believe we'll survive Alice"
 
 **Bear-case pointer:** B-PAT-05
+
+---
+
+## Warm Tier (extension) — Q-PAT-25 through Q-PAT-32
+
+### Q-PAT-25 · Generalist VC · Warm
+**Question:** "Walk me through what a 'claim' actually is."
+
+**Gold-standard answer** (30-second spoken):
+A claim is the legal boundary of what the patent blocks. Independent Claim 1 is the outermost fence — the two-step classification + conditional offer mechanism. Dependent claims narrow inside that fence — Claim D4 adds the B1/B2 sub-classification gate, Claim D5 adds the Tier 2/3 private-counterparty extension. Five independents, thirteen dependents. Infringement is tested element-by-element against an independent claim. Everything else — drawings, specification, abstract — supports the claims but does not extend them.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Tier 2/3 private-counterparty extension
+
+**Don't-say-this traps:**
+- ❌ "A claim is what the patent protects in general"
+- ❌ "The more claims you have, the stronger the patent"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-26 · Generalist VC · Warm
+**Question:** "What's the difference between a provisional and a non-provisional?"
+
+**Gold-standard answer** (30-second spoken):
+A provisional establishes the priority date — PFD. It is never examined, never published, never enforceable. A non-provisional is the real application — examined by the USPTO, published at eighteen months, granted as enforceable claims. The non-provisional filing milestone is PFD + 12 months — hard deadline. Missing it destroys the priority date. The provisional is a twelve-month placeholder. The non-provisional converts placeholder into enforceable claims across the five-patent-family architecture.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "A provisional is basically the same as a non-provisional"
+- ❌ "We filed a provisional so we're patented"
+
+**Bear-case pointer:** B-PAT-02
+
+---
+
+### Q-PAT-27 · Fintech Specialist · Warm
+**Question:** "How does the patent interact with the software licence?"
+
+**Gold-standard answer** (30-second spoken):
+The software licence transfers code access; the patent licence transfers the right to practise the two-step classification + conditional offer mechanism. Both are granted together in the Phase 1 pilot contract — a bank cannot deploy the software without also practising the method, so both licences run in parallel. Phase 1 royalty is thirty percent (30%) of fees. The non-provisional filing milestone converts provisional protection into granted claims during the first pilot year. The Tier 2/3 private-counterparty extension is co-licensed.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- non-provisional filing milestone
+- Tier 2/3 private-counterparty extension
+
+**Don't-say-this traps:**
+- ❌ "Banks only need the software licence — the patent is background"
+- ❌ "We'll figure out the licensing structure when the patent grants"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-28 · Fintech Specialist · Warm
+**Question:** "Do you file in the US first, then internationally?"
+
+**Gold-standard answer** (30-second spoken):
+Yes. Provisional files in the United States — PFD. Non-provisional at PFD + 12 months is the non-provisional filing milestone in the US. Then PCT at PFD + 18 months — Patent Cooperation Treaty filing covers United States, Canada, European Patent Office, Singapore, and UAE through a single application. National phase entries follow at approximately thirty months. The five-patent-family architecture extends through continuations in each jurisdiction. Total portfolio under two hundred thousand dollars ($200,000).
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "We'll file in every country individually"
+- ❌ "PCT means the patent is granted globally"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-29 · Bank-strategic · Warm
+**Question:** "What does the licensee own once the contract closes?"
+
+**Gold-standard answer** (30-second spoken):
+The licensee owns an exclusive right — per jurisdiction and per tier — to practise the two-step classification + conditional offer mechanism and the Tier 2/3 private-counterparty extension inside its deployment. Ownership of the patent stays with Bridgepoint Intelligence Inc. The licensee cannot sub-licence or transfer. The five-patent-family architecture means each continuation is separately licensable at renewal. Exclusivity protects the pilot bank against competitors replicating the method in-region.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Tier 2/3 private-counterparty extension
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "The licensee owns the patent while the contract runs"
+- ❌ "It's essentially a joint ownership structure"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-30 · Bank-strategic · Warm
+**Question:** "What happens to the licence if a later continuation narrows scope?"
+
+**Gold-standard answer** (30-second spoken):
+The licence attaches to the claims as granted and as continued. Every continuation under 35 U.S.C. § 120 inherits the PFD priority date. The five-patent-family architecture means Families 2 through 5 produce new continuations whose claims extend the licensee's rights forward at no additional filing cost. Narrowing in one continuation does not shrink the licence granted in another — each family is independently enforceable. The non-provisional filing milestone locks the initial scope.
+
+**Anchors this answer must touch:**
+- five-patent-family architecture
+- non-provisional filing milestone
+
+**Don't-say-this traps:**
+- ❌ "Narrowing in one patent shrinks the whole licence"
+- ❌ "Continuations are speculative — we'll see what gets granted"
+
+**Bear-case pointer:** B-PAT-04
+
+---
+
+### Q-PAT-31 · Adversarial · Warm
+**Question:** "What is a 'priority date' and why do I care?"
+
+**Gold-standard answer** (30-second spoken):
+Priority date — PFD — is the legal timestamp at which the invention is measured against prior art. Any reference published or filed after PFD cannot invalidate the claim. The provisional establishes PFD. The non-provisional filing milestone at PFD + 12 months inherits PFD. Every continuation in the five-patent-family architecture inherits PFD. Investors care because PFD fixes the moat date — the earlier the PFD, the more of the competitive landscape is behind us, not ahead.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "Priority date is when the patent issues"
+- ❌ "It's a technical legal detail — not material"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-32 · Adversarial · Warm
+**Question:** "Why not just keep it a trade secret?"
+
+**Gold-standard answer** (30-second spoken):
+Trade secret fails at pilot launch. The two-step classification + conditional offer mechanism runs inside the bank's environment — the bank's engineers see the taxonomy, the gate, the bridgeability flag. Independent reinvention by a competitor destroys the secret; patent law does not. Granted claims under the five-patent-family architecture give exclusivity for twenty years per jurisdiction, regardless of who reinvents. Alice-clean anchoring keeps the claims eligible. Trade secret layers on top — Damodaran tables and Altman weights stay proprietary — but the core mechanism must be patented.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- five-patent-family architecture
+- Alice-clean anchoring
+
+**Don't-say-this traps:**
+- ❌ "Trade secret is stronger than patents for software"
+- ❌ "We considered it but patents are better"
+
+**Bear-case pointer:** None
+
+---
+
+## Probing Tier (extension) — Q-PAT-33 through Q-PAT-40
+
+### Q-PAT-33 · Generalist VC · Probing
+**Question:** "Walk me through a claim chart against JPMorgan's patent."
+
+**Gold-standard answer** (30-second spoken):
+Claim 1 has five elements. Element one: receive an ISO 20022 rejection code — US7089207B1 has no payment-network trigger, does not map. Element two: three-class taxonomy — US7089207B1 has no taxonomy. Element three: pipeline short-circuit on hold-type — absent. Element four: conditional offer generation — US7089207B1 outputs a credit spread, not a conditional loan offer. Element five: Tier 2/3 private-counterparty extension via Damodaran and Altman Z' — structurally incompatible with the listed-company model. Zero of five elements map. Novel.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Tier 2/3 private-counterparty extension
+
+**Don't-say-this traps:**
+- ❌ "The claim chart is something our attorneys handle"
+- ❌ "JPMorgan's patent is completely different on its face"
+
+**Bear-case pointer:** B-PAT-01
+
+---
+
+### Q-PAT-34 · Generalist VC · Probing
+**Question:** "How do continuations actually extend value — isn't the priority date frozen?"
+
+**Gold-standard answer** (30-second spoken):
+The priority date — PFD — is frozen for subject matter disclosed in the provisional. Continuations under 35 U.S.C. § 120 inherit PFD while adding new claims over embodiments disclosed but not originally claimed. The five-patent-family architecture discloses five families in the provisional specification — Family 1 core, then multi-rail, dispute classifier, federated learning, CBDC normalization. Each continuation picks up one family, inheriting PFD. No incremental filing cost. Coverage extends approximately thirty-two years from the foundational filing through the continuation chain.
+
+**Anchors this answer must touch:**
+- five-patent-family architecture
+- non-provisional filing milestone
+
+**Don't-say-this traps:**
+- ❌ "Continuations reset the priority date"
+- ❌ "We can claim new inventions in continuations"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-35 · Fintech Specialist · Probing
+**Question:** "PCT filing — talk me through the mechanics and why those five jurisdictions."
+
+**Gold-standard answer** (30-second spoken):
+PCT is one application under the Patent Cooperation Treaty — filed at PFD + 18 months, preserving priority across signatory states for the national phase at approximately thirty months. Five jurisdictions: United States (core licence market), Canada (founder jurisdiction, RBC pilot), European Patent Office (DORA bank coverage), Singapore (Asia-Pacific correspondent hub), UAE (Gulf corridor). Each aligns to the Tier 2/3 private-counterparty extension market. The five-patent-family architecture continues within each jurisdiction post-national-phase. Cost fifty to eighty thousand dollars ($50K–$80K) for PCT plus national entries.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+- Tier 2/3 private-counterparty extension
+
+**Don't-say-this traps:**
+- ❌ "PCT is a global patent"
+- ❌ "We picked jurisdictions based on where we might expand"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-36 · Fintech Specialist · Probing
+**Question:** "How does the B1/B2 sub-classification in Claim D4 actually work given EPG-21 scrub?"
+
+**Gold-standard answer** (30-second spoken):
+Claim D4 covers a hold-type sub-classification gate: procedural hold versus investigatory hold. Procedural hold — B1 — is bridgeable if the counterparty bank certifies the bridgeability flag; investigatory hold — B2 — is not. The claim recites the gate and the sub-classification output; it does not enumerate which codes fall where. EPG-21 language keeps the specification code-list-free — the claim is the mechanism, not the contents. That is the two-step classification + conditional offer mechanism with sub-classification depth.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+
+**Don't-say-this traps:**
+- ❌ "D4 lists which codes are bridgeable"
+- ❌ "B2 covers suspicious activity holds"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-37 · Bank-strategic · Probing
+**Question:** "If a competitor files a continuation after ours and the examiner sees both, who wins?"
+
+**Gold-standard answer** (30-second spoken):
+Priority date decides. Our PFD predates any competitor filing submitted after the provisional. A later-filed continuation — theirs or ours — inherits its own priority date, which remains behind PFD. The examiner cites our provisional as prior art against their later filing. The five-patent-family architecture extends our PFD across all five families. The non-provisional filing milestone fixes the enforceable date. A competitor entering the space after PFD cannot claim novelty over subject matter our provisional discloses.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "Whoever has a granted patent first wins"
+- ❌ "It depends on how aggressive the examiner is"
+
+**Bear-case pointer:** B-PAT-06
+
+---
+
+### Q-PAT-38 · Bank-strategic · Probing
+**Question:** "What happens if Canada grants but the EPO rejects?"
+
+**Gold-standard answer** (30-second spoken):
+Each jurisdiction is independent. A Canadian grant gives enforceable claims in Canada — the RBC pilot runs there. An EPO rejection can be appealed, amended, or divided into per-country national filings. The five-patent-family architecture means a Family 1 rejection in one region does not bind Families 2 through 5. The non-provisional filing milestone and PCT national phases produce parallel prosecutions, not a single global outcome. The Tier 2/3 private-counterparty extension is claimable in every jurisdiction separately.
+
+**Anchors this answer must touch:**
+- five-patent-family architecture
+- non-provisional filing milestone
+- Tier 2/3 private-counterparty extension
+
+**Don't-say-this traps:**
+- ❌ "If the EPO rejects, we lose Europe"
+- ❌ "One rejection tanks the whole portfolio"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-39 · Adversarial · Probing
+**Question:** "Your claim 1 uses 'comprising at least' — isn't that vague enough to get struck down for indefiniteness?"
+
+**Gold-standard answer** (30-second spoken):
+"Comprising at least" is open-transition language — standard patent drafting under 35 U.S.C. § 112. It broadens scope without creating indefiniteness because the claim still recites specific structural elements: the ISO 20022 rejection receipt, the three-class taxonomy, the hold-type class, the pipeline short-circuit, the conditional offer output. Specific elements with open transitions is precisely the form *Enfish* and *McRO* found eligible — that is the Alice-clean anchoring. Indefiniteness rejections target functional claims with no structural limits; Claim 1 has structural limits throughout.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Alice-clean anchoring
+
+**Don't-say-this traps:**
+- ❌ "Our attorneys chose the language carefully"
+- ❌ "Open-transition language is a standard trick"
+
+**Bear-case pointer:** B-PAT-05
+
+---
+
+### Q-PAT-40 · Adversarial · Probing
+**Question:** "What's the invalidity art you're most worried about that you haven't found yet?"
+
+**Gold-standard answer** (30-second spoken):
+Unpublished applications inside the eighteen-month secrecy window. We cannot see them. The FTO opinion calendared before pilot launch quantifies that exposure. Known landscape: US7089207B1 and US11532040B2 — neither teaches all five elements of Claim 1. The five-patent-family architecture spreads risk across families; a hit against one does not destroy the portfolio. The non-provisional filing milestone converts provisional protection into a contested record, not a silent one. Honest answer: secrecy-window applications are the irreducible risk.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+- two-step classification + conditional offer mechanism
+
+**Don't-say-this traps:**
+- ❌ "We've searched everything — there's nothing out there"
+- ❌ "Invalidity art is a theoretical risk"
+
+**Bear-case pointer:** B-PAT-06
+
+---
+
+## Adversarial Tier (extension) — Q-PAT-41 through Q-PAT-46
+
+### Q-PAT-41 · Generalist VC · Adversarial
+**Question:** "A competitor spends six months and builds a classification that uses four classes instead of three. They walk around your claim. Argue."
+
+**Gold-standard answer** (30-second spoken):
+Claim 1 recites "classifying against a taxonomy comprising at least" a hold-type class causing pipeline short-circuit. Four classes still comprise at least one hold-type class — the open transition covers it. The two-step classification + conditional offer mechanism is the gate plus the conditional output, not the count of classes. Designing around requires eliminating the hold-type short-circuit entirely, which breaks the bridgeability logic. The five-patent-family architecture still forces design-around of Families 2 through 5. Six months produces infringement, not a walk-around.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "A competitor adding classes still looks like us"
+- ❌ "The claim is broad enough to catch anything"
+
+**Bear-case pointer:** B-PAT-04
+
+---
+
+### Q-PAT-42 · Fintech Specialist · Adversarial
+**Question:** "A patent troll buys US11532040B2 from Bottomline and sues you. What's the defence?"
+
+**Gold-standard answer** (30-second spoken):
+Three defences in order. Non-infringement: US11532040B2 claims aggregate forecasting; the two-step classification + conditional offer mechanism operates per-UETR on a pacs.002 rejection — different trigger, different scope. Invalidity: if asserted broadly, *Enfish*/*McRO* invalidity arguments apply — that is Alice-clean anchoring. Design-around cost: if both fail, the five-patent-family architecture isolates damages to Family 1. Freedom-to-operate opinion is on file pre-pilot — counsel has already mapped Bottomline's claims element-by-element. Trolls pursue settlements; a documented non-infringement record raises their cost above settlement value.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Alice-clean anchoring
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "Patent trolls are a generic risk — nothing to do"
+- ❌ "We'd counter-sue"
+
+**Bear-case pointer:** B-PAT-06
+
+---
+
+### Q-PAT-43 · Bank-strategic · Adversarial
+**Question:** "Our in-house counsel will file an IPR against your patent the day it grants. How do you survive?"
+
+**Gold-standard answer** (30-second spoken):
+Inter partes review tests prior art. Our non-provisional filing milestone lands with a prior-art record already built — US7089207B1, US11532040B2, and the §103 combination analysis are in the file. None teach all five elements of Claim 1. The two-step classification + conditional offer mechanism and the Tier 2/3 private-counterparty extension are independently novel. The five-patent-family architecture means an IPR targeting Family 1 does not touch Families 2 through 5. Alice-clean anchoring is the §101 defence, separate from IPR. An IPR is an expected cost, not an existential risk.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- two-step classification + conditional offer mechanism
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "IPRs are rare — it won't happen"
+- ❌ "We'll cross that bridge when the bank files"
+
+**Bear-case pointer:** B-PAT-01
+
+---
+
+### Q-PAT-44 · Adversarial · Adversarial
+**Question:** "Design-arounds are trivial. Name one non-obvious design-around you've ruled out."
+
+**Gold-standard answer** (30-second spoken):
+Offer-first, classify-after: generate a loan offer on every pacs.002 and retract if the classification returns hold-type. Ruled out — Claim 1 reads on any system that gates the offer on classification output, and retraction is still gating. Second: classify without a hold-type class — eliminates the pipeline short-circuit, which is the safety mechanism that keeps procedural holds from becoming investigatory-hold bridge loans. Architecturally dangerous. That is why the two-step classification + conditional offer mechanism is non-trivial to design around. The five-patent-family architecture compounds the cost.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "Most design-arounds have been ruled out"
+- ❌ "Design-around is always possible but expensive"
+
+**Bear-case pointer:** None
+
+---
+
+### Q-PAT-45 · Generalist VC · Adversarial
+**Question:** "Your invalidity art section cites only two patents. That's a failure of diligence. Defend."
+
+**Gold-standard answer** (30-second spoken):
+US7089207B1 and US11532040B2 are the two closest references in the bank-lending-on-payment-failure space. Counsel's prior-art search covered USPTO, EPO, and WIPO databases — approximately four hundred secondary references reviewed. Two are close enough to cite. The §103 combination analysis of those two is the primary novelty test. The FTO opinion calendared before pilot launch extends the landscape review. The two-step classification + conditional offer mechanism and the Tier 2/3 private-counterparty extension are novel over the full review, not just the two cited. Cited two; reviewed hundreds.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Tier 2/3 private-counterparty extension
+
+**Don't-say-this traps:**
+- ❌ "Two is enough — the attorneys said so"
+- ❌ "We cite the closest art — that's standard"
+
+**Bear-case pointer:** B-PAT-06
+
+---
+
+### Q-PAT-46 · Fintech Specialist · Adversarial
+**Question:** "Foreign filing via PCT is fine for Europe but UAE and Singapore examiners are unpredictable. Why include them?"
+
+**Gold-standard answer** (30-second spoken):
+UAE and Singapore cover two Tier 2/3 private-counterparty extension corridors — the Gulf and Asia-Pacific correspondent hubs where listed-company pricing structurally fails. The patent is commercially relevant there specifically because Damodaran and Altman Z' are the only viable models for that counterparty population. Examination variance is real; the five-patent-family architecture means even uneven grants produce coverage on different families in different jurisdictions. Cost is inside the under-two-hundred-thousand-dollar ($200,000) portfolio envelope. The non-provisional filing milestone initiates prosecution in all five PCT states.
+
+**Anchors this answer must touch:**
+- Tier 2/3 private-counterparty extension
+- five-patent-family architecture
+- non-provisional filing milestone
+
+**Don't-say-this traps:**
+- ❌ "We included them to look global"
+- ❌ "UAE and Singapore examiners are fine"
+
+**Bear-case pointer:** None
+
+---
+
+## Crushing Tier (extension) — Q-PAT-47 through Q-PAT-50
+
+### Q-PAT-47 · Generalist VC · Crushing
+**Question:** "RBC asserts the IP clause the same week the USPTO issues an Alice §101 rejection on Claim 1. Walk me through the next thirty days."
+
+**Gold-standard answer** (60-second spoken):
+Two fires, two tracks, no sequencing collapse. Track one — RBC: employment counsel responds with the pre-employment conception timeline — repository commits, development record, provisional priority date all predate January 12, 2026. Resignation has already sequenced ahead of the non-provisional filing milestone under Angle 6. The SAFE and cap table stay gated on clean chain of title — no investor capital has closed, so no investor takes exposure. Track two — §101: response cites *Enfish* and *McRO* — Alice-clean anchoring was in the specification from draft one. Latency specification (p99 under 94ms), UETR-keyed correlation, and BIC-derived governing-law logic are the specific technological constraints. Amendment narrows on the block-code-list implementation; the two-step classification + conditional offer mechanism survives. The five-patent-family architecture ensures Families 2 through 5 are unaffected by either fire. Tier 2/3 private-counterparty extension under D5 is independently novel. Day thirty: employment memo on file, §101 response filed, chain of title clean, non-provisional prosecution continues.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- two-step classification + conditional offer mechanism
+- Alice-clean anchoring
+- five-patent-family architecture
+
+**Don't-say-this traps:**
+- ❌ "We'd handle them one at a time"
+- ❌ "Either one alone we survive — both together is ugly"
+- ❌ "We'd bring in more lawyers"
+- ❌ "The §101 rejection would be the bigger threat"
+
+**Bear-case pointer:** META-01
+
+---
+
+### Q-PAT-48 · Fintech Specialist · Crushing
+**Question:** "Examiner narrows Claim 1 to the block-code-list. Simultaneously, a Tier 2/3 Damodaran beta table is proven to be derived from public data — not novel. Your two core claims collapse together. Argue."
+
+**Gold-standard answer** (60-second spoken):
+The scenario conflates novel combination with novel input. Damodaran industry-beta is public data — that was never the claim. The Tier 2/3 private-counterparty extension claim under D5 is the novel integration of Damodaran beta plus Altman Z' plus the real-time payment-failure-triggered lending pipeline conditioned on ISO 20022 rejection-code classification. Public data used in novel combination is patent-eligible — standard under *In re Aller*. The combination has no antecedent in US7089207B1. Second, if Claim 1 narrows to the block-code-list, the five-patent-family architecture preserves value three ways. Claim 5 — the auto-repayment loop — is independent. Families 2 through 5 carry separate continuation scope. The non-provisional filing milestone locks prosecution, and every narrowing is evaluated against continuation impact before acceptance. Alice-clean anchoring on *Enfish*/*McRO* holds regardless of breadth. Both collapses happening together is a material scenario, not a terminal one. The portfolio value floor is Claim 5 plus Families 2 through 5.
+
+**Anchors this answer must touch:**
+- Tier 2/3 private-counterparty extension
+- five-patent-family architecture
+- non-provisional filing milestone
+- Alice-clean anchoring
+
+**Don't-say-this traps:**
+- ❌ "Damodaran being public kills the whole thing"
+- ❌ "If both collapse we restructure around the software licence"
+- ❌ "Our attorneys would fight the narrowing"
+
+**Bear-case pointer:** B-PAT-04
+
+---
+
+### Q-PAT-49 · Bank-strategic · Crushing
+**Question:** "You slip the non-provisional filing by two months. Our pilot launches the same month. Every deployment artefact becomes public disclosure. You've self-destroyed the patent. Explain the recovery."
+
+**Gold-standard answer** (60-second spoken):
+No recovery. A non-provisional slip past PFD + 12 months destroys the priority date in every jurisdiction requiring novelty at filing — EPO, Singapore, UAE. US has a one-year grace period from first public disclosure; if pilot artefacts are published after the slip, that grace window triggers. This is not a scenario we plan for — it is a scenario we prevent. Counsel engagement predates provisional filing. Three calendared checkpoints: provisional establishes PFD; prosecution strategy review at PFD + 8 months; non-provisional filed at PFD + 11 months with one-month buffer. Patent counsel owns the docket with hard-stop billing triggers. The non-provisional filing milestone is the hardest deadline in the legal calendar — there is no "what if we miss it" plan because the operational protocol is built to never miss it. If your pilot launch timeline compresses mine, we sequence your pilot after the non-provisional files — never before. That is a contractual precondition, not a courtesy. The five-patent-family architecture and Alice-clean anchoring are downstream of the milestone — they cannot save a missed priority date.
+
+**Anchors this answer must touch:**
+- non-provisional filing milestone
+- five-patent-family architecture
+- Alice-clean anchoring
+
+**Don't-say-this traps:**
+- ❌ "We'd refile as a continuation and recover"
+- ❌ "The grace period covers us"
+- ❌ "Counsel would push an emergency filing"
+- ❌ "Pilot disclosure is under NDA — it wouldn't count as public disclosure"
+
+**Bear-case pointer:** B-PAT-03
+
+---
+
+### Q-PAT-50 · Adversarial · Crushing
+**Question:** "Examiner narrows Claim 1 on the two-step classification. A year later, prior art surfaces invalidating your Tier 2 and Tier 3 extensions. The five-patent-family architecture is the only thing left — and it's untested. You've sold investors a portfolio that is now three families of paper. Defend."
+
+**Gold-standard answer** (60-second spoken):
+The scenario names the exact portfolio stress case the architecture was designed for. First, narrowing of Claim 1 on the two-step classification + conditional offer mechanism preserves the mechanism in narrower form — not elimination. The claim still reads on any system with a hold-type class causing pipeline short-circuit. Second, prior art invalidating Tier 2/3 private-counterparty extension under D5 is material but does not touch the core Claim 1 or Claim 5 — the auto-repayment loop. Third, the five-patent-family architecture is not paper. Family 2 is multi-rail settlement and governing-law derivation from BIC chars four and five — enforceable and independently novel over the prior-art record. Family 3 is the dispute classifier with the two-stage NLP prefilter — independently claimable. Family 5 is the corridor stress regime detector — three-point-zero-times (3.0×) baseline with a twenty-transaction minimum — independently claimable. Each family has its own continuation chain inheriting PFD. The non-provisional filing milestone locks all five families simultaneously. Alice-clean anchoring applies across all of them. The scenario reduces portfolio value; it does not eliminate it. Licensing posture shifts from exclusive per-jurisdiction to narrow per-jurisdiction — Phase 1 economics survive.
+
+**Anchors this answer must touch:**
+- two-step classification + conditional offer mechanism
+- Tier 2/3 private-counterparty extension
+- five-patent-family architecture
+- non-provisional filing milestone
+- Alice-clean anchoring
+
+**Don't-say-this traps:**
+- ❌ "Three families is still strong"
+- ❌ "We'd return capital if it came to that"
+- ❌ "The other families are a hedge against this exact scenario" (understates their independent novelty)
+- ❌ "Investors knew the risk going in"
+
+**Bear-case pointer:** B-PAT-04
