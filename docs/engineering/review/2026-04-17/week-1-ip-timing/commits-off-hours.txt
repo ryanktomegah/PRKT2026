@@ -1,0 +1,376 @@
+2026-04-17 21:31:42 -0700|Tomegah Ryan|36d7295|chore(review): scaffold pre-lawyer review directories and Fix Log
+2026-04-17 21:26:32 -0700|Tomegah Ryan|4bbda87|docs(pre-lawyer-review): add 28-day implementation plan
+2026-04-17 19:04:47 -0700|Tomegah Ryan|333fdc4|docs(pre-lawyer-review): add 4-week pre-lawyer review design spec
+2026-04-17 18:39:21 -0700|Tomegah Ryan|b0b8fe0|docs(founder-fluency): patent bear-case — add cross-volume META refs
+2026-04-17 18:35:55 -0700|Tomegah Ryan|dd54df2|docs(claude-md): add rule — dispatch subagents sequentially, not 3+ in parallel
+2026-04-17 18:31:21 -0700|Tomegah Ryan|ae5e902|docs(founder-fluency): scale Market drill.md to 50 questions (full load)
+2026-04-17 18:31:21 -0700|Tomegah Ryan|f38a198|docs(founder-fluency): scale Patent drill.md to 50 questions (full load)
+2026-04-17 18:31:21 -0700|Tomegah Ryan|cf33d70|docs(founder-fluency): scale Technical drill.md to 50 questions (full load)
+2026-04-17 08:23:04 -0700|Tomegah Ryan|08bdee7|docs(founder-fluency): write Technical narrative (4 tiers)
+2026-04-17 08:14:00 -0700|Tomegah Ryan|254bf9c|docs(founder-fluency): fix Phase 1 CHANGELOG count and add EPG-09/10 to appendix-names
+2026-04-17 08:11:17 -0700|Tomegah Ryan|be3b61b|docs(founder-fluency): populate appendix-names.md
+2026-04-17 08:11:13 -0700|Tomegah Ryan|f70cc3c|docs(founder-fluency): populate appendix-numbers.md with canonical figures
+2026-04-17 02:29:45 -0700|Tomegah Ryan|339f1b0|docs(founder-fluency): initialise CHANGELOG with Phase 0 entry
+2026-04-17 02:29:38 -0700|Tomegah Ryan|7bd06fd|docs(founder-fluency): write Phase 0 README with usage + rituals
+2026-04-17 02:29:19 -0700|Tomegah Ryan|7936924|docs(founder-fluency): scaffold Phase 0 folder structure and stubs
+2026-04-17 02:23:28 -0700|Tomegah Ryan|c03ebb3|docs(founder-fluency): phased implementation plan for v1 Playbook
+2026-04-17 02:21:55 -0700|Tomegah Ryan|f69450d|docs(founder-fluency): add phased implementation plan (8 phases, ~30 tasks)
+2026-04-16 18:23:42 -0700|Tomegah Ryan|a2733ef|docs(founder-fluency): add v1 design spec for Founder Fluency Playbook
+2026-04-16 18:16:18 -0700|YESHA|ed31314|feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent) (#50)
+2026-04-12 03:08:43 -0700|Tomegah Ryan|a22b4cf|feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+2026-04-16 18:15:10 -0700|git stash|e4ba57b|WIP on codex/phase-1-cbdc-normalizer: be99c65 feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+2026-04-16 18:15:10 -0700|git stash|8cb194d|index on codex/phase-1-cbdc-normalizer: be99c65 feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+2026-04-16 18:15:10 -0700|git stash|daabe00|untracked files on codex/phase-1-cbdc-normalizer: be99c65 feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+2026-04-16 18:14:24 -0700|YESHA|28afdd2|P12 federated learning: DP-SGD + FedProx + Rényi DP accounting (#56)
+2026-04-16 18:13:49 -0700|Tomegah Ryan|f036aa1|fix(deps): bump pytest to >=9.0.3 (Dependabot #27, CVE tmpdir)
+2026-04-13 22:57:59 -0700|Tomegah Ryan|0e88142|Add comprehensive patentability analysis for patent counsel meeting
+2026-04-13 22:50:20 -0700|Tomegah Ryan|e150744|Fix fee split discrepancy: Update all docs from 15% to 30% BPI share
+2026-04-13 08:22:47 -0700|YESHA|345403b|Phase 0 T2.5: clear 16 Dependabot alerts (remove mlflow, bump cryptography) (#55)
+2026-04-13 08:17:59 -0700|YESHA|211e7be|Phase 2 T2.1: DLQ routing + retry for StressRegimeDetector emits (#54)
+2026-04-13 08:17:55 -0700|YESHA|7b2ddff|Phase 2 T2.2c: Redis-backed StructuringDetector (cross-tenant multi-replica) (#53)
+2026-04-13 08:17:51 -0700|YESHA|db4cc74|feat(c6): T2.2b route velocity bridge to Python+Redis for multi-replica safety (#52)
+2026-04-12 23:31:51 -0700|YESHA|1f819e9|Phase 2: T2.2a Redis-backed query metering (multi-replica safe) (#51)
+2026-04-12 23:24:56 -0700|Tomegah Ryan|54ae0fc|fix(dgen): normalise datetime precision to ns before int cast
+2026-04-12 23:07:38 -0700|Tomegah Ryan|8546bf4|Phase 0 T2.5: remove mlflow + bump cryptography to clear Dependabot
+2026-04-12 23:03:29 -0700|Tomegah Ryan|6be36ed|Fix mypy: explicit type annotation on StructuringDetector._registry
+2026-04-12 23:03:05 -0700|Tomegah Ryan|a7cc91d|Fix mypy: narrow _FakeRedis._store union before int() in incr()
+2026-04-12 08:46:07 -0700|Tomegah Ryan|a769ed3|Phase 2 T2.1: DLQ routing + retry for StressRegimeDetector emits
+2026-04-12 08:41:25 -0700|Tomegah Ryan|e65c247|Phase 2 T2.2c: Redis-backed StructuringDetector (cross-tenant multi-replica)
+2026-04-12 08:08:42 -0700|Tomegah Ryan|a4d887c|feat(c6): T2.2b route velocity bridge to Python+Redis for multi-replica safety
+2026-04-12 03:17:02 -0700|Tomegah Ryan|088a31f|feat(c8): T2.2a Redis-backed query metering — multi-replica safe (B3-04)
+2026-04-12 03:08:43 -0700|Tomegah Ryan|be99c65|feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+2026-04-12 02:38:10 -0700|Tomegah Ryan|3fe5428|fix(deps,security): T2.5 Dependabot CVE remediation — remove mlflow, align cryptography pins, fix Rust fail-closed
+2026-04-11 22:37:36 -0700|Tomegah Ryan|2d662f5|docs: add T2.5 Dependabot CVE remediation to Option C scope
+2026-04-11 22:33:08 -0700|Tomegah Ryan|eea0173|docs: close 2026-04-08 code review; add Option C production-push plan
+2026-04-11 13:11:11 -0700|Tomegah Ryan|81d7750|docs: fix consolidation files prose reference in PROGRESS.md
+2026-04-11 12:49:49 -0700|Tomegah Ryan|0e9fcdb|docs: rewrite INDEX.md with 7 audience reading paths, complete docs/ map, and quick reference
+2026-04-11 12:44:07 -0700|Tomegah Ryan|513cae4|docs: update PROGRESS.md with hardening sprint B1-B13 summary and repo reorganisation
+2026-04-11 12:43:28 -0700|Tomegah Ryan|a51b5c5|docs: add documentation structure overview to CLAUDE.md
+2026-04-11 12:42:55 -0700|Tomegah Ryan|82c0e5f|docs: rewrite README.md with audience-based docs/ structure, updated metrics, and clean layout
+2026-04-11 12:41:58 -0700|Tomegah Ryan|4fcfde1|docs: fix all internal cross-references after reorganization
+2026-04-11 12:32:01 -0700|Tomegah Ryan|393ad76|docs: track code review reports in docs/engineering/review/2026-04-08/
+2026-04-11 12:31:50 -0700|Tomegah Ryan|7a05506|docs: move deployment doc to docs/operations/ and bank-pilot/ under docs/business/
+2026-04-11 12:31:43 -0700|Tomegah Ryan|28ad1f8|docs: move model cards and ML research to docs/models/
+2026-04-11 12:31:39 -0700|Tomegah Ryan|db08881|docs: reorganize legal and compliance docs into docs/legal/
+2026-04-11 12:26:46 -0700|Tomegah Ryan|df0e7ad|docs: reorganize engineering docs into docs/engineering/
+2026-04-11 12:26:19 -0700|Tomegah Ryan|95baf8c|docs: move root narrative files to docs/business/ and docs/engineering/review/
+2026-04-11 12:18:40 -0700|Tomegah Ryan|5f45448|docs: move remaining consolidation files to audience-based docs/; remove consolidation files/ directory
+2026-04-11 12:18:17 -0700|Tomegah Ryan|92aaf99|docs: move sign-off records, SR 11-7 pack, and founder protection to docs/legal/governance/
+2026-04-11 12:18:06 -0700|Tomegah Ryan|8000f95|docs: move implementation blueprints to docs/engineering/blueprints/
+2026-04-11 12:18:00 -0700|Tomegah Ryan|05ba268|docs: move component specs and migration specs to docs/engineering/specs/
+2026-04-11 12:17:40 -0700|Tomegah Ryan|aeb3451|docs: move patent specifications to docs/legal/patent/
+2026-04-11 12:17:32 -0700|Tomegah Ryan|6c762e8|chore: remove duplicate files, .docx binaries, and legacy scripts/train_all.py
+2026-04-11 11:52:33 -0700|Tomegah Ryan|cfa2aed|chore: add .mypy_cache/ and torchinductor_*/ to .gitignore
+2026-04-11 08:33:14 -0700|Tomegah Ryan|b1d6b5d|fix(docker): bypass Debian-managed cryptography in Triton c1 image
+2026-04-11 08:33:14 -0700|Tomegah Ryan|84ad503|fix(docker): bypass Debian-managed cryptography in Triton c1 image
+2026-04-11 08:15:54 -0700|YESHA|c452611|Merge pull request #48 from ryanktomegah/codex/hardening-phase4
+2026-04-11 08:02:18 -0700|Tomegah Ryan|fc8f6b7|ci: fix all CI failures blocking merge of hardening sprint
+2026-04-11 06:09:45 -0700|Tomegah Ryan|63b34fc|fix(dgen): B11-03..14 — seeded RNG, AML thresholds env-only (CIPHER), BIC pool consolidation, FEE_FLOOR_BPS from constants
+2026-04-11 06:07:35 -0700|Tomegah Ryan|5aeae67|fix(ml): B10-10..18 — Groq model, narrow excepts, check_is_fitted, EPG-19 full block set
+2026-04-11 06:01:18 -0700|Tomegah Ryan|b9cdfda|fix(tests): update test suite to match hardened behavior across B1-B10 fixes
+2026-04-11 06:01:10 -0700|Tomegah Ryan|e2be4f9|fix(p5): B9-02..08 — O(n log n) CVaR, heap optimizer, dead code, corridor fix, Decimal division, UUID alert ID
+2026-04-11 06:01:04 -0700|Tomegah Ryan|db3c908|fix(p10,risk): B8-06..17 — scipy import hoisted, Decimal positions, encapsulation, Laplace bias, settlement hours, random seed
+2026-04-11 06:00:52 -0700|Tomegah Ryan|f971874|fix(infra): B12-03..07 — secrets CI guard, Redis port docs, Redis persistence, Dockerfile /data note, simulation mock warning
+2026-04-11 06:00:46 -0700|Tomegah Ryan|48191eb|fix(c8,c9): B3-06..13 + B10-11 — immutable dataclass, p95 index, bare except, constant dedup, pickle security
+2026-04-11 06:00:39 -0700|Tomegah Ryan|91e3dcc|fix(c6): B7-04..13 — AML encapsulation, integer cents, 0=unlimited guard, predict-before-fit error, sanctions warning
+2026-04-11 04:37:37 -0700|Tomegah Ryan|6e4b1ae|fix(c4,c5): B6-07..14 + B10-16 — Kafka offset management, fail-closed parse, gRPC upgrade, timeout detection
+2026-04-11 04:37:29 -0700|Tomegah Ryan|033fedf|fix(c3): B5-02..17 — state machine fail-closed, corridor buffer thread safety, Decimal fees, fail-closed taxonomy, UETR TTL, Rust FFI type safety, settlement backpressure
+2026-04-11 01:28:36 -0700|Tomegah Ryan|d6b5730|fix(c7): B4-01..16 — AML fail-closed, UETR required, thread safety, atomic state, Go panic removal
+2026-04-11 01:18:14 -0700|Tomegah Ryan|3aa1268|fix(api): B2-01..20 — auth fail-closed, HMAC scope, TOCTOU DP budget, proxy-aware rate limiter
+2026-04-11 01:16:10 -0700|Tomegah Ryan|be9440c|fix(common,integrity): B1-01..18 — UETR Redis dedup 45d, HMAC-SHA256, gate blocking, PBKDF2 600k
+2026-04-10 21:51:52 -0700|YESHA|2c20c6b|fix: hardening Phase 4 — 8 medium findings (B4-09, B8-08/13/14, B11-09, B3-08, B4-12, B6-10)
+2026-04-10 21:33:11 -0700|Tomegah Ryan|18c99ea|fix(c5): set PLAINTEXT protocol in non-SSL Go config tests (B6-05 compat)
+2026-04-10 20:50:38 -0700|Tomegah Ryan|b42d134|fix(ci): supply HMAC key for train-smoke job; add mypy type-ignore suppressions (B10-01, B3-08)
+2026-04-10 20:37:29 -0700|Tomegah Ryan|9687784|fix(c7,c5): narrow exception handlers in settlement predictor and kafka worker (B4-12, B6-10)
+2026-04-10 20:34:49 -0700|Tomegah Ryan|e281ec5|fix(c8): require non-empty HMAC metering key, reject empty default (B3-08)
+2026-04-10 20:29:40 -0700|Tomegah Ryan|23cab89|fix(dgen): correct 9-char BIC to valid 8-char format (B11-09)
+2026-04-10 20:28:27 -0700|Tomegah Ryan|923b3f4|fix(p10): derive checklist from results, exclude timestamp from hash, iterative DFS (B8-08, B8-13, B8-14)
+2026-04-10 20:22:55 -0700|Tomegah Ryan|b4117f2|fix(c7): default gRPC to TLS in Go router client (B4-09)
+2026-04-09 23:44:41 -0700|Tomegah Ryan|254d0bc|fix(defaults): refuse insecure defaults without explicit opt-in (B10-07, B3-03, B9-04, B10-05)
+2026-04-09 23:31:58 -0700|Tomegah Ryan|e38b8ff|fix(rust): upgrade PyO3 0.24→0.25 for Python 3.14 support
+2026-04-09 23:23:02 -0700|Tomegah Ryan|0c35f0a|fix(precision): eliminate Decimal→float round-trips at compliance boundaries (B8-04, B7-01, B3-07)
+2026-04-09 23:18:17 -0700|Tomegah Ryan|2c08f8c|fix(state): require single_replica opt-in for in-memory stores (B3-04, B7-02, B7-10)
+2026-04-09 23:12:49 -0700|Tomegah Ryan|6ce34a6|fix(core): convert load-bearing asserts to explicit raises (B10-08, B13-03)
+2026-04-09 08:56:42 -0700|Tomegah Ryan|dd6f780|fix(common): consolidate EPG-19 BLOCK codes into shared JSON (B6-01, B11-02, B13-02)
+2026-04-09 02:42:35 -0700|Tomegah Ryan|7610c82|fix(common): add secure_pickle wrapper; route C1+C2 loads through it (B10-01, B10-02, B13-01)
+2026-04-09 02:09:53 -0700|Tomegah Ryan|6e03d06|fix(p5): restore 300 bps fee floor on intervention rate (B9-01)
+2026-04-09 23:44:41 -0700|Tomegah Ryan|abce143|fix(defaults): refuse insecure defaults without explicit opt-in (B10-07, B3-03, B9-04, B10-05)
+2026-04-09 23:31:58 -0700|Tomegah Ryan|534c77b|fix(rust): upgrade PyO3 0.24→0.25 for Python 3.14 support
+2026-04-09 23:23:02 -0700|Tomegah Ryan|903fa27|fix(precision): eliminate Decimal→float round-trips at compliance boundaries (B8-04, B7-01, B3-07)
+2026-04-09 23:18:17 -0700|Tomegah Ryan|01d5fa0|fix(state): require single_replica opt-in for in-memory stores (B3-04, B7-02, B7-10)
+2026-04-09 23:12:49 -0700|Tomegah Ryan|1b688b0|fix(core): convert load-bearing asserts to explicit raises (B10-08, B13-03)
+2026-04-09 08:56:42 -0700|Tomegah Ryan|1cde28e|fix(common): consolidate EPG-19 BLOCK codes into shared JSON (B6-01, B11-02, B13-02)
+2026-04-09 02:42:35 -0700|Tomegah Ryan|5c61363|fix(common): add secure_pickle wrapper; route C1+C2 loads through it (B10-01, B10-02, B13-01)
+2026-04-09 02:09:53 -0700|Tomegah Ryan|ac07b2a|fix(p5): restore 300 bps fee floor on intervention rate (B9-01)
+2026-04-06 07:46:34 +0000|github-actions[bot]|67c3e86|chore(c6): refresh public-domain sanctions snapshot [skip ci]
+2026-04-04 09:02:36 -0700|YESHA|585a037|feat(p10): complete P10 regulatory data product — Sprints 6-8
+2026-04-03 22:21:43 -0700|Tomegah Ryan|fc3b0bb|Add Sprint 8 design spec and implementation plan
+2026-04-03 22:19:27 -0700|Tomegah Ryan|c28e658|Sprint 8 Tasks 4-5: methodology paper + regulator onboarding package
+2026-04-03 22:16:57 -0700|Tomegah Ryan|9e90abd|Sprint 8 Task 3: security pen test suite — auth, tier escalation, re-ID probing
+2026-04-03 22:15:57 -0700|Tomegah Ryan|b40c8c4|Sprint 8 Task 2: load test suite — 100 concurrent queries, rate limiter, budget isolation
+2026-04-03 22:14:09 -0700|Tomegah Ryan|80ba866|Sprint 8 Task 1: privacy audit kit — re-ID attacks, k-anonymity proof, DP verification
+2026-04-03 20:35:41 -0700|Tomegah Ryan|59b91ee|Sprint 7: integration & shadow mode pipeline
+2026-04-02 21:53:13 -0700|Tomegah Ryan|56b3cb0|Sprint 7 Task 1-2: TelemetryCollector tests + implementation
+2026-04-02 21:47:33 -0700|Tomegah Ryan|fdf0405|Add Sprint 7 implementation plan: 8 tasks, TDD, full code
+2026-04-02 21:41:34 -0700|Tomegah Ryan|223d7d5|Add Sprint 7 design spec: integration & shadow mode pipeline
+2026-04-02 21:07:04 -0700|Tomegah Ryan|8713d03|Sprint 6: telemetry eligibility, circular exposure detection, usage analytics
+2026-04-02 22:45:18 +0000|copilot-swe-agent[bot]|61dc293|ULTRATHINK audit: fix 7 critical/major issues across 8 migration sequences, add 17 new tests
+2026-04-02 22:18:50 +0000|copilot-swe-agent[bot]|10638f7|Remove spurious =2.7.0 file accidentally committed
+2026-04-02 22:18:32 +0000|copilot-swe-agent[bot]|be1618d|Fix critical/major/minor audit findings: Lua AML caps, kill switch fail-closed, pipeline exception handling, BIC validation, thread safety, canary clamping, fpdf2 dependency
+2026-04-02 22:17:07 +0000|copilot-swe-agent[bot]|0dd0303|Initial plan
+2026-04-02 21:52:15 +0000|copilot-swe-agent[bot]|4cb847c|Initial plan
+2026-04-02 21:42:31 +0000|copilot-swe-agent[bot]|92424ae|C2 fee formula hardening: isolate compute_loan_fee, patch all inline usages, add 59-test suite, add spec doc
+2026-04-02 21:29:36 +0000|copilot-swe-agent[bot]|8f593f3|Initial plan
+2026-04-02 21:12:11 +0000|copilot-swe-agent[bot]|a905560|feat: C1 inference endpoint Pydantic hardening (Priority 7)
+2026-04-02 21:00:26 +0000|copilot-swe-agent[bot]|63947ae|Initial plan
+2026-04-02 20:32:43 +0000|copilot-swe-agent[bot]|35a41d6|Add c7_go_router_fallback_total Prometheus counter and 3 new tests; update spec DoD checkboxes
+2026-04-02 19:57:58 +0000|copilot-swe-agent[bot]|efeee5a|Initial plan
+2026-04-02 18:50:25 +0000|copilot-swe-agent[bot]|57a223d|feat(c7): Go microservice migration — goroutine-per-offer, gRPC bridge, canary routing
+2026-04-02 18:13:20 +0000|copilot-swe-agent[bot]|e36f26a|Initial plan
+2026-04-02 08:56:02 -0700|YESHA|c86119d|Merge pull request #26 from YESHAPTNT/copilot/c6-velocity-sanctions-migration
+2026-04-02 03:13:48 -0700|YESHA|f186970|Merge pull request #23 from YESHAPTNT/copilot/c7-kill-switch-design-spec-implementation
+2026-04-02 03:13:37 -0700|YESHA|807cc18|Merge branch 'main' into copilot/c7-kill-switch-design-spec-implementation
+2026-04-02 03:13:01 -0700|YESHA|9227f27|Merge pull request #24 from YESHAPTNT/copilot/migrate-repayment-engine-state-machine
+2026-04-02 03:12:54 -0700|YESHA|95a13f9|Merge branch 'main' into copilot/migrate-repayment-engine-state-machine
+2026-04-02 03:12:21 -0700|YESHA|4c2a788|Merge pull request #25 from YESHAPTNT/copilot/c5-migrate-kafka-consumer-go
+2026-04-02 08:57:19 +0000|copilot-swe-agent[bot]|c404f1a|Initial plan
+2026-04-02 08:53:12 +0000|copilot-swe-agent[bot]|8817a1c|feat(c7): Add C7 kill switch spec, Rust crate, Python bridge, and tests
+2026-04-02 08:35:52 +0000|copilot-swe-agent[bot]|2303cb9|Initial plan
+2026-03-31 00:36:11 -0700|Tomegah Ryan|15c01f2|feat(p10): migrate service layer CachedReport → VersionedReport (Sprint 5 Task 5)
+2026-03-31 00:32:00 -0700|Tomegah Ryan|4adeef2|test(p10): add PDF renderer tests + install fpdf2 (Sprint 5 Task 4)
+2026-03-31 00:27:21 -0700|Tomegah Ryan|ee1ebf6|feat(p10): add ReportRenderer — JSON + CSV output (Sprint 5 Task 3)
+2026-03-31 00:23:47 -0700|Tomegah Ryan|967490f|feat(p10): add MethodologyAppendix — 7-section template (Sprint 5 Task 2)
+2026-03-31 00:23:00 -0700|Tomegah Ryan|eddddb2|feat(p10): add VersionedReport + integrity verification (Sprint 5 Task 1)
+2026-03-31 00:20:11 -0700|Tomegah Ryan|d035aac|docs: add Sprint 5 Report Generator implementation plan
+2026-03-30 03:22:58 -0700|Tomegah Ryan|ae67baa|feat(p10): add Pydantic request/response models for Regulatory API
+2026-03-30 03:21:37 -0700|Tomegah Ryan|6e0e96a|feat(p10): implement TokenBucketRateLimiter + TDD tests
+2026-03-30 03:19:48 -0700|Tomegah Ryan|70df308|docs: add Sprint 4c Regulatory API implementation plan
+2026-03-30 03:13:21 -0700|Tomegah Ryan|6d30140|docs: add Sprint 4c Regulatory API design spec
+2026-03-30 02:45:51 -0700|Tomegah Ryan|e87fd29|feat(p10): export Sprint 4b classes from p10_regulatory_data package
+2026-03-30 02:43:02 -0700|Tomegah Ryan|9f00394|feat(p10): implement SystemicRiskEngine — trend detection, risk reports
+2026-03-30 02:33:11 -0700|Tomegah Ryan|1ad8780|feat(p10): implement CorridorConcentrationAnalyzer + ContagionSimulator
+2026-03-30 02:29:52 -0700|Tomegah Ryan|6b102d2|feat(p10): add P10 systemic risk constants (contagion, concentration, trend)
+2026-03-30 02:23:57 -0700|Tomegah Ryan|09a6f52|docs: add Sprint 4b systemic risk engine design spec
+2026-03-29 03:01:55 -0700|Tomegah Ryan|a114f6a|feat(p10): add integration tests + export public API from p10_regulatory_data
+2026-03-29 03:00:27 -0700|Tomegah Ryan|c76fa0f|feat(p10): implement RegulatoryAnonymizer — 3-layer privacy pipeline
+2026-03-29 02:55:18 -0700|Tomegah Ryan|ebb6ca6|feat(p10): TDD tests + PrivacyBudgetTracker with per-corridor Decimal accounting
+2026-03-29 02:53:09 -0700|Tomegah Ryan|b5b0184|feat(p10): add P10 privacy constants, metrics, package skeleton + telemetry schemas
+2026-03-29 01:45:55 -0700|Tomegah Ryan|495feb5|fix(lint): clean up unused imports in Sprint 3b/3c test files
+2026-03-29 01:35:45 -0700|Tomegah Ryan|0527ffe|feat(api): wire cascade router into create_app() (conditional on cascade_graph)
+2026-03-28 12:25:49 -0700|Tomegah Ryan|f9e7231|feat(api): add cascade router — 5 endpoints for intervention API
+2026-03-28 12:24:04 -0700|Tomegah Ryan|e2602b9|feat(api): add cascade service — alert lifecycle, graph queries, intervention tracking
+2026-03-28 12:22:42 -0700|Tomegah Ryan|c6bb991|test(api): add TDD test suite for Sprint 3d cascade intervention API
+2026-03-28 12:20:45 -0700|Tomegah Ryan|2030b79|docs(p5): add Sprint 3d cascade intervention API design spec and implementation plan
+2026-03-28 12:07:16 -0700|Tomegah Ryan|5c838cb|feat(p5): export CascadeSettlementTrigger and StressCascadeBridge from p5_cascade_engine
+2026-03-28 12:02:44 -0700|Tomegah Ryan|ee36cf0|feat(p5): add C5 stress regime → cascade propagation bridge
+2026-03-28 12:01:02 -0700|Tomegah Ryan|e64bba4|feat(p5): add C3 settlement failure → cascade alert trigger
+2026-03-28 11:59:24 -0700|Tomegah Ryan|ac262a2|feat(c2): add cascade-adjusted PD pricing with 30% discount cap (QUANT)
+2026-03-28 11:57:24 -0700|Tomegah Ryan|ce59f65|docs(p5): add Sprint 3c cascade integration design spec (C2/C3/C5)
+2026-03-28 11:34:01 -0700|Tomegah Ryan|5c7b72a|feat(p5): export Sprint 3b cascade propagation, optimizer, and alert classes
+2026-03-28 11:27:58 -0700|Tomegah Ryan|44ef9bf|feat(p5): implement cascade alert generation with severity classification
+2026-03-28 11:26:05 -0700|Tomegah Ryan|52e1fe2|feat(p5): implement greedy intervention optimizer (weighted set cover)
+2026-03-28 11:24:55 -0700|Tomegah Ryan|99966b1|test(p5): add TDD test suite for greedy intervention optimizer
+2026-03-28 11:23:53 -0700|Tomegah Ryan|9bf3499|feat(p5): implement BFS cascade propagation with CVaR computation
+2026-03-28 11:21:58 -0700|Tomegah Ryan|13fe717|test(p5): add TDD test suite for BFS cascade propagation and CVaR
+2026-03-28 11:20:27 -0700|Tomegah Ryan|ea9d71f|feat(p5): add intervention optimizer and alert severity constants
+2026-03-28 11:19:52 -0700|Tomegah Ryan|f674cd5|docs(p5): add Sprint 3b cascade propagation engine spec and implementation plan
+2026-03-28 09:00:34 -0700|Tomegah Ryan|75e5b31|feat(p5): export CascadeGraph, CorporateEntityResolver, get_corporate_node_features
+2026-03-28 09:00:15 -0700|Tomegah Ryan|26c0dfb|test(p5): add Brandes betweenness centrality tests — star, chain, diamond topologies
+2026-03-28 08:58:44 -0700|Tomegah Ryan|ab062ca|feat(p5): implement 8-dim corporate node feature extraction with edge case guards
+2026-03-28 08:58:18 -0700|Tomegah Ryan|63b8b96|feat(p5): implement CorporateEntityResolver — BIC graph to corporate graph elevation
+2026-03-28 08:57:46 -0700|Tomegah Ryan|86a015d|feat(p5): add CorporateNode, CorporateEdge, CascadeGraph data structures + Brandes centrality
+2026-03-28 08:55:53 -0700|Tomegah Ryan|8a52ec9|test(p5): add TDD test suite for corporate graph — entity resolution, features, queries
+2026-03-28 08:54:27 -0700|Tomegah Ryan|20cfd52|feat(p5): scaffold cascade engine module with QUANT-protected constants
+2026-03-28 08:52:25 -0700|Tomegah Ryan|f8a8935|docs: add Sprint 3a implementation plan — P5 corporate graph nodes
+2026-03-28 08:47:05 -0700|Tomegah Ryan|dc928b8|docs: add Sprint 3a design spec — P5 corporate-level graph nodes
+2026-03-28 01:55:18 -0700|Tomegah Ryan|2b2893e|feat(app): wire SettlementCallbackBridge, NAVEventEmitter, and MIPLO portfolio for processor mode
+2026-03-28 01:45:33 -0700|Tomegah Ryan|48bb5f1|feat(miplo): add tenant-scoped portfolio endpoints — /miplo/portfolio/loans, exposure, nav
+2026-03-28 01:42:18 -0700|Tomegah Ryan|41fd470|feat(c3): export NAVEventEmitter and SettlementCallbackBridge
+2026-03-28 01:41:36 -0700|Tomegah Ryan|d4b593d|feat(c3): tenant-scoped Redis idempotency keys — lip:{tenant_id}:repaid:{uetr}
+2026-03-28 01:37:37 -0700|Tomegah Ryan|f739804|feat(c3): add NAVEventEmitter — per-tenant NAV snapshots with settlement history
+2026-03-28 01:36:39 -0700|Tomegah Ryan|67fb8e7|test(c3): add TDD tests for NAVEventEmitter — per-tenant snapshot, settlement history
+2026-03-28 01:34:29 -0700|Tomegah Ryan|0133209|feat(c3): add SettlementCallbackBridge — fan-out to royalty, revenue metering, NAV
+2026-03-28 01:33:21 -0700|Tomegah Ryan|a14fa4d|test(c3): add TDD tests for SettlementCallbackBridge — bank vs processor routing
+2026-03-28 01:31:36 -0700|Tomegah Ryan|9defd5a|docs: add Sprint 2d implementation plan — multi-tenant settlement tracking
+2026-03-28 01:15:21 -0700|Tomegah Ryan|c09d6eb|docs: add Sprint 2d multi-tenant settlement tracking design spec
+2026-03-28 00:36:06 -0700|Tomegah Ryan|74b199f|feat(app): conditionally wire MIPLO gateway when pipeline + processor context provided
+2026-03-28 00:32:57 -0700|Tomegah Ryan|0083560|feat(miplo): add MIPLOService (BIC validation + tenant context) and MIPLO router
+2026-03-28 00:29:47 -0700|Tomegah Ryan|907fe2b|feat(pipeline): add tenant_context parameter, thread tenant_id to C6 and C7 payment_context
+2026-03-28 00:25:55 -0700|Tomegah Ryan|a2b5d8a|feat(c7): add tenant_id to DecisionLogEntryData and thread from payment_context
+2026-03-28 00:23:29 -0700|Tomegah Ryan|e0ff78e|test(miplo): add TDD test suite for MIPLO gateway, pipeline tenant threading, decision log tenant_id
+2026-03-27 21:20:12 -0700|Tomegah Ryan|a3c10ad|feat(c6): export TenantVelocityChecker, StructuringDetector, StructuringResult
+2026-03-27 21:19:06 -0700|Tomegah Ryan|0769acb|feat(c6): add tenant_id param to AMLChecker with lazy tenant checker + structuring detection
+2026-03-27 21:12:57 -0700|Tomegah Ryan|5c6e032|feat(c6): implement TenantVelocityChecker with dual-write and StructuringDetector
+2026-03-27 21:08:47 -0700|Tomegah Ryan|4f0d25f|test(c6): add TDD suite for tenant velocity isolation and structuring detection
+2026-03-27 20:34:32 -0700|Tomegah Ryan|27f0576|feat(c8): implement revenue metering with penny-exact Decimal arithmetic
+2026-03-27 20:29:45 -0700|Tomegah Ryan|d350963|feat(c8): extend LicenseToken with processor fields, ProcessorLicenseeContext, boot validation
+2026-03-27 20:23:49 -0700|Tomegah Ryan|f4dea70|test(c8): add TDD test suite for processor tokens and revenue metering
+2026-03-27 20:20:15 -0700|Tomegah Ryan|9fc7203|feat(schemas): add TenantContext, NAVEvent, RevenueRecord for P3 multi-tenant
+2026-03-27 20:20:11 -0700|Tomegah Ryan|ea39012|feat(metrics): add P3 MIPLO, processor revenue, and tenant isolation metric names
+2026-03-27 20:20:08 -0700|Tomegah Ryan|731b1da|feat(constants): add P3 processor take-rate, annual minimum, and lifecycle constants
+2026-03-26 21:37:41 -0700|Tomegah Ryan|9004983|Fix mypy error: use Any instead of object for prometheus gauge/counter dicts
+2026-03-26 21:36:20 -0700|Tomegah Ryan|82f15a0|Add Revenue Acceleration Analysis + update Founder Financial Model and F&F round structure
+2026-03-25 00:55:52 +0000|Claude|55275b2|Update royalty rate splits and add growth/Canada strategy documents
+2026-03-24 04:39:25 +0000|Claude|0bfb5bb|Update all documentation for new fee shares (30/55/80)
+2026-03-24 04:33:29 +0000|Claude|a8621c6|Update BPI fee shares: Phase 1 30%, Phase 2 55%, Phase 3 80%
+2026-03-21 20:07:48 -0700|Tomegah Ryan|f857475|fix(mypy): pass required args to SettlementMonitor/RepaymentLoop in app.py
+2026-03-21 19:53:24 -0700|Tomegah Ryan|4474553|fix(ci): add httpx dep + catch RuntimeError + Node24 env across all workflows
+2026-03-21 19:36:58 -0700|Tomegah Ryan|ffbeaaa|fix: resolve 4 open engineering items
+2026-03-21 19:10:01 -0700|Tomegah Ryan|fad5e28|fix: eliminate constant duplication in fee.py + enhance QUANT sign-off
+2026-03-21 18:59:31 -0700|Tomegah Ryan|b917516|docs: QUANT sign-off on fee impact review in M-01 model card
+2026-03-21 18:23:59 -0700|Tomegah Ryan|238bb62|docs: add RBC pilot bank engagement strategy
+2026-03-21 16:45:02 -0700|Tomegah Ryan|b144896|feat: deployment finalization + bank-facing pilot materials
+2026-03-21 11:49:55 -0700|Tomegah Ryan|723f702|docs: post-training uniformity audit + complete codebase narrative
+2026-03-21 10:19:19 -0700|Tomegah Ryan|c851e95|feat: add pilot validation script + fix timestamp format bug in features.py
+2026-03-21 09:57:21 -0700|Tomegah Ryan|9f5504e|feat: update C1 threshold to 0.110 (calibrated) across all code and docs
+2026-03-21 00:56:41 -0700|Tomegah Ryan|57dba11|fix: update mock failure_probability in tests to exceed new 0.360 threshold
+2026-03-20 23:32:29 -0700|Tomegah Ryan|105cf8c|feat: add isotonic calibration to C1 training + persist calibrator/scaler
+2026-03-20 23:14:20 -0700|Tomegah Ryan|93816d7|feat: update C1 threshold to 0.360 from 10M retraining + fix Docker c5 build
+2026-03-20 18:11:34 -0700|Tomegah Ryan|c81d871|fix: preserve unmodified timestamps in temporal clustering + tolerate validation warnings
+2026-03-19 08:36:17 -0700|Tomegah Ryan|717d4eb|fix(dgen): use failure-rate-weighted corridor sampling for RJCT events
+2026-03-19 07:48:10 -0700|Tomegah Ryan|a4667f7|docs(legal): EPG-04/05 BPI License Agreement clause package
+2026-03-19 07:47:05 -0700|Tomegah Ryan|5e0e63c|fix: populate all 88 tabular features and add StandardScaler (Bugs 2-4)
+2026-03-19 07:42:35 -0700|Tomegah Ryan|c09a302|docs(epg): codify EPG-04/05/19/20/21 strategic decisions
+2026-03-18 23:11:36 -0700|Tomegah Ryan|ed9e0fc|chore(epg): mark EPG-23 DONE in state.json (commit 4a29b43)
+2026-03-18 22:06:04 -0700|Tomegah Ryan|3affea6|fix(epg-23): structured LoanOfferExpiry records + class_b_eligible pre-wire (EPG-19/QUANT)
+2026-03-18 21:31:30 -0700|Tomegah Ryan|a80c9e4|chore(epg): update state.json commits for EPG-06/12/13/14/22 (754c9c7)
+2026-03-18 21:30:40 -0700|Tomegah Ryan|b498d4e|fix(tier3): EPG-06/12/13/22 — bridgeable label, tau* note, regulatory risk doc; close EPG-14/15
+2026-03-18 21:54:13 -0700|Tomegah Ryan|c10c057|fix(graph_builder): use data-relative timestamp in node/edge features
+2026-03-18 08:48:50 -0700|Tomegah Ryan|be16c22|fix(taxonomy): move RR01-RR04, CNOR, AG01 to BLOCK class (EPG-01/03/07/08)
+2026-03-18 08:27:23 -0700|Tomegah Ryan|764f3f5|chore(rules): never commit API keys — use .env and GitHub secrets
+2026-03-18 08:26:40 -0700|Tomegah Ryan|95d2bcc|chore: add .env and .env.local to .gitignore
+2026-03-18 00:26:22 -0700|Tomegah Ryan|f0eb52a|fix(dgen): generate mixed corpus (successes + RJCT) for correct C1 training
+2026-03-18 00:04:20 -0700|Tomegah Ryan|ac2f7b3|Fix C1 label, BLOCK filter, and taxonomy per EPIGNOSIS review
+2026-03-17 20:43:16 -0700|Tomegah Ryan|fe09cb6|feat(c5+tests): compliance hold gate, FedNow/RTP code normalization, test hardening
+2026-03-17 20:24:52 -0700|Tomegah Ryan|c756cc4|Fix corridor failure rates, business logic gaps, and rebuild team agents/commands
+2026-03-16 08:51:29 -0700|Ryan|4da0ee3|test(c5): add live Redpanda integration test suite
+2026-03-16 08:17:04 -0700|Ryan|66ddcd7|docs: sweep all stale docs to reflect current state
+2026-03-16 08:06:20 -0700|Ryan|fa610ca|docs(data-pipeline): update C4 section with real LLM results
+2026-03-16 08:03:42 -0700|Ryan|ea9059d|docs(CLAUDE.md): trim C4 lessons to concise rules only
+2026-03-16 08:00:22 -0700|Ryan|dc1c1a9|docs(CLAUDE.md): C4 LLM backend lessons from model comparison session
+2026-03-15 20:51:12 -0700|Ryan|cc8ddc5|feat(P6): C4 real-LLM integration tests + negation corpus evaluation
+2026-03-15 13:29:04 -0700|Ryan|6fd6ad9|docs(p7+p8): federated learning architecture + CBDC protocol research
+2026-03-15 13:20:07 -0700|Ryan|c28344c|feat(p4): large-scale synthetic validation pipeline
+2026-03-15 12:28:42 -0700|Ryan|3753d84|fix(p5): Bayesian smoothing for cascade risk — eliminate first-payment inflation
+2026-03-15 11:45:13 -0700|Ryan|80fe1be|feat(p2): latency benchmark script + honest results report
+2026-03-15 11:36:18 -0700|Ryan|eea5daa|feat(p1+p3): local infra stack + StressRegimeDetector + integration fixes
+2026-03-16 08:51:29 -0700|Ryan|26bdfa0|test(c5): add live Redpanda integration test suite
+2026-03-16 08:17:04 -0700|Ryan|2e2b5f5|docs: sweep all stale docs to reflect current state
+2026-03-16 08:06:20 -0700|Ryan|942f53f|docs(data-pipeline): update C4 section with real LLM results
+2026-03-16 08:03:42 -0700|Ryan|e8c359b|docs(CLAUDE.md): trim C4 lessons to concise rules only
+2026-03-16 08:00:22 -0700|Ryan|dbfe0c5|docs(CLAUDE.md): C4 LLM backend lessons from model comparison session
+2026-03-15 20:51:12 -0700|Ryan|2477ac2|feat(P6): C4 real-LLM integration tests + negation corpus evaluation
+2026-03-15 13:29:04 -0700|Ryan|593856f|docs(p7+p8): federated learning architecture + CBDC protocol research
+2026-03-15 13:20:07 -0700|Ryan|ff8c875|feat(p4): large-scale synthetic validation pipeline
+2026-03-15 12:28:42 -0700|Ryan|91d634c|fix(p5): Bayesian smoothing for cascade risk — eliminate first-payment inflation
+2026-03-15 11:45:13 -0700|Ryan|931e4ad|feat(p2): latency benchmark script + honest results report
+2026-03-15 11:36:18 -0700|Ryan|3cc04e2|feat(p1+p3): local infra stack + StressRegimeDetector + integration fixes
+2026-03-15 00:18:26 -0700|YESHA|b7b9482|Merge pull request #19 from YESHAPTNT/feat/e2e-simulation-harness
+2026-03-15 00:09:37 -0700|Ryan|4db1f16|ci: opt into Node.js 24 for all GitHub Actions workflows
+2026-03-14 23:45:01 -0700|Ryan|efe6965|fix(c1): consistent x[8:] tabular-feature slicing across numpy + torch pipelines
+2026-03-14 23:24:17 -0700|Ryan|7beab09|fix: CI failures — mlflow dep missing, C1 feature slicing bug, mypy test_gap10
+2026-03-14 22:44:54 -0700|Ryan|e01a1dc|feat: GAP-13/14/15/16 — Tier 3 full commercial readiness (all 17 gaps complete)
+2026-03-14 19:16:26 -0700|Ryan|6fb2cb3|feat(gaps): implement GAP-10, GAP-11, GAP-12 + ruff lint fixes
+2026-03-14 14:03:21 -0700|Ryan|5354150|feat(gap-07+08+09): portfolio API, override timeout, business-day maturities
+2026-03-14 12:56:00 -0700|Ryan|4a959af|feat(gap-06+gap-17): SWIFT disbursement spec + amount validation
+2026-03-14 12:12:45 -0700|Ryan|c10cd6c|GAP-05: BPI royalty collection (monthly settlement)
+2026-03-13 19:32:26 -0700|Ryan|34cca8f|GAP-04: Retry detection (idempotency) + latency test fix
+2026-03-13 19:00:40 -0700|Ryan|53a5984|GAP-03: Borrower enrollment registry (BIC whitelist) + CI verification
+2026-03-13 18:38:14 -0700|Ryan|ff77438|fix(tests): update _MockC6 to accept cap override kwargs
+2026-03-13 18:14:14 -0700|Ryan|bf6b62a|GAP-02: Licensee-configurable AML caps via license token
+2026-03-12 08:56:37 -0700|Ryan|98178c7|diag(c1): add StandardScaler diagnostic; stage3b not wired (no AUC gain)
+2026-03-12 07:14:10 -0700|Ryan|b7b09fd|feat(c4): Step 2b contraction expansion for Romance language negation
+2026-03-12 07:11:32 -0700|Ryan|0eff229|fix(c1): align eval_c1_auc.py to canonical label key
+2026-03-11 23:43:45 -0700|Ryan|d488bd2|docs(c1): add macOS performance note to eval_c1_auc_torch.py
+2026-03-11 23:19:07 -0700|Ryan|95bf9d0|feat(c2): add spec-mandated test_c2_model.py with 8 required tests
+2026-03-11 21:27:04 -0700|Ryan|25cdd01|docs(claude-md): add test suite timing, flaky SLO test, PyTorch/LightGBM deadlock notes
+2026-03-11 21:25:42 -0700|Ryan|edfecf3|docs: update CLAUDE.md — branch, test timing, C4 notes
+2026-03-11 21:07:43 -0700|Ryan|b43bf83|chore(c4): update DISPUTE_FN_CURRENT to measured 0.01
+2026-03-11 20:57:35 -0700|Ryan|3808a74|fix(c4): add negation guard to prefilter keyword matching
+2026-03-11 18:48:10 -0700|Ryan|391028e|feat(c1): add PyTorch neural components for 100K+ sample training
+2026-03-10 20:55:04 -0700|Ryan|5f0118a|docs: comprehensive 4-layer documentation suite (Phase 9 complete)
+2026-03-10 06:52:55 -0700|Ryan|37a0818|test: add 77 comprehensive C2 PD model tests — coverage 14%→91%
+2026-03-10 06:32:00 -0700|Ryan|13a423d|fix: replace all deprecated datetime.utcnow() with timezone-aware alternatives
+2026-03-10 01:44:25 -0700|YESHA|246cc16|Merge pull request #17 from YESHAPTNT/claude/product-overview-9irfT
+2026-03-10 01:30:46 -0700|Ryan|65e72b1|feat: add 17 specialized AI agent team for autonomous LIP development
+2026-03-10 01:13:20 -0700|Ryan|12f4cd1|feat: add 22 specialized Claude Code skills for LIP development
+2026-03-10 01:05:11 -0700|Ryan|e48b0c0|refactor: remove ALBS proof-of-concept, focus repo on LIP production platform
+2026-03-10 00:30:43 -0700|YESHA|8e5126e|Merge pull request #18 from YESHAPTNT/add-claude-github-actions-1773127631946
+2026-03-10 00:27:15 -0700|YESHA|5b2656f|"Claude Code Review workflow"
+2026-03-10 00:27:13 -0700|YESHA|a5bd4da|"Claude PR Assistant workflow"
+2026-03-09 20:42:38 +0000|Claude|b58adc2|test(chaos): add 46 failure-mode tests + fix CI to include e2e suite
+2026-03-09 20:33:42 +0000|Claude|a32a936|fix(c4): expand prefilter keyword set to close multilingual FN gap
+2026-03-09 07:16:15 +0000|Claude|467b9a7|feat(c7+c8): wire LicenseeContext into C7 — licensee_id audit trail + TPS cap
+2026-03-09 07:10:06 +0000|Claude|445f688|feat(c8): add LIP License Manager — offline HMAC token enforcement
+2026-03-09 07:03:18 +0000|Claude|613d6e2|fix(biz-model): reframe BPI as technology licensor, sync canonical_numbers.yaml
+2026-03-09 06:09:26 +0000|Claude|ee24b21|feat(quant): add platform royalty model (15% of fee collected)
+2026-03-09 05:40:49 +0000|Claude|e658e87|fix(c1): align latency SLO constants with canonical spec
+2026-03-08 16:24:17 +0000|Claude|a50f74c|fix+forge: mypy type errors (6 files) + add train_c2 and train_c6 workflows
+2026-03-08 16:04:55 +0000|Claude|fb2f20c|fix: cast Decimal lgd to float before fee_bps multiply in train_all
+2026-03-08 15:59:04 +0000|Claude|1cb8ca7|fix: pass sending+receiving jurisdiction to lgd_for_corridor in train_all
+2026-03-08 09:17:48 +0000|Claude|10cfff0|QUANT+FORGE: fix LGD hardcode, add GH Actions monitor, add C4 corpus workflow
+2026-03-08 00:44:38 -0800|ryanktomegah|735d601|Merge pull request #15 from ryanktomegah/claude/consolidate-file-updates-CIPGP
+2026-03-08 08:35:38 +0000|Claude|e5ee59c|Fix train_c1.yml: setuptools quotes, always regenerate corpus, inline Python
+2026-03-08 08:12:53 +0000|Claude|2da9a16|Add manual C1 full-training workflow for GitHub Actions
+2026-03-08 06:24:02 +0000|Claude|6e91bb4|Fix C1 validator: adaptive 3σ band at small N, exclude day_of_week from correlation check
+2026-03-08 06:12:29 +0000|Claude|910395c|Bump C2 and C6 corpus sizes: 30k→50k and 20k→50k respectively
+2026-03-08 05:53:30 +0000|Claude|a582a0a|Fix generate_all.py: add c3 to --components choices and default list
+2026-03-08 05:50:13 +0000|Claude|c906ae2|Fill model layer gaps: constants, C3 DGEN corpus, CI smoke-test gate
+2026-03-08 03:18:27 +0000|Claude|8e38907|Add C1 monitor dashboard, --log-level flag, and refresh corpus SHA256
+2026-03-08 00:47:44 +0000|Claude|73538c6|Fix stage3 O(n*m) feature extraction — 417x speedup for 100k corpus
+2026-03-08 00:04:39 +0000|Claude|a2270e6|Add C5 streaming tests, C1 DGEN validator, and complete EU AI Act data card
+2026-03-07 23:21:17 +0000|Claude|b7fa2bb|Add lip/train_all.py — master model training script for C1, C2, C6
+2026-03-07 22:29:24 +0000|Claude|7f5e162|Fix CI: BackendUnavailable error on pip install -e .
+2026-03-07 22:24:00 +0000|Claude|d91eb03|Add CLAUDE.md — project configuration for Claude Code sessions
+2026-03-07 22:18:58 +0000|Claude|a7540c3|Fix all 183 ruff lint errors — CI now passes clean
+2026-03-07 22:10:33 +0000|Claude|148751a|Fix C2 validator target default rate (5.5% → 6.3%)
+2026-03-07 22:06:54 +0000|Claude|dfef1b0|Fix numerical overflow in C1 GraphSAGE + TabTransformer training
+2026-03-07 17:13:12 +0000|Claude|f7496e8|[DGEN] Create Data Generation & Quality Engineer — all LIP training corpora
+2026-03-07 16:30:50 +0000|Claude|94b5c49|[FORGE] Add GitHub Actions CI and complete Docker coverage for all 7 components
+2026-03-07 16:28:53 +0000|Claude|ad95e80|[TEAM] Systematic multi-domain hardening: QUANT + REX + CIPHER + FORGE
+2026-03-07 16:20:06 +0000|Claude|9c6d6b2|[C1/C2] Add synthetic data generators, training fixes, and train_all orchestration
+2026-03-07 16:04:19 +0000|Claude|90b8cb7|Add elite agent team as Claude Code slash commands
+2026-03-06 23:59:12 +0000|Claude|58e3201|Resolve 7 engineering gaps against Architecture Spec v1.2
+2026-03-06 23:16:00 +0000|Claude|810a28d|Merge pull request #13 from ryanktomegah/ryanktomegah-patch-1
+2026-03-06 06:45:10 +0000|copilot-swe-agent[bot]|0fa63fb|Fix silent data corruption: use r[\"is_failure\"] instead of r.get(\"is_failure\", 0) in _prepare_pipeline_data
+2026-03-06 06:38:43 +0000|copilot-swe-agent[bot]|53f9fb3|Initial plan
+2026-03-06 06:10:06 +0000|copilot-swe-agent[bot]|bc5add4|Address code review: improve __main__.py error handling
+2026-03-06 06:06:50 +0000|copilot-swe-agent[bot]|3a64cc7|Implement TASK 1-4: gnn deps, PyTorch models, train.py enhancements, CFPB CLI
+2026-03-06 02:28:15 +0000|copilot-swe-agent[bot]|a53b909|Address code review feedback: remove unused import, fix tag filter logic, improve docstring
+2026-03-06 02:20:40 +0000|copilot-swe-agent[bot]|53cac3d|Add timestamp_utc to synthetic data, generate() alias, time-based split, train.py, and CFPB label mapper
+2026-03-06 02:13:40 +0000|copilot-swe-agent[bot]|23c2dba|Initial plan for Track B (C1 train.py) and Track C (C4 CFPB label mapper)
+2026-03-06 02:10:02 +0000|copilot-swe-agent[bot]|c7c2a18|Initial plan
+2026-03-05 18:07:35 -0800|ryanktomegah|f79ed01|Merge pull request #10 from ryanktomegah/copilot/add-synthetic-data-module
+2026-03-06 01:58:22 +0000|copilot-swe-agent[bot]|9422211|Add synthetic SWIFT payment data generator for C1 Failure Classifier training
+2026-03-06 01:41:12 +0000|copilot-swe-agent[bot]|bdaeefb|Initial plan
+2026-03-05 21:31:26 +0000|copilot-swe-agent[bot]|cadf190|feat: Phase 5 - E2E pipeline orchestrator, instrumentation, and 142 integration tests
+2026-03-05 21:14:41 +0000|copilot-swe-agent[bot]|bfd75ed|Initial plan
+2026-03-05 20:25:40 +0000|copilot-swe-agent[bot]|7ecfd9a|Complete LIP platform: tests, infrastructure, configs, pyproject.toml — 252 tests passing
+2026-03-05 19:55:56 +0000|copilot-swe-agent[bot]|9f623ce|Add C6 AML velocity and C7 execution agent modules
+2026-03-05 19:48:26 +0000|copilot-swe-agent[bot]|463f620|feat: Add LIP C4 Dispute Classifier component (8 production Python files)
+2026-03-05 19:40:52 +0000|copilot-swe-agent[bot]|f729cb6|feat(lip/c3): Add C3 Repayment Engine — Dual-Signal Settlement Monitoring
+2026-03-05 19:34:09 +0000|copilot-swe-agent[bot]|00169f6|fix(c2_pd_model/fee): clarify FEE_FLOOR_PER_7DAY_CYCLE as decimal not percent
+2026-03-05 19:32:44 +0000|copilot-swe-agent[bot]|3f15248|feat(c2_pd_model): add production Python files for LIP C2 PD Model component
+2026-03-05 19:21:38 +0000|copilot-swe-agent[bot]|8c66284|fix(lip/c1): address code review feedback
+2026-03-05 19:20:25 +0000|copilot-swe-agent[bot]|0926626|feat(lip/c1): add C1 Failure Classifier component (10 modules)
+2026-03-05 19:10:20 +0000|copilot-swe-agent[bot]|8fd6fb3|fix: remove spurious no-op field_validator from DecisionLogEntry
+2026-03-05 19:09:34 +0000|copilot-swe-agent[bot]|11b4f5f|feat: add LIP production core modules (common layer)
+2026-03-05 19:03:40 +0000|copilot-swe-agent[bot]|1ab3ce3|Initial plan
+2026-03-05 18:07:19 +0000|copilot-swe-agent[bot]|5332fb2|feat(ARIA): Phase 1 ML Core — GNN feature engineering, unified PD scaffold, dispute classifier, /dispute-check + /ml-architecture endpoints
+2026-02-28 10:12:08 -0800|ryanktomegah|e88da3e|Fix ECB €STR series key and update fallback rate to 0.01935
+2026-02-28 09:36:23 -0800|ryanktomegah|1ee7ae6|Merge pull request #3
+2026-02-28 09:33:28 -0800|ryanktomegah|2b5eea4|Resolve .gitignore merge conflict — adopt main's version
+2026-02-28 17:15:07 +0000|copilot-swe-agent[bot]|7fcb5ad|Add .github/copilot-instructions.md with project overview, build/test commands, and coding standards
+2026-02-28 17:13:51 +0000|copilot-swe-agent[bot]|be434c0|Initial plan
+2026-02-28 08:09:07 -0800|ryanktomegah|530876f|Merge pull request #2 from ryanktomegah/copilot/fix-frontend-validation-issues
+2026-02-28 08:08:59 -0800|ryanktomegah|ad72dc0|Merge pull request #1 from ryanktomegah/copilot/add-nextjs-frontend
+2026-02-27 19:24:59 -0800|ryanktomegah|d855cf8|Mark PR #1 as ready for review
+2026-02-28 02:51:24 +0000|copilot-swe-agent[bot]|08a9d46|Fix PD model label in offer sheet and use SHA-256 instead of MD5
+2026-02-28 02:50:00 +0000|copilot-swe-agent[bot]|2236402|Add real-time market signal layer to CVA pricing engine
+2026-02-28 02:43:56 +0000|copilot-swe-agent[bot]|6edbcd6|Initial plan
+2026-02-27 19:44:37 +0000|copilot-swe-agent[bot]|6e8f8cb|Fix frontend validation constraints to match backend Pydantic model
+2026-02-27 19:42:06 +0000|copilot-swe-agent[bot]|b57d506|Initial plan
+2026-02-27 18:39:45 +0000|copilot-swe-agent[bot]|2de766a|docs: add root README with step-by-step local preview instructions
+2026-02-27 18:35:37 +0000|copilot-swe-agent[bot]|db63fff|chore: add .gitignore for __pycache__ and Python build artifacts
+2026-02-27 18:35:06 +0000|copilot-swe-agent[bot]|eb94ebf|fix: add CORS middleware, fix API field mapping, run full pipeline end-to-end
+2026-02-27 18:18:16 +0000|copilot-swe-agent[bot]|18c0f6f|feat: add Next.js 14 frontend for Automated Liquidity Bridging System
