@@ -55,3 +55,6 @@ pytest-of-*/
 
 # PyTorch inductor compilation cache
 torchinductor_*/
+
+# Pre-lawyer review — local-only sensitive findings
+docs/legal/.red-flag-register.md
