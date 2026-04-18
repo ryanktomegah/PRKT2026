@@ -16,7 +16,7 @@
 | **Sean Amato-Gauci** [RBC IR site] | Group Head, Commercial Banking | **MEDIUM** — commercial clients experience payment failures that LIP would bridge |
 | **Erica Nielsen** [RBC IR site] | Group Head, Personal Banking | **LOW** — retail-focused, not relevant to LIP |
 | **Neil McLaughlin** [RBC IR site] | Group Head, Wealth Management | **LOW** — not payments-related |
-| **Bruce Ross** [LinkedIn] | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
+| **Bruce Ross** [LinkedIn — role formed Feb 2026, post-dates 2024 Annual Report] | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
 | **Naim Kazmi** [RBC IR site] | Group Head, Technology & Operations | **MEDIUM** — infrastructure decisions, tech adoption |
 | **Sid Paquette** [rbcx.com] | Head, RBCx (venture arm) | **HIGH** — purpose-built to engage with fintechs, invests in B2B payments |
 
