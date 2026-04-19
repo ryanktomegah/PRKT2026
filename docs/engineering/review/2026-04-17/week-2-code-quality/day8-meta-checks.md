@@ -1,12 +1,14 @@
 # Day 8 — Meta-Checks (Test Suite, Lint, Type Check, Security)
 
-**Date run:** 2026-04-18
-**Scope:** `lip/` package, full in-memory test suite (live-infra tests excluded per CLAUDE.md).
-**Environment note:** Docker not installed on this host. Task 8.1 Step 1
-(`docker compose up -d` + `scripts/init_topics.sh`) was skipped because every
-non-live test in `lip/tests/` is 100% in-memory (CLAUDE.md: "test_e2e_pipeline.py
-uses in-memory mocks — no live Redis/Kafka required"). `test_e2e_live.py` was
-excluded via `--ignore`, matching the plan.
+**Date run:** 2026-04-18 (in-memory) + 2026-04-19 (live infra follow-up)
+**Scope:** `lip/` package, full in-memory test suite plus `test_e2e_live.py`
+against a local Colima-hosted Redpanda + Redis.
+**Environment note:** Initial run was done without Docker (all non-live tests
+are 100% in-memory per CLAUDE.md). After user request, Homebrew + Colima +
+Docker CLI + `confluent-kafka` Python client were installed; compose stack
+(`lip-redpanda`, `lip-redis`) brought up healthy; 10/10 LIP topics created via
+`docker exec lip-redpanda rpk topic create …` (the shipped `scripts/init_topics.sh`
+requires a host-side `rpk` binary that is not installed).
 
 ## Summary
 
@@ -120,6 +122,55 @@ the above-Medium set. The High findings are intentional test-side MD5 usage.
 2. Refactor `lip/scripts/eval_c1_auc.py:45` and similar to accept an `--out-dir`
    argument instead of hardcoded `/tmp/...`. Developer ergonomics, not a security
    risk in production — scripts don't ship in the runtime image.
+
+## Live-infra E2E (test_e2e_live.py)
+
+Run command:
+
+```
+PYTHONPATH=. REDIS_URL=redis://localhost:6379 KAFKA_BROKERS=localhost:9092 \
+  python -m pytest lip/tests/test_e2e_live.py -m live -v
+```
+
+Result: **2 passed, 1 failed.** Artefact: `pytest-live.log`.
+
+- ✅ `TestLiveInfraHealth::test_all_required_topics_exist` — all 10 required
+  topics present on the broker.
+- ✅ `TestLiveKafkaRoundTrip::test_uetr_survives_round_trip` — pacs.002 event
+  produced and consumed back with UETR intact.
+- ❌ `TestLiveC5Worker::test_worker_calls_pipeline_with_normalised_event` —
+  `AttributeError: 'NoneType' object has no attribute 'commit'` at
+  `lip/c5_streaming/kafka_worker.py:190`.
+
+### Root cause (test-harness contract drift)
+
+The test at `lip/tests/test_e2e_live.py:304-307` explicitly sets:
+
+```python
+worker._consumer = None
+worker._producer = None
+# _process_message does not use self._consumer or self._producer when
+# dry_run=True, so we skip full broker client initialisation.
+```
+
+The claim that `_process_message` does not touch `self._consumer` when
+`dry_run=True` is false. At `kafka_worker.py:190` the method calls
+`self._consumer.commit(message=msg)` unconditionally, with no `dry_run` guard
+and no `is not None` check. This is also the case at line 174 on the
+null-value-message early return.
+
+**Production impact: none.** In production, `self._consumer` is always
+initialised by `run()` before any message is ever dispatched to
+`_process_message`. The failure only surfaces when a test constructs a worker
+directly and skips the broker-client init that `run()` performs.
+
+**Recommended fix (out of scope for this review sprint):** either
+- guard both `self._consumer.commit()` call sites with `if self._consumer is not None`, or
+- make `_process_message` accept an optional `commit_offset: bool = True` param
+  that the test can pass `False` to.
+
+Either is a small change. I am not making it here because the sprint scope is
+meta-checks, not bug-fixing. Filing as a follow-up task.
 
 ## Conclusions
 
