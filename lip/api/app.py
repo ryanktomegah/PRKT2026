@@ -137,6 +137,16 @@ try:
                 "return 401. Set this variable to enable API access."
             )
 
+        # B2-01 / review-A-1: Each downstream router factory accepts
+        # auth_dependency=None for test ergonomics (unauthenticated TestClient
+        # calls). Production wire-up must never pass None — a missing auth
+        # dependency here would silently open every protected route. Fail hard
+        # at composition time if that invariant is ever violated.
+        assert auth_dep is not None, (
+            "auth_dep must be set before mounting routers — refusing to build "
+            "a production app with no authentication dependency."
+        )
+
         regulator_signing_key = None
         regulator_key_hex = os.environ.get("LIP_REGULATOR_SUBSCRIPTION_KEY_HEX", "").strip()
         if regulator_key_hex:

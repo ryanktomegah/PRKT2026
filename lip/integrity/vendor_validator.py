@@ -32,7 +32,6 @@ from lip.integrity.compliance_enforcer import (
     jaccard_similarity,
 )
 
-# Default threshold; matches the constant added to lip/common/constants.py.
 DEFAULT_ZERO_INCIDENT_THRESHOLD = 0.95
 
 
