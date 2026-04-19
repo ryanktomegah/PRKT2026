@@ -51,6 +51,8 @@ lip/c3/rust_state_machine/target/
 lip/c3/rust_state_machine/Cargo.lock
 lip/c6_aml_velocity/rust_velocity/target/
 lip/c6_aml_velocity/rust_velocity/Cargo.lock
+lip/c7_execution_agent/rust_kill_switch/target/
+lip/c7_execution_agent/rust_kill_switch/Cargo.lock
 pytest-of-*/
 
 # PyTorch inductor compilation cache
