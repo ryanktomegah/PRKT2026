@@ -1,0 +1,158 @@
+Run started:2026-04-19 07:29:03.744710+00:00
+
+Test results:
+>> Issue: [B310:blacklist] Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+   Severity: Medium   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen
+   Location: lip/c3/state_machine_bridge.py:524:17
+523	        try:
+524	            with urllib_request.urlopen(req, timeout=5) as resp:
+525	                logger.info(
+
+--------------------------------------------------
+>> Issue: [B615:huggingface_unsafe_download] Unsafe Hugging Face Hub download without revision pinning in from_pretrained()
+   Severity: Medium   Confidence: High
+   CWE: CWE-494 (https://cwe.mitre.org/data/definitions/494.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b615_huggingface_unsafe_download.html
+   Location: lip/c4_dispute_classifier/training.py:98:26
+97	
+98	        self._tokenizer = AutoTokenizer.from_pretrained(
+99	            self.config.base_model_name,
+100	            use_fast=True,
+101	        )
+102	        self._tokenizer.pad_token = self._tokenizer.eos_token
+
+--------------------------------------------------
+>> Issue: [B615:huggingface_unsafe_download] Unsafe Hugging Face Hub download without revision pinning in from_pretrained()
+   Severity: Medium   Confidence: High
+   CWE: CWE-494 (https://cwe.mitre.org/data/definitions/494.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b615_huggingface_unsafe_download.html
+   Location: lip/c4_dispute_classifier/training.py:104:22
+103	
+104	        self._model = AutoModelForCausalLM.from_pretrained(
+105	            self.config.base_model_name,
+106	            quantization_config=quantization_config,
+107	            device_map="auto",
+108	        )
+109	        logger.info("Base model loaded successfully.")
+
+--------------------------------------------------
+>> Issue: [B310:blacklist] Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+   Severity: Medium   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen
+   Location: lip/c6_aml_velocity/sanctions_loader.py:88:13
+87	        req = urllib.request.Request(url, headers={"User-Agent": "LIP-SanctionsLoader/1.0"})
+88	        with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
+89	            raw = resp.read().decode("utf-8", errors="replace")
+
+--------------------------------------------------
+>> Issue: [B310:blacklist] Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+   Severity: Medium   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen
+   Location: lip/c6_aml_velocity/sanctions_loader.py:116:13
+115	        req = urllib.request.Request(url, headers={"User-Agent": "LIP-SanctionsLoader/1.0"})
+116	        with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
+117	            raw = resp.read()
+
+--------------------------------------------------
+>> Issue: [B314:blacklist] Using xml.etree.ElementTree.fromstring to parse untrusted XML data is known to be vulnerable to XML attacks. Replace xml.etree.ElementTree.fromstring with its defusedxml equivalent function or make sure defusedxml.defuse_stdlib() is called
+   Severity: Medium   Confidence: High
+   CWE: CWE-20 (https://cwe.mitre.org/data/definitions/20.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b313-b320-xml-bad-elementtree
+   Location: lip/c6_aml_velocity/sanctions_loader.py:118:15
+117	            raw = resp.read()
+118	        root = ET.fromstring(raw)
+119	
+
+--------------------------------------------------
+>> Issue: [B310:blacklist] Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+   Severity: Medium   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen
+   Location: lip/c6_aml_velocity/sanctions_loader.py:164:13
+163	        req = urllib.request.Request(url, headers={"User-Agent": "LIP-SanctionsLoader/1.0"})
+164	        with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
+165	            raw = resp.read()
+
+--------------------------------------------------
+>> Issue: [B314:blacklist] Using xml.etree.ElementTree.fromstring to parse untrusted XML data is known to be vulnerable to XML attacks. Replace xml.etree.ElementTree.fromstring with its defusedxml equivalent function or make sure defusedxml.defuse_stdlib() is called
+   Severity: Medium   Confidence: High
+   CWE: CWE-20 (https://cwe.mitre.org/data/definitions/20.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b313-b320-xml-bad-elementtree
+   Location: lip/c6_aml_velocity/sanctions_loader.py:166:15
+165	            raw = resp.read()
+166	        root = ET.fromstring(raw)
+167	        for alias in root.iter("nameAlias"):
+
+--------------------------------------------------
+>> Issue: [B301:blacklist] Pickle and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue.
+   Severity: Medium   Confidence: High
+   CWE: CWE-502 (https://cwe.mitre.org/data/definitions/502.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b301-pickle
+   Location: lip/common/secure_pickle.py:176:11
+175	    # Only reached after successful HMAC verification.
+176	    return pickle.loads(payload_bytes)  # noqa: S301 — verified above
+177	
+
+--------------------------------------------------
+>> Issue: [B324:hashlib] Use of weak MD5 hash for security. Consider usedforsecurity=False
+   Severity: High   Confidence: High
+   CWE: CWE-327 (https://cwe.mitre.org/data/definitions/327.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b324_hashlib.html
+   Location: lip/dgen/c4_generator.py:203:11
+202	    template = rng.choice(_REFS)
+203	    hex8 = hashlib.md5(str(rng.integers(0, 2**32)).encode()).hexdigest()[:8]
+204	    hex6 = hex8[:6]
+
+--------------------------------------------------
+>> Issue: [B310:blacklist] Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+   Severity: Medium   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen
+   Location: lip/infrastructure/monitoring/alerts.py:142:17
+141	        try:
+142	            with urllib.request.urlopen(req, timeout=5) as resp:
+143	                return resp.status == 202
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b108_hardcoded_tmp_directory.html
+   Location: lip/scripts/eval_c1_auc.py:45:59
+44	    parser.add_argument("--alpha", type=float, default=0.7)
+45	    parser.add_argument("--weights_out", type=str, default="/tmp/c1_weights.npz")
+46	    parser.add_argument("--scale", action="store_true",
+
+--------------------------------------------------
+>> Issue: [B324:hashlib] Use of weak MD5 hash for security. Consider usedforsecurity=False
+   Severity: High   Confidence: High
+   CWE: CWE-327 (https://cwe.mitre.org/data/definitions/327.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b324_hashlib.html
+   Location: lip/tests/test_security_comprehensive.py:104:19
+103	        # Verify it does NOT match MD5
+104	        md5_hash = hashlib.md5(value.encode("utf-8") + salt).hexdigest()
+105	        assert result != md5_hash
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 71629
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 3901
+		Medium: 11
+		High: 2
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 13
+		High: 3901
+Files skipped (0):

@@ -1,0 +1,536 @@
+tee: docs/engineering/review/2026-04-17/week-2-code-quality/pytest.log: No such file or directory
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/tomegah/PRKT2026/lip
+configfile: pyproject.toml
+plugins: anyio-4.12.1, cov-7.0.0
+collected 2671 items
+
+lip/tests/test_api_auth.py .............                                 [  0%]
+lip/tests/test_assert_hardening.py ...                                   [  0%]
+lip/tests/test_block_code_drift.py ..............                        [  1%]
+lip/tests/test_c1_calibration.py ....                                    [  1%]
+lip/tests/test_c1_classifier.py .........................                [  2%]
+lip/tests/test_c1_graphsage_neighbors.py .....                           [  2%]
+lip/tests/test_c1_inference_types.py ................................... [  3%]
+...............................                                          [  4%]
+lip/tests/test_c1_lgbm_ensemble.py ........                              [  5%]
+lip/tests/test_c1_oot_fallback.py ....                                   [  5%]
+lip/tests/test_c1_torch.py .....s                                        [  5%]
+lip/tests/test_c1_training.py ...............                            [  6%]
+lip/tests/test_c2_cascade_pricing.py .........                           [  6%]
+lip/tests/test_c2_comprehensive.py ..................................... [  7%]
+........................................                                 [  9%]
+lip/tests/test_c2_fee_formula.py ....................................... [ 10%]
+.............................................                            [ 12%]
+lip/tests/test_c2_model.py ........                                      [ 12%]
+lip/tests/test_c2_pd_model.py ..............................             [ 13%]
+lip/tests/test_c3_c4_c5_coverage.py .................................... [ 15%]
+............................                                             [ 16%]
+lip/tests/test_c3_repayment.py ......................................... [ 17%]
+......                                                                   [ 18%]
+lip/tests/test_c3_state_machine_bridge.py .............................. [ 19%]
+...........................................................              [ 21%]
+lip/tests/test_c4_backends.py .............                              [ 21%]
+lip/tests/test_c4_contraction_expansion.py .............                 [ 22%]
+lip/tests/test_c4_dispute.py ........................                    [ 23%]
+lip/tests/test_c4_llm_integration.py sssssssssssssssss                   [ 23%]
+lip/tests/test_c5_consumer_commit_on_error.py ....                       [ 24%]
+lip/tests/test_c5_kafka_worker.py .............                          [ 24%]
+lip/tests/test_c5_streaming.py ......................................... [ 26%]
+......................                                                   [ 26%]
+lip/tests/test_c5_stress_regime.py ......................                [ 27%]
+lip/tests/test_c5_telemetry_eligible.py ..........................       [ 28%]
+lip/tests/test_c6_aml.py ...................................             [ 29%]
+lip/tests/test_c6_rust_velocity.py ..................................... [ 31%]
+..                                                                       [ 31%]
+lip/tests/test_c6_tenant_velocity.py ...................                 [ 32%]
+lip/tests/test_c7_execution.py ......................................... [ 33%]
+............                                                             [ 34%]
+lip/tests/test_c7_go_router.py ............................              [ 35%]
+lip/tests/test_c7_offer_delivery.py .................................... [ 36%]
+............................                                             [ 37%]
+lip/tests/test_c8_license.py ...........................                 [ 38%]
+lip/tests/test_c8_processor.py ......................                    [ 39%]
+lip/tests/test_cancellation_detector.py ..........                       [ 39%]
+lip/tests/test_cascade_api.py ..................................         [ 41%]
+lip/tests/test_cbdc_normalizer.py ....................................   [ 42%]
+lip/tests/test_circuit_breaker.py .........                              [ 42%]
+lip/tests/test_conformal.py ..........                                   [ 43%]
+lip/tests/test_coverage_gaps.py ........................................ [ 44%]
+.........................................................                [ 46%]
+lip/tests/test_decimal_precision.py .......                              [ 47%]
+lip/tests/test_default_permissive_guards.py .........                    [ 47%]
+lip/tests/test_deployment_phase.py ..................................    [ 48%]
+lip/tests/test_dgen_adversarial.py ..                                    [ 48%]
+lip/tests/test_dgen_c6_bic_validity.py ...                               [ 48%]
+lip/tests/test_dgen_class_b_label.py ..                                  [ 48%]
+lip/tests/test_drift_detector.py ...........                             [ 49%]
+lip/tests/test_e2e_config.py .....................                       [ 50%]
+lip/tests/test_e2e_corridor.py ...............                           [ 50%]
+lip/tests/test_e2e_decision_log.py ...............                       [ 51%]
+lip/tests/test_e2e_latency.py ..............                             [ 51%]
+lip/tests/test_e2e_pipeline.py .....................................     [ 53%]
+lip/tests/test_e2e_settlement.py ..............                          [ 53%]
+lip/tests/test_e2e_state_machines.py ..........................          [ 54%]
+lip/tests/test_failure_modes.py ........................................ [ 56%]
+......                                                                   [ 56%]
+lip/tests/test_fee_arithmetic.py .....................                   [ 57%]
+lip/tests/test_fee_floor_two_tier.py .                                   [ 57%]
+lip/tests/test_gap02_aml_caps.py ...                                     [ 57%]
+lip/tests/test_gap02_licensee_aml_caps.py ..                             [ 57%]
+lip/tests/test_gap03_borrower_registry.py ..                             [ 57%]
+lip/tests/test_gap04_retry_detection.py ........                         [ 57%]
+lip/tests/test_gap04_uetr_ttl.py ..                                      [ 57%]
+lip/tests/test_gap05_royalty_collection.py ....                          [ 57%]
+lip/tests/test_gap06_swift_disbursement.py .....                         [ 58%]
+lip/tests/test_gap07_portfolio_api.py ................                   [ 58%]
+lip/tests/test_gap08_override_timeout.py ............                    [ 59%]
+lip/tests/test_gap09_business_calendar.py .................              [ 59%]
+lip/tests/test_gap10_governing_law.py ....................               [ 60%]
+lip/tests/test_gap11_entity_tier_override.py .............               [ 61%]
+lip/tests/test_gap12_fx_risk_policy.py ...............                   [ 61%]
+lip/tests/test_gap13_notifications.py .....................              [ 62%]
+lip/tests/test_gap14_regulatory_reporting.py .................           [ 63%]
+lip/tests/test_gap15_admin_monitoring.py ...............                 [ 63%]
+lip/tests/test_gap16_partial_settlement.py ...........                   [ 64%]
+lip/tests/test_gap17_amount_validation.py ......                         [ 64%]
+lip/tests/test_gap_stress_detector.py .......                            [ 64%]
+lip/tests/test_go_security_defaults.py .....                             [ 64%]
+lip/tests/test_health_router.py ...........                              [ 65%]
+lip/tests/test_integration_flows.py .........................            [ 66%]
+lip/tests/test_integrity_attestation.py ......                           [ 66%]
+lip/tests/test_integrity_breach.py ......                                [ 66%]
+lip/tests/test_integrity_claims.py .......                               [ 66%]
+lip/tests/test_integrity_compliance_enforcer.py .........                [ 67%]
+lip/tests/test_integrity_evidence.py .....                               [ 67%]
+lip/tests/test_integrity_gate.py ....                                    [ 67%]
+lip/tests/test_integrity_oss.py ......                                   [ 67%]
+lip/tests/test_integrity_vendor.py ..........                            [ 68%]
+lip/tests/test_kill_switch_comprehensive.py ...........................  [ 69%]
+lip/tests/test_kill_switch_rust.py ......................ssss            [ 70%]
+lip/tests/test_license_token_canonical.py ..........                     [ 70%]
+lip/tests/test_merton_solver.py .....                                    [ 70%]
+lip/tests/test_miplo_gateway.py ...................                      [ 71%]
+lip/tests/test_miplo_portfolio.py ......                                 [ 71%]
+lip/tests/test_nav_emitter.py ..........                                 [ 71%]
+lip/tests/test_negation_suite.py ............                            [ 72%]
+lip/tests/test_override_sweeper.py .......                               [ 72%]
+lip/tests/test_p10_anonymizer.py ...................................     [ 73%]
+lip/tests/test_p10_circular_exposure.py .................                [ 74%]
+lip/tests/test_p10_load_test.py ........                                 [ 74%]
+lip/tests/test_p10_methodology_onboarding.py ..............              [ 75%]
+lip/tests/test_p10_privacy_audit.py ..................                   [ 76%]
+lip/tests/test_p10_regulator_subscription.py .......................     [ 76%]
+lip/tests/test_p10_report_generator.py ...............................   [ 78%]
+lip/tests/test_p10_security_pentest.py ..............                    [ 78%]
+lip/tests/test_p10_shadow_pipeline.py ............................       [ 79%]
+lip/tests/test_p10_systemic_risk.py ..........................           [ 80%]
+lip/tests/test_p12_federated_learning/test_integration.py .............. [ 81%]
+                                                                         [ 81%]
+lip/tests/test_p12_federated_learning/test_model_splitting.py .......... [ 81%]
+............                                                             [ 81%]
+lip/tests/test_p5_cascade.py ..........                                  [ 82%]
+lip/tests/test_p5_cascade_alerts.py .........                            [ 82%]
+lip/tests/test_p5_cascade_propagation.py ....................            [ 83%]
+lip/tests/test_p5_centrality.py ........                                 [ 83%]
+lip/tests/test_p5_corporate_graph.py ....................                [ 84%]
+lip/tests/test_p5_fee_floor.py ..                                        [ 84%]
+lip/tests/test_p5_intervention.py .........                              [ 84%]
+lip/tests/test_p5_settlement_trigger.py ......                           [ 85%]
+lip/tests/test_p5_stress_bridge.py ......                                [ 85%]
+lip/tests/test_pickle_ban.py ..                                          [ 85%]
+lip/tests/test_portfolio_risk.py .................                       [ 86%]
+lip/tests/test_prompt_injection.py ............                          [ 86%]
+lip/tests/test_proprietary_map_drift.py .....                            [ 86%]
+lip/tests/test_query_metering_budget_race.py .....                       [ 86%]
+lip/tests/test_query_metering_redis_backend.py ............              [ 87%]
+lip/tests/test_redis_live.py sssssss                                     [ 87%]
+lip/tests/test_regulatory_api.py ...............................         [ 88%]
+lip/tests/test_regulatory_export.py ........                             [ 89%]
+lip/tests/test_regulatory_reporting.py ..........                        [ 89%]
+lip/tests/test_royalty_batch.py .....                                    [ 89%]
+lip/tests/test_sanctions_transliteration.py ...........                  [ 90%]
+lip/tests/test_secure_pickle.py ..........                               [ 90%]
+lip/tests/test_security_comprehensive.py ............................... [ 91%]
+.....................................                                    [ 92%]
+lip/tests/test_settlement_bridge.py ..............                       [ 93%]
+lip/tests/test_settlement_predictor.py ...............                   [ 94%]
+lip/tests/test_simulation_script.py ....                                 [ 94%]
+lip/tests/test_single_replica_guard.py ..........                        [ 94%]
+lip/tests/test_state_machines.py ....................................... [ 95%]
+.......................                                                  [ 96%]
+lip/tests/test_structuring_detector_redis.py ..........                  [ 97%]
+lip/tests/test_synthetic_data.py ....................................... [ 98%]
+...........................                                              [ 99%]
+lip/tests/test_velocity_bridge_redis_routing.py ........                 [100%]
+
+=============================== warnings summary ===============================
+tests/test_c1_graphsage_neighbors.py::TestTrainTorchEndToEnd::test_train_torch_end_to_end_with_graph
+  /Users/tomegah/.pyenv/versions/3.14.3/lib/python3.14/site-packages/joblib/externals/loky/backend/context.py:131: UserWarning: Could not find the number of physical cores for the following reason:
+  invalid literal for int() with base 10: ''
+  Returning the number of logical cores instead. You can silence this warning by setting LOKY_MAX_CPU_COUNT to the number of cores you want to use.
+    warnings.warn(
+
+tests/test_c1_graphsage_neighbors.py: 1 warning
+tests/test_c1_lgbm_ensemble.py: 45 warnings
+tests/test_c1_training.py: 30 warnings
+tests/test_c2_comprehensive.py: 58 warnings
+tests/test_c2_model.py: 16 warnings
+  /Users/tomegah/.pyenv/versions/3.14.3/lib/python3.14/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+    warnings.warn(
+
+tests/test_c2_comprehensive.py: 17 warnings
+tests/test_c2_model.py: 2 warnings
+  /Users/tomegah/.pyenv/versions/3.14.3/lib/python3.14/site-packages/shap/explainers/_tree.py:620: UserWarning: LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+    warnings.warn(
+
+tests/test_p12_federated_learning/test_integration.py: 12 warnings
+  /Users/tomegah/.pyenv/versions/3.14.3/lib/python3.14/site-packages/opacus/privacy_engine.py:96: UserWarning: Secure RNG turned off. This is perfectly fine for experimentation as it allows for much faster training performance, but remember to turn it on and retrain one last time before production with ``secure_mode`` turned on.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.14.3-final-0 _______________
+
+Name                                                            Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------------------------------
+lip/__init__.py                                                     2      0   100%
+lip/api/__init__.py                                                 0      0   100%
+lip/api/admin_router.py                                            93     40    57%   161, 166, 171-172, 190-196, 204-210, 227-287, 299-305, 317-318
+lip/api/app.py                                                    130     53    59%   116-129, 143-148, 156-169, 216, 220-263, 267-271, 287, 307-313
+lip/api/auth.py                                                    61      7    89%   68-69, 137-138, 239, 249-250
+lip/api/cascade_router.py                                         138      5    96%   155, 333-337
+lip/api/cascade_service.py                                         93      0   100%
+lip/api/health_router.py                                           51      2    96%   118-119
+lip/api/miplo_router.py                                            74     74     0%   9-159
+lip/api/miplo_service.py                                           51      4    92%   66, 135-137
+lip/api/portfolio_router.py                                       123     12    90%   242-251, 340, 345, 350, 355, 381, 386, 391, 395-396
+lip/api/rate_limiter.py                                            55     12    78%   90, 95-108
+lip/api/regulatory_models.py                                      100      2    98%   166-167
+lip/api/regulatory_router.py                                      220     28    87%   76, 80, 112, 114, 121, 123, 132, 154-155, 168-170, 268-271, 469-485, 553-554, 570, 584-589
+lip/api/regulatory_service.py                                     127      9    93%   116, 156, 182-185, 211, 260-263, 273-274
+lip/c1_failure_classifier/__init__.py                              27      8    70%   79-92
+lip/c1_failure_classifier/calibration.py                          107     14    87%   106, 199, 311-328
+lip/c1_failure_classifier/embeddings.py                           118     34    71%   89-90, 107, 115-116, 138-141, 147-148, 183, 221-224, 265, 276-277, 300, 327-342
+lip/c1_failure_classifier/features.py                             154     10    94%   167, 215, 377-378, 398-405
+lip/c1_failure_classifier/graph_builder.py                        142      5    96%   171, 288, 359-360, 421
+lip/c1_failure_classifier/graphsage.py                            123      0   100%
+lip/c1_failure_classifier/graphsage_torch.py                       41      0   100%
+lip/c1_failure_classifier/inference.py                            102      3    97%   136, 342, 347
+lip/c1_failure_classifier/inference_types.py                       70      1    99%   150
+lip/c1_failure_classifier/model.py                                209     20    90%   355, 477, 492, 501-502, 517-518, 533-537, 547-554
+lip/c1_failure_classifier/model_torch.py                           56      2    96%   184, 194
+lip/c1_failure_classifier/synthetic_data.py                       531     48    91%   280, 397-399, 407-418, 547, 850, 875, 915, 934-978
+lip/c1_failure_classifier/tabtransformer.py                       254      1    99%   45
+lip/c1_failure_classifier/tabtransformer_torch.py                  69      0   100%
+lip/c1_failure_classifier/training.py                             334     13    96%   50, 151-152, 157-159, 161-162, 164-165, 689, 773, 910
+lip/c1_failure_classifier/training_torch.py                       176      3    98%   178, 340, 366
+lip/c2_pd_model/__init__.py                                        42      0   100%
+lip/c2_pd_model/baseline.py                                        71      3    96%   34, 83-84
+lip/c2_pd_model/features.py                                       191      7    96%   339-340, 374, 378, 446-448
+lip/c2_pd_model/fee.py                                             47      0   100%
+lip/c2_pd_model/inference.py                                       76      2    97%   246, 296
+lip/c2_pd_model/lgd.py                                             21      0   100%
+lip/c2_pd_model/merton_kmv.py                                      48      6    88%   25, 96, 114, 130-132
+lip/c2_pd_model/model.py                                          150     13    91%   53-58, 63-72, 228-233, 315, 317-319
+lip/c2_pd_model/synthetic_data.py                                  76      0   100%
+lip/c2_pd_model/tier_assignment.py                                 23      0   100%
+lip/c2_pd_model/training.py                                       160     25    84%   325-329, 407-408, 500-512, 524-535, 593
+lip/c3/__init__.py                                                  2      0   100%
+lip/c3/state_machine_bridge.py                                    204     57    72%   58-68, 92-97, 104, 121-128, 134, 137-138, 189-190, 206-213, 224, 243, 258, 420, 460-483, 492-529, 578-579
+lip/c3_repayment_engine/__init__.py                                 6      0   100%
+lip/c3_repayment_engine/corridor_buffer.py                        123      4    97%   111, 148-149, 292
+lip/c3_repayment_engine/nav_emitter.py                            101     29    71%   115, 117, 161-162, 188-216, 220-229
+lip/c3_repayment_engine/rejection_taxonomy.py                      23      2    91%   150-151
+lip/c3_repayment_engine/repayment_loop.py                         199      7    96%   319-320, 368-369, 499-500, 514
+lip/c3_repayment_engine/settlement_bridge.py                       45      4    91%   80-86, 134-135
+lip/c3_repayment_engine/settlement_handlers.py                    192     28    85%   161-162, 175-176, 195-196, 209-211, 239-240, 252-254, 293-294, 313-315, 350-352, 420-421, 468-469, 483-484
+lip/c3_repayment_engine/uetr_mapping.py                            71      9    87%   91-93, 121-126
+lip/c4_dispute_classifier/__init__.py                               4      0   100%
+lip/c4_dispute_classifier/backends.py                              80      2    98%   138-139
+lip/c4_dispute_classifier/model.py                                 78      0   100%
+lip/c4_dispute_classifier/multilingual.py                          50      0   100%
+lip/c4_dispute_classifier/negation.py                              63      0   100%
+lip/c4_dispute_classifier/prefilter.py                             61      3    95%   176, 258, 316
+lip/c4_dispute_classifier/prompt.py                                36      6    83%   174-191, 243
+lip/c4_dispute_classifier/taxonomy.py                              18      1    94%   82
+lip/c4_dispute_classifier/training.py                             114    114     0%   5-388
+lip/c5_streaming/__init__.py                                        5      0   100%
+lip/c5_streaming/cancellation_detector.py                         128     10    92%   249-250, 299-300, 305-306, 346-347, 352-353
+lip/c5_streaming/cbdc_normalizer.py                                52      0   100%
+lip/c5_streaming/event_normalizer.py                              167     26    84%   83, 87, 215, 223-224, 255-269, 284-285, 302, 338-339, 346, 380, 411-412, 432
+lip/c5_streaming/flink_jobs.py                                     50      7    86%   123, 164-165, 175-176, 186-187
+lip/c5_streaming/kafka_config.py                                   39      0   100%
+lip/c5_streaming/kafka_worker.py                                  138     32    77%   157, 202, 236-266, 302-350
+lip/c5_streaming/load_test/__init__.py                              0      0   100%
+lip/c5_streaming/load_test/load_test_harness.py                   111    111     0%   19-260
+lip/c5_streaming/redis_config.py                                   19      0   100%
+lip/c5_streaming/stress_regime_detector.py                        111      0   100%
+lip/c6_aml_velocity/__init__.py                                    10      0   100%
+lip/c6_aml_velocity/aml_checker.py                                 97     14    86%   138, 155-156, 159, 166-167, 246-250, 341-349
+lip/c6_aml_velocity/anomaly.py                                     58      5    91%   110-113, 148
+lip/c6_aml_velocity/cross_licensee.py                             121     24    80%   78-81, 128-133, 152, 158-166, 215, 226, 229-232
+lip/c6_aml_velocity/salt_rotation.py                               85     13    85%   84, 97, 179, 197-205, 220-225
+lip/c6_aml_velocity/sanctions.py                                   97      5    95%   157-160, 226
+lip/c6_aml_velocity/sanctions_bridge.py                           104     13    88%   113-115, 178-180, 187, 242-246, 253, 266
+lip/c6_aml_velocity/sanctions_loader.py                           123    123     0%   34-301
+lip/c6_aml_velocity/tenant_velocity.py                             81      1    99%   125
+lip/c6_aml_velocity/velocity.py                                   173     45    74%   241, 246-247, 309, 313-323, 348-382, 396, 425-427, 516, 625-644
+lip/c6_aml_velocity/velocity_bridge.py                             91      3    97%   282, 291, 304
+lip/c7_execution_agent/__init__.py                                  7      0   100%
+lip/c7_execution_agent/agent.py                                   239     16    93%   129, 216, 234-235, 443-452, 546-569
+lip/c7_execution_agent/decision_log.py                             67      7    90%   81, 104, 107, 115, 139-141
+lip/c7_execution_agent/degraded_mode.py                            41      1    98%   135
+lip/c7_execution_agent/go_router_client.py                         86     22    74%   49-50, 154-155, 323-352
+lip/c7_execution_agent/human_override.py                           88      2    98%   196, 241
+lip/c7_execution_agent/kill_switch.py                              97      0   100%
+lip/c7_execution_agent/kill_switch_bridge.py                      114     13    89%   69-70, 84-85, 94, 280-289
+lip/c7_execution_agent/offer_delivery.py                          133      9    93%   159-160, 246-247, 309-310, 360-361, 451
+lip/c7_execution_agent/override_sweeper.py                         64      9    86%   14-15, 53, 107-112, 120-121
+lip/c8_license_manager/__init__.py                                  5      0   100%
+lip/c8_license_manager/boot_validator.py                           87      4    95%   208-211
+lip/c8_license_manager/license_token.py                            94      1    99%   136
+lip/c8_license_manager/query_metering.py                          171      5    97%   110, 113, 116, 243, 407
+lip/c8_license_manager/regulator_subscription.py                   82      8    90%   32, 92, 113, 115, 117, 151-152, 175
+lip/c8_license_manager/revenue_metering.py                         55      0   100%
+lip/c9_settlement_predictor/__init__.py                             0      0   100%
+lip/c9_settlement_predictor/model.py                              154     51    67%   193, 224-233, 240-242, 313, 325-326, 345-367, 392-401, 410-421, 432-442
+lip/c9_settlement_predictor/synthetic_data.py                      60      0   100%
+lip/common/__init__.py                                              2      0   100%
+lip/common/block_codes.py                                          25      5    80%   48-49, 70, 75, 80
+lip/common/borrower_registry.py                                    61     31    49%   48-49, 52, 55-63, 75-78, 86-93, 107-113
+lip/common/business_calendar.py                                    28      1    96%   165
+lip/common/circuit_breaker.py                                      60      0   100%
+lip/common/conformal.py                                           104     35    66%   58, 78, 88, 93, 146, 156-222
+lip/common/constants.py                                           124      6    95%   209-219, 379, 385
+lip/common/deployment_phase.py                                     44      0   100%
+lip/common/drift_detector.py                                      106     12    89%   51, 151, 161, 174, 202-216
+lip/common/encryption.py                                           60      1    98%   37
+lip/common/fx_risk_policy.py                                       19      1    95%   86
+lip/common/governing_law.py                                        18      0   100%
+lip/common/known_entity_registry.py                                73     35    52%   57, 59, 62-77, 90-93, 107-110, 129-137
+lip/common/notification_service.py                                128     38    70%   142, 145-173, 178-191, 195-197, 244, 263-270
+lip/common/partial_settlement.py                                   13      0   100%
+lip/common/redis_factory.py                                        41     28    32%   17-19, 41-42, 49-67, 72-85
+lip/common/regulatory_export.py                                    30      0   100%
+lip/common/regulatory_reporter.py                                 133     46    65%   111-112, 180, 183-235, 240-259, 264-282, 348, 409
+lip/common/royalty_batch.py                                        85     27    68%   61-62, 75-92, 96-112, 124-130, 136, 160-162
+lip/common/royalty_settlement.py                                   84     18    79%   56, 59-76, 81-93, 158-159
+lip/common/schemas.py                                             246      0   100%
+lip/common/secure_pickle.py                                        48      0   100%
+lip/common/state_machines.py                                       80      3    96%   220, 333, 336
+lip/common/swift_disbursement.py                                   14      0   100%
+lip/common/uetr_tracker.py                                        114     32    72%   69-71, 98, 111-112, 130-131, 146, 154, 159-161, 181-182, 186-204, 208-210
+lip/compliance/__init__.py                                          0      0   100%
+lip/compliance/model_card_generator.py                            134      0   100%
+lip/infrastructure/monitoring/__init__.py                           3      0   100%
+lip/infrastructure/monitoring/alerts.py                            64     28    56%   98-99, 116-146, 159, 169, 185, 200, 216, 232, 248, 264, 279
+lip/infrastructure/monitoring/metrics.py                          155     55    65%   88-90, 99-103, 115-119, 127, 208-209, 223-227, 235, 243, 253, 261, 275-279, 290, 319-320, 330, 338, 361-362, 379-388, 401-408, 412
+lip/instrumentation.py                                             38      0   100%
+lip/integrity/__init__.py                                           0      0   100%
+lip/integrity/breach_protocol.py                                  127     14    89%   120, 141-146, 182-184, 191, 251, 299, 320
+lip/integrity/claims_registry.py                                   69      7    90%   70, 86, 108, 117, 177, 180, 192
+lip/integrity/compliance_enforcer.py                               59      3    95%   70, 72, 103
+lip/integrity/evidence.py                                          71      2    97%   164, 188
+lip/integrity/oss_tracker.py                                       86      3    97%   127, 157, 161
+lip/integrity/pipeline_gate.py                                     65      6    91%   96, 115-119
+lip/integrity/vendor_attestation.py                               115     15    87%   99, 113, 125-126, 138, 150, 168, 181, 183, 192, 216, 221-224
+lip/integrity/vendor_validator.py                                 108      4    96%   214, 250, 258, 271
+lip/p5_cascade_engine/__init__.py                                   9      0   100%
+lip/p5_cascade_engine/cascade_alerts.py                            44      1    98%   84
+lip/p5_cascade_engine/cascade_propagation.py                       80      0   100%
+lip/p5_cascade_engine/cascade_settlement_trigger.py                24      0   100%
+lip/p5_cascade_engine/constants.py                                 28      0   100%
+lip/p5_cascade_engine/corporate_features.py                        36      2    94%   61, 74
+lip/p5_cascade_engine/corporate_graph.py                           94      2    98%   75, 123
+lip/p5_cascade_engine/entity_resolver.py                           75      1    99%   119
+lip/p5_cascade_engine/intervention_optimizer.py                    83      1    99%   86
+lip/p5_cascade_engine/stress_cascade_bridge.py                     24      0   100%
+lip/p10_regulatory_data/__init__.py                                16      0   100%
+lip/p10_regulatory_data/anonymizer.py                              87      1    99%   264
+lip/p10_regulatory_data/circular_exposure.py                       87      2    98%   85, 145
+lip/p10_regulatory_data/concentration.py                           40      3    92%   72, 93, 97
+lip/p10_regulatory_data/constants.py                                2      0   100%
+lip/p10_regulatory_data/contagion.py                               76      2    97%   89, 142
+lip/p10_regulatory_data/methodology.py                             15      0   100%
+lip/p10_regulatory_data/methodology_paper.py                       34      1    97%   63
+lip/p10_regulatory_data/privacy_audit.py                          173      6    97%   113, 129, 140, 225, 257, 390
+lip/p10_regulatory_data/privacy_budget.py                          35      0   100%
+lip/p10_regulatory_data/regulator_onboarding.py                    61      0   100%
+lip/p10_regulatory_data/report_metadata.py                         33      0   100%
+lip/p10_regulatory_data/report_renderer.py                         93      0   100%
+lip/p10_regulatory_data/shadow_data.py                             66      1    98%   131
+lip/p10_regulatory_data/shadow_runner.py                           74      4    95%   28, 145-147
+lip/p10_regulatory_data/systemic_risk.py                          120      6    95%   104, 135, 155, 217, 250, 260
+lip/p10_regulatory_data/telemetry_collector.py                    113      5    96%   30, 51, 74, 147, 294
+lip/p10_regulatory_data/telemetry_schema.py                        45      0   100%
+lip/p12_federated_learning/__init__.py                              2      0   100%
+lip/p12_federated_learning/client.py                              125     18    86%   37-43, 108, 192, 325-334, 365, 369, 436-437, 465, 467
+lip/p12_federated_learning/constants.py                            34      0   100%
+lip/p12_federated_learning/dp_accountant.py                        91     22    76%   36-41, 152, 210, 216, 335-339, 386-400, 422
+lip/p12_federated_learning/local_ensemble.py                      127     87    31%   35-38, 121-122, 153, 185-215, 244-266, 277-284, 314-353, 381-424
+lip/p12_federated_learning/models.py                              103      0   100%
+lip/p12_federated_learning/privacy_engine.py                       85     54    36%   35-39, 105, 111, 115, 120, 139, 178-200, 227-266, 291, 331-340, 379-403
+lip/p12_federated_learning/simulation.py                          130    130     0%   18-482
+lip/p12_federated_learning/synthetic_banks.py                      99     40    60%   64, 66, 70, 122-149, 212, 284, 287, 348-362, 377-390, 408-421
+lip/pipeline.py                                                   293     64    78%   178, 184-187, 330-342, 384-412, 474-490, 510-519, 563-584, 741-758, 817-822, 882-887, 927-929, 947, 954-959, 961-967, 982, 986-992, 1027-1028
+lip/pipeline_result.py                                             31      0   100%
+lip/risk/__init__.py                                                0      0   100%
+lip/risk/concentration.py                                          43      3    93%   63, 99, 107
+lip/risk/portfolio_risk.py                                         90      1    99%   249
+lip/risk/stress_testing.py                                         50      0   100%
+lip/risk/var_monte_carlo.py                                       103      3    97%   206, 228, 315
+lip/scripts/__init__.py                                             0      0   100%
+lip/scripts/eval_c1_auc.py                                        114    114     0%   22-181
+lip/scripts/eval_c1_auc_torch.py                                  102    102     0%   24-212
+lip/scripts/simulate_pipeline.py                                  215    215     0%   21-474
+lip/tests/__init__.py                                               0      0   100%
+lip/tests/_test_env.py                                              5      0   100%
+lip/tests/conftest.py                                             111     28    75%   77, 115, 124, 129, 134, 139, 144, 150-151, 162, 167, 172, 177-180, 190, 195-198, 203, 209-210, 215, 229, 279, 285, 291
+lip/tests/test_api_auth.py                                         68      2    97%   92-93
+lip/tests/test_assert_hardening.py                                 25      0   100%
+lip/tests/test_block_code_drift.py                                 72      1    99%   222
+lip/tests/test_c1_calibration.py                                   35      0   100%
+lip/tests/test_c1_classifier.py                                   182      0   100%
+lip/tests/test_c1_graphsage_neighbors.py                           86      2    98%   32-33
+lip/tests/test_c1_inference_types.py                              341     20    94%   622-680
+lip/tests/test_c1_lgbm_ensemble.py                                109      0   100%
+lip/tests/test_c1_oot_fallback.py                                  39      0   100%
+lip/tests/test_c1_torch.py                                        106     15    86%   144, 224-240
+lip/tests/test_c1_training.py                                     231      0   100%
+lip/tests/test_c2_cascade_pricing.py                               43      0   100%
+lip/tests/test_c2_comprehensive.py                                547      0   100%
+lip/tests/test_c2_fee_formula.py                                  216      0   100%
+lip/tests/test_c2_model.py                                        129      1    99%   308
+lip/tests/test_c2_pd_model.py                                     110      0   100%
+lip/tests/test_c3_c4_c5_coverage.py                               518      5    99%   36, 67-69, 85
+lip/tests/test_c3_repayment.py                                    235      0   100%
+lip/tests/test_c3_state_machine_bridge.py                         375      2    99%   615, 634
+lip/tests/test_c4_backends.py                                     117      1    99%   165
+lip/tests/test_c4_contraction_expansion.py                         48      0   100%
+lip/tests/test_c4_dispute.py                                       96      0   100%
+lip/tests/test_c4_llm_integration.py                              131     89    32%   68-74, 85-104, 114-116, 122-123, 128-129, 171-179, 193-199, 203-210, 214-221, 225-232, 236-244, 250-257, 271-278, 282-289, 293-301, 315-323, 327-336, 348-373, 396-428
+lip/tests/test_c5_consumer_commit_on_error.py                      49      3    94%   33, 46, 65
+lip/tests/test_c5_kafka_worker.py                                 233     47    80%   22-81, 199-200
+lip/tests/test_c5_streaming.py                                    264      0   100%
+lip/tests/test_c5_stress_regime.py                                233      0   100%
+lip/tests/test_c5_telemetry_eligible.py                            51      0   100%
+lip/tests/test_c6_aml.py                                          254      0   100%
+lip/tests/test_c6_rust_velocity.py                                256      3    99%   144, 292, 390
+lip/tests/test_c6_tenant_velocity.py                              157      0   100%
+lip/tests/test_c7_execution.py                                    324      0   100%
+lip/tests/test_c7_go_router.py                                    239      0   100%
+lip/tests/test_c7_offer_delivery.py                               403      0   100%
+lip/tests/test_c8_license.py                                      197      1    99%   177
+lip/tests/test_c8_processor.py                                    179      0   100%
+lip/tests/test_cancellation_detector.py                            74      0   100%
+lip/tests/test_cascade_api.py                                     281      2    99%   458-459
+lip/tests/test_cbdc_normalizer.py                                 158      0   100%
+lip/tests/test_circuit_breaker.py                                  76      0   100%
+lip/tests/test_conformal.py                                        68      0   100%
+lip/tests/test_coverage_gaps.py                                   581      2    99%   656, 674
+lip/tests/test_decimal_precision.py                                39      0   100%
+lip/tests/test_default_permissive_guards.py                        56      0   100%
+lip/tests/test_deployment_phase.py                                105      0   100%
+lip/tests/test_dgen_adversarial.py                                 23      0   100%
+lip/tests/test_dgen_c6_bic_validity.py                             13      0   100%
+lip/tests/test_dgen_class_b_label.py                               20      2    90%   50, 52
+lip/tests/test_drift_detector.py                                   76      0   100%
+lip/tests/test_e2e_config.py                                       97      0   100%
+lip/tests/test_e2e_corridor.py                                     92      0   100%
+lip/tests/test_e2e_decision_log.py                                118      0   100%
+lip/tests/test_e2e_latency.py                                     110      0   100%
+lip/tests/test_e2e_live.py                                        102    102     0%   24-323
+lip/tests/test_e2e_settlement.py                                  168      4    98%   55-64
+lip/tests/test_e2e_state_machines.py                              115      0   100%
+lip/tests/test_failure_modes.py                                   281      2    99%   196-197
+lip/tests/test_fee_arithmetic.py                                   90      0   100%
+lip/tests/test_fee_floor_two_tier.py                               10      1    90%   24
+lip/tests/test_gap02_aml_caps.py                                   64      0   100%
+lip/tests/test_gap02_licensee_aml_caps.py                          32      0   100%
+lip/tests/test_gap03_borrower_registry.py                          30      0   100%
+lip/tests/test_gap04_retry_detection.py                            85      0   100%
+lip/tests/test_gap04_uetr_ttl.py                                   19      0   100%
+lip/tests/test_gap05_royalty_collection.py                         46      0   100%
+lip/tests/test_gap06_swift_disbursement.py                         45      0   100%
+lip/tests/test_gap07_portfolio_api.py                              93      0   100%
+lip/tests/test_gap08_override_timeout.py                           75      0   100%
+lip/tests/test_gap09_business_calendar.py                          52      0   100%
+lip/tests/test_gap10_governing_law.py                              94      0   100%
+lip/tests/test_gap11_entity_tier_override.py                       86      0   100%
+lip/tests/test_gap12_fx_risk_policy.py                             93      0   100%
+lip/tests/test_gap13_notifications.py                             145      0   100%
+lip/tests/test_gap14_regulatory_reporting.py                       91      0   100%
+lip/tests/test_gap15_admin_monitoring.py                           95      0   100%
+lip/tests/test_gap16_partial_settlement.py                         93      0   100%
+lip/tests/test_gap17_amount_validation.py                          49      0   100%
+lip/tests/test_gap_stress_detector.py                              85      0   100%
+lip/tests/test_go_security_defaults.py                             41      5    88%   25, 41, 55, 74, 84
+lip/tests/test_health_router.py                                    88      2    98%   106-107
+lip/tests/test_integration_flows.py                               178      0   100%
+lip/tests/test_integrity_attestation.py                            49      0   100%
+lip/tests/test_integrity_breach.py                                 60      0   100%
+lip/tests/test_integrity_claims.py                                 58      0   100%
+lip/tests/test_integrity_compliance_enforcer.py                    62      0   100%
+lip/tests/test_integrity_evidence.py                               34      0   100%
+lip/tests/test_integrity_gate.py                                   28      1    96%   33
+lip/tests/test_integrity_oss.py                                    40      0   100%
+lip/tests/test_integrity_vendor.py                                 74      0   100%
+lip/tests/test_kill_switch_comprehensive.py                       205      0   100%
+lip/tests/test_kill_switch_rust.py                                272     23    92%   290-291, 487-490, 493-502, 505-510, 514-524
+lip/tests/test_license_token_canonical.py                          76      0   100%
+lip/tests/test_merton_solver.py                                    43      0   100%
+lip/tests/test_miplo_gateway.py                                   204      0   100%
+lip/tests/test_miplo_portfolio.py                                  66      0   100%
+lip/tests/test_nav_emitter.py                                      83      0   100%
+lip/tests/test_negation_suite.py                                   73      0   100%
+lip/tests/test_override_sweeper.py                                 58      0   100%
+lip/tests/test_p5_cascade.py                                       81      0   100%
+lip/tests/test_p5_cascade_alerts.py                                82      0   100%
+lip/tests/test_p5_cascade_propagation.py                          160      0   100%
+lip/tests/test_p5_centrality.py                                    56      0   100%
+lip/tests/test_p5_corporate_graph.py                              185      0   100%
+lip/tests/test_p5_fee_floor.py                                      9      0   100%
+lip/tests/test_p5_intervention.py                                  99      0   100%
+lip/tests/test_p5_settlement_trigger.py                            58      0   100%
+lip/tests/test_p5_stress_bridge.py                                 66      0   100%
+lip/tests/test_p10_anonymizer.py                                  317      0   100%
+lip/tests/test_p10_circular_exposure.py                           100      0   100%
+lip/tests/test_p10_load_test.py                                   198      4    98%   31-32, 101-102
+lip/tests/test_p10_methodology_onboarding.py                       90      0   100%
+lip/tests/test_p10_privacy_audit.py                               139      0   100%
+lip/tests/test_p10_regulator_subscription.py                      205      0   100%
+lip/tests/test_p10_report_generator.py                            290      0   100%
+lip/tests/test_p10_security_pentest.py                            127      3    98%   31-32, 272
+lip/tests/test_p10_shadow_pipeline.py                             254      0   100%
+lip/tests/test_p10_systemic_risk.py                               222      4    98%   319-320, 326-327
+lip/tests/test_p12_federated_learning/__init__.py                   0      0   100%
+lip/tests/test_p12_federated_learning/test_integration.py         129      2    98%   98-99
+lip/tests/test_p12_federated_learning/test_model_splitting.py     148      0   100%
+lip/tests/test_pickle_ban.py                                       44      4    91%   84, 99-100, 108
+lip/tests/test_portfolio_risk.py                                  127      0   100%
+lip/tests/test_prompt_injection.py                                 59      0   100%
+lip/tests/test_proprietary_map_drift.py                            34      1    97%   85
+lip/tests/test_query_metering_budget_race.py                       85      0   100%
+lip/tests/test_query_metering_redis_backend.py                    157     15    90%   60-61, 64-69, 72-75, 80, 84, 90, 95
+lip/tests/test_redis_live.py                                      123     94    24%   33, 47-58, 67-91, 96-110, 119-136, 141-164, 170-190, 199-214, 223-240
+lip/tests/test_regulatory_api.py                                  267      0   100%
+lip/tests/test_regulatory_export.py                                68      0   100%
+lip/tests/test_regulatory_reporting.py                             61      0   100%
+lip/tests/test_royalty_batch.py                                    51      2    96%   17-18
+lip/tests/test_sanctions_transliteration.py                        47      0   100%
+lip/tests/test_secure_pickle.py                                    69      0   100%
+lip/tests/test_security_comprehensive.py                          360      0   100%
+lip/tests/test_settlement_bridge.py                               123      0   100%
+lip/tests/test_settlement_predictor.py                             82      0   100%
+lip/tests/test_simulation_script.py                                46      5    89%   75-76, 90, 98-99
+lip/tests/test_single_replica_guard.py                             44      0   100%
+lip/tests/test_state_machines.py                                  205      0   100%
+lip/tests/test_structuring_detector_redis.py                      117      0   100%
+lip/tests/test_synthetic_data.py                                  398      9    98%   36-37, 374, 400, 496, 649-653, 733
+lip/tests/test_velocity_bridge_redis_routing.py                   107      2    98%   76, 84
+---------------------------------------------------------------------------------------------
+TOTAL                                                           34468   3170    91%
+Coverage HTML written to dir docs/engineering/review/2026-04-17/week-2-code-quality/htmlcov
+========== 2642 passed, 29 skipped, 182 warnings in 159.76s (0:02:39) ==========
