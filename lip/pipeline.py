@@ -24,10 +24,11 @@ Three-entity role mapping:
 
 from __future__ import annotations
 
+import inspect
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Callable, List, Optional
 
@@ -739,7 +740,6 @@ class LIPPipeline:
         # Phase 1.3: Register funded position with portfolio risk engine
         if self._risk_engine is not None and loan_offer is not None:
             try:
-                from datetime import timedelta
                 now = datetime.now(tz=timezone.utc)
                 funded_loan = ActiveLoan(
                     loan_id=loan_offer["loan_id"],
@@ -858,7 +858,6 @@ class LIPPipeline:
 
         # P3 Platform Licensing: only pass tenant_id when the checker supports it
         # (AMLChecker accepts tenant_id; legacy VelocityChecker does not).
-        import inspect
         _sig = inspect.signature(self._c6.check)
         _accepts_tenant_id = (
             "tenant_id" in _sig.parameters
@@ -902,13 +901,19 @@ class LIPPipeline:
             event: The normalised payment event being blocked.
             failure_probability: C1 failure probability score for the event.
             block_reason: Short string identifying the block cause —
-                ``'dispute_blocked'`` or ``'aml_blocked'``.
+                ``'dispute_blocked'``, ``'aml_blocked'``, or
+                ``'aml_check_unavailable'`` (fail-closed, EPG-27).
 
         Returns:
             The ``decision_entry_id`` string from C7, or ``None`` when C7
             raises an exception.
         """
         try:
+            # EPG-27 fix: 'aml_check_unavailable' is a fail-closed block — C6 was
+            # unreachable, so AML status is UNVERIFIED, not "passed". The previous
+            # expression `block_reason != "aml_blocked"` would set aml_passed=True
+            # for the unavailable case, contaminating the audit trail.
+            aml_passed = block_reason not in ("aml_blocked", "aml_check_unavailable")
             ctx = {
                 "uetr": event.uetr,
                 "individual_payment_id": event.individual_payment_id,
@@ -919,7 +924,7 @@ class LIPPipeline:
                 "dispute_class": (
                     "DISPUTE_CONFIRMED" if block_reason == "dispute_blocked" else "NOT_DISPUTE"
                 ),
-                "aml_passed": block_reason != "aml_blocked",
+                "aml_passed": aml_passed,
                 "maturity_days": 0,
             }
             result = self._c7.process_payment(ctx)
