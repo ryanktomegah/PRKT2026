@@ -171,7 +171,8 @@ class PaymentEventWorker:
             raw_bytes = msg.value()
             if raw_bytes is None:
                 logger.warning("Received null-value message — skipping offset=%s", msg.offset())
-                self._consumer.commit(message=msg)
+                if self._consumer is not None:
+                    self._consumer.commit(message=msg)
                 return
 
             raw: dict = json.loads(raw_bytes.decode("utf-8"))
@@ -187,7 +188,8 @@ class PaymentEventWorker:
                 self._produce_with_retry(out_topic, key_bytes, value_bytes)
 
             self._processed += 1
-            self._consumer.commit(message=msg)
+            if self._consumer is not None:
+                self._consumer.commit(message=msg)
 
         except json.JSONDecodeError as exc:
             logger.error(

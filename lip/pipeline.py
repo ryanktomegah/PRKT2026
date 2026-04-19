@@ -1011,6 +1011,8 @@ class LIPPipeline:
             maturity_days: Loan maturity window in calendar days derived
                 from the rejection code class.
         """
+        if self._c3 is None:
+            return
         try:
             now_utc = datetime.now(tz=timezone.utc)
             # GAP-09: Use business days for maturity so weekend failures
