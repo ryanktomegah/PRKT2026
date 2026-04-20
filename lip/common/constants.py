@@ -23,7 +23,7 @@ FEE_FLOOR_PER_7DAY_CYCLE: Final[Decimal] = Decimal("0.000575")  # 0.0575% per 7-
 # this rate are warehouse-eligible and generate positive returns for BPI equity.
 # At 800 bps minimum, asset yield = 8% annualized, which covers ~7% senior cost
 # and leaves ~1% margin for BPI equity (55% share on Phase 2/3 SPV funding).
-WAREHOUSE_ELIGIBILITY_FLOOR_BPS = 800    # minimum bps for SPV funding (ensures debt service)
+WAREHOUSE_ELIGIBILITY_FLOOR_BPS: Final[Decimal] = Decimal("800")    # minimum bps for SPV funding (ensures debt service)
 # Maximum multiplier for conformal uncertainty fee adjustment (QUANT sign-off
 # required to change). Caps the upward adjustment from prediction interval
 # width so economically unreasonable fees are never issued.
