@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import base64
 import binascii
+import dataclasses
 import hashlib
 import hmac
 import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import ClassVar, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -51,21 +52,30 @@ class RegulatorSubscriptionToken:
     valid_until: datetime
     hmac_signature: str = ""
 
+    # Fields excluded from the canonical payload (not signed).
+    # Mirrors LicenseToken._CANONICAL_EXCLUDE (B3-02) so a new field added to
+    # the dataclass is automatically signed — no hand-maintained payload dict.
+    _CANONICAL_EXCLUDE: ClassVar[frozenset] = frozenset({"hmac_signature"})
+
     def canonical_payload(self) -> bytes:
-        payload = {
-            "regulator_id": self.regulator_id,
-            "regulator_name": self.regulator_name,
-            "subscription_tier": self.subscription_tier,
-            "permitted_corridors": (
-                sorted(self.permitted_corridors)
-                if self.permitted_corridors is not None
-                else None
-            ),
-            "query_budget_monthly": self.query_budget_monthly,
-            "privacy_budget_allocation": self.privacy_budget_allocation,
-            "valid_from": _to_utc(self.valid_from).isoformat(),
-            "valid_until": _to_utc(self.valid_until).isoformat(),
-        }
+        """Return the UTF-8 bytes that are signed/verified.
+
+        Derived from ``dataclasses.fields(self)`` rather than a hand-written
+        dict so adding a field to this dataclass automatically includes it in
+        the HMAC. Tuple corridors are sorted for deterministic serialization;
+        datetime fields are normalised to UTC ISO strings to match the
+        pre-migration wire format.
+        """
+        payload: dict = {}
+        for f in dataclasses.fields(self):
+            if f.name in self._CANONICAL_EXCLUDE:
+                continue
+            value = getattr(self, f.name)
+            if isinstance(value, datetime):
+                value = _to_utc(value).isoformat()
+            elif isinstance(value, (list, tuple)):
+                value = sorted(value)
+            payload[f.name] = value
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     def is_active(self, as_of: Optional[datetime] = None) -> bool:
@@ -141,6 +151,17 @@ def sign_regulator_token(
     )
 
 
+def _truncate_id(value: str, prefix_len: int = 8) -> str:
+    """Return a log-safe identifier (first prefix_len chars + ellipsis).
+
+    Mirrors the LicenseToken.verify_token log-hygiene pattern so regulator and
+    licensee identifiers are treated consistently in error logs.
+    """
+    if len(value) <= prefix_len:
+        return value
+    return value[:prefix_len] + "…"
+
+
 def verify_regulator_token(
     token: RegulatorSubscriptionToken,
     signing_key: bytes,
@@ -153,11 +174,17 @@ def verify_regulator_token(
 
     expected = _compute_hmac(token.canonical_payload(), signing_key)
     if not hmac.compare_digest(token.hmac_signature, expected):
-        logger.error("Regulator token HMAC mismatch for regulator_id=%s", token.regulator_id)
+        logger.error(
+            "Regulator token HMAC mismatch for regulator_id=%s",
+            _truncate_id(token.regulator_id),
+        )
         return False
 
     if not token.is_active(as_of=as_of):
-        logger.error("Regulator token inactive for regulator_id=%s", token.regulator_id)
+        logger.error(
+            "Regulator token inactive for regulator_id=%s",
+            _truncate_id(token.regulator_id),
+        )
         return False
 
     return True
