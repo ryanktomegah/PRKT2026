@@ -209,9 +209,12 @@ class AMLChecker:
         beneficiary_name:
             Optional plaintext beneficiary name for sanctions screening.
         dollar_cap_override:
-            Optional USD cap to use instead of the default $1M limit.
+            Per-licensee USD cap from the C8 token (EPG-16). ``0`` = unlimited
+            (no velocity throttle for this licensee). When ``None``, the
+            VelocityChecker default applies (also ``0`` = unlimited).
         count_cap_override:
-            Optional count cap to use instead of the default 100 limit.
+            Per-licensee count cap from the C8 token (EPG-16). ``0`` = unlimited.
+            When ``None``, the VelocityChecker default applies.
 
         Returns
         -------
