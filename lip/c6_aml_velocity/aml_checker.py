@@ -232,9 +232,9 @@ class AMLChecker:
             self._resolve_name(beneficiary_id) if self._resolve_name else beneficiary_id
         )
 
-        for name in (sender_name, bene_name):
+        for name, name_id in [(sender_name, entity_id), (bene_name, beneficiary_id)]:
             try:
-                hits = self._sanctions.screen(name)
+                hits = self._sanctions.screen(name, entity_id=name_id)
                 for hit in hits:
                     rule = f"SANCTIONS_{hit.list_name.value}_HIT"
                     triggered_rules.append(rule)
@@ -246,6 +246,25 @@ class AMLChecker:
                         hit.reference,
                         hit.confidence,
                     )
+            except ValueError as exc:
+                # ESG-01: Invalid entity name (empty, whitespace-only, or
+                # non-alphabetic) triggers hard block. This is a deliberate
+                # bypass prevention measure.
+                logger.error(
+                    "Sanctions screening blocked: invalid entity name for %s: %s. "
+                    "See lip.c6_sanctions_bypass logger for details.",
+                    name_id or "unknown", str(exc)
+                )
+                # Add triggered rule for audit trail
+                triggered_rules.append("SANCTIONS_INVALID_NAME_BLOCK")
+                return AMLResult(
+                    passed=False,
+                    reason="SANCTIONS_INVALID_NAME",
+                    anomaly_flagged=False,
+                    triggered_rules=triggered_rules,
+                    sanctions_hits=[],
+                    velocity_result=None,
+                )
             except Exception as exc:
                 # B7-07: Sanctions screening failure must fail-closed.
                 # If we can't screen, assume the worst.

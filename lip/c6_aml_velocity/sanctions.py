@@ -16,6 +16,9 @@ from typing import List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
+# ESG-01: Dedicated logger for sanctions bypass attempts
+_bypass_logger = logging.getLogger("lip.c6_sanctions_bypass")
+
 
 class SanctionsList(str, Enum):
     """Supported sanctions list identifiers.
@@ -118,6 +121,51 @@ def _soundex_tokens(text: str) -> set[str]:
     return codes
 
 
+def _validate_entity_name(entity_name: str, entity_id: Optional[str] = None) -> tuple[bool, str]:
+    """Validate entity name for sanctions screening (ESG-01: sanctions bypass fix).
+
+    Rejects empty, whitespace-only, or purely non-alphabetic names that would
+    bypass sanctions screening via transliteration returning empty string.
+
+    Args:
+        entity_name: The name to validate.
+        entity_id: Optional entity identifier (BIC, account number) for fallback.
+
+    Returns:
+        (is_valid, reason) tuple. is_valid=True means name can be screened;
+        is_valid=False means name is invalid and should be blocked or logged.
+    """
+    stripped = entity_name.strip()
+    # Check for empty (not stripped) first - this catches truly empty strings
+    if not entity_name:
+        _bypass_logger.warning(
+            "Sanctions bypass attempt: empty entity_name. entity_id=%s",
+            entity_id or "not_provided"
+        )
+        return False, "empty_name"
+
+    # Check for whitespace-only (original had content but only whitespace)
+    if not stripped:
+        _bypass_logger.warning(
+            "Sanctions bypass attempt: whitespace-only entity_name=%s. entity_id=%s",
+            entity_name[:32],  # Log original, not stripped
+            entity_id or "not_provided"
+        )
+        return False, "whitespace_only"
+
+    # Check if name contains only special characters/numbers (no letters)
+    has_alpha = any(c.isalpha() for c in stripped)
+    if not has_alpha:
+        _bypass_logger.warning(
+            "Sanctions bypass attempt: non-alphabetic entity_name=%s. entity_id=%s",
+            stripped[:32],  # Truncate for logging safety
+            entity_id or "not_provided"
+        )
+        return False, "non_alphabetic_only"
+
+    return True, "valid"
+
+
 class SanctionsScreener:
     """Screens entities against OFAC/EU/UN sanctions lists."""
 
@@ -165,6 +213,9 @@ class SanctionsScreener:
         Normalises the name (upper-case, strip whitespace) before matching.
         Only returns hits where :meth:`_fuzzy_match` confidence >= 0.8.
 
+        ESG-01: Validates entity name to prevent sanctions bypass via empty or
+        non-alphabetic names. Invalid names are logged to dedicated bypass logger.
+
         Args:
             entity_name: Human-readable entity name to screen.
             entity_id: Optional entity identifier (currently unused; reserved
@@ -173,7 +224,18 @@ class SanctionsScreener:
         Returns:
             List of :class:`SanctionsHit` objects — empty when the entity
             is clear on all lists.
+
+        Raises:
+            ValueError: When entity_name is invalid (empty, whitespace-only, or
+                purely non-alphabetic). This is a hard block to prevent bypass.
         """
+        # ESG-01: Validate name before screening to prevent bypass
+        is_valid, invalid_reason = _validate_entity_name(entity_name, entity_id)
+        if not is_valid:
+            # Raise ValueError to trigger hard block in pipeline
+            # The bypass logger was already called in _validate_entity_name
+            raise ValueError(f"Invalid entity name: {invalid_reason}")
+
         normalized = entity_name.upper().strip()
         # B7-03: Transliterate non-Latin scripts for cross-script matching
         transliterated = _transliterate(normalized).upper().strip()
