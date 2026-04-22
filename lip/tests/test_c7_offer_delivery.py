@@ -12,6 +12,7 @@ Covers:
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 
 import pytest
 
@@ -68,7 +69,7 @@ def _make_payment_context(
 
 def _deliver_offer(
     svc: OfferDeliveryService,
-    uetr: str = None,
+    uetr: Optional[str] = None,
     expires_in_seconds: float = 900.0,
 ) -> tuple:
     """Deliver a synthetic offer to the service. Returns (offer_id_str, LoanOfferDelivery)."""

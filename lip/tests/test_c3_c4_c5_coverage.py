@@ -571,8 +571,7 @@ class TestOpenAIBackendNonTimeoutException:
 
 
 class TestBackendFactoryImportErrors:
-    """Cover lines 149-151 (github_models ImportError), 162-166 (groq ImportError),
-    178-182 (openai_compat ImportError)."""
+    """Cover hosted-backend ImportError and missing-secret fallback paths."""
 
     def test_github_models_import_error_falls_back_to_mock(self):
         from lip.c4_dispute_classifier.backends import create_backend
@@ -612,11 +611,12 @@ class TestBackendFactoryImportErrors:
         assert isinstance(backend, MockLLMBackend)
 
     def test_groq_no_key_falls_back(self):
-        """Lines 162-163: groq with missing GROQ_API_KEY returns Mock."""
+        """groq with missing GROQ_API_KEY returns Mock."""
         from lip.c4_dispute_classifier.backends import create_backend
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("GROQ_API_KEY", None)
+            os.environ.pop("GROQ_API_KEY_FILE", None)
             backend = create_backend("groq")
         assert isinstance(backend, MockLLMBackend)
 

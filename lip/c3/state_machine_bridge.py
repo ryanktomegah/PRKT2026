@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
-    import lip_c3_rust_state_machine as _rust
+    import lip_c3_rust_state_machine as _rust  # type: ignore[import-untyped]
 
     _RUST_AVAILABLE = True
     logger.debug(

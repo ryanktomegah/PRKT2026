@@ -9,11 +9,6 @@ import logging
 import threading
 from typing import Any, Optional
 
-try:
-    from lip.common.notification_service import NotificationEventType as _NotificationEventType
-except ImportError:
-    _NotificationEventType = None  # type: ignore[misc]
-
 logger = logging.getLogger(__name__)
 
 
@@ -87,13 +82,14 @@ class OverrideSweeper:
                 )
 
                 # Notify if notification service is wired
-                # B4-16: NotificationEventType imported at module level (not inside method)
-                if self._notification_service is not None and _NotificationEventType is not None:
+                if self._notification_service is not None:
                     try:
+                        from lip.common.notification_service import NotificationEventType
+
                         event_type = (
-                            _NotificationEventType.LOAN_DECLINED
+                            NotificationEventType.LOAN_DECLINED
                             if action == "DECLINE"
-                            else _NotificationEventType.OFFER_ACCEPTED
+                            else NotificationEventType.OFFER_ACCEPTED
                         )
                         self._notification_service.notify(
                             event_type=event_type,
@@ -104,6 +100,8 @@ class OverrideSweeper:
                                 "request_id": req.request_id,
                             },
                         )
+                    except ImportError:
+                        logger.debug("NotificationEventType unavailable; skipping override expiry alert")
                     except Exception as exc:
                         logger.warning("Sweeper notification failed: %s", exc)
 

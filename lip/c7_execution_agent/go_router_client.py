@@ -321,7 +321,7 @@ class GoOfferRouterClient:
             On gRPC transport errors or non-accepted responses.
         """
         try:
-            import grpc  # noqa: PLC0415 — optional dependency
+            import grpc  # type: ignore[import-untyped]  # noqa: PLC0415
         except ImportError as exc:
             raise GoRouterError(
                 f"grpcio is not installed; cannot reach Go offer router: {exc}"

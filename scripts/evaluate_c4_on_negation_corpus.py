@@ -10,6 +10,10 @@ Usage:
     export GROQ_API_KEY=gsk_...
     PYTHONPATH=. python scripts/evaluate_c4_on_negation_corpus.py
 
+    # Or use a secret file:
+    export GROQ_API_KEY_FILE=.secrets/groq_api_key
+    PYTHONPATH=. python scripts/evaluate_c4_on_negation_corpus.py
+
     # Dry run (no constants update):
     PYTHONPATH=. python scripts/evaluate_c4_on_negation_corpus.py --no-update
 
@@ -40,11 +44,48 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+def _read_secret(env_var: str, file_env_var: str) -> str:
+    value = os.environ.get(env_var, "").strip()
+    if value:
+        return value
+    path = os.environ.get(file_env_var, "").strip()
+    if not path:
+        return ""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+GROQ_API_KEY = _read_secret("GROQ_API_KEY", "GROQ_API_KEY_FILE")
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 _GROQ_MODEL = "qwen/qwen3-32b"
 _NO_THINK_SUFFIX = "\n/no_think"
 _THINK_PATTERN = re.compile(r"<think>.*?</think>", re.DOTALL)
+_MAX_RETRIES = 2
+
+
+def _is_retryable_error(exc: Exception) -> bool:
+    """Treat transient timeout/connection/rate-limit failures as retryable."""
+    try:
+        import openai
+
+        if isinstance(
+            exc,
+            (openai.APITimeoutError, openai.APIConnectionError, openai.RateLimitError),
+        ):
+            return True
+    except ImportError:
+        pass
+
+    status_code = getattr(exc, "status_code", None)
+    if status_code in {408, 409, 429, 500, 502, 503, 504}:
+        return True
+
+    name = type(exc).__name__
+    return any(token in name for token in ("Timeout", "Connection", "RateLimit"))
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +93,7 @@ _THINK_PATTERN = re.compile(r"<think>.*?</think>", re.DOTALL)
 # ---------------------------------------------------------------------------
 
 class _Qwen3GroqBackend:
-    """Groq-hosted Qwen3-32b with thinking mode disabled."""
+    """Groq-hosted Qwen3-32b backend with thinking mode suppressed."""
 
     def __init__(self) -> None:
         from openai import OpenAI
@@ -65,21 +106,25 @@ class _Qwen3GroqBackend:
         max_tokens: int = 20,
         timeout: float = 15.0,
     ) -> str:
-        resp = self._client.chat.completions.create(
-            model=_GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt + _NO_THINK_SUFFIX},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=64,
-            temperature=0.0,   # greedy decoding for reproducibility
-            # No stop tokens — /no_think suppresses <think> blocks;
-            # _THINK_PATTERN strips residual. stop=[" "] halts generation
-            # inside an unclosed <think> tag, breaking the regex.
-            timeout=timeout,
-        )
-        raw = resp.choices[0].message.content or ""
-        return _THINK_PATTERN.sub("", raw).strip()
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                resp = self._client.chat.completions.create(
+                    model=_GROQ_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt + _NO_THINK_SUFFIX},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    max_tokens=64,
+                    temperature=0.0,   # greedy decoding for reproducibility
+                    timeout=timeout,
+                )
+                raw = resp.choices[0].message.content or ""
+                return _THINK_PATTERN.sub("", raw).strip()
+            except Exception as exc:
+                if attempt >= _MAX_RETRIES or not _is_retryable_error(exc):
+                    raise
+                time.sleep(min(0.5 * (2**attempt), 2.0))
+        raise RuntimeError("Groq generate retry loop exited unexpectedly")
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +150,7 @@ def run_evaluation(n_per_category: int = 100) -> dict:
     results: dict[str, list[dict]] = defaultdict(list)
 
     for i, case in enumerate(cases):
-        # Rate limit guard: Groq large models ~30 req/min free tier
+        # Rate limit guard for hosted free-tier models
         if i > 0 and i % 25 == 0:
             print(f"  [{i}/{total}] Pausing 5s for rate limit...")
             time.sleep(5.0)
@@ -286,9 +331,9 @@ def main() -> None:
     args = parser.parse_args()
 
     if not GROQ_API_KEY:
-        print("ERROR: GROQ_API_KEY not set.", file=sys.stderr)
-        print("  Get a free key at console.groq.com", file=sys.stderr)
+        print("ERROR: GROQ_API_KEY or GROQ_API_KEY_FILE not set.", file=sys.stderr)
         print("  Then: export GROQ_API_KEY=gsk_...", file=sys.stderr)
+        print("  Or:   export GROQ_API_KEY_FILE=.secrets/groq_api_key", file=sys.stderr)
         sys.exit(1)
 
     try:

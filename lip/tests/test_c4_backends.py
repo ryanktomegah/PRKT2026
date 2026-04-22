@@ -46,6 +46,7 @@ class TestCreateBackendFactory(unittest.TestCase):
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("GROQ_API_KEY", None)
+            os.environ.pop("GROQ_API_KEY_FILE", None)
             backend = create_backend("groq")
         self.assertIsInstance(backend, MockLLMBackend)
 

@@ -330,9 +330,9 @@ def _cli() -> None:
         bootstrap_servers=os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"
         ).split(","),
-        ssl_ca_location=os.environ.get("KAFKA_SSL_CA_LOCATION"),
-        ssl_cert_location=os.environ.get("KAFKA_SSL_CERT_LOCATION"),
-        ssl_key_location=os.environ.get("KAFKA_SSL_KEY_LOCATION"),
+        ssl_ca_location=os.environ.get("KAFKA_SSL_CA_LOCATION") or "",
+        ssl_cert_location=os.environ.get("KAFKA_SSL_CERT_LOCATION") or "",
+        ssl_key_location=os.environ.get("KAFKA_SSL_KEY_LOCATION") or "",
     )
 
     # Build a minimal pipeline function for standalone operation.

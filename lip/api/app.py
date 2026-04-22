@@ -34,6 +34,7 @@ try:
     from lip.c7_execution_agent.kill_switch import KillSwitch
     from lip.common.borrower_registry import BorrowerRegistry
     from lip.common.known_entity_registry import KnownEntityRegistry
+    from lip.common.local_env import load_repo_env_file
     from lip.common.notification_service import NotificationService
     from lip.common.redis_factory import create_redis_client
     from lip.common.regulatory_reporter import RegulatoryReporter
@@ -42,6 +43,10 @@ try:
 
     # Shared state for shutdown coordination
     _shutdown_hooks: list = []
+
+    # Local dev/test convenience: load gitignored .env.local when present,
+    # but never override real environment variables injected by the runtime.
+    load_repo_env_file()
 
     def create_app(pipeline=None, processor_context=None, cascade_graph=None,
                    systemic_risk_engine=None) -> FastAPI:

@@ -279,10 +279,10 @@ class EventNormalizer:
 
         if isinstance(inst_amt, dict):
             amount = _safe_decimal(inst_amt.get('value', inst_amt.get('Amt', '0')))
-            currency = inst_amt.get('Ccy', inst_amt.get('currency', 'USD'))
+            currency = str(inst_amt.get('Ccy', inst_amt.get('currency', 'USD')) or 'USD')
         else:
             amount = _safe_decimal(inst_amt)
-            currency = orig_ref.get('Ccy', 'USD')
+            currency = str(orig_ref.get('Ccy', 'USD') or 'USD')
 
         sending_bic = (
             msg.get('DbtrAgt', {}).get('FinInstnId', {}).get('BIC', '')

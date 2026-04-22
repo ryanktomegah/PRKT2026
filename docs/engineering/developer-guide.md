@@ -50,9 +50,17 @@ PYTHONPATH=. python -m pytest lip/tests/test_c6_aml_velocity.py -v
 # E2E pipeline (requires running Kafka + Redis — start with docker compose up -d first)
 PYTHONPATH=. python -m pytest lip/tests/test_e2e_pipeline.py -v
 
-# C4 LLM integration tests (requires GROQ_API_KEY — free at console.groq.com)
-GROQ_API_KEY=gsk_... PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
-# Auto-skipped without GROQ_API_KEY. All 17 tests pass in ~46s.
+# C4 Groq wrapper (loads .env.local and file-backed secret)
+./scripts/run_c4_with_groq.sh doctor
+./scripts/run_c4_with_groq.sh test-live
+./scripts/run_c4_with_groq.sh eval-negation --n-per-category 20
+
+# Plain pytest also auto-loads repo-root .env.local during local test startup
+# when the file exists. Existing shell env vars still win.
+
+# Raw C4 LLM integration test (requires GROQ_API_KEY or GROQ_API_KEY_FILE)
+GROQ_API_KEY_FILE=.secrets/groq_api_key PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
+# Auto-skipped without GROQ_API_KEY/GROQ_API_KEY_FILE.
 
 # Type checking
 mypy lip/

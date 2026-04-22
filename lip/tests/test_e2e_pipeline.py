@@ -15,6 +15,7 @@ Scenarios:
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Optional
 
 from lip.c2_pd_model.fee import FEE_FLOOR_BPS, compute_loan_fee
 from lip.c3_repayment_engine.corridor_buffer import CorridorBuffer
@@ -50,8 +51,8 @@ def _make_pipeline(
     pd_score: float = 0.05,
     fee_bps: int = 300,
     tier: int = 3,
-    kill_switch: KillSwitch = None,
-    degraded: DegradedModeManager = None,
+    kill_switch: Optional[KillSwitch] = None,
+    degraded: Optional[DegradedModeManager] = None,
     c3_monitor=None,
     salt: bytes = _SALT,
 ) -> LIPPipeline:

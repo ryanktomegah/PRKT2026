@@ -5,10 +5,14 @@ Tests the full DisputeClassifier pipeline (prefilter + Groq LLM) with a real
 language model (qwen/qwen3-32b via Groq API).
 
 These tests are intentionally SLOW (each requires an API call) and are skipped
-unless GROQ_API_KEY is set in the environment.
+unless GROQ_API_KEY or GROQ_API_KEY_FILE is set in the environment.
 
 Run:
     export GROQ_API_KEY=gsk_...
+    PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
+
+    # Or use a secret file:
+    export GROQ_API_KEY_FILE=.secrets/groq_api_key
     PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
 
 Skip in normal CI:
@@ -32,10 +36,23 @@ import pytest
 # Skip guard — runs only when GROQ_API_KEY is available
 # ---------------------------------------------------------------------------
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+def _read_secret(env_var: str, file_env_var: str) -> str:
+    value = os.environ.get(env_var, "").strip()
+    if value:
+        return value
+    path = os.environ.get(file_env_var, "").strip()
+    if not path:
+        return ""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+GROQ_API_KEY = _read_secret("GROQ_API_KEY", "GROQ_API_KEY_FILE")
 _SKIP_REASON = (
-    "GROQ_API_KEY not set — set it to run LLM integration tests. "
-    "Free key at console.groq.com"
+    "GROQ_API_KEY or GROQ_API_KEY_FILE not set — set one to run LLM integration tests."
 )
 
 pytestmark = [
@@ -44,24 +61,43 @@ pytestmark = [
 ]
 
 # ---------------------------------------------------------------------------
-# Groq/Qwen3 backend for integration tests
+# Groq backend for integration tests
 # ---------------------------------------------------------------------------
 
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 _GROQ_MODEL = "qwen/qwen3-32b"
-_NO_THINK_SUFFIX = "\n/no_think"  # Disables Qwen3 chain-of-thought mode
+_NO_THINK_SUFFIX = "\n/no_think"
 _THINK_PATTERN = re.compile(r"<think>.*?</think>", re.DOTALL)
+_MAX_RETRIES = 2
+
+
+def _is_retryable_error(exc: Exception) -> bool:
+    """Treat transient timeout/connection/rate-limit failures as retryable."""
+    try:
+        import openai
+
+        if isinstance(
+            exc,
+            (openai.APITimeoutError, openai.APIConnectionError, openai.RateLimitError),
+        ):
+            return True
+    except ImportError:
+        pass
+
+    status_code = getattr(exc, "status_code", None)
+    if status_code in {408, 409, 429, 500, 502, 503, 504}:
+        return True
+
+    name = type(exc).__name__
+    return any(token in name for token in ("Timeout", "Connection", "RateLimit"))
 
 
 class _Qwen3GroqBackend:
     """
     Groq-hosted Qwen3-32b backend for C4 integration tests.
 
-    Appends /no_think to the system prompt to disable Qwen3's chain-of-thought
-    mode, ensuring responses are direct label tokens (< 20 chars) rather than
-    extended reasoning chains (> 1000 tokens).
-
-    Uses max_tokens=64 (4x safety margin; actual responses are 11-17 chars).
+    Appends /no_think to the system prompt to suppress long reasoning output so
+    C4 still receives a direct label token.
     """
 
     def __init__(self) -> None:
@@ -80,28 +116,27 @@ class _Qwen3GroqBackend:
         max_tokens: int = 20,
         timeout: float = 10.0,
     ) -> str:
-        """Generate classification label via Groq API."""
-        # Append /no_think to disable Qwen3's chain-of-thought reasoning
-        effective_system = system_prompt + _NO_THINK_SUFFIX
-
-        response = self._client.chat.completions.create(
-            model=_GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": effective_system},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=64,     # 4x margin over max label length (17 chars)
-            temperature=0.0,   # greedy decoding — prevents stochastic truncation
-            # No stop tokens — /no_think directive suppresses <think> blocks;
-            # _THINK_PATTERN regex strips any residual. stop=[" "] would halt
-            # generation at the first token of a <think> block, leaving an
-            # unclosed tag that the regex cannot match.
-            timeout=timeout,
-        )
-        raw = response.choices[0].message.content or ""
-        # Strip any <think> blocks that slipped through (defensive)
-        cleaned = _THINK_PATTERN.sub("", raw).strip()
-        return cleaned
+        """Generate classification label via Groq."""
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                response = self._client.chat.completions.create(
+                    model=_GROQ_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt + _NO_THINK_SUFFIX},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    max_tokens=64,     # 4x margin over max label length (17 chars)
+                    temperature=0.0,   # greedy decoding — prevents stochastic truncation
+                    timeout=timeout,
+                )
+                raw = response.choices[0].message.content or ""
+                # Strip any <think> blocks that slipped through (defensive)
+                return _THINK_PATTERN.sub("", raw).strip()
+            except Exception as exc:
+                if attempt >= _MAX_RETRIES or not _is_retryable_error(exc):
+                    raise
+                time.sleep(min(0.5 * (2**attempt), 2.0))
+        raise RuntimeError("Groq generate retry loop exited unexpectedly")
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +145,7 @@ class _Qwen3GroqBackend:
 
 @pytest.fixture(scope="module")
 def classifier():
-    """Create a DisputeClassifier with real Qwen3-32b backend."""
+    """Create a DisputeClassifier with real Groq backend."""
     from lip.c4_dispute_classifier.model import DisputeClassifier
     backend = _Qwen3GroqBackend()
     return DisputeClassifier(llm_backend=backend, timeout_seconds=15.0)
@@ -168,7 +203,7 @@ class TestC4FourClassAccuracy:
 
     @pytest.mark.parametrize("narrative,expected,code", _CASES)
     def test_basic_class_accuracy(self, classifier, narrative, expected, code):
-        time.sleep(0.5)  # rate limit guard (Groq: ~30 req/min for large models)
+        time.sleep(0.5)  # rate limit guard for hosted free-tier models
         result = _classify(classifier, narrative, rejection_code=code)
         # Some classes accept LLM-reasonable alternatives (see case comments above)
         if expected == "NEGOTIATION_OR_POSSIBLE":
