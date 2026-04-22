@@ -19,12 +19,34 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .features import TabularFeatureEngineer
 from .graphsage_torch import GRAPHSAGE_OUTPUT_DIM, GraphSAGETorch
 from .tabtransformer_torch import TABTRANSFORMER_INPUT_DIM, TabTransformerTorch
 
 logger = logging.getLogger(__name__)
 
 _COMBINED_DIM: int = GRAPHSAGE_OUTPUT_DIM + TABTRANSFORMER_INPUT_DIM  # 472
+_TABULAR_FEATURE_NAMES = TabularFeatureEngineer().feature_names()
+
+
+def _prepare_lgbm_tabular_input(model: Any, tabular_features: np.ndarray) -> object:
+    """Return LightGBM-friendly tabular input with stable feature names."""
+    x_tab = np.asarray(tabular_features[8:], dtype=np.float64).reshape(1, -1)
+    feature_names = getattr(model, "feature_names_in_", None)
+    if isinstance(feature_names, np.ndarray):
+        feature_names = feature_names.tolist()
+    elif not isinstance(feature_names, (list, tuple)):
+        feature_names = None
+
+    if not feature_names and not hasattr(model, "feature_name_"):
+        return x_tab
+    try:
+        import pandas as pd  # noqa: PLC0415
+
+        columns = list(feature_names or _TABULAR_FEATURE_NAMES)
+        return pd.DataFrame(x_tab, columns=columns)
+    except ImportError:
+        return x_tab
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +210,7 @@ class ClassifierModelTorch(nn.Module):
             neural_prob = float(torch.sigmoid(logit).item())
 
         if self.lgbm_model is not None:
-            x_tab = np.asarray(tabular_features[8:], dtype=np.float64).reshape(1, -1)
+            x_tab = _prepare_lgbm_tabular_input(self.lgbm_model, tabular_features)
             lgbm_prob = float(self.lgbm_model.predict_proba(x_tab)[0, 1])
             return 0.5 * neural_prob + 0.5 * lgbm_prob
         return neural_prob
