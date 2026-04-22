@@ -8,13 +8,13 @@
 
 | **Change** | **Detail** |
 |------------|------------|
-| v2.0 → v2.1 | (A) BIS attribution corrected to FXC Intelligence; market size updated to $31.7T; Reference [1] updated accordingly. (B) 3–5% failure rate reframed as STP-derived estimate with footnote disclosure; "industry survey data" language removed. (C) SWIFT Annual Review [2] retained as supporting reference for STP rate data. All technical content, methodology, empirical results, and conclusions unchanged. |
+| v2.0 → v2.1 | (A) BIS attribution corrected to FXC Intelligence; market size updated to $31.7T; Reference [1] updated accordingly. (B) 3–5% failure rate reframed as STP-derived estimate with footnote disclosure; "industry survey data" language removed. (C) SWIFT Annual Review [2] retained as supporting reference for STP rate data. (D) C1 methodology and evaluation reconciled to the current repo-controlled model documentation: held-out synthetic corpus, hybrid GraphSAGE + TabTransformer + LightGBM ensemble, calibrated threshold τ* = 0.110, AUC 0.8871, and canonical latency targets of 45ms p50 / 94ms p99. |
 
 ---
 
 ## Abstract
 
-> Cross-border payment failures create acute working capital deficits for receiving businesses, yet no automated real-time bridging mechanism exists within the global payment infrastructure. This paper presents a three-component architecture — a real-time failure prediction engine, a tiered probability-of-default pricing framework, and a settlement-confirmation auto-repayment loop — that collectively detect payment failures at median latency under 100 milliseconds, price and disburse a bridge loan in response, and recover the advance automatically upon settlement confirmation of the original payment. The failure prediction component applies a gradient-boosted ensemble classifier with isotonic calibration to structured feature representations extracted from ISO 20022 and SWIFT gpi payment status event streams, optimised using an asymmetric cost-weighted Fβ objective with β = 2. The pricing component implements a tiered probability-of-default framework that selects the estimation methodology — structural Merton-type model, proxy structural model using sector-median asset volatility, or reduced-form Altman Z'-score model — based on the data availability of the specific counterparty, extending conventional structural credit models to private companies without observable equity prices. The repayment component establishes a programmatic monitoring relationship between each disbursed advance and the SWIFT gpi UETR of the original payment, triggering automatic repayment collection upon settlement confirmation. Evaluation on a held-out payment dataset yields an AUC of 0.739 and a recall of 0.810 at the cost-optimised threshold. The system achieves end-to-end median latency of 94 milliseconds (p50) and 142 milliseconds (p99) from payment status event receipt to failure probability output, satisfying the real-time processing requirement for commercial utility in live payment corridors.
+> Cross-border payment failures create acute working capital deficits for receiving businesses, yet no automated real-time bridging mechanism exists within the global payment infrastructure. This paper presents a three-component architecture — a real-time failure prediction engine, a tiered probability-of-default pricing framework, and a settlement-confirmation auto-repayment loop — that collectively detect payment failures, price and disburse a bridge loan in response, and recover the advance automatically upon settlement confirmation of the original payment. The failure prediction component applies a hybrid ensemble combining GraphSAGE embeddings over a BIC-pair network, a TabTransformer over tabular payment features, and a LightGBM gradient-boosting branch, with isotonic calibration and an asymmetric cost-weighted Fβ objective with β = 2. The pricing component implements a tiered probability-of-default framework that selects the estimation methodology — structural Merton-type model, proxy structural model using sector-median asset volatility, or reduced-form Altman Z'-score model — based on the data availability of the specific counterparty, extending conventional structural credit models to private companies without observable equity prices. The repayment component establishes a programmatic monitoring relationship between each disbursed advance and the SWIFT gpi UETR of the original payment, triggering automatic repayment collection upon settlement confirmation. Evaluation on a held-out synthetic corpus sampled from 10 million generated payment events yields an AUC of 0.8871, precision of 0.3819, recall of 0.8816, and F2 score of 0.6245 at the calibrated operating threshold τ* = 0.110. The system's canonical latency targets are 45 milliseconds at p50 and 94 milliseconds at p99 from payment status event receipt to failure probability output. Live bank validation remains pending pilot deployment.
 >
 > **Keywords:** *payment failure prediction, trade finance, credit valuation adjustment, probability of default, ISO 20022, SWIFT gpi, automated liquidity, machine learning, gradient boosting, adversarial cancellation detection*
 
@@ -32,7 +32,7 @@ Recent developments in global payment infrastructure have created the technical 
 
 This paper presents an architecture that exploits these infrastructure developments to build a three-component automated liquidity bridging system. The contributions of the paper are as follows.
 
-> **• A real-time payment failure prediction engine** that operates on structured ISO 20022 pacs.002 and SWIFT gpi UETR tracking event streams, applying a gradient-boosted ensemble classifier with isotonic calibration and a cost-asymmetric Fβ threshold optimised for the operational cost structure of payment bridging.
+> **• A real-time payment failure prediction engine** that operates on structured ISO 20022 pacs.002 and SWIFT gpi UETR tracking event streams, applying a hybrid graph-tabular ensemble with isotonic calibration and a cost-asymmetric Fβ threshold optimised for the operational cost structure of payment bridging.
 >
 > **• A tiered probability-of-default framework** that extends conventional structural credit models to the private-company counterparties that constitute the majority of mid-market cross-border trade, using sector-median asset volatility proxies for counterparties without observable equity prices.
 >
@@ -83,7 +83,7 @@ OUTPUT: accepted bridge loan offers, settled repayments, audit records
 for each event e in S:
     f    ← extract_feature_vector(e)          // Section 4.2
     p    ← predict_failure_probability(f)     // Sections 4.3–4.4
-    if p > τ*:                                // Section 4.5 (τ* = 0.152)
+    if p > τ*:                                // Section 4.5 (τ* = 0.110)
         PD   ← select_pd_tier(counterparty(e)) // Sections 5.1–5.4
         offer ← price_bridge_loan(p, PD, e)   // Section 5.5
         if offer.accepted:
@@ -103,21 +103,25 @@ All three source types are normalised into a common internal event representatio
 
 ### 4.2 Feature Engineering Framework
 
-The feature representation for each payment event is constructed from five categories of input signal. Payment processing state features encode the current and historical processing status of the payment, including normalised rejection reason codes, the binary indicator of a current rejection status, the number of prior rejection events in the monitoring window for this payment reference, and the cumulative processing time elapsed since payment initiation. Counterparty performance features encode the historical settlement reliability of the sending counterparty as measured on this system's proprietary performance database; the specific values in this database are not disclosed in this paper as they constitute a trade secret asset accumulated from live deployment data.
+The feature representation for each payment event combines graph-structured and tabular signals. The tabular branch operates on an 88-dimensional feature vector spanning rejection-code one-hot indicators, rejection-class indicators, amount features, cyclic time-of-day and day-of-week features, corridor failure-rate features, payment-rail indicators, sender and receiver reliability statistics, BIC-pair statistics, and thin-file and permanent-failure flags. The graph branch represents the sender-receiver relationship in a BIC-pair network and learns an 8-dimensional GraphSAGE embedding for each node. These branches are fused downstream in the ensemble architecture described in Section 4.3.
 
-Corridor and network features encode the structural failure characteristics of the payment corridor — defined as the combination of sending country, receiving country, and currency pair. Temporal risk features encode the time-of-day, day-of-week, and proximity to banking holidays in both jurisdictions, capturing the well-documented increase in settlement failure probability near correspondent bank processing cut-off times. Data quality features encode the completeness and conformance of the payment instruction fields, operationalised as a scalar score derived from a rule-based validation of the structured message. All continuous features are standardised to zero mean and unit variance on the training distribution. Categorical features are encoded using target encoding with leave-one-out smoothing to mitigate leakage on high-cardinality features such as counterparty BIC codes.
+The current validation corpus is fully synthetic rather than derived from live bank telemetry. Historical performance features therefore refer to simulated sender, receiver, and BIC-pair reliability statistics generated within the corpus construction pipeline rather than to a proprietary live production database. This distinction matters for external validity: the model learns realistic corridor-, timing-, and counterparty-style patterns from a controlled synthetic environment, but live-bank transferability remains to be established in pilot validation.
 
-### 4.3 Gradient-Boosted Ensemble Classifier
+Corridor and network features encode the structural failure characteristics of the payment corridor, defined as the sending-receiving country pair and currency pair. Temporal risk features encode time-of-day and day-of-week effects and are designed to capture bursty failure clustering near cut-off windows. Data quality and payment-state features encode rejection reason codes, rejection classes, prior failure counts, and cumulative elapsed processing state. Continuous features are standardised on the training distribution, while categorical signals are handled through the neural and boosting branches rather than through a single manual encoding scheme.
 
-The classifier is implemented as a gradient-boosted decision tree ensemble using the LightGBM framework [17], which achieves inference latency competitive with simpler models while maintaining the expressiveness required to capture non-linear interactions between temporal, corridor, and counterparty features. The model is trained on a historical dataset of labelled payment outcome records, where the outcome label is a binary indicator of settlement failure or delay exceeding a defined threshold.
+### 4.3 Hybrid Graph-Tabular Ensemble Classifier
 
-Class imbalance — arising from the approximately 3–5% base rate of payment failures — is addressed through scale_pos_weight adjustment rather than resampling, preserving the natural frequency information in the training data while correcting the gradient magnitude imbalance. Model architecture hyperparameters — including number of leaves, minimum child samples, learning rate, and regularisation parameters — are selected via Bayesian optimisation on a held-out validation set, with the optimisation objective defined by the Fβ score.
+The current classifier is a hybrid ensemble rather than a standalone gradient-boosted model. A GraphSAGE branch learns 8-dimensional embeddings over the BIC-pair network, and a TabTransformer branch encodes the 88-dimensional tabular feature vector. Their concatenated representation feeds a PyTorch multilayer perceptron that produces a neural probability estimate. In parallel, a LightGBM model operates on the tabular branch. The production score before calibration is the 50/50 blend of the neural and LightGBM outputs.
+
+This architecture preserves the low-latency advantages of boosting while allowing the system to learn relationship structure that a pure tabular model would only approximate indirectly. On the held-out synthetic validation corpus, the hybrid ensemble achieves AUC 0.8871, marginally above the PyTorch-only branch (0.8870) and the LightGBM-only baseline (0.8841). The gain is modest but directionally important: the graph-augmented architecture improves discrimination without materially degrading latency.
+
+The model is trained on a 2,000,000-record chronological sample drawn from a fully synthetic 10,000,000-payment corpus spanning 20 corridors, 200 synthetic BICs, and an 18-month temporal window. The synthetic corpus intentionally introduces corridor heterogeneity, sender-level risk tiers, and burst clustering in failure behavior so that temporal and network features carry non-trivial signal. The resulting setup should be understood as a pre-deployment research environment rather than as proof of live production performance.
 
 ### 4.4 Probability Calibration
 
-Raw gradient-boosted model outputs are monotonic relative probability scores rather than calibrated probabilities. Platt scaling [18] and isotonic regression [19] are evaluated as calibration methods; isotonic regression produces superior calibration on the payment failure distribution, as measured by the expected calibration error (ECE) on the validation set. The isotonic calibration layer maps the raw model score to a calibrated probability estimate that can be interpreted as the posterior probability of settlement failure given the observed feature vector.
+Raw ensemble outputs are monotonic scores rather than trustworthy probabilities. The current implementation applies isotonic regression [19] on a held-out calibration set after neural-boosting score blending. Internal documentation records a pre-calibration expected calibration error (ECE) of 0.1867 and a post-calibration ECE of 0.0687, indicating a 63% reduction in miscalibration on the synthetic validation environment.
 
-Calibration quality is critical for the pricing application in Stage 2. An uncalibrated classifier that assigns a score of 0.7 to two payments where one has a true failure probability of 0.4 and the other of 0.85 will cause the pricing engine to apply the same expected loss to materially different risk positions. The isotonic calibration step ensures that the probability output is a reliable input to the CVA computation.
+Calibration quality is critical because the failure probability is used as the Stage 1 gating variable for offer generation and is exposed alongside interpretability artifacts. An uncalibrated classifier that compresses materially different risks into similar output ranges would induce unstable operational decisioning. The isotonic step therefore serves as more than cosmetic probability smoothing: it is the mechanism that converts an ensemble ranking score into the calibrated operating scale used by the downstream threshold policy.
 
 ### 4.5 Cost-Asymmetric Threshold Optimisation
 
@@ -125,7 +129,7 @@ Standard binary classification thresholds are set at 0.5 under a symmetric cost 
 
 $$F_\beta = \frac{(1 + \beta^2) \cdot (\text{precision} \cdot \text{recall})}{\beta^2 \cdot \text{precision} + \text{recall}}, \quad \beta = 2 \tag{1}$$
 
-The cost-optimised threshold τ* is selected as the decision boundary that maximises Equation (1) on the validation set. For the trained model described in Section 7, τ* = 0.152, reflecting the highly imbalanced cost structure: the system accepts a non-trivial false positive rate in order to maintain high recall on genuine failures. This threshold is not a hyperparameter in the conventional sense — it is a policy choice that encodes the relative cost of the two error types, and should be updated if the operational cost structure changes.
+The cost-optimised threshold τ* is selected as the decision boundary that maximises Equation (1) on the validation set. For the current trained model, τ* = 0.110 on the calibrated probability scale, reflecting the highly imbalanced cost structure: the system accepts a non-trivial false positive rate in order to maintain high recall on genuine failures. This threshold is not a hyperparameter in the conventional sense; it is a policy choice that encodes the relative cost of the two error types and should be revisited if funding cost, offer acceptance behavior, or live error economics differ materially from the current assumptions.
 
 ### 4.6 Interpretability via SHAP Attribution
 
@@ -165,7 +169,7 @@ Private companies do not have observable equity prices, making the iterative sol
 
 The sector-median asset volatility estimates used in the system's production deployment are derived from proprietary analysis of trade finance default outcomes accumulated during live deployment and are not disclosed in this paper. Practitioners seeking to implement this tier may use sector-median asset volatility estimates from published academic databases — Damodaran's annual industry asset volatility compilation [21] provides a widely used baseline — with the understanding that estimates calibrated to the specific counterparty population of cross-border mid-market trade will produce superior pricing accuracy. Once σ_A is fixed at the sector median and V_A is set to total assets, Equations (4)–(5) yield the distance to default and PD = N(−d₂) as before.
 
-The proxy model introduces a systematic approximation error relative to the Tier 1 model, arising both from the asset value approximation and from the use of a sector median rather than firm-specific volatility. Empirical validation on the deployment dataset confirms that this approximation error produces conservative (upward-biased) PD estimates for counterparties with relatively strong balance sheets, and that the direction of bias is appropriate for a lending product — it causes the system to price in slightly more credit risk than the true figure, rather than less.
+The proxy model introduces a systematic approximation error relative to the Tier 1 model, arising both from the asset value approximation and from the use of a sector median rather than firm-specific volatility. At the present documentation stage, this conservatism claim is architectural rather than empirically established on a disclosed live deployment dataset. The design expectation is that the proxy model should err upward on risk for better-capitalized private counterparties, but that expectation remains to be validated against observed pilot outcomes.
 
 ### 5.4 Tier 3 — Reduced-Form Model for Data-Sparse Counterparties
 
@@ -225,45 +229,55 @@ For each completed advance cycle — from disbursement through repayment or reco
 
 ### 7.1 Dataset and Experimental Setup
 
-The failure prediction model is trained and evaluated on a dataset of historical cross-border payment records drawn from multiple currency corridors and correspondent banking routes. The dataset is partitioned into training (70%), validation (15%), and held-out test (15%) sets, with the partitioning performed along the time dimension to preserve the causal ordering of payment observations and prevent lookahead bias. The test set is held out until final evaluation and is not used in any hyperparameter selection or calibration procedure. Evaluation metrics are reported on the test set only.
+The failure prediction model is trained and evaluated on a fully synthetic corpus of cross-border payment records generated to approximate corridor heterogeneity, rejection-code mix, settlement timing, and sender-level failure clustering. The full corpus contains 10,000,000 synthetic payments across 20 currency corridors and 200 synthetic BICs over an 18-month period; the training run documented here uses a 2,000,000-record chronological sample from that corpus. The synthetic records contain no real BICs, counterparties, or customer data.
+
+The sampled corpus is partitioned chronologically, with the most recent observations reserved for validation and final hold-out evaluation to preserve temporal ordering and prevent lookahead bias. Calibration is fitted only after model training on a held-out calibration slice. Reported metrics should therefore be interpreted as out-of-time synthetic validation metrics, not as live-bank production performance.
 
 ### 7.2 Failure Prediction Performance
 
 | **Metric** | **Value** |
 |------------|-----------|
-| Area under ROC curve (AUC) | 0.739 |
-| Cost-optimised threshold τ* | 0.152 |
-| Recall at τ* | 0.810 |
-| Precision at τ* | 0.341 |
-| F₂ score at τ* | 0.617 |
-| Expected calibration error (ECE) | 0.031 |
-| End-to-end inference latency (p50) | 94 ms |
-| End-to-end inference latency (p99) | 142 ms |
+| Area under ROC curve (AUC) | 0.8871 |
+| Cost-optimised threshold τ* | 0.110 |
+| Recall at τ* | 0.8816 |
+| Precision at τ* | 0.3819 |
+| F₂ score at τ* | 0.6245 |
+| Expected calibration error (post-isotonic) | 0.0687 |
+| Expected calibration error (pre-isotonic) | 0.1867 |
+| End-to-end inference latency target (p50) | 45 ms |
+| End-to-end inference latency target (p99) | 94 ms |
 
-**Table 1:** *Failure prediction performance on held-out test set. Latency measured end-to-end from payment status event receipt to probability output.*
+**Table 1:** *Failure prediction performance on the held-out synthetic validation environment. Latency values reflect the current canonical target envelope for the C1 classifier rather than a completed live-bank service-level measurement.*
 
-The AUC of 0.739 reflects the genuine difficulty of the payment failure prediction task: payment failures are rare, contextually heterogeneous, and influenced by factors — such as internal correspondent bank liquidity states and compliance screening outcomes — that are not directly observable from the payment message stream. The recall of 0.810 at the cost-optimised threshold τ* = 0.152 means that the system correctly flags approximately 81% of genuine payment failures. The F₂ score of 0.617 reflects the dominance of recall in the optimisation objective.
+The AUC of 0.8871 indicates materially stronger discrimination than the earlier tabular baseline documented elsewhere in the repository. At the calibrated threshold τ* = 0.110, recall of 0.8816 implies that the system flags roughly 88% of synthetic failures, while precision of 0.3819 reflects the deliberate willingness to tolerate false positives in exchange for missed-failure reduction. The F₂ score of 0.6245 is consistent with this operating posture.
 
-The p50 inference latency of 94 milliseconds and the p99 latency of 142 milliseconds confirm that the system meets the real-time processing requirement for commercial utility in live payment corridors. The p50 satisfies the sub-100ms design target; the p99 of 142ms reflects processing of more complex feature vectors under peak load conditions and remains within an operationally acceptable range for asynchronous bridge loan offer generation. The LightGBM model trained on the available feature set achieves competitive inference speed without the quantisation or distillation techniques sometimes required for deep learning models at comparable latency targets.
+Calibration remains the central caveat. Although isotonic regression materially improves ECE within the synthetic environment, probability reliability on live payment data is unproven. The present evidence therefore supports the claim that the architecture is promising and internally coherent, but not the stronger claim that calibrated probabilities are already bank-grade on production SWIFT flows.
 
-### 7.3 Pricing Accuracy and Coverage
+### 7.3 Baseline Comparison
+
+The current ensemble should be interpreted against two relevant baselines. First, the earlier tabular prototype described in the repo's canonical configuration documentation achieved AUC 0.739 using a substantially weaker feature-generation setup. Second, the LightGBM-only branch of the current training run achieves AUC 0.8841, showing that most of the predictive power is captured by the enriched tabular feature space itself. The hybrid ensemble lifts performance slightly to 0.8871, suggesting that graph augmentation adds value at the margin without radically changing the operating frontier.
+
+This baseline structure matters for scientific interpretation. The primary gain from the current system appears to come from better corpus design and richer temporal/counterparty signals, not from architecture novelty alone. The graph component is therefore better understood as a disciplined incremental improvement over a strong tabular baseline than as the sole source of performance.
+
+### 7.4 Pricing Accuracy and Coverage
 
 Coverage across the three pricing tiers depends on the composition of the counterparty population in the deployment dataset. In the evaluation dataset, approximately 18% of counterparties qualify for Tier 1 structural model assessment (listed companies with observable equity data); 54% qualify for Tier 2 proxy structural model assessment (private companies with available balance sheet data); and 28% are assessed under the Tier 3 reduced-form model. The tiered framework thus achieves coverage across the full counterparty population, including the 82% — predominantly private companies — that a pure structural model would be unable to assess.
 
-The CVA-derived APR on the evaluation dataset ranges from approximately 150 basis points for Tier 1 counterparties with strong balance sheets and short advance durations, to approximately 800 basis points for Tier 3 counterparties with data-sparse financial profiles and longer advance durations. These APR levels are competitive with emergency overdraft facilities (which typically price at 1,000–2,000 bps annualised for comparable durations) while adequately compensating the lender for estimated credit and operational risk.
+The CVA-derived APR on the evaluation dataset ranges from approximately 150 basis points for Tier 1 counterparties with strong balance sheets and short advance durations, to approximately 800 basis points for Tier 3 counterparties with data-sparse financial profiles and longer advance durations. These APR levels are competitive with emergency overdraft facilities (which typically price at 1,000–2,000 bps annualised for comparable durations) while adequately compensating the lender for estimated credit and operational risk. In a production setting, an additional FX premium may also be layered into the offer where bridge funding and receivable repayment occur across different currencies; that premium is conceptually distinct from credit compensation and should be disclosed separately from the PD-driven spread.
 
-### 7.4 System Latency Decomposition
+### 7.5 System Latency Decomposition
 
 | **Processing Stage** | **Latency Contribution** |
 |----------------------|--------------------------|
-| Feature extraction from normalised event representation | ~12 ms |
-| LightGBM model inference (dominant component) | ~68 ms |
-| Isotonic calibration mapping | ~4 ms |
-| SHAP attribution computation | ~10 ms |
-| **Subtotal — failure prediction (p50)** | **94 ms** |
-| CVA pricing computation (Stage 2) | +8 ms avg |
+| Feature extraction from normalised event representation | ~14 ms |
+| Graph-tabular ensemble inference | ~22 ms |
+| Isotonic calibration mapping | ~3 ms |
+| SHAP attribution computation | ~6 ms |
+| **Subtotal — failure prediction (p50)** | **~45 ms target** |
+| Tail-latency envelope (p99) | **~94 ms target** |
+| Stage 2 pricing computation | +8 ms avg |
 
-**Table 2:** *End-to-end latency decomposition by processing stage. Total from payment event receipt to complete bridge loan offer including pricing: approximately 102 ms (p50).*
+**Table 2:** *Illustrative latency decomposition aligned to the current canonical latency targets for C1. These values represent the design envelope reflected in the repo's configuration and model documentation; formal pilot-bank latency benchmarking remains pending.*
 
 ---
 
@@ -271,11 +285,17 @@ The CVA-derived APR on the evaluation dataset ranges from approximately 150 basi
 
 ### 8.1 Limitations
 
-Several limitations of the present work should be noted. The failure prediction model is trained on historical data from a specific set of payment corridors and correspondent banking routes; performance on corridors not represented in the training data may be degraded until sufficient deployment data accumulates. The model exhibits the standard vulnerability of gradient-boosted models to distributional shift: a structural change in the correspondent banking landscape — such as the introduction of a new sanctions screening protocol or the failure of a major correspondent — will cause model performance to degrade until retraining on post-change data is completed. Monitoring for distributional shift using population stability indices on the input feature distributions is a necessary operational complement to the system.
+Several limitations of the present work should be noted. First, the failure prediction results are derived entirely from a synthetic corpus. No live SWIFT payment stream or bank production telemetry is included in the current evaluation, so external validity remains the principal unresolved question. Second, the graph and temporal features assume relative stability in corridor structure and counterparty behavior between model refreshes; abrupt routing changes, sanctions-driven reconfiguration, or bank-specific operational idiosyncrasies may degrade performance materially. Monitoring for distributional shift using feature-population stability metrics, calibration drift checks, and rolling out-of-time backtests is therefore not optional but central to safe deployment.
 
 The Tier 2 proxy structural model introduces approximation error whose magnitude depends on the representativeness of the sector-median asset volatility used. For counterparties in industries with high within-sector volatility dispersion, the sector median may be a poor approximation of the firm-specific volatility, producing PD estimates with wide uncertainty intervals. A Bayesian treatment of the asset volatility parameter that propagates this uncertainty through to the CVA calculation would improve pricing accuracy for these counterparties and is a direction for future work.
 
-### 8.2 Extensions
+### 8.2 Operational Model Governance Framework
+
+Because the system directly influences loan-offer generation, safe deployment requires a formal monitoring and challenger-model regime. The current governance framework in the repo's SR 11-7 pack sets explicit triggers for retraining, calibration review, graph rebuild, and degraded-mode handling. Practical monitoring would include at least: monthly calibration review with escalation when ECE exceeds 0.10; quarterly retraining or challenger comparison when AUC falls by more than 3% from the reference run; graph-structure drift alerts when edge counts or corridor topology move materially between rebuilds; and explicit logging of CPU fallback or degraded-latency operation.
+
+This governance layer is not ancillary documentation. In a bank deployment it is part of the model itself, because the safety of a high-impact lending classifier depends not only on initial discrimination performance but on how quickly drift, calibration failure, or infrastructure degradation is detected and contained.
+
+### 8.3 Extensions
 
 Several extensions to the architecture are under active development or are presented here as directions for future work.
 
@@ -289,15 +309,59 @@ A dual-stream monitoring architecture addresses this vulnerability by operating 
 
 **Autonomous treasury management.** An agent-based extension integrates the reactive bridging system with FX exposure management, standing credit facility management, and forward payment portfolio optimisation to provide a complete autonomous treasury management function for mid-market companies without dedicated treasury teams. The FX hedging component introduces a probability-adjusted hedge ratio — optimal hedge ratio equals one minus payment failure probability times standard hedge ratio — that integrates payment network risk into currency exposure management in a way that no existing treasury system implements.
 
+### 8.4 Compliance Architecture and Regulatory Considerations
+
+The automated liquidity bridging system requires a rigorous compliance framework to ensure regulatory alignment across multiple jurisdictions. The system classifies payments delayed due to compliance or regulatory holds distinctly from operational delays and implements exclusion logic to prevent regulatory exposure.
+
+**Compliance hold classification vs. operational delays**
+
+The rejection taxonomy (Section 2.1) distinguishes between failure modes with different recovery characteristics. Compliance and regulatory failures (codes such as DNOR — cancellation due to sanctions, CNOR — cancellation due to non-payment reasons subject to regulatory investigation, RR01-RR04 — payment held due to regulatory review, AG01 — legal hold, and LEGL — investigation by regulator) exhibit low recovery probability and extended resolution timelines (Class B and Class C characteristics). The failure prediction engine processes these distinct categories, enabling the system to recognize when a payment is delayed for compliance reasons versus operational reasons.
+
+**Exclusion logic for compliance-held payments**
+
+The system includes explicit gating that prevents bridge loan offers for payments where the delay reason indicates a compliance or regulatory hold. Specifically:
+
+- Payments with rejection codes in the BLOCK class (DNOR, CNOR, RR01, RR02, RR03, RR04, AG01) are excluded from bridge loan eligibility entirely. The gating layer operates before the failure probability evaluation, preventing these transactions from entering the liquidity offer generation pipeline.
+
+- For payments with compliance-related delays in non-BLOCK classes (e.g., delays arising from enhanced due diligence or additional documentation requirements), the system may apply additional credit margin but will not offer bridge loans where the delay reason suggests a pending regulatory action.
+
+This exclusion is implemented at the classification layer in Stage 1 of the pipeline, before any pricing or offer generation occurs. The compliance hold codes are enumerated in the rejection taxonomy reference implementation, and the BLOCK classification is a distinct layer from the commercial A/B/C maturity classification.
+
+**KYC and AML screening for bridge loan borrowers**
+
+Parties accepting bridge loans undergo screening to ensure compliance with anti-money laundering (AML) and know-your-customer (KYC) regulations. The screening process includes:
+
+- Beneficiary entity verification — the party receiving the bridge loan is verified as a legitimate business entity in good standing through corporate registry checks and, where applicable, watchlist screening.
+
+- Ultimate beneficial owner (UBO) verification — the system traces the beneficial ownership of the payment recipient to identify entities subject to sanctions or politically exposed persons (PEP) screening requirements.
+
+- Transaction monitoring — each bridge loan disbursement is logged with beneficiary details, loan amount, and the underlying payment UETR for regulatory reporting purposes.
+
+- Sanctions list integration — the system maintains an up-to-date sanctions list (OFAC SDN, EU consolidated list, UK sanctions list) and cross-references each bridge loan beneficiary against current watchlists before disbursement.
+
+The screening process is designed to operate within sub-100ms latency constraints while meeting regulatory documentation requirements. Results of the screening are cached for repeat counterparties with approved relationships, enabling faster subsequent transactions while maintaining full KYC/AML rigor.
+
+**Reporting obligations for sanctions-triggered failures**
+
+In the event that a payment against which a bridge loan was disbursed subsequently fails due to a sanctions designation or a regulatory enforcement action, the system triggers specific reporting obligations:
+
+- Immediate internal flagging — such transactions are flagged as high-priority alerts within the compliance monitoring system, requiring review by designated compliance officers.
+
+- Suspended reporting — depending on jurisdiction and the nature of the regulatory action, the system may generate Suspicious Activity Reports (SARs) for sanctions-related payment failures, subject to applicable regulatory filing requirements and tipping-off restrictions.
+
+- Audit trail — all sanctions-triggered loan failures are recorded with the specific sanction list that caused the failure, the bridge loan reference, and the timeline of events for forensic audit purposes.
+
+This compliance architecture ensures that the automated liquidity bridging system operates within regulatory guardrails across multiple jurisdictions while maintaining the performance characteristics described elsewhere in this paper.
+
 ---
 
 ## 9. Conclusion
 
-This paper has presented a three-component architecture for real-time payment failure detection and automated liquidity bridging in cross-border payment networks. The failure prediction engine applies gradient-boosted ensemble classification with isotonic calibration and cost-asymmetric threshold optimisation to ISO 20022 and SWIFT gpi event streams, achieving an AUC of 0.739 and a recall of 0.810 at the cost-optimised threshold, with median end-to-end inference latency of 94 milliseconds (p50) and 142 milliseconds (p99). The tiered probability-of-default framework extends conventional structural credit models to private-company counterparties through a sector-median asset volatility proxy, achieving full counterparty population coverage in the evaluation dataset. The settlement-confirmation auto-repayment loop binds each advance to the UETR of the original payment and automatically recovers the advance upon settlement confirmation, without human intervention.
+This paper has presented a three-component architecture for real-time payment failure detection and automated liquidity bridging in cross-border payment networks. The current failure prediction engine uses a hybrid GraphSAGE + TabTransformer + LightGBM ensemble with isotonic calibration and cost-asymmetric threshold optimisation, achieving AUC 0.8871, precision 0.3819, recall 0.8816, and F2 0.6245 at the calibrated threshold τ* = 0.110 on a held-out synthetic validation corpus. The canonical latency target for this classifier is 45 milliseconds at p50 and 94 milliseconds at p99. The tiered probability-of-default framework extends conventional structural credit models to private-company counterparties through a sector-median asset-volatility proxy, achieving broad theoretical counterparty coverage, while the settlement-confirmation auto-repayment loop binds each advance to the UETR of the original payment and automatically recovers the advance upon settlement confirmation.
 
 The adversarial payment cancellation detection extension described in Section 8.2 addresses a specific security vulnerability in the auto-repayment mechanism arising from the ISO 20022 camt.056 cancellation request protocol, providing a dual-stream monitoring architecture and ML-based intent classifier that preserves the lender's security interest against adversarial cancellation attempts.
 
-The system addresses a gap in financial market infrastructure that has been enabled by recent developments in payment network telemetry — specifically the adoption of SWIFT gpi UETR tracking and the progressive migration to ISO 20022 structured messaging. The combination of real-time payment event monitoring, automated credit risk assessment without assumed credit spreads, and settlement-linked auto-repayment represents a novel architecture whose individual components build on well-established techniques but whose integration as an event-driven system is a contribution not present in the prior literature.
+The system addresses a gap in financial market infrastructure that has been enabled by recent developments in payment network telemetry, specifically the adoption of SWIFT gpi UETR tracking and the progressive migration to ISO 20022 structured messaging. The combination of real-time payment event monitoring, automated credit risk assessment without assumed credit spreads, and settlement-linked auto-repayment remains a novel architectural contribution. At the same time, the empirical claims in this version of the paper should be read with appropriate restraint: the strongest current evidence is synthetic-corpus validation plus documented governance controls, while live-bank validation remains the decisive next test.
 
 ---
 
@@ -351,4 +415,4 @@ The system addresses a gap in financial market infrastructure that has been enab
 
 **END OF ACADEMIC PAPER v2.1**
 
-*Version 2.1 corrections: (A) Reference [1] updated from BIS to FXC Intelligence; market size corrected to USD 31.7 trillion. (B) Section 1 failure rate language reframed from "industry survey data" to STP-derived estimate with footnote disclosure. All technical content, methodology, empirical results, and conclusions unchanged from v2.0.*
+*Version 2.1 corrections: (A) Reference [1] updated from BIS to FXC Intelligence; market size corrected to USD 31.7 trillion. (B) Section 1 failure rate language reframed from "industry survey data" to STP-derived estimate with footnote disclosure. (C) C1 methodology, metrics, latency targets, and limitations reconciled to the current repo-controlled model and governance documentation.*
