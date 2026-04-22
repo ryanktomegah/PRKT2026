@@ -47,14 +47,15 @@ Start here to understand what you're working on:
 
 ### D. Patent Counsel
 
-1. [`legal/patent/Provisional-Specification-v5.2.md`](legal/patent/Provisional-Specification-v5.2.md) — Latest provisional specification
+1. [`legal/patent/Provisional-Specification-v5.3.md`](legal/patent/Provisional-Specification-v5.3.md) — Latest provisional specification
 2. [`legal/patent/Patent-Family-Architecture-v2.1.md`](legal/patent/Patent-Family-Architecture-v2.1.md) — Patent family architecture (P1–P12)
 3. [`legal/patent/patent_claims_consolidated.md`](legal/patent/patent_claims_consolidated.md) — Consolidated claims
 4. [`legal/patent/Future-Technology-Disclosure-v2.1.md`](legal/patent/Future-Technology-Disclosure-v2.1.md) — Future technology disclosure
 5. [`legal/patent/patent_counsel_briefing.md`](legal/patent/patent_counsel_briefing.md) — Pre-session briefing for counsel
-6. [`legal/decisions/EPG-20-21_patent_briefing.md`](legal/decisions/EPG-20-21_patent_briefing.md) — Language scrub rules (no AML/SAR/OFAC in claims)
-7. [`engineering/research/Academic-Paper-v2.1.md`](engineering/research/Academic-Paper-v2.1.md) — Academic publication draft
-8. [`legal/patent/Provisional-Specification-v5.1.md`](legal/patent/Provisional-Specification-v5.1.md) — Prior provisional (v5.1, for comparison)
+6. [`legal/patent/Lawyer-Decision-Memo-2026-04-22.md`](legal/patent/Lawyer-Decision-Memo-2026-04-22.md) — Open items requiring counsel decisions
+7. [`legal/decisions/EPG-20-21_patent_briefing.md`](legal/decisions/EPG-20-21_patent_briefing.md) — Language scrub rules (no AML/SAR/OFAC in claims)
+8. [`engineering/research/Academic-Paper-v2.1.md`](engineering/research/Academic-Paper-v2.1.md) — Academic publication draft
+9. [`legal/patent/Provisional-Specification-v5.1.md`](legal/patent/Provisional-Specification-v5.1.md) — Prior provisional (v5.1, for comparison)
 
 ---
 
@@ -87,7 +88,7 @@ Start here to understand what you're working on:
 2. [`business/CLIENT_PERSPECTIVE_ANALYSIS.md`](business/CLIENT_PERSPECTIVE_ANALYSIS.md) — Bank COO perspective, 5 critical gaps, 7 client archetypes
 3. [`business/Competitive-Landscape-Analysis.md`](business/Competitive-Landscape-Analysis.md) — Competitive landscape
 4. [`business/Market-Fundamentals-Fact-Sheet.md`](business/Market-Fundamentals-Fact-Sheet.md) — Market fundamentals
-5. [`business/Investor-Briefing-v2.1.md`](business/Investor-Briefing-v2.1.md) — Investor briefing
+5. [`business/Investor-Briefing-v2.2.md`](business/Investor-Briefing-v2.2.md) — Investor briefing
 6. [`business/GTM-Strategy-v1.0.md`](business/GTM-Strategy-v1.0.md) — Go-to-market strategy
 7. [`business/fundraising/`](business/fundraising/) — Fundraising materials (SAFE, NDA, valuation, IP risk analysis)
 
@@ -140,7 +141,8 @@ docs/
 │   ├── bpi_license_agreement_clauses.md  ← BPI license agreement clause library
 │   ├── c6_sanctions_audit.md             ← C6 sanctions screening audit trail
 │   ├── patent/                           ← Patent specifications and briefings
-│   │   ├── Provisional-Specification-v5.2.md  ← Latest provisional (canonical)
+│   │   ├── Provisional-Specification-v5.3.md  ← Latest provisional (canonical)
+│   │   ├── Lawyer-Decision-Memo-2026-04-22.md ← Counsel decision queue
 │   │   ├── Provisional-Specification-v5.1.md
 │   │   ├── Patent-Family-Architecture-v2.1.md
 │   │   ├── Future-Technology-Disclosure-v2.1.md
@@ -165,7 +167,7 @@ docs/
 │   ├── LIP_COMPLETE_NARRATIVE.md         ← Business model (3 phases), patent moat, pipeline walkthrough
 │   ├── Competitive-Landscape-Analysis.md
 │   ├── Market-Fundamentals-Fact-Sheet.md
-│   ├── Investor-Briefing-v2.1.md
+│   ├── Investor-Briefing-v2.2.md
 │   ├── GTM-Strategy-v1.0.md
 │   ├── Capital-Partner-Strategy.md
 │   ├── Founder-Financial-Model.md
@@ -222,7 +224,7 @@ docs/
 | Why we never bridge compliance holds | [`legal/decisions/EPG-19_compliance_hold_bridging.md`](legal/decisions/EPG-19_compliance_hold_bridging.md) |
 | Current open blockers | [`engineering/OPEN_BLOCKERS.md`](engineering/OPEN_BLOCKERS.md) |
 | Latest code review | [`engineering/review/2026-04-08/INDEX.md`](engineering/review/2026-04-08/INDEX.md) |
-| Patent latest draft | [`legal/patent/Provisional-Specification-v5.2.md`](legal/patent/Provisional-Specification-v5.2.md) |
+| Patent latest draft | [`legal/patent/Provisional-Specification-v5.3.md`](legal/patent/Provisional-Specification-v5.3.md) |
 | RBC pilot kit | [`business/bank-pilot/`](business/bank-pilot/) |
 | C1 model card | [`models/c1-model-card.md`](models/c1-model-card.md) |
 | Architecture diagram | [`engineering/architecture.md`](engineering/architecture.md) |

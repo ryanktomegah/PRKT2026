@@ -260,7 +260,7 @@ This analysis draws on the following BPI internal documents for consistency:
 3. **Capital-Partner-Strategy.md** — SPV structure, warehouse economics, Phase 2/3 capital requirements
 4. **Unit-Economics-Exhibit.md** — 300 bps canonical fee floor, tiered floors (500/400/300 bps), $150 minimum cash fee
 5. **Operational-Playbook-v2.1.md** — Phase 0 costs ($5K–$9K), Phase 1 IP costs ($100K–$155K incl. PCT)
-6. **Investor-Briefing-v2.1.md** — $31.7T market size, 45ms p50 latency, live system output demonstration
+6. **Investor-Briefing-v2.2.md** — $31.7T market size, 45ms p50 latency, live system output demonstration
 7. **lip/common/constants.py** — All QUANT-controlled fee constants, latency targets, phase fee shares
 
 ---

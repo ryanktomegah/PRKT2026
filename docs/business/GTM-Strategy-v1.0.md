@@ -716,7 +716,7 @@ This is the Founder Financial Model scenario at $158M–$1B post-tax range.
 | `Capital-Partner-Strategy.md` | Tier 3 capital partner detail; Phase 2 warehouse structure |
 | `Founder-Financial-Model.md` | Long-range financial projections; IPO scenario |
 | `Revenue-Projection-Model.md` | Revenue model — NOTE: Phase 1 split stated as 15%; QUANT resolution pending |
-| `Investor-Briefing-v2.1.md` | Manchester textiles narrative (for SIBOS talk opening); investor-facing framing |
+| `Investor-Briefing-v2.2.md` | Manchester textiles narrative (for SIBOS talk opening); investor-facing framing |
 | `BPI_SR11-7_Model_Governance_Pack_v1.0.md` | Risk Gatekeeper leave-behind; OSFI engagement attachment |
 | `BPI_C7_Bank_Deployment_Guide_v1.0.md` | Technical Buyer leave-behind; integration guide |
 | `Competitive-Landscape-Analysis.md` | JPMorgan Kinexys, Bottomline, Ripple — confirmed non-competing |

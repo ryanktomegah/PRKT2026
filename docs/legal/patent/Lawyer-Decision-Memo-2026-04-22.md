@@ -69,6 +69,10 @@ Document-side remediation is substantially complete. The audit tracker now shows
 3. Continuation vs. CIP table for P6/P7/P8
 4. Final claim-scope review of trigger language
 
+## Immediate Cleanup Already Applied In Docs
+
+To reduce avoidable risk before counsel review, the active planning documents now stop assuming micro-entity status as a fact and instead instruct the filer to confirm fee status with counsel first. The operational playbook's lending-licence section has also been reframed to present concrete questions for counsel rather than unsupported jurisdiction-by-jurisdiction legal conclusions.
+
 ## Documents To Hand To Counsel
 
 - `docs/legal/patent/Provisional-Specification-v5.3.md`
@@ -81,4 +85,3 @@ Document-side remediation is substantially complete. The audit tracker now shows
 ## Suggested Email Subject
 
 `Bridgepoint: four pre-filing legal decisions requiring counsel review`
-

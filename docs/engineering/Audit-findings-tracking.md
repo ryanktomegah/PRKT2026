@@ -1,5 +1,8 @@
 # Bridgepoint Master Audit Report - Findings Tracking
 
+**Canonical patent draft:** `docs/legal/patent/Provisional-Specification-v5.3.md`
+**Counsel-only open-items memo:** `docs/legal/patent/Lawyer-Decision-Memo-2026-04-22.md`
+
 ## Priority Queue (Top 10 - Must Be Addressed This Week)
 
 ### Status Overview
@@ -100,7 +103,7 @@
 | 2 | Claim 4 vulnerable to Bottomline §103 | CRITICAL | ✅ COMPLETED (v5.2) |
 | 3 | Claims 2 and 3 lack Amendment B trigger | CRITICAL | ✅ COMPLETED (v5.2) |
 | 4 | Micro-entity status not validated | HIGH | ⏳ PENDING |
-| 5 | "Exclusively" language over-narrowing | HIGH | ⏳ PENDING |
+| 5 | "Exclusively" language over-narrowing | HIGH | ⏳ PENDING — drafting fix is in v5.3; counsel confirmation still required |
 | 6 | Claim 5 implicitly dependent (missing disbursement step) | HIGH | ✅ COMPLETED (v5.3) |
 | 7 | Alice §101 analysis missing for Claims 3 and 4 | HIGH | ✅ COMPLETED (v5.3) |
 | 8 | NLP claim element lacks written description support | MEDIUM | ✅ COMPLETED (v5.3) |

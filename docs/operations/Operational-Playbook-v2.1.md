@@ -78,9 +78,9 @@ Do not leave the Section 85 election mechanics implicit. The elected amount shou
 >
 > The patent assignment filing with the USPTO and CIPO must happen within 30 days of incorporation and before any commercial pitch, grant application, or investor conversation in which the company claims to own the patent. The assignment recording takes 4–6 weeks at the USPTO. Your lawyer should file immediately after the company number is issued — do not wait for any other step.
 
-| **Assignment legal cost** | **USPTO recording fee** | **Tax filing (S.85 rollover)** | **Total Phase 0 IP cost** |
-|---------------------------|------------------------|-------------------------------|--------------------------|
-| **$500–$1,500** | **$180 (micro-entity)** | **$500–$1,000 (accountant)** | **~$2,000** |
+| **Assignment legal cost** | **USPTO / related filing fees** | **Tax filing (S.85 rollover)** | **Total Phase 0 IP cost** |
+|---------------------------|----------------------------------|-------------------------------|--------------------------|
+| **$500–$1,500** | **Verify current fee status with counsel before filing; do not assume micro-entity eligibility** | **$500–$1,000 (accountant)** | **~$2,000 plus filing fees determined by counsel** |
 
 ### 0.3 Open Business Banking and Set Up Financial Infrastructure
 
@@ -146,7 +146,7 @@ Does the Liquidity Intelligence Platform's activity constitute "lending" under a
 **Immediate Actions:**
 
 1. **Engage regulatory counsel** (within 30 days of incorporation):
-   - Consult lawyer with BC Business Practices and Consumer Protection Act (BPCPA) and Money Lenders Act expertise
+   - Consult lawyer with British Columbia commercial-lending, fintech, and regulatory-licensing expertise
    - Obtain written opinion on whether current or planned activities require a lending licence
    - If licence IS required: Map out application timeline, cost, and capital requirements
    - If licence is NOT required: Document the analysis showing why each activity does not constitute lending
@@ -161,12 +161,12 @@ Does the Liquidity Intelligence Platform's activity constitute "lending" under a
    - If licence required: Add 3-6 months for licence application (if needed) before any pilot or commercial rollout
    - If no licence: Document decision as "No lending licence required based on legal analysis (date)"
 
-4. **Jurisdiction-Specific Analysis (Preliminary):**
-   - **British Columbia:** Money Lenders Act regulates consumer and high-risk lending. B2B corporate lending (exceeds $50,000) and commercial lending are exempt from licensing requirements if they meet certain criteria. Corporate treasury management and trade finance activities are exempt. **Recommendation:** BC B2B-likely not required for corporate B2B lending, but confirm with legal opinion.
-   - **Ontario:** Money Lenders Act applies to entities lending money in Ontario. Similar consumer lending restrictions. Commercial lending may be exempt if not to the public. **Recommendation:** Confirm with legal opinion; structure as bank-partnered model if possible.
-   - **Federal (Canada):** Bank Act restricts banking activities to Schedule I banks. Bridgepoint cannot offer bridge loans directly through the banking system unless it becomes a Schedule I bank itself or partners with one. **Recommendation:** Pursue bank-partnered model as primary strategy to avoid licensing requirement.
-   - **United States (future):** State lending laws vary widely. Corporate lending often licensed at state level. **Recommendation:** Do not plan direct US lending without first confirming with US regulatory counsel.
-   - **European Union:** Alternative Investment Fund (AIFM) and PSD2 harmonised directives apply. Corporate lending regulated by CRD IV. **Recommendation:** Confirm with EU legal counsel before any EU deployment.
+4. **Jurisdiction-Specific Analysis To Request From Counsel:**
+   - **British Columbia:** Does the contemplated pilot structure trigger any lending, money-services, or financing-company licensing requirement for Bridgepoint itself, or does a bank-funded / bank-of-record model keep Bridgepoint outside that scope?
+   - **Ontario:** If the same structure is rolled out in Ontario, does the answer change?
+   - **Federal (Canada):** Does any aspect of the contemplated structure create a Bank Act, AML, or other federal-regulatory issue for a non-bank technology provider?
+   - **United States (future):** Which direct-lending or marketplace variants would require separate state-by-state analysis before any US launch?
+   - **European Union (future):** Which licensing questions become live first if the product is commercialized through an EU bank or payments partner?
 
 5. **Documentation Standards:**
    - Record the regulatory opinion in corporate records (board resolution with legal counsel opinion attached)
@@ -219,9 +219,9 @@ The claim set from the **current prosecution-ready provisional specification** �
 >
 > Additionally: Dependent Claim D13 covering the adversarial camt.056 cancellation detection mechanism must be included in the utility application and must not be surrendered during prosecution without explicit instruction from Bridgepoint Intelligence. This claim element is the basis for P3 continuation claims and for the adversarial cancellation extension described in the Future Technology Disclosure.
 
-| **Attorney fees (drafting + filing)** | **USPTO filing fee (micro-entity)** | **Filing deadline** | **Expected prosecution timeline** |
-|--------------------------------------|------------------------------------|--------------------|----------------------------------|
-| **$15,000–$25,000** | **$830** | **PFD + 12 months [HARD]** | **18–36 months to issuance** |
+| **Attorney fees (drafting + filing)** | **USPTO filing fee** | **Filing deadline** | **Expected prosecution timeline** |
+|--------------------------------------|----------------------|--------------------|----------------------------------|
+| **$15,000–$25,000** | **Confirm fee status with patent counsel; if micro-entity is not clearly defensible, default to small-entity rates** | **PFD + 12 months [HARD]** | **18–36 months to issuance** |
 
 ### 1.3 File the PCT Application — International Coverage
 
