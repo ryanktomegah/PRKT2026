@@ -1,8 +1,8 @@
 """
 test_c6_aml.py — Tests for C6 AML Velocity Controls
 """
-from decimal import Decimal
 import logging
+from decimal import Decimal
 
 import pytest
 
@@ -141,7 +141,6 @@ class TestSanctionsScreener:
 
     def test_empty_name_with_entity_id_logs_bypass(self, caplog):
         # ESG-01: Verify bypass logger is called for empty names
-        import lip.c6_aml_velocity.sanctions as sanctions_module
         screener = SanctionsScreener()
         with caplog.at_level(logging.WARNING):
             with pytest.raises(ValueError):

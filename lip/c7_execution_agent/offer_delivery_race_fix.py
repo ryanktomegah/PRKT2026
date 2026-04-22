@@ -10,7 +10,7 @@ ESG-02: ELO accept() and background expire_stale_offers() can race.
 Fix: Add 5-second grace period to offers - ELO acceptance wins
 within grace period, sweeper skips expiry.
 """
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 OFFER_GRACE_PERIOD_SECONDS = 5
 _OFFER_STATE_KEY_PREFIX = "lip:offer:race_fixed:"

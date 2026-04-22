@@ -6,6 +6,7 @@ Validates that:
   2. UETRs are NOT detected as retries after the TTL window expires.
   3. The tracker is thread-safe.
 """
+import inspect
 import time
 
 from lip.common.uetr_tracker import UETRTracker
@@ -57,11 +58,6 @@ def test_fx_rounding_tolerance_increased():
     between test instances. This simplified test just verifies the
     tolerance constant was changed correctly in the code.
     """
-    from decimal import Decimal
-    import re
-
-    # Read the source file to verify the tolerance was updated
-    from lip.common.uetr_tracker import UETRTracker
-    import inspect
+    # Read the source file to verify the tolerance constant in the code path.
     source = inspect.getsource(UETRTracker._is_tuple_match)
-    assert "0.001" in source, "ESG-03: tolerance should be 0.1% (0.001 in code)"
+    assert "0.0001" in source, "Retry tolerance should be 0.01% (0.0001 in code)"

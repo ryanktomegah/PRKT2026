@@ -242,7 +242,7 @@ def build_sanctions_json(
     return data
 
 
-def load_from_file(path: str) -> Dict[str, List[str]]:
+def load_from_file(path: str) -> Dict[str, Any]:
     """Load and return an existing JSON snapshot without making network calls."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -278,7 +278,7 @@ def validate_snapshot(path: str) -> bool:
             )
             generated_at = "<unknown>"
         else:
-            generated_at = metadata["generated_at"]
+            generated_at = str(metadata["generated_at"])
         total = sum(len(data[k]) for k in required_keys)
         logger.info(
             "Snapshot valid: OFAC=%d UN=%d EU=%d (total=%d) generated_at=%s",
