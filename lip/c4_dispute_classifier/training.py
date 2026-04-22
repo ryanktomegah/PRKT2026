@@ -144,6 +144,12 @@ class QLoRATrainer:
         """
         from datasets import Dataset
 
+        if self._tokenizer is None:
+            raise RuntimeError(
+                "_tokenize_dataset called before tokenizer was loaded; "
+                "call _load_model_and_tokenizer() first."
+            )
+
         def _to_text(record: dict) -> str:
             return (
                 f"<s>[INST] <<SYS>>\n{record['system']}\n<</SYS>>\n\n"
@@ -341,6 +347,12 @@ class QLoRATrainer:
                 "false_negative_rate": 0.03,
                 "confusion_matrix": confusion_matrix,
             }
+
+        if self._tokenizer is None:
+            raise RuntimeError(
+                "Real evaluation path requires a loaded tokenizer; "
+                "call _load_model_and_tokenizer() first."
+            )
 
         # --- Real evaluation path ---
         correct = 0

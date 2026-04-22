@@ -15,10 +15,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from lip.common.constants import SALT_ROTATION_DAYS as ROTATION_INTERVAL_DAYS
+from lip.common.constants import SALT_ROTATION_OVERLAP_DAYS as OVERLAP_DAYS
 
-ROTATION_INTERVAL_DAYS = 365
-OVERLAP_DAYS = 30
+logger = logging.getLogger(__name__)
 
 
 @dataclass

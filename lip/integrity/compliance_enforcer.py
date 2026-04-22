@@ -28,7 +28,6 @@ from lip.integrity.evidence import (
     utcnow,
 )
 
-# Default threshold; matches the constant added to lip/common/constants.py.
 DEFAULT_BOILERPLATE_THRESHOLD = 0.90
 
 

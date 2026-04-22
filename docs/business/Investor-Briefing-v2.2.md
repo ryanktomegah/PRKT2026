@@ -1,11 +1,15 @@
 # LIQUIDITY INTELLIGENCE PLATFORM
-## The Patent-Protected System That Catches Money in Mid-Air
-### VERSION 2.1 | Strictly Confidential | For Authorised Recipients Only
+## The Patent-Pending System That Catches Money in Mid-Air
+### VERSION 2.2 | Strictly Confidential | For Authorised Recipients Only
 
 **Bridgepoint Intelligence Inc.**
 
 ---
 
+> **WHAT CHANGED IN VERSION 2.2 (2026-04-21, legal compliance correction):**
+>
+> **Patent terminology corrected (Issue D — legal risk):** All instances of "patented" and "patent-protected" have been replaced with "patent-pending" or "claimed in the patent-pending portfolio." A provisional patent application is not an issued patent — it confers no enforceable rights until conversion to a utility application and issuance. **A provisional patent application has been filed establishing February 2026 priority date. A full utility application will be filed by February 2027.**
+>
 > **WHAT CHANGED IN VERSION 2.1:**
 >
 > Three corrections from v2.0.
@@ -24,7 +28,7 @@
 
 > **THE ONE-SENTENCE SUMMARY**
 >
-> Every day, $88 billion in cross-border payments is in transit — and between $2.6 billion and $4.4 billion of it gets stuck, delayed, or rejected, leaving the businesses waiting for that money scrambling for emergency cash at punishing rates. We have built, patented, and proven a system that detects the failure in real time, prices and offers a bridge loan at median latency under 100 milliseconds, and collects repayment automatically the moment the original payment arrives. No human involved. No waiting. Patent-protected for over 30 years from provisional filing.
+> Every day, $88 billion in cross-border payments is in transit — and between $2.6 billion and $4.4 billion of it gets stuck, delayed, or rejected, leaving the businesses waiting for that money scrambling for emergency cash at punishing rates. We have built a patent-pending system and empirically validated it on a held-out synthetic payment corpus: the current classifier achieves 0.887 AUC, 0.625 F2, and 45ms p50 / 94ms p99 inference latency, while the broader architecture detects the failure in real time, prices and offers a bridge advance, and collects repayment automatically when the original payment arrives. No human intervention in the core decision loop. Core patent protection targeted through 2047, with continuation-portfolio coverage extending to approximately 2058 as adjacent payment infrastructure evolves.
 
 ---
 
@@ -56,7 +60,7 @@ The simplest way to understand this system is through three questions it answers
 
 **Question One: Is this payment in trouble?**
 
-The system watches a continuous stream of payment status messages — the digital signals banks send each other as money moves through the global network. Most of these messages say everything is fine. But some carry signals that, individually, look innocuous, but together indicate that a specific payment is about to fail or has already failed. The system runs those signals through a machine learning model trained on millions of historical payment outcomes. At median latency of 45 milliseconds from receiving the signal — faster than a human eye blink — it produces a precise probability that this specific payment will not arrive on time.
+The system watches a continuous stream of payment status messages — the digital signals banks send each other as money moves through the global network. Most of these messages say everything is fine. But some carry signals that, individually, look innocuous, but together indicate that a specific payment is about to fail or has already failed. The system runs those signals through a machine learning model validated on a fully synthetic corpus of 10 million payment outcomes spanning 20 corridors and 200 synthetic BICs. At median latency of 45 milliseconds from receiving the signal — faster than a human eye blink — it produces a precise probability that this specific payment will not arrive on time.
 
 If that probability exceeds the system's threshold, a bridge loan offer is automatically triggered. The threshold is set not at a simple 50% but at a mathematically optimised level designed to minimise the cost of the worst outcome — missing a genuine failure — while keeping false alarms commercially manageable.
 
@@ -82,6 +86,8 @@ This is the cleanest novelty in the entire patent portfolio, and the reason one 
 | Repayment trigger | Automatic on settlement | Zero manual intervention required |
 | System decision | ACCEPTED — no human approved this loan | Fully autonomous end-to-end |
 
+*Note:* The 25.4% failure probability is the Stage 1 estimate that the original payment will not arrive on time. The $5,033 loan cost is driven by a separate Stage 2 counterparty-default assessment of the borrower on the advance itself, which is materially lower. The architecture's pricing advantage comes from separating payment-operational risk from borrower credit risk rather than conflating them.
+
 ---
 
 ## 3. The Market — Numbers That Make the Opportunity Undeniable
@@ -104,7 +110,9 @@ The investment opportunity is structured around three distinct value creation me
 
 ### 4.1 Royalty Revenue — The Patent Annuity Stream
 
-The core of the business model is a patent licensing programme. Any bank, fintech, or payment network that wants to offer real-time payment bridging — using any of the methods this system has patented — must licence those patents. Royalty revenue is recurring, scalable without additional cost, defensible across jurisdictions, and grows automatically as the underlying payment market grows.
+The core of the business model is a patent licensing programme. Any bank, fintech, or payment network that wants to offer real-time payment bridging — using any of the methods claimed in the patent-pending portfolio — must licence those patents. Royalty revenue is recurring, scalable without additional cost, defensible across jurisdictions, and grows automatically as the underlying payment market grows.
+
+For projection purposes, **addressable bridge volume** means the subset of disrupted cross-border B2B payment volume that is: (1) in corridors where the platform is deployed, (2) not blocked for compliance or sanctions reasons, (3) not self-resolved inside the same day, and (4) supported by sufficient underwriting data for the tiered pricing engine. The current bottom-up model assumes this is approximately 50% of disrupted volume. Annual royalty is then calculated as: addressable bridge volume × deployment penetration × effective fee yield on bridged principal. Because pricing is annualised over an average 7-day funding duration, 300–350 bps corresponds to approximately 0.0575%–0.0671% of bridged principal per cycle rather than a flat per-cycle take.
 
 | **Period (from PFD)** | **Active Patents** | **Annual Royalty Range** | **What Is Driving It** |
 |----------------------|-------------------|------------------------|----------------------|
@@ -115,7 +123,7 @@ The core of the business model is a patent licensing programme. Any bank, fintec
 | **Years 21–26** | **P2–P12** | **$1.2B–$2.5B** | Full portfolio; $100T+ market; ESG scoring premium |
 | **Years 26–32** | **Full (P2–P15)** | **$2.5B–$5B+** | CBDC dominance; quantum-secure layer; $200T market |
 
-*All periods stated as offsets from Provisional Filing Date (PFD). Projections based on 5–10% market penetration of addressable bridge volume at conservative pricing.* **Cumulative royalties in the base case: $18 billion to $35 billion.** *(See Revenue-Projection-Model.md for the transparent bottom-up calculation with per-bank economics and three scenarios.)*
+*All periods stated as offsets from Provisional Filing Date (PFD). "Addressable bridge volume" is the filtered subset of disrupted payments described above, not total disrupted volume. See `Revenue-Projection-Model.md` for the bottom-up waterfall: addressable volume × penetration × effective fee yield = annual royalty.* **Cumulative royalties in the base case: $18 billion to $35 billion.**
 
 ### 4.2 Operational Revenue — The Platform That Earns While It Learns
 
@@ -226,7 +234,7 @@ By the time a competitor engineers around the utility patent, a continuation has
 
 ## 7. The Opportunity — What We Are Building Together
 
-The system is built. The patents are being filed. The live demo produces real outputs in real time. The prior art analysis confirms the novelty of the complete integrated system. The market exists, is enormous, and is growing at 7% annually. The legal protection lasts over 30 years from provisional filing. The data moat widens with every passing day. The competitor window narrows with every passing month.
+The system is built. The patents are being filed. The live demo produces real outputs in real time. The current model has been validated on a synthetic corpus and remains pending pilot-bank validation on live SWIFT traffic. The prior art analysis confirms the novelty of the complete integrated system. The market exists, is enormous, and is growing at 7% annually. Core protection runs through the foundational patent term, with continuation coverage extending further as the technology stack evolves. The data moat widens with every passing day. The competitor window narrows with every passing month.
 
 ### 7.1 Immediate Priority: The Legal Foundation
 
@@ -252,7 +260,7 @@ The working demonstration — running live, producing real outputs from real pay
 
 ## The Closing Argument
 
-> $88 billion is in transit every day — between $2.6 billion and $4.4 billion of it stuck, delayed, or rejected. The businesses waiting for it are paying too much for emergency liquidity, or going without entirely. The technology to fix this is built, tested, and patent-protected. The market is $31.7 trillion today and growing to $140–$180 trillion by 2050. The legal protection lasts over 30 years from filing. The data moat widens with every passing day. The competitor window narrows with every passing month.
+> $88 billion is in transit every day — between $2.6 billion and $4.4 billion of it stuck, delayed, or rejected. The businesses waiting for it are paying too much for emergency liquidity, or going without entirely. The technology to fix this is built, empirically validated on a synthetic corpus, and claimed in the patent-pending portfolio. The market is $31.7 trillion today and growing to $140–$180 trillion by 2050. Core protection is targeted through 2047, with continuation-portfolio coverage extending toward 2058 as the surrounding infrastructure evolves. The data moat widens with every passing day. The competitor window narrows with every passing month.
 >
 > This document is an invitation. The value is in the doing — in filing the continuations, signing the first licence, deploying the first facility, and watching the compounding advantage of a patent portfolio and a data moat grow simultaneously over three decades. That process starts now, with the decisions made in the next six months.
 >

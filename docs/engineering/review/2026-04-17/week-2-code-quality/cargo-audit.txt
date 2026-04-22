@@ -1,0 +1,22 @@
+=== lip/c3/rust_state_machine ===
+    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
+      Loaded 1049 security advisories (from /Users/tomegah/.cargo/advisory-db)
+    Updating crates.io index
+    Scanning Cargo.lock for vulnerabilities (30 crate dependencies)
+
+=== lip/c6_aml_velocity/rust_velocity ===
+    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
+      Loaded 1049 security advisories (from /Users/tomegah/.cargo/advisory-db)
+    Updating crates.io index
+    Scanning Cargo.lock for vulnerabilities (43 crate dependencies)
+
+=== lip/c7_execution_agent/rust_kill_switch ===
+    Updating crates.io index
+     Locking 81 packages to latest compatible versions
+      Adding pyo3 v0.24.2 (available: v0.28.3)
+      Adding signal-hook v0.3.18 (available: v0.4.4)
+    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
+      Loaded 1049 security advisories (from /Users/tomegah/.cargo/advisory-db)
+    Updating crates.io index
+    Scanning Cargo.lock for vulnerabilities (82 crate dependencies)
+

@@ -111,7 +111,7 @@ class IntegrityGate:
 
             # B1-07: enforce model_evidence_max_age_hours against registered evidence
             now = datetime.now(timezone.utc)
-            for ev in self._claims._evidence.values():
+            for ev in self._claims.iter_evidence():
                 age = now - ev.created_at
                 if age > self._max_age:
                     age_hours = age.total_seconds() / 3600.0

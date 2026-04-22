@@ -101,7 +101,7 @@ class TestHashIdentifier:
         raw_sha256 = hashlib.sha256(value.encode("utf-8") + salt).hexdigest()
         assert result != raw_sha256
         # Verify it does NOT match MD5
-        md5_hash = hashlib.md5(value.encode("utf-8") + salt).hexdigest()
+        md5_hash = hashlib.md5(value.encode("utf-8") + salt, usedforsecurity=False).hexdigest()
         assert result != md5_hash
 
     def test_deterministic(self):

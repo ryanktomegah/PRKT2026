@@ -686,9 +686,13 @@ irrelevant to correctness.
 ### 18.2 Core Banking Adapter Is Untestable Without Bank UAT Access
 
 C7 can be tested end-to-end with a mock CoreBankingAdapter. But the actual bank
-adapter — `CitiCoreAdapter`, `RBCCoreAdapter`, etc. — cannot be validated until
+adapter — `BankACoreAdapter`, `BankBCoreAdapter`, etc. — cannot be validated until
 we have UAT environment access from the bank. The adapter layer carries integration
 risk that does not resolve until pilot onboarding.
+
+> **Note:** BankA / BankB / BankC are illustrative placeholders. No specific
+> institution is contemplated by these names — any ISO-20022-speaking
+> correspondent bank can be integrated via a CoreBankingAdapter subclass.
 
 **Mitigation:** Requirement 2 (Section 16) mandates a 4-test UAT battery before
 any corridor goes live. This is a hard gate, not a recommendation. No production

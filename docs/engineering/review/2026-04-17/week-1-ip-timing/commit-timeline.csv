@@ -1,0 +1,552 @@
+# Separator: | (pipe). Fields: hash|author_date_iso|author_name|author_email|subject. Verified 0 subjects/names/emails contain '|'.
+36d72952f6f07e9fd931b1085f01d15f622a9c02|2026-04-17 21:31:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(review): scaffold pre-lawyer review directories and Fix Log
+4bbda8725251558cb7729ccea9b1e733f61d128b|2026-04-17 21:26:32 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(pre-lawyer-review): add 28-day implementation plan
+333fdc4460180b92078d924e3bf3a897150e7b94|2026-04-17 19:04:47 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(pre-lawyer-review): add 4-week pre-lawyer review design spec
+b0b8fe0a0a70a6fe8e0867adbdc9d17a8f6abd15|2026-04-17 18:39:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): patent bear-case — add cross-volume META refs
+dd54df287192c2019dcfa0554ab241f592b92db4|2026-04-17 18:35:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(claude-md): add rule — dispatch subagents sequentially, not 3+ in parallel
+ae5e9022892fd5d08363300be0fb375a4dbd0e87|2026-04-17 18:31:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): scale Market drill.md to 50 questions (full load)
+f38a198199726263abbd8ec112fdd5cb8d57a610|2026-04-17 18:31:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): scale Patent drill.md to 50 questions (full load)
+cf33d709ea45e5b1e36d3779aa3d6e31081789a5|2026-04-17 18:31:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): scale Technical drill.md to 50 questions (full load)
+a21befe33b2704671c416f020c4a18b488bb3f20|2026-04-17 15:26:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write master narrative (braided pitch)
+476c7d2237cb8d38f9eb76bfa45d359dfb309ca0|2026-04-17 15:23:34 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Market bear-case with 7 entries + META cross-refs
+2e99bda4f84f0b0b060a199b85e5ca7c5c9ff60d|2026-04-17 15:19:20 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Market drill.md with 24 questions
+878dfe3de65d53a26f1e07b009b6debf52a0b5ab|2026-04-17 15:13:50 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Market narrative (4 tiers)
+d2358a3d13b3e0a91d5a20a490851daf7d87f3c5|2026-04-17 13:37:25 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): trim Patent narrative and drill to spec word counts
+7cab3b49ca844e445412a7f4e16a5938c9ce9078|2026-04-17 13:20:59 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): cross-reference META-01 from Technical and Market bear-cases
+f0951e485710c67148b6133c72adbbe72c9b129c|2026-04-17 13:20:56 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Patent bear-case with META-01 (RBC IP clause)
+d3a513b169a6f47147ed3caccf5e40a897923293|2026-04-17 13:16:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Patent drill.md with 24 questions
+4bd06b08277dc6d25eaea55d537e699450c5739e|2026-04-17 10:40:35 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Patent narrative (4 tiers)
+701c4a477618d62b4c5ba6a04484e05df744d13b|2026-04-17 10:30:31 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Technical bear-case.md with META-02, META-03, and 5 entries
+84323bd0f18f767817549f86d230ea0901d3f64d|2026-04-17 10:26:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Technical drill.md with 24 questions
+08bdee7bc174d7f1bae28183bb1ad422256f98fb|2026-04-17 08:23:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Technical narrative (4 tiers)
+254bf9c542ae6b42c722b48401d813653f187b1b|2026-04-17 08:14:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): fix Phase 1 CHANGELOG count and add EPG-09/10 to appendix-names
+be3b61bde039d88218cc64ffc364f71333f06364|2026-04-17 08:11:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): populate appendix-names.md
+f70cc3cf8698345da5ae67f196129ba548ffd2a9|2026-04-17 08:11:13 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): populate appendix-numbers.md with canonical figures
+339f1b0c39cc341491abf9ae643ace33707c9213|2026-04-17 02:29:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): initialise CHANGELOG with Phase 0 entry
+7bd06fda7d74cb4994ff5384ae2f74fd2fcbab77|2026-04-17 02:29:38 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): write Phase 0 README with usage + rituals
+793692436878c9fdefe3c26599da6cd0e663393d|2026-04-17 02:29:19 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): scaffold Phase 0 folder structure and stubs
+c03ebb3029a43de02dbd7bb80701249d8d5c1b3e|2026-04-17 02:23:28 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): phased implementation plan for v1 Playbook
+f69450dad769e33b6fd3977d2a3927fc278cc69f|2026-04-17 02:21:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): add phased implementation plan (8 phases, ~30 tasks)
+a2733ef18bb39a048df1fcabc74e53ffd6cf1d12|2026-04-16 18:23:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(founder-fluency): add v1 design spec for Founder Fluency Playbook
+ed31314ab7fab58e94f04bd0669d1678f6db77c4|2026-04-16 18:16:18 -0700|YESHA|ryanktomegah@gmail.com|feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent) (#50)
+a22b4cfeb7f195e7378581bd620cbb9bc5445930|2026-04-12 03:08:43 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+e4ba57b5e4bf4dd9342679d3c9f680b788569828|2026-04-16 18:15:10 -0700|git stash|git@stash|WIP on codex/phase-1-cbdc-normalizer: be99c65 feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+8cb194df633a7dfa733be9c09c2eec9ca62df672|2026-04-16 18:15:10 -0700|git stash|git@stash|index on codex/phase-1-cbdc-normalizer: be99c65 feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+daabe00be5a7146c470d37b7b21d505d4ce869f0|2026-04-16 18:15:10 -0700|git stash|git@stash|untracked files on codex/phase-1-cbdc-normalizer: be99c65 feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+28afdd2a887a3cd8dbb789ae3c9e587024e68c31|2026-04-16 18:14:24 -0700|YESHA|ryanktomegah@gmail.com|P12 federated learning: DP-SGD + FedProx + Rényi DP accounting (#56)
+f036aa162d0797640db4afcd8c6fc26472bf3524|2026-04-16 18:13:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(deps): bump pytest to >=9.0.3 (Dependabot #27, CVE tmpdir)
+fcb408149c64f887a733b7afea060a7d73ca8635|2026-04-16 14:29:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(claude): narrow lens activation to reduce ceremonial invocations
+eba038c1fbfab1decefab6c44d3c4515f9ad096b|2026-04-16 13:58:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p12): resolve mypy + ruff errors for CI green
+484a012cf5499adbf2823533cf6ca58e2410a8cd|2026-04-16 13:35:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(c2): align cascade-pricing + tiered-floor tests with 256e808 invariants
+f4dd5f38115b4f10ce17cf6873338d88d47353a0|2026-04-16 13:25:19 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p4/p12): federated learning with DP-SGD + FedProx + Rényi DP accounting
+a8347f68c9a036aa456f31002cb1101f298cf03a|2026-04-16 13:24:59 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c1): replace nn.MultiheadAttention with Opacus-compatible DPSelfAttention
+0e881428ae0f6b70b00bce6db28be132ca7ce16f|2026-04-13 22:57:59 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Add comprehensive patentability analysis for patent counsel meeting
+e150744d4f2ac0402c2a9af833f14507b93212cf|2026-04-13 22:50:20 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix fee split discrepancy: Update all docs from 15% to 30% BPI share
+256e808743f52847ec842da5377cb505ae283df9|2026-04-13 15:19:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix two-tier pricing floor economics (800 bps warehouse eligibility)
+345403b809a4d085da61d766d46bb856ad90ab29|2026-04-13 08:22:47 -0700|YESHA|ryanktomegah@gmail.com|Phase 0 T2.5: clear 16 Dependabot alerts (remove mlflow, bump cryptography) (#55)
+211e7be247a20bcb927c801ca87b82674cbdfeeb|2026-04-13 08:17:59 -0700|YESHA|ryanktomegah@gmail.com|Phase 2 T2.1: DLQ routing + retry for StressRegimeDetector emits (#54)
+7b2ddff2e4b9b83d126c0092a93084be7c0ae5c3|2026-04-13 08:17:55 -0700|YESHA|ryanktomegah@gmail.com|Phase 2 T2.2c: Redis-backed StructuringDetector (cross-tenant multi-replica) (#53)
+db4cc74031c3f964236b1e2d4a778fdd35a3092f|2026-04-13 08:17:51 -0700|YESHA|ryanktomegah@gmail.com|feat(c6): T2.2b route velocity bridge to Python+Redis for multi-replica safety (#52)
+1f819e9d2e40d5f2f29b3ec7ed02bedbca44dff5|2026-04-12 23:31:51 -0700|YESHA|ryanktomegah@gmail.com|Phase 2: T2.2a Redis-backed query metering (multi-replica safe) (#51)
+54ae0fc6d91349ee96fd93aa396f8ee37b0370ee|2026-04-12 23:24:56 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): normalise datetime precision to ns before int cast
+8546bf4025fc40f7b8809d0377621a022b0121a9|2026-04-12 23:07:38 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Phase 0 T2.5: remove mlflow + bump cryptography to clear Dependabot
+6be36ede7180f489a68c77b6de32955b5eca721c|2026-04-12 23:03:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix mypy: explicit type annotation on StructuringDetector._registry
+a7cc91d3e6f017e1c995e8320b3a67292e0786e7|2026-04-12 23:03:05 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix mypy: narrow _FakeRedis._store union before int() in incr()
+a769ed3c1158b10a2dd5f5633cc5ccad9d3abff4|2026-04-12 08:46:07 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Phase 2 T2.1: DLQ routing + retry for StressRegimeDetector emits
+e65c2470cd1d377369a1e7badfe29e07247fd28c|2026-04-12 08:41:25 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Phase 2 T2.2c: Redis-backed StructuringDetector (cross-tenant multi-replica)
+a4d887ce6c3955cdd957ea6185c49b7ac7f23b5a|2026-04-12 08:08:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c6): T2.2b route velocity bridge to Python+Redis for multi-replica safety
+088a31fb004e3f6b190e7cb31cb995797c6cac6b|2026-04-12 03:17:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c8): T2.2a Redis-backed query metering — multi-replica safe (B3-04)
+be99c6555d350b1b27d717c5be62ae5bc3bf356b|2026-04-12 03:08:43 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c5,p5): T1.1 CBDC normalizer — e-CNY, e-EUR, Sand Dollar (P5 patent)
+3fe5428b5061e9164a44b0c14ec7c4469a4540e3|2026-04-12 02:38:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(deps,security): T2.5 Dependabot CVE remediation — remove mlflow, align cryptography pins, fix Rust fail-closed
+2d662f5c989eabf4d1219a7b06fcc90a0f0a5a58|2026-04-11 22:37:36 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add T2.5 Dependabot CVE remediation to Option C scope
+eea0173a1c1721de0a8c08e7d125b461a2597813|2026-04-11 22:33:08 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: close 2026-04-08 code review; add Option C production-push plan
+81d77500f035a17823eee44238d0806f56384a61|2026-04-11 13:11:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: fix consolidation files prose reference in PROGRESS.md
+0e9fcdb1c5708212726eb8c087ca314e17a212cc|2026-04-11 12:49:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: rewrite INDEX.md with 7 audience reading paths, complete docs/ map, and quick reference
+513cae4b897b5408280e368214dcb30138da5e2d|2026-04-11 12:44:07 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: update PROGRESS.md with hardening sprint B1-B13 summary and repo reorganisation
+a51b5c524a503f65c66fa45e86667d264d417ce8|2026-04-11 12:43:28 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add documentation structure overview to CLAUDE.md
+82c0e5ff37e909c199892e4c094f64fc079ae3f1|2026-04-11 12:42:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: rewrite README.md with audience-based docs/ structure, updated metrics, and clean layout
+4fcfde10f6c6928e81b6376734a49c97192f0a00|2026-04-11 12:41:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: fix all internal cross-references after reorganization
+393ad76737dde1dba5b204a84c1f4478e5d61b08|2026-04-11 12:32:01 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: track code review reports in docs/engineering/review/2026-04-08/
+7a05506a9f2329e20ee54b238a595d8c5865fa96|2026-04-11 12:31:50 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move deployment doc to docs/operations/ and bank-pilot/ under docs/business/
+28ad1f81cf449f5f27e008e050ac56fe112c00cd|2026-04-11 12:31:43 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move model cards and ML research to docs/models/
+db0888100fc4fcb5e2ed2ede71f4b5bba93c77ff|2026-04-11 12:31:39 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: reorganize legal and compliance docs into docs/legal/
+df0e7ad4d87da2818f5dd0f5f2f88e412dabe40e|2026-04-11 12:26:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: reorganize engineering docs into docs/engineering/
+95baf8c7ae5c0e03cded9cb0c1cccd00763f06c6|2026-04-11 12:26:19 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move root narrative files to docs/business/ and docs/engineering/review/
+5f4544807621e74e037cfd530b59af921878d44c|2026-04-11 12:18:40 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move remaining consolidation files to audience-based docs/; remove consolidation files/ directory
+92aaf998a377290e6b9d023d16219b96773baddd|2026-04-11 12:18:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move sign-off records, SR 11-7 pack, and founder protection to docs/legal/governance/
+8000f953184980a23580c7462f837b6def7ceac3|2026-04-11 12:18:06 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move implementation blueprints to docs/engineering/blueprints/
+05ba26815bb7482dbca85514879a765157a382d4|2026-04-11 12:18:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move component specs and migration specs to docs/engineering/specs/
+aeb34513502d11321dc5ce60b55d2974f7203eba|2026-04-11 12:17:40 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: move patent specifications to docs/legal/patent/
+6c762e817df578745f1553f2dbedf332f609f85a|2026-04-11 12:17:32 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore: remove duplicate files, .docx binaries, and legacy scripts/train_all.py
+cfa2aed930ec0786b3be31782d490e406744b105|2026-04-11 11:52:33 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore: add .mypy_cache/ and torchinductor_*/ to .gitignore
+b1d6b5d03b4c75d2962cd17d926385288782ae87|2026-04-11 08:33:14 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(docker): bypass Debian-managed cryptography in Triton c1 image
+84ad5033d518ed3203819ddd6f2b3f998fcafb3b|2026-04-11 08:33:14 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(docker): bypass Debian-managed cryptography in Triton c1 image
+c452611624249a976c1de4123bc789e7399e0472|2026-04-11 08:15:54 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #48 from ryanktomegah/codex/hardening-phase4
+fc8f6b7b3440111d27c2360162c070827e3f5e3c|2026-04-11 08:02:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|ci: fix all CI failures blocking merge of hardening sprint
+63b34fc1698b4193152e1a83b2ba44f46e08c0c1|2026-04-11 06:09:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): B11-03..14 — seeded RNG, AML thresholds env-only (CIPHER), BIC pool consolidation, FEE_FLOOR_BPS from constants
+5aeae675458d7d04e9d607a6b1d7c4cd52bf0b35|2026-04-11 06:07:35 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(ml): B10-10..18 — Groq model, narrow excepts, check_is_fitted, EPG-19 full block set
+b9cdfda28d7357e9d97ade716fb68ad02155b264|2026-04-11 06:01:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(tests): update test suite to match hardened behavior across B1-B10 fixes
+e2be4f95285fd95049517cece395bfe6eedda3ed|2026-04-11 06:01:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p5): B9-02..08 — O(n log n) CVaR, heap optimizer, dead code, corridor fix, Decimal division, UUID alert ID
+db3c908b6c4c657348caa599c40bdf2d86cf10be|2026-04-11 06:01:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10,risk): B8-06..17 — scipy import hoisted, Decimal positions, encapsulation, Laplace bias, settlement hours, random seed
+f971874208b824071893f7dfff5915bcf221ceee|2026-04-11 06:00:52 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(infra): B12-03..07 — secrets CI guard, Redis port docs, Redis persistence, Dockerfile /data note, simulation mock warning
+48191ebc818b514d68cc87f942a20a04db40fe37|2026-04-11 06:00:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c8,c9): B3-06..13 + B10-11 — immutable dataclass, p95 index, bare except, constant dedup, pickle security
+91e3dccb524f7695f1e1b4893fb1e56e85b87e1c|2026-04-11 06:00:39 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c6): B7-04..13 — AML encapsulation, integer cents, 0=unlimited guard, predict-before-fit error, sanctions warning
+6e4b1ae85d3032bc32a0bc69f6c259ff6a761753|2026-04-11 04:37:37 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c4,c5): B6-07..14 + B10-16 — Kafka offset management, fail-closed parse, gRPC upgrade, timeout detection
+033fedf06d791dfa3c176605a5762f27b9103526|2026-04-11 04:37:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c3): B5-02..17 — state machine fail-closed, corridor buffer thread safety, Decimal fees, fail-closed taxonomy, UETR TTL, Rust FFI type safety, settlement backpressure
+d6b57305d14809bc637f085ac02a17af428d3010|2026-04-11 01:28:36 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c7): B4-01..16 — AML fail-closed, UETR required, thread safety, atomic state, Go panic removal
+3aa1268d317ffdace9d5541874c4c3246ae0bacf|2026-04-11 01:18:14 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(api): B2-01..20 — auth fail-closed, HMAC scope, TOCTOU DP budget, proxy-aware rate limiter
+be9440c968dd076b25b22d8c2d1d13d3ee3494b1|2026-04-11 01:16:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(common,integrity): B1-01..18 — UETR Redis dedup 45d, HMAC-SHA256, gate blocking, PBKDF2 600k
+2c20c6b7ff8ac97ef4571bb6cad4aabed4aef60d|2026-04-10 21:51:52 -0700|YESHA|ryanktomegah@gmail.com|fix: hardening Phase 4 — 8 medium findings (B4-09, B8-08/13/14, B11-09, B3-08, B4-12, B6-10)
+18c99eaaffe71826463aa4a4ec0c81cc4540b494|2026-04-10 21:33:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): set PLAINTEXT protocol in non-SSL Go config tests (B6-05 compat)
+b42d134f56b7b133703a9a632a0a5f29883732c5|2026-04-10 20:50:38 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(ci): supply HMAC key for train-smoke job; add mypy type-ignore suppressions (B10-01, B3-08)
+9687784075276b7aa20ffe2cc6524ad3937675d6|2026-04-10 20:37:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c7,c5): narrow exception handlers in settlement predictor and kafka worker (B4-12, B6-10)
+e281ec55fa7fb8e3a6dbe99f14c972f2e033c525|2026-04-10 20:34:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c8): require non-empty HMAC metering key, reject empty default (B3-08)
+23cab897e0f5c1255527abf50870f21d563e62f0|2026-04-10 20:29:40 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): correct 9-char BIC to valid 8-char format (B11-09)
+923b3f43bcc641db19231d3b3f1936ee490d4a38|2026-04-10 20:28:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): derive checklist from results, exclude timestamp from hash, iterative DFS (B8-08, B8-13, B8-14)
+b4117f220dfd6f420bf191e53855d304ba8da0b8|2026-04-10 20:22:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c7): default gRPC to TLS in Go router client (B4-09)
+7c79d91067b4b061a44265a7ce71b86b3a0f9fcb|2026-04-10 15:32:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: medium-severity batch — sanctions fail-closed, negotiation negation, Go config docs (B7-07, B10-09, B6-06)
+34c0bbb6cd218600ac43599ec3e494c26745d582|2026-04-10 15:21:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(infra): update Triton base image to 25.04-py3, pin deps (B12-02)
+e17382069c90c6542a4e7041e7698ea7360f8472|2026-04-10 15:21:24 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(deps): add upper version bounds to all dependencies (B12-01)
+d1c6d180538a963800182dfbcd0e1c32f3a681c2|2026-04-10 15:20:53 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c6): add Unicode transliteration and phonetic matching to sanctions screener (B7-03)
+e20371252e406053bc56196e864b98f7bbd3715a|2026-04-10 15:18:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): replace tautological privacy audit attacks with real statistical tests (B8-05)
+3f9e2d255caee2758cef86be52abc5b150126325|2026-04-10 15:16:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c1): warn on OOT random split fallback, add strict_oot flag (B10-04)
+10624a77d08c2be8771b3f869441a57ab9e83bf5|2026-04-10 10:25:23 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c2): restrict Tier-3 stress test to test-set samples only (B10-03)
+5db337c0bdf2e0648206177d6cf4054b8a1d8725|2026-04-10 10:23:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c4): sanitise user-supplied fields in dispute classifier prompt (B10-06)
+70b0e4bc2816c664c013ff02b07c5affec743783|2026-04-10 10:22:15 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): default gRPC to TLS and Kafka to SSL (B6-04, B6-05)
+bfee1b286318c719f4cbae26e2a520838d95a3b0|2026-04-10 10:20:56 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): consolidate proprietary→ISO 20022 mapping into shared JSON (B6-03)
+254d0bc50821aeacfc8bbcbe7d26f3a282f92dcc|2026-04-09 23:44:41 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(defaults): refuse insecure defaults without explicit opt-in (B10-07, B3-03, B9-04, B10-05)
+e38b8ff921a66fd6a9b0fa44aa4885dd03d2a073|2026-04-09 23:31:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(rust): upgrade PyO3 0.24→0.25 for Python 3.14 support
+0c35f0a309050d2a890d7440ea56b5540f195d54|2026-04-09 23:23:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(precision): eliminate Decimal→float round-trips at compliance boundaries (B8-04, B7-01, B3-07)
+2c08f8c6e48abf559595507cf5b9b03416e20004|2026-04-09 23:18:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(state): require single_replica opt-in for in-memory stores (B3-04, B7-02, B7-10)
+6ce34a6007863c151f0c90f07d71cfb03a0b5ae4|2026-04-09 23:12:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(core): convert load-bearing asserts to explicit raises (B10-08, B13-03)
+a3a59d595e4aaf030b4a7624c526d2447e91b13e|2026-04-09 14:30:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): correct CLASS_B label from compliance/AML hold to systemic/processing delay (B11-01)
+8d4b0c7d37754792624ad5968f65225d04ea938d|2026-04-09 14:26:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): refuse to release raw data on DP budget exhaustion (B8-02)
+f4bb1d56e32ce72f0aea760c3ac3220297c5ce1d|2026-04-09 14:22:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): correct DP composition — charge 3*epsilon per batch (B8-01)
+1a183fc50ea834e0a772572004ce9422698b99bb|2026-04-09 14:14:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c8): derive HMAC canonical payload from dataclass fields (B3-02, B3-05)
+eb93fc8a994343d0893787f4714200f8c3881b1f|2026-04-09 14:09:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c8): atomic check-and-increment in query budget enforcement (B3-01)
+6b4c55f335fb968d3184ae0e0f14cdd992983956|2026-04-09 13:18:12 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): stop committing Kafka offset on Go consumer error paths (B6-02)
+dd6f7806589d948b145c8e174769ebe296c79383|2026-04-09 08:56:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(common): consolidate EPG-19 BLOCK codes into shared JSON (B6-01, B11-02, B13-02)
+7610c8235b5f838c1efac4282ed485da2b48cb17|2026-04-09 02:42:35 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(common): add secure_pickle wrapper; route C1+C2 loads through it (B10-01, B10-02, B13-01)
+6e03d06e51eea434853a8b61300971adb2fcbd2b|2026-04-09 02:09:53 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p5): restore 300 bps fee floor on intervention rate (B9-01)
+1dd33e2c96143193d5f4f25c2cffab78d0092cd2|2026-04-08 11:04:51 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(security): bump pyo3 to 0.24 across all three Rust crates
+0c3a5f14b1807740006e4e85e57bf00ddcd59880|2026-04-07 15:45:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add navigation, decision register, and codebase reference layers
+9c23379a671b06ae36bb66bee955dbaa8c62759f|2026-04-07 14:47:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: knockout 10 minor/medium items from code review day
+63d73a4f18a56e43f499bda561418ed08eff65bc|2026-04-10 15:32:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: medium-severity batch — sanctions fail-closed, negotiation negation, Go config docs (B7-07, B10-09, B6-06)
+4f48f7677db774e3cbac8f074abadb133f9332e0|2026-04-10 15:21:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(infra): update Triton base image to 25.04-py3, pin deps (B12-02)
+26251d782c53bb4615e52eec8416c5412f1e5e6a|2026-04-10 15:21:24 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(deps): add upper version bounds to all dependencies (B12-01)
+d4cb31514d8b60e4bf80f373809e6455bf98507f|2026-04-10 15:20:53 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c6): add Unicode transliteration and phonetic matching to sanctions screener (B7-03)
+73a1dc8bdd1f1351a6748f4229bd2793d669259a|2026-04-10 15:18:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): replace tautological privacy audit attacks with real statistical tests (B8-05)
+63c6314aded229b578159819aaa62dc459d6ce33|2026-04-10 15:16:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c1): warn on OOT random split fallback, add strict_oot flag (B10-04)
+492868d8eb2aac470085baeb3879263c171e0421|2026-04-10 10:25:23 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c2): restrict Tier-3 stress test to test-set samples only (B10-03)
+e3d3f43653c9b8757ba3254156b204c381891dbf|2026-04-10 10:23:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c4): sanitise user-supplied fields in dispute classifier prompt (B10-06)
+007afc28e07e206a6b675daa5b4470c4473e5e15|2026-04-10 10:22:15 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): default gRPC to TLS and Kafka to SSL (B6-04, B6-05)
+f0f7ff26b552bfcf78e09e0530cc76b7d8bec91b|2026-04-10 10:20:56 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): consolidate proprietary→ISO 20022 mapping into shared JSON (B6-03)
+abce143e91bf7e753eda94492538a2fc36d04e26|2026-04-09 23:44:41 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(defaults): refuse insecure defaults without explicit opt-in (B10-07, B3-03, B9-04, B10-05)
+534c77bcb06512e3a63da1f8dc654fc41f58e70a|2026-04-09 23:31:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(rust): upgrade PyO3 0.24→0.25 for Python 3.14 support
+903fa274339b03409805c1a132671a14dc6beba9|2026-04-09 23:23:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(precision): eliminate Decimal→float round-trips at compliance boundaries (B8-04, B7-01, B3-07)
+01d5fa0e53adfa4454ccc87e50eae66728a26deb|2026-04-09 23:18:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(state): require single_replica opt-in for in-memory stores (B3-04, B7-02, B7-10)
+1b688b07cd416fc51064f8a86e7b0f1ef4793924|2026-04-09 23:12:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(core): convert load-bearing asserts to explicit raises (B10-08, B13-03)
+19cb7f0bb1ff46909057c096a2dbaea6186532d4|2026-04-09 14:30:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): correct CLASS_B label from compliance/AML hold to systemic/processing delay (B11-01)
+f686716535630d09935b7885b104826d739647d5|2026-04-09 14:26:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): refuse to release raw data on DP budget exhaustion (B8-02)
+26a7a7987dfde241febc8a4bbee2867de6127cd5|2026-04-09 14:22:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): correct DP composition — charge 3*epsilon per batch (B8-01)
+f141942d15dce7b78820841e5d2e900e227cf0ed|2026-04-09 14:14:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c8): derive HMAC canonical payload from dataclass fields (B3-02, B3-05)
+2d5f1f7b48101eb8950e2e7b16a2075c8822dae7|2026-04-09 14:09:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c8): atomic check-and-increment in query budget enforcement (B3-01)
+80b993fde53d918d013b4191c0e2396ed019d6bd|2026-04-09 13:18:12 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c5): stop committing Kafka offset on Go consumer error paths (B6-02)
+c700d76ee91fa4b833e6c59599089ca6a2a81d67|2026-04-09 10:09:39 -0700|YESHA|ryanktomegah@gmail.com|docs: add consolidated patent claims document covering all LIP patent families
+1cde28ef290cd123c8c6ed9cb79a1a7636fa9cc2|2026-04-09 08:56:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(common): consolidate EPG-19 BLOCK codes into shared JSON (B6-01, B11-02, B13-02)
+5c61363bb9aff6f6da2329562d08ef5a9fa2c0f0|2026-04-09 02:42:35 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(common): add secure_pickle wrapper; route C1+C2 loads through it (B10-01, B10-02, B13-01)
+ac07b2a4021e92f5c0d6967645c3bba47525fa83|2026-04-09 02:09:53 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p5): restore 300 bps fee floor on intervention rate (B9-01)
+2b32314951b441c711e30837a70b2113c782d506|2026-04-08 11:04:51 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(security): bump pyo3 to 0.24 across all three Rust crates
+576823b623a8dc90a64153a92b0db3728137fb19|2026-04-07 15:45:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add navigation, decision register, and codebase reference layers
+b6a4b526dc3d51d59f0f23ca63abc182001e5f6f|2026-04-07 14:47:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: knockout 10 minor/medium items from code review day
+30e93dbb5a69b3b6ec63a3c2d2f54c85bc1aa939|2026-04-07 14:30:45 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #42 from YESHAPTNT/codex/integrity-shield
+d363cc925a648cf2e773818a7e51359cb8a3691a|2026-04-07 14:05:07 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: second-pass review — 2 critical + 3 high across Python/Go
+bda995780ff3213a1eb52c85af352a98759a87b5|2026-04-07 10:11:48 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c2): resolve two n_jobs=-1 failures — LightGBM OSError + loky PermissionError
+29f12eb171468eba28fc6b94c2fe2461d1ca69a9|2026-04-07 09:58:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: code review day — 1 critical + 7 major fixes across Python/Go/Rust/infra
+a235d2bfb16ade5917bea14a4d1c546ebd4c526b|2026-04-06 17:16:25 -0700|YESHA|ryanktomegah@gmail.com|fix(ci): free disk space before Docker builds (c1 image OOM) (#40)
+06871e659b399f4034e33fc773055ce9bd35f20a|2026-04-06 16:20:38 -0700|YESHA|ryanktomegah@gmail.com|Comprehensive audit: 1 critical + 4 major + 4 minor fixes across LIP pipeline (#39)
+eecb48cee4fe736fd081c26169e87f6fc9b53e80|2026-04-06 15:55:02 -0700|YESHA|ryanktomegah@gmail.com|ULTRATHINK audit: fix 7 critical/major bugs across 8 migration sequences (#38)
+d5a1e28b1d9b8fc00bf4b32fa5c1968c565ac7e2|2026-04-06 15:25:53 -0700|YESHA|ryanktomegah@gmail.com|feat(integrity): Integrity Shield — structural prevention of Delve-class failures (#35)
+b6cf732086260a9ff382eb4c079a23fa7d334bb5|2026-04-06 14:40:48 -0700|YESHA|ryanktomegah@gmail.com|fix(ci): restore green main — Go 1.24, pytest, p10 syntax error (#37)
+67c3e86c37bde77dfe1fda7a7c687e7b73be0796|2026-04-06 07:46:34 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(c6): refresh public-domain sanctions snapshot [skip ci]
+585a037ef75808b8644799438b7767e676bf8427|2026-04-04 09:02:36 -0700|YESHA|ryanktomegah@gmail.com|feat(p10): complete P10 regulatory data product — Sprints 6-8
+fc3b0bbda19e7a4b7def487dd94f2c8c7a8a62e6|2026-04-03 22:21:43 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Add Sprint 8 design spec and implementation plan
+c28e658d1564fd85eb08f9d2ba503830004986a8|2026-04-03 22:19:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 8 Tasks 4-5: methodology paper + regulator onboarding package
+9e90abd6676352ebc782afae0759b791900f76bb|2026-04-03 22:16:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 8 Task 3: security pen test suite — auth, tier escalation, re-ID probing
+b40c8c4ce65c7d3a2dd033f38b2af21f0146c6cf|2026-04-03 22:15:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 8 Task 2: load test suite — 100 concurrent queries, rate limiter, budget isolation
+80ba8664af0d5bd1bbe7a465071c15d9cf24526a|2026-04-03 22:14:09 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 8 Task 1: privacy audit kit — re-ID attacks, k-anonymity proof, DP verification
+59b91eee83f4c22b85d5440fcb3707aea4447db6|2026-04-03 20:35:41 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 7: integration & shadow mode pipeline
+56b3cb0896dc1bbf197395aa38e667be120bd004|2026-04-02 21:53:13 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 7 Task 1-2: TelemetryCollector tests + implementation
+fdf0405f0ef099db60cc30329b605d0fed12d7d5|2026-04-02 21:47:33 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Add Sprint 7 implementation plan: 8 tasks, TDD, full code
+223d7d5542142a83dad95ad1a7f1c89c9241dd30|2026-04-02 21:41:34 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Add Sprint 7 design spec: integration & shadow mode pipeline
+8713d0306ccd3a69fc1b84b23aaeae676b694eaa|2026-04-02 21:07:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Sprint 6: telemetry eligibility, circular exposure detection, usage analytics
+61dc293f47aedc68a4f0544348bfd943ef4c00bb|2026-04-02 22:45:18 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|ULTRATHINK audit: fix 7 critical/major issues across 8 migration sequences, add 17 new tests
+fd3905f79ff9caa4dd3631e26fb1f4ce95dce5ab|2026-04-02 15:27:56 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Merge remote-tracking branch 'origin/main' into codex/default-execution-protocol
+10638f79fb9e911a9de087f52064fcc155106435|2026-04-02 22:18:50 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Remove spurious =2.7.0 file accidentally committed
+be1618d7c6d211335fb304d258e86cfbe855444c|2026-04-02 22:18:32 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Fix critical/major/minor audit findings: Lua AML caps, kill switch fail-closed, pipeline exception handling, BIC validation, thread safety, canary clamping, fpdf2 dependency
+0dd03031a9ac225dfd0ff680987194fb53456250|2026-04-02 22:17:07 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+3ca15c1bd3710da342813030b6e5c5b411c57f66|2026-04-02 15:13:39 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #32 from YESHAPTNT/copilot/isolate-fee-formula-function
+4cb847c67f4c0ab25eca0a8ca094c401c75c57f8|2026-04-02 21:52:15 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+92424aeea7dc73be6bf192ea31afd0f36f7eab43|2026-04-02 21:42:31 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|C2 fee formula hardening: isolate compute_loan_fee, patch all inline usages, add 59-test suite, add spec doc
+8f593f36dc75dac115c130d298666c504406ce1a|2026-04-02 21:29:36 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+92a1d1b59c0a441cb76bd19d3947815381de9ea0|2026-04-02 14:17:59 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #31 from YESHAPTNT/copilot/harden-c1-inference-endpoint
+a90556075759faa0a3025236ac76311de93898a2|2026-04-02 21:12:11 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat: C1 inference endpoint Pydantic hardening (Priority 7)
+63947aeaee41df31990774389710b23857f9b75f|2026-04-02 21:00:26 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+8899bdc53a4535d6acd57386d685828d207ec8c6|2026-04-02 13:39:08 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #30 from YESHAPTNT/copilot/c7-offer-routing-migration-again
+35a41d677964ec3cd35e19214a810ef4db29962f|2026-04-02 20:32:43 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add c7_go_router_fallback_total Prometheus counter and 3 new tests; update spec DoD checkboxes
+efeee5a2926b50e9a9b19caac09867c6af322b4b|2026-04-02 19:57:58 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+f4f8c88657322ac1f180b92dcb546fe1ce06fd8d|2026-04-02 12:12:54 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #29 from YESHAPTNT/copilot/c7-offer-routing-migration-go
+57a223d4621cf400ed4ca92b83427ad6cc5827bf|2026-04-02 18:50:25 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(c7): Go microservice migration — goroutine-per-offer, gRPC bridge, canary routing
+e36f26ae06043487b06790355b1510074f67534d|2026-04-02 18:13:20 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+1b1f00aa319c5b3031b48d1638a79d91821247eb|2026-04-02 17:34:07 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+c93fb90b90abca21759da1148c49247c0e3b3504|2026-04-02 09:52:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): export Sprint 5 report generator classes from package
+a18c3d318cf8fb0720e772aaf8b2d646ccf7fcd5|2026-04-02 09:49:10 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #27 from YESHAPTNT/copilot/p5-add-python-test-suite
+cfdef9468c28e87cac67fe59057381443cccc716|2026-04-02 16:35:50 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Fix CI failures: flush fallback, mypy errors, maturin quoting
+5d9495f7f92c22a7e421894900831309f5dd81d1|2026-04-02 15:57:36 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+c86119da5907dd2318614d14e6a3c6cb979b9273|2026-04-02 08:56:02 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #26 from YESHAPTNT/copilot/c6-velocity-sanctions-migration
+c2c47e4707f2e04581898e95b4c322af1c99b604|2026-04-02 10:33:39 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(c6): Rust velocity counters and sanctions screening via PyO3 with Python bridges and sanctions audit
+f59be87b74b73c4ec94cb81ab13a5597c0aab012|2026-04-02 10:16:50 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Merge branch 'main' of https://github.com/YESHAPTNT/PRKT2026 into copilot/c6-velocity-sanctions-migration Co-authored-by: ryanktomegah <264463773+ryanktomegah@users.noreply.github.com>
+f186970598a20cec2dacecec847849985875d9c6|2026-04-02 03:13:48 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #23 from YESHAPTNT/copilot/c7-kill-switch-design-spec-implementation
+807cc18c3373d6b8ec0a1e91d4260558b5254f4d|2026-04-02 03:13:37 -0700|YESHA|ryanktomegah@gmail.com|Merge branch 'main' into copilot/c7-kill-switch-design-spec-implementation
+9227f278e220c92bc9dad385c85c35cc252b5c03|2026-04-02 03:13:01 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #24 from YESHAPTNT/copilot/migrate-repayment-engine-state-machine
+95a13f9c0403f97f4fa4bc3787aea69c7d73d2cb|2026-04-02 03:12:54 -0700|YESHA|ryanktomegah@gmail.com|Merge branch 'main' into copilot/migrate-repayment-engine-state-machine
+4c2a7889fd96622e036b18d073e567d0b791b1b0|2026-04-02 03:12:21 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #25 from YESHAPTNT/copilot/c5-migrate-kafka-consumer-go
+6c95c4d69d37f80e8a3ed11710c034de2565746c|2026-04-02 10:06:41 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+a58513ea88b9eba90038a8fc5ce6c4db2c61cdd8|2026-04-02 09:59:54 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|fix: bump google.golang.org/grpc to v1.79.3 to patch authorization bypass CVE
+1b27e4c7d70ec18b0705a8de4e1b2702c516b3e4|2026-04-02 09:57:01 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat: C5 Kafka consumer migration — Python → Go service with baseline
+31ef32c1037781864e51142fffc545e0a36d3310|2026-04-02 09:36:30 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+74a5ca026cf83805ffc1dc3976791c581d683850|2026-04-02 09:29:06 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|fix(c3): address code review - Cargo.lock gitignored, magic TTL constant, compliance codes extracted
+bfaf859c540c1dd56ecd8c1749ac94ed12db0d9e|2026-04-02 09:23:18 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(c3): Rust state machine migration via PyO3 with Python bridge and watchdog
+c404f1a1b9d385eea3e6e2440114c837e322aba3|2026-04-02 08:57:19 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+8817a1c67eb0fbc97c6da5e4ca2a4c420017bae5|2026-04-02 08:53:12 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(c7): Add C7 kill switch spec, Rust crate, Python bridge, and tests
+2303cb9324e3223685e7152b975b910586da05bb|2026-04-02 08:35:52 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+f51ae201ce601bc30f6c84d3cb85116feabc85c3|2026-03-31 12:18:37 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(workflow): enforce default execution protocol
+33fea11b3f2e8b2f10f2760340106581adc82f0e|2026-03-31 12:18:32 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add regulator subscription auth and query metering
+33ac1817b4c9250bf0a20d5db1898ac26debec3e|2026-03-31 12:02:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore: clean workspace and checkpoint sprint artifacts
+15c01f2c21ae80a7b52ca699d39d7c275229a721|2026-03-31 00:36:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): migrate service layer CachedReport → VersionedReport (Sprint 5 Task 5)
+4adeef2e6e9f9d94992cb76cbca099426b335643|2026-03-31 00:32:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(p10): add PDF renderer tests + install fpdf2 (Sprint 5 Task 4)
+ee1ebf6b1a73b74867f4201dc082fbd174aa8fe8|2026-03-31 00:27:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add ReportRenderer — JSON + CSV output (Sprint 5 Task 3)
+967490f6e3e4e9a12f711d27a1729579afdc8c07|2026-03-31 00:23:47 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add MethodologyAppendix — 7-section template (Sprint 5 Task 2)
+eddddb29f29664d180349fea7cafc7de4355cc03|2026-03-31 00:23:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add VersionedReport + integrity verification (Sprint 5 Task 1)
+d035aac770ad1b7dde4c3ec543ba45a104ad4a2e|2026-03-31 00:20:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 5 Report Generator implementation plan
+b0b325c9277ffe3672f70e83924566c76aa25873|2026-03-30 16:30:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: fix Sprint 5 spec — address review findings
+80727057ec28334ab100c59ff15df2d14b8d30b4|2026-03-30 16:27:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 5 Report Generator design spec
+59a8a43be511511baf0425989fc565fbc1e93097|2026-03-30 15:22:36 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(p10): address code review — atomic rate limit + thread-safe query count
+d0d54e0a864ee1f6d513ad7e8bfe2a7752975242|2026-03-30 10:30:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add integration tests + app mounting for Regulatory API
+2337542b9f6df1ef65c6a3a09132a7df5694e24d|2026-03-30 10:19:16 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): implement Regulatory Router — 7 endpoints + 14 HTTP tests
+f6e7710538c6007f9f315a6aa4a5ba683efa4902|2026-03-30 10:17:07 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): implement RegulatoryService + TDD tests
+f130b740184c28714cb01e8d3a944349d8296335|2026-03-30 10:44:19 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(c6): refresh public-domain sanctions snapshot [skip ci]
+ae67baa171d9e6bb84b1ccbe5eadd7c73e405f87|2026-03-30 03:22:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add Pydantic request/response models for Regulatory API
+6e0e96a79e26b10c49610b8ba0564b2e8ff6bf2e|2026-03-30 03:21:37 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): implement TokenBucketRateLimiter + TDD tests
+70df3089514752be21b31c6a4918eec5a0d2b566|2026-03-30 03:19:48 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 4c Regulatory API implementation plan
+6d3014010e0d7c81e02b2addc1c66fe78c3d33ab|2026-03-30 03:13:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 4c Regulatory API design spec
+e87fd296fd3153e56b136f32fe45e1059f7721d0|2026-03-30 02:45:51 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): export Sprint 4b classes from p10_regulatory_data package
+9f0039464790d6f2ff67fc7c154edc5c8c3b98e9|2026-03-30 02:43:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): implement SystemicRiskEngine — trend detection, risk reports
+1ad8780e3abff24454ad7979734210429cac4b8e|2026-03-30 02:33:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): implement CorridorConcentrationAnalyzer + ContagionSimulator
+6b102d24ff6795cdb5f83c357dfa741e86453fd2|2026-03-30 02:29:52 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add P10 systemic risk constants (contagion, concentration, trend)
+09a6f52a7873e8f84166b56577667995a3d860d6|2026-03-30 02:23:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 4b systemic risk engine design spec
+a114f6a063a39bd3714994364e115ab8d5c91970|2026-03-29 03:01:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add integration tests + export public API from p10_regulatory_data
+c76fa0f82bbf7a07c3804dc27201e7ef4661cea5|2026-03-29 03:00:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): implement RegulatoryAnonymizer — 3-layer privacy pipeline
+ebb6ca6d17c5b3b6bc3867675475f79d41f7ef8e|2026-03-29 02:55:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): TDD tests + PrivacyBudgetTracker with per-corridor Decimal accounting
+b5b0184b2074a662a8732a5caa27193ff071a02e|2026-03-29 02:53:09 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p10): add P10 privacy constants, metrics, package skeleton + telemetry schemas
+495feb5c66263ff45e22dc48f996b9052834977c|2026-03-29 01:45:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(lint): clean up unused imports in Sprint 3b/3c test files
+0527ffe2c4d8d8a9897ef28cc3a6e4f548dc083f|2026-03-29 01:35:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(api): wire cascade router into create_app() (conditional on cascade_graph)
+f9e723109199bbc7d7e651873cd16bafdaebf23b|2026-03-28 12:25:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(api): add cascade router — 5 endpoints for intervention API
+e2602b97aab873ee1942b1386ed2a0af6a966ef2|2026-03-28 12:24:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(api): add cascade service — alert lifecycle, graph queries, intervention tracking
+c6bb9917df128034dd36b226d4eaac9dc6475147|2026-03-28 12:22:42 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(api): add TDD test suite for Sprint 3d cascade intervention API
+2030b797db5d496a635a11a3f7c2f751124c149b|2026-03-28 12:20:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(p5): add Sprint 3d cascade intervention API design spec and implementation plan
+5c838cb24cdef4f8efad0586cbe51b622e0845e1|2026-03-28 12:07:16 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): export CascadeSettlementTrigger and StressCascadeBridge from p5_cascade_engine
+ee36cf0d2c9c0afea447ee18d3cd06ef29d3ca4b|2026-03-28 12:02:44 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): add C5 stress regime → cascade propagation bridge
+e64bba4e5ad6b5428ba2d8b92a79b7bd71014377|2026-03-28 12:01:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): add C3 settlement failure → cascade alert trigger
+ac262a2b0e4354e9fe6686c40a49a6dbd22031c5|2026-03-28 11:59:24 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c2): add cascade-adjusted PD pricing with 30% discount cap (QUANT)
+ce59f65c200a75a109709c30d050d8e03ccff67e|2026-03-28 11:57:24 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(p5): add Sprint 3c cascade integration design spec (C2/C3/C5)
+5c7b72aff59f5a5b243d2d07a291bab0a152fc72|2026-03-28 11:34:01 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): export Sprint 3b cascade propagation, optimizer, and alert classes
+44ef9bfb3dc553bc1681ec0587a8a4c7d3f0a760|2026-03-28 11:27:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): implement cascade alert generation with severity classification
+52e1fe24df8f1be47b11569392a995934cb9ff7d|2026-03-28 11:26:05 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): implement greedy intervention optimizer (weighted set cover)
+99966b1e3a0c445d07fe8673c076c3c398b01103|2026-03-28 11:24:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(p5): add TDD test suite for greedy intervention optimizer
+9bf3499cd9a0053629f3833981f94ba57fabff70|2026-03-28 11:23:53 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): implement BFS cascade propagation with CVaR computation
+13fe717007f38b04317cf7d63ef4dba35eec3ea3|2026-03-28 11:21:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(p5): add TDD test suite for BFS cascade propagation and CVaR
+ea9d71f78529afc0c37a1bac8ad55f01dab48b7f|2026-03-28 11:20:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): add intervention optimizer and alert severity constants
+f674cd54aab374adf77281f68b18bab3643bf418|2026-03-28 11:19:52 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(p5): add Sprint 3b cascade propagation engine spec and implementation plan
+75e5b31a92322b89ef9192648266c8e370c00f52|2026-03-28 09:00:34 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): export CascadeGraph, CorporateEntityResolver, get_corporate_node_features
+26c0dfb1030ce7971027aff56c527c6021f3f7f5|2026-03-28 09:00:15 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(p5): add Brandes betweenness centrality tests — star, chain, diamond topologies
+ab062cafb3b82d81cc963902367819590c0cb1cf|2026-03-28 08:58:44 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): implement 8-dim corporate node feature extraction with edge case guards
+63b8b9619f26c4d78c817ff7c5f2c22d36fefb84|2026-03-28 08:58:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): implement CorporateEntityResolver — BIC graph to corporate graph elevation
+86a015d4cff15bea5f22988432ed19dacb9fcfc9|2026-03-28 08:57:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): add CorporateNode, CorporateEdge, CascadeGraph data structures + Brandes centrality
+8a52ec9b460e70dd18b455c6b752c68754636d7f|2026-03-28 08:55:53 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(p5): add TDD test suite for corporate graph — entity resolution, features, queries
+20cfd52bcbe09c761341d5bbbe5d339c4ad826b7|2026-03-28 08:54:27 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(p5): scaffold cascade engine module with QUANT-protected constants
+f8a893597ab26982c199a7621dd79a69d331be5c|2026-03-28 08:52:25 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 3a implementation plan — P5 corporate graph nodes
+dc928b84489e77a3c966c27df7c4d5864c6664a9|2026-03-28 08:47:05 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 3a design spec — P5 corporate-level graph nodes
+2b2893e5ff618f00bb98ddf39efdf2e2eba2ddc3|2026-03-28 01:55:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(app): wire SettlementCallbackBridge, NAVEventEmitter, and MIPLO portfolio for processor mode
+48bb5f1f4e98e6973841183cf068c0e5a3b579ca|2026-03-28 01:45:33 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(miplo): add tenant-scoped portfolio endpoints — /miplo/portfolio/loans, exposure, nav
+41fd47090c9850f6640ac6561bde37e51815084b|2026-03-28 01:42:18 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c3): export NAVEventEmitter and SettlementCallbackBridge
+d4b593d4131c6055e189c3d58ca6a71d232bfeb7|2026-03-28 01:41:36 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c3): tenant-scoped Redis idempotency keys — lip:{tenant_id}:repaid:{uetr}
+f739804a567adcd6e021dfeb8dc2905372becb7d|2026-03-28 01:37:37 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c3): add NAVEventEmitter — per-tenant NAV snapshots with settlement history
+67fb8e7fc4c8835dc7a6e8d59026036750e256ae|2026-03-28 01:36:39 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(c3): add TDD tests for NAVEventEmitter — per-tenant snapshot, settlement history
+013320954fe540286883fdc7a384d9d0a909f126|2026-03-28 01:34:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c3): add SettlementCallbackBridge — fan-out to royalty, revenue metering, NAV
+a14fa4d34184620a65ef77cdf0e1a50014a8fbcc|2026-03-28 01:33:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(c3): add TDD tests for SettlementCallbackBridge — bank vs processor routing
+9defd5a6eeb019ca6eccd9ee5e0c4ecc1070e5e7|2026-03-28 01:31:36 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 2d implementation plan — multi-tenant settlement tracking
+c09d6eba2b7f246836d41a01a08d04a54c1fcacf|2026-03-28 01:15:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add Sprint 2d multi-tenant settlement tracking design spec
+74b199fa4dc37c451fc1880f3a09f4f9b1ce172e|2026-03-28 00:36:06 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(app): conditionally wire MIPLO gateway when pipeline + processor context provided
+00835608304ca4125c230d8e12384d4db2356468|2026-03-28 00:32:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(miplo): add MIPLOService (BIC validation + tenant context) and MIPLO router
+907fe2bf7d2e0f575efbdf7aba593ad3f4c92eee|2026-03-28 00:29:47 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(pipeline): add tenant_context parameter, thread tenant_id to C6 and C7 payment_context
+a2b5d8a65ee16c36fda6d8cf4842aa3dd93997c0|2026-03-28 00:25:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c7): add tenant_id to DecisionLogEntryData and thread from payment_context
+e0ff78e353547bc5057a67d4eed297f5a51cfda4|2026-03-28 00:23:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(miplo): add TDD test suite for MIPLO gateway, pipeline tenant threading, decision log tenant_id
+a3c10ade921f54a587fdb84aed10db9787bf20be|2026-03-27 21:20:12 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c6): export TenantVelocityChecker, StructuringDetector, StructuringResult
+0769acb506d19125f4a77e7a0479b378a967513e|2026-03-27 21:19:06 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c6): add tenant_id param to AMLChecker with lazy tenant checker + structuring detection
+5c6e03285247ebed3efede04afae6f0f060d46b8|2026-03-27 21:12:57 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c6): implement TenantVelocityChecker with dual-write and StructuringDetector
+4f0d25f0a6a6fce91a7bb523475ef042e2f60a64|2026-03-27 21:08:47 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(c6): add TDD suite for tenant velocity isolation and structuring detection
+27f057687ce56377cb0c2edef5f30d961923b094|2026-03-27 20:34:32 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c8): implement revenue metering with penny-exact Decimal arithmetic
+d35096352b6cbf97aa68dd38ba33f1d0207ad3de|2026-03-27 20:29:45 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c8): extend LicenseToken with processor fields, ProcessorLicenseeContext, boot validation
+f4dea7075aed84187a8b66e4ba55c0f70ae9b515|2026-03-27 20:23:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|test(c8): add TDD test suite for processor tokens and revenue metering
+9fc720322e091c8eecf36585e5bc438d69d8fb9e|2026-03-27 20:20:15 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(schemas): add TenantContext, NAVEvent, RevenueRecord for P3 multi-tenant
+ea3901270f019b36b782e162870aee30cd68e04c|2026-03-27 20:20:11 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(metrics): add P3 MIPLO, processor revenue, and tenant isolation metric names
+731b1da1208657a76cae1b82481eb5865dbb15b3|2026-03-27 20:20:08 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(constants): add P3 processor take-rate, annual minimum, and lifecycle constants
+90049838daedef59f0c5e41e8e08c22417e34bc4|2026-03-26 21:37:41 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix mypy error: use Any instead of object for prometheus gauge/counter dicts
+82f15a059c3694183420ab8c184801d5c9f06f24|2026-03-26 21:36:20 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Add Revenue Acceleration Analysis + update Founder Financial Model and F&F round structure
+ab206168c59dbd72d93681ecf74e10773d442f80|2026-03-26 16:33:54 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix mypy type check errors in drift_detector, conformal, and model_card_generator
+be00588828a117f07682e0889e44d0a166c8e1fe|2026-03-26 16:16:44 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Implement LIP Strategic R&D Upgrade — Phases 1-2 (7 features)
+dc4a3e145f1b1e27e95b34fd9435cb2d8b23a1e6|2026-03-26 09:09:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Add GTM-Strategy-v1.0.md: comprehensive go-to-market playbook with verified market data
+55275b2e4627c90a76d01620dcf54a99988b91b0|2026-03-25 00:55:52 +0000|Claude|noreply@anthropic.com|Update royalty rate splits and add growth/Canada strategy documents
+6951f07a2c23ed41df06537bafb852eed844793e|2026-03-24 16:51:22 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #21 from YESHAPTNT/claude/update-royalty-rate-NheTm
+0bfb5bb83e3ee91550aaf10749d7497a0c8ff8c6|2026-03-24 04:39:25 +0000|Claude|noreply@anthropic.com|Update all documentation for new fee shares (30/55/80)
+a8621c63f250d0adf85eb2d8dec3f67cf4c65782|2026-03-24 04:33:29 +0000|Claude|noreply@anthropic.com|Update BPI fee shares: Phase 1 30%, Phase 2 55%, Phase 3 80%
+a4fd3a11484323bf0e89a2d54af643e05adbd0d4|2026-03-23 09:16:03 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(c6): refresh public-domain sanctions snapshot [skip ci]
+f857475e0f4699f43819a63d51b2879c988b4bc0|2026-03-21 20:07:48 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(mypy): pass required args to SettlementMonitor/RepaymentLoop in app.py
+4474553dd16c5e220a06e6740a65487c2bd2c508|2026-03-21 19:53:24 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(ci): add httpx dep + catch RuntimeError + Node24 env across all workflows
+ffbeaaa4740ead885c357ede24c3edb48327b10c|2026-03-21 19:36:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: resolve 4 open engineering items
+fad5e280396f236adb700eb3e7bb12fd1d299e93|2026-03-21 19:10:01 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: eliminate constant duplication in fee.py + enhance QUANT sign-off
+b9175166c45083086e3a956cffa20a375589d8f3|2026-03-21 18:59:31 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: QUANT sign-off on fee impact review in M-01 model card
+238bb6220cbc82ca9c79dd2ee59061e0143e4628|2026-03-21 18:23:59 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add RBC pilot bank engagement strategy
+b1448968929b44659e4844e6ba16d85db16778fe|2026-03-21 16:45:02 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat: deployment finalization + bank-facing pilot materials
+723f7022619d517d911817d2cf831674d3f527ab|2026-03-21 11:49:55 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: post-training uniformity audit + complete codebase narrative
+c851e9587810779c18cbb3b314f88ac494e0b193|2026-03-21 10:19:19 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat: add pilot validation script + fix timestamp format bug in features.py
+9f5504e3c1897ef590532f994f69ff9b77d672b6|2026-03-21 09:57:21 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat: update C1 threshold to 0.110 (calibrated) across all code and docs
+57dba11a7ec9100711cf30d5c15a6a767099d771|2026-03-21 00:56:41 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: update mock failure_probability in tests to exceed new 0.360 threshold
+105cf8ca4102d564bd70a42771eb950cfa08a142|2026-03-20 23:32:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat: add isotonic calibration to C1 training + persist calibrator/scaler
+93816d72cbeda31388ce432d191e072624881b3f|2026-03-20 23:14:20 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat: update C1 threshold to 0.360 from 10M retraining + fix Docker c5 build
+c81d871478aa52a24f91a4b3e0ddd2b67755f64c|2026-03-20 18:11:34 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: preserve unmodified timestamps in temporal clustering + tolerate validation warnings
+ed58f9e98095c7486d3f8cd3f98ddf2ddaf887c2|2026-03-20 17:58:49 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: consistent ISO 8601 timestamps + Docker c5 setuptools
+81d62a566ced5a688461d77b17787ac1db6403b2|2026-03-20 17:46:51 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: add mlflow dep to train_c1 workflow + fix UID conflict in all Dockerfiles
+61e765558be1ced7607693721c31d70ef3bad16b|2026-03-20 17:38:08 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat: rewrite train_c1 workflow for 10M corpus + parquet training
+2ae6c9f2b7780d00e2dfbc32c863473e4bb21854|2026-03-20 17:13:24 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore: gitignore mlflow.db and mlruns/
+1a9a6ea38ec22ee7fa4d4401a895bb46522f2f74|2026-03-20 17:07:16 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: update PROGRESS.md with infrastructure hardening results
+221158b523840d3e1643d1504dcd84b40513f376|2026-03-20 17:06:50 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|harden(infra): 9 security and operational fixes from codebase audit
+a218c161891a912f1b202e7dc02d9988f13589fd|2026-03-20 15:36:47 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: update PROGRESS.md with audit follow-up results
+7ff74dd6c3085e2c5338346602bc2f77aa2f2c9a|2026-03-20 15:36:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: audit follow-ups — C1 threshold default, dgen temporal clustering hardening
+977bc3e06d36da872263f0c87f3be9e96a942a12|2026-03-20 15:28:56 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(critical): restore compliance hold notification + Decimal fee floors
+dc6d01fb4bfa33a807af8bef2fb177a3d8262d10|2026-03-20 14:48:38 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs: add capital partner strategy, founder financial model, and capital efficiency analysis
+d2a17d67221268b927c0d64d719dc87e7f8164d7|2026-03-20 13:57:38 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(audit): strategic documentation audit — 7 corrections + 4 new exhibits
+6ad0be974cb63487b40806e02eaba955c256b19d|2026-03-20 12:56:53 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #20 from YESHAPTNT/add-claude-github-actions-1774036352345
+46c00a3eaa79156a5b5f3586b82418acea58da36|2026-03-20 12:52:37 -0700|YESHA|ryanktomegah@gmail.com|"Update Claude Code Review workflow"
+a9e06b62a361d2316047a11411b5647fab77e0f9|2026-03-20 12:52:35 -0700|YESHA|ryanktomegah@gmail.com|"Update Claude PR Assistant workflow"
+b587ee6e4b5914101600c383699461b7e3779b64|2026-03-20 12:24:09 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(check): correct feature indices and function name in check_temporal_features
+20f5ca48f70fbcb02efec3c7c9715f7678acbc92|2026-03-20 12:19:20 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(sprint): C1 temporal features + C6 Redis wiring + K8s pipeline
+fd491a0dfc11cf9c424cb5c348ba73f9a348bd3a|2026-03-20 12:19:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(phase): deployment phase fee splits + FeeAllocation schema
+ac02fa12ceb1e66e08f228a4625320ca224560cf|2026-03-19 13:33:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(dgen): add per-BIC risk tiers for C1 discriminative signal
+0077757b7b4058c8719f501ec0f25cabb18c9717|2026-03-19 13:25:52 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(skills): add three verification skills for ML training safety
+74e8ddd0c903e3b12e3c82643c5a893e8dfd3bbe|2026-03-19 13:10:33 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c3_generator): apply annualized fee formula per fee.py spec (QUANT)
+717d4eb38fa0137b1c659062563b3097233ae3a2|2026-03-19 08:36:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): use failure-rate-weighted corridor sampling for RJCT events
+a4667f7bcbdd4702b67af271bef3ec2ee9d1c839|2026-03-19 07:48:10 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(legal): EPG-04/05 BPI License Agreement clause package
+5e0e63c92c942c16df5fb15f802fe4c0ba9ad8a7|2026-03-19 07:47:05 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix: populate all 88 tabular features and add StandardScaler (Bugs 2-4)
+c09a302d32c0a2692a4c094ad89c658c9b6ccc95|2026-03-19 07:42:35 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|docs(epg): codify EPG-04/05/19/20/21 strategic decisions
+ed9e0fc6ff16294e042b8ddf7450f2e460d307f1|2026-03-18 23:11:36 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(epg): mark EPG-23 DONE in state.json (commit 4a29b43)
+3affea6731e26bb8f15098fcbee2fd3e9245fc8d|2026-03-18 22:06:04 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(epg-23): structured LoanOfferExpiry records + class_b_eligible pre-wire (EPG-19/QUANT)
+a80c9e4f375a8177049dbdd87a0dd5eda90ff778|2026-03-18 21:31:30 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(epg): update state.json commits for EPG-06/12/13/14/22 (754c9c7)
+b498d4e9252e36bbca76389a24f062f16a9f3b50|2026-03-18 21:30:40 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(tier3): EPG-06/12/13/22 — bridgeable label, tau* note, regulatory risk doc; close EPG-14/15
+acadf190478420f4806bb5aba53a2e330a7bc021|2026-03-18 15:03:39 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(epg): mark EPG-11 DONE in state.json (commit 66e4bfd)
+9d7b1c804b7e45a556ae4cf5477d6023302b7947|2026-03-18 15:03:16 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(epg-11): fire COMPLIANCE_HOLD notification when C7 blocks a bridge
+37bbdd7d4492537003329c5209f7f04484824555|2026-03-18 14:58:29 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(epg): mark EPG-16/17/18/28 DONE in state.json (commit 739249e)
+2636a6375e4e91456047ac5bf28111d78c91c08e|2026-03-18 14:55:48 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(tier2): EPG-16/17/18/28 — AML cap sentinel, anomaly routing, composite velocity key
+4dce6f60a1f415c0125e93e4e016aa2f87d86d24|2026-03-18 14:34:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|EPG-26: implement pipeline re-entry after human review approval
+3c22f3fe94c766289b6897c35ea4d479ce034ef0|2026-03-18 13:34:17 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|EPG-25: eliminate TOCTOU race in AML velocity check — atomic check-and-record
+601753251e995bf75bb1f5be0fa872a3da854a53|2026-03-18 11:28:44 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(taxonomy+c7): EPG-01/02/03/07/08 — KYC and prohibited-party codes moved to BLOCK
+3e59c205d4bbe3102b27f89f1e28c35e6687f322|2026-03-18 11:22:58 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c6): EPG-24 — sanctions screening no longer disabled by default
+5564b40ccb76300710e22358095b72316360f251|2026-03-18 11:16:46 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(pipeline): EPG-09/10/27 — compliance hold fall-through and AML fail-open
+c10c057fa27734e2c349c612ea5e5ede672a80f1|2026-03-18 21:54:13 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(graph_builder): use data-relative timestamp in node/edge features
+4e4b6acec0ad02238ccceb59e2452ff89bcd289f|2026-03-18 15:58:05 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(c1): log Stage 7 AUC at INFO, save LightGBM checkpoint, fix metrics
+df1a4c589b626949551a68f67c9e33d5368a6e0a|2026-03-18 15:49:08 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(eval): correct C1 val AUC measurement — neighbor features + ensemble
+4677488303d88b6f54a3e937f00e29d72ff7a3b8|2026-03-18 13:41:03 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|perf(c1): vectorise _build_neighbor_tensor — fix training hang
+ccdc4ccf9e8e694f59cd65b2e113eabd6a1dc59e|2026-03-18 10:16:05 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(mypy): resolve 5 type errors blocking CI
+770f70c80ca0ed7385c6bac1dd9b650c1a372cbb|2026-03-18 10:01:00 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|EPG-19 + EPG-14: compliance hold blocking and BIC-first governing law
+0ec874c5b5db0dcd4d1416ce052f35cfe0a23293|2026-03-18 09:24:25 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Implement EPIGNOSIS EPG-09/10/16/17/18 compliance fixes
+be16c2266f61ec959025170e7c9c72e6a1c29b63|2026-03-18 08:48:50 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(taxonomy): move RR01-RR04, CNOR, AG01 to BLOCK class (EPG-01/03/07/08)
+764f3f5846e976008afaef00fa02e729e7311f98|2026-03-18 08:27:23 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore(rules): never commit API keys — use .env and GitHub secrets
+95d2bcc6427c87a5964f1b3f0396d6f8960cc8a3|2026-03-18 08:26:40 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|chore: add .env and .env.local to .gitignore
+f0eb52a32ed7ced27ce6334ec32827a816d932b5|2026-03-18 00:26:22 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|fix(dgen): generate mixed corpus (successes + RJCT) for correct C1 training
+ac2f7b31b3020faabe857f2335b932667bfe71d8|2026-03-18 00:04:20 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix C1 label, BLOCK filter, and taxonomy per EPIGNOSIS review
+fe09cb60177e9e1104826d5dff9dd3358614dc0c|2026-03-17 20:43:16 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(c5+tests): compliance hold gate, FedNow/RTP code normalization, test hardening
+c756cc44e8034b14c25ff2611acad3a1dc33b73e|2026-03-17 20:24:52 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|Fix corridor failure rates, business logic gaps, and rebuild team agents/commands
+792cc8bec729f4a3f194717f852144a7742b5a7e|2026-03-17 14:57:25 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(economics): class-aware minimum loan amounts replace flat cash-fee gate
+3f9b8c9b68530c59505ce7aba0f9754386735a19|2026-03-17 14:40:22 -0700|Tomegah Ryan|tomegah@Tomegahs-MacBook-Air.local|feat(economics): tiered fee floors, min loan amount gate, min cash fee gate
+d15e83ecabf88b82763930a687be43d4a611bc08|2026-03-16 12:35:03 -0700|Ryan|naumryan66@gmail.com|docs+fix: lock P95 constants, update corridor buffer docs, fix GAP-04 uetr_tracker
+a5d0ea68fd2052386e23be41f8de8bc8384cb3d3|2026-03-16 12:14:26 -0700|Ryan|naumryan66@gmail.com|fix(dgen): align corridor labels with calibration config, not BIC geography
+7a0fd32aac1b72d8fba6e6cfd22893d61c916c14|2026-03-16 09:12:38 -0700|Ryan|naumryan66@gmail.com|feat(dgen): add production-scale ISO 20022 synthetic data pipeline
+4da0ee318d39742696488a7882a356f3c10d92ad|2026-03-16 08:51:29 -0700|Ryan|naumryan66@gmail.com|test(c5): add live Redpanda integration test suite
+66ddcd7be8a40db4ea727fa6e2cefac777322e7d|2026-03-16 08:17:04 -0700|Ryan|naumryan66@gmail.com|docs: sweep all stale docs to reflect current state
+fa610ca3141cd5e975db1beda41a5282c0289cef|2026-03-16 08:06:20 -0700|Ryan|naumryan66@gmail.com|docs(data-pipeline): update C4 section with real LLM results
+ea9059dc63262798093a6fe0ed32668767906987|2026-03-16 08:03:42 -0700|Ryan|naumryan66@gmail.com|docs(CLAUDE.md): trim C4 lessons to concise rules only
+dc1c1a9bd68044112be97ec7980927caa8e06537|2026-03-16 08:00:22 -0700|Ryan|naumryan66@gmail.com|docs(CLAUDE.md): C4 LLM backend lessons from model comparison session
+cc8ddc5c25bbaff2bccb84c8dab4b785f5fe9d75|2026-03-15 20:51:12 -0700|Ryan|naumryan66@gmail.com|feat(P6): C4 real-LLM integration tests + negation corpus evaluation
+6fd6ad983b1e41d6186363123e31a7b942403d6b|2026-03-15 13:29:04 -0700|Ryan|naumryan66@gmail.com|docs(p7+p8): federated learning architecture + CBDC protocol research
+c28344ce25557927e708eb5f41950f6fdbb40f16|2026-03-15 13:20:07 -0700|Ryan|naumryan66@gmail.com|feat(p4): large-scale synthetic validation pipeline
+3753d8412f15a6528d01a37d69197072e3d49030|2026-03-15 12:28:42 -0700|Ryan|naumryan66@gmail.com|fix(p5): Bayesian smoothing for cascade risk — eliminate first-payment inflation
+80fe1be48a2a2bf408361309188281d02763584d|2026-03-15 11:45:13 -0700|Ryan|naumryan66@gmail.com|feat(p2): latency benchmark script + honest results report
+eea5daa13d72c5d8c5edbd1e14f6f2377a0eb4f6|2026-03-15 11:36:18 -0700|Ryan|naumryan66@gmail.com|feat(p1+p3): local infra stack + StressRegimeDetector + integration fixes
+2e2d5fd9ee794eb9da8607bdb9178595cc931219|2026-03-16 12:35:03 -0700|Ryan|naumryan66@gmail.com|docs+fix: lock P95 constants, update corridor buffer docs, fix GAP-04 uetr_tracker
+9bcad06af3b5ff87c51faf9e0e5812f02816d8a3|2026-03-16 12:14:26 -0700|Ryan|naumryan66@gmail.com|fix(dgen): align corridor labels with calibration config, not BIC geography
+4a6d5f3e0cc4d2d588ec411484b795bf1373fa0d|2026-03-16 09:12:38 -0700|Ryan|naumryan66@gmail.com|feat(dgen): add production-scale ISO 20022 synthetic data pipeline
+26bdfa0a425b112f123f9fe8ef2bffb03759e178|2026-03-16 08:51:29 -0700|Ryan|naumryan66@gmail.com|test(c5): add live Redpanda integration test suite
+2e2b5f561bd1c910724b040750a5890b26675925|2026-03-16 08:17:04 -0700|Ryan|naumryan66@gmail.com|docs: sweep all stale docs to reflect current state
+942f53fef784745b322bd9849123ced736b1ceca|2026-03-16 08:06:20 -0700|Ryan|naumryan66@gmail.com|docs(data-pipeline): update C4 section with real LLM results
+e8c359be8166c33cc24137cd084e7e3f136064b9|2026-03-16 08:03:42 -0700|Ryan|naumryan66@gmail.com|docs(CLAUDE.md): trim C4 lessons to concise rules only
+dbfe0c5ac553f85111c6beead75ca2b8d75e1dba|2026-03-16 08:00:22 -0700|Ryan|naumryan66@gmail.com|docs(CLAUDE.md): C4 LLM backend lessons from model comparison session
+18904ea263d65b2d5c1132c0cfad780f41d2b601|2026-03-16 09:46:37 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(c6): refresh public-domain sanctions snapshot [skip ci]
+2477ac2ff2b4149a4449040e252b26ff7a224121|2026-03-15 20:51:12 -0700|Ryan|naumryan66@gmail.com|feat(P6): C4 real-LLM integration tests + negation corpus evaluation
+593856f4ba6ce858fa6d3e7de059f7e8819980eb|2026-03-15 13:29:04 -0700|Ryan|naumryan66@gmail.com|docs(p7+p8): federated learning architecture + CBDC protocol research
+ff8c875f5a99def9b28323eb87889bf71f76dc48|2026-03-15 13:20:07 -0700|Ryan|naumryan66@gmail.com|feat(p4): large-scale synthetic validation pipeline
+91d634c6a52eefa265d8c0dd2e95c45d0a3453cb|2026-03-15 12:28:42 -0700|Ryan|naumryan66@gmail.com|fix(p5): Bayesian smoothing for cascade risk — eliminate first-payment inflation
+931e4ad729c308cadb1fe9970a5b31541578469a|2026-03-15 11:45:13 -0700|Ryan|naumryan66@gmail.com|feat(p2): latency benchmark script + honest results report
+3cc04e280656e9a5e09fa77a4a70d6dc3de82b7b|2026-03-15 11:36:18 -0700|Ryan|naumryan66@gmail.com|feat(p1+p3): local infra stack + StressRegimeDetector + integration fixes
+b7b94822fc17dfada40ef9a60e66c36638e727c1|2026-03-15 00:18:26 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #19 from YESHAPTNT/feat/e2e-simulation-harness
+4db1f1668bfcc7f206198ed2634de5c8aa9631bc|2026-03-15 00:09:37 -0700|Ryan|naumryan66@gmail.com|ci: opt into Node.js 24 for all GitHub Actions workflows
+efe6965345a51c9ec58aedb1ffded0eca5db7633|2026-03-14 23:45:01 -0700|Ryan|naumryan66@gmail.com|fix(c1): consistent x[8:] tabular-feature slicing across numpy + torch pipelines
+7beab097eae53e498a471ad2740b68523600d7ec|2026-03-14 23:24:17 -0700|Ryan|naumryan66@gmail.com|fix: CI failures — mlflow dep missing, C1 feature slicing bug, mypy test_gap10
+e01a1dc88143e3cb32dda6de58ec5641344d112f|2026-03-14 22:44:54 -0700|Ryan|naumryan66@gmail.com|feat: GAP-13/14/15/16 — Tier 3 full commercial readiness (all 17 gaps complete)
+6fb2cb3f396f7096b4363614790dfe0f6ba8d24f|2026-03-14 19:16:26 -0700|Ryan|naumryan66@gmail.com|feat(gaps): implement GAP-10, GAP-11, GAP-12 + ruff lint fixes
+5354150bb5e791ffc84cf839c3643fcd1e84c70a|2026-03-14 14:03:21 -0700|Ryan|naumryan66@gmail.com|feat(gap-07+08+09): portfolio API, override timeout, business-day maturities
+4a959af5681622c6641c76f8bc38d6f398edb69a|2026-03-14 12:56:00 -0700|Ryan|naumryan66@gmail.com|feat(gap-06+gap-17): SWIFT disbursement spec + amount validation
+c10cd6c4cdb6cb84f3b1f0a858bd49d3a05158c3|2026-03-14 12:12:45 -0700|Ryan|naumryan66@gmail.com|GAP-05: BPI royalty collection (monthly settlement)
+34cca8f9e90676d905da44b05c550dc01f91e9d3|2026-03-13 19:32:26 -0700|Ryan|naumryan66@gmail.com|GAP-04: Retry detection (idempotency) + latency test fix
+53a5984834c33dfd22915364eef90014bffbfde7|2026-03-13 19:00:40 -0700|Ryan|naumryan66@gmail.com|GAP-03: Borrower enrollment registry (BIC whitelist) + CI verification
+ff7743819ea463c39827a745cefa38fd6533c828|2026-03-13 18:38:14 -0700|Ryan|naumryan66@gmail.com|fix(tests): update _MockC6 to accept cap override kwargs
+bf6b62a3c198a9faf54f639e485bb6e1717fb423|2026-03-13 18:14:14 -0700|Ryan|naumryan66@gmail.com|GAP-02: Licensee-configurable AML caps via license token
+3a45381e7017f2eb58f16e011be2895ea7bc3a2e|2026-03-13 16:48:44 -0700|Ryan|naumryan66@gmail.com|docs: update PROGRESS.md — GAP-01 complete, test count 1072, next GAP-02
+0e7c69a5f7d1ce038ec89a673184957e8707560d|2026-03-13 16:39:34 -0700|Ryan|naumryan66@gmail.com|feat(gap-01): implement loan offer delivery and acceptance protocol
+78ed1107ea0623c75b596233b68d6d06ae01eaf6|2026-03-13 11:10:07 -0700|Ryan|naumryan66@gmail.com|docs: add client perspective analysis — 6 Tier-1 blockers + PROGRESS tracker
+3326b540b496591f356a2ea40bcf2743dd069362|2026-03-12 14:42:35 -0700|Ryan|naumryan66@gmail.com|test(sim): add test_simulation_script.py (4 regression tests)
+b3fbe13d3c9585fb68b5898c04e81f82f0598cd1|2026-03-12 14:40:11 -0700|Ryan|naumryan66@gmail.com|feat(sim): add simulate_pipeline.py with business metrics report
+de5173e653cd1ee4fabfb901b7fa9643ce125109|2026-03-12 14:29:12 -0700|Ryan|naumryan66@gmail.com|fix(ci): include test_e2e_pipeline.py in coverage reporting
+cee2a4426855bf90cc93a81f1ee56ca3bd30b374|2026-03-12 14:19:51 -0700|Ryan|naumryan66@gmail.com|fix(ci): guard set_num_interop_threads against duplicate-call RuntimeError
+f8df4679ddbd97b666a2c954cf482607d492768b|2026-03-12 13:41:04 -0700|Ryan|naumryan66@gmail.com|feat(c1): wire real BIC graph neighbors into PyTorch training path
+8114329ee6a3b5a4fe7fb39208d35f41d0540414|2026-03-12 13:29:57 -0700|Ryan|naumryan66@gmail.com|feat(c1): wire graph node features into stage3 feature extraction
+98178c71340dec4a17720dfd2fee20483c7880bc|2026-03-12 08:56:37 -0700|Ryan|naumryan66@gmail.com|diag(c1): add StandardScaler diagnostic; stage3b not wired (no AUC gain)
+b7b09fd068731f796f1ef51e743cbc883dcdfafe|2026-03-12 07:14:10 -0700|Ryan|naumryan66@gmail.com|feat(c4): Step 2b contraction expansion for Romance language negation
+0eff2292f239528e72e588dfa881680f2380bc6e|2026-03-12 07:11:32 -0700|Ryan|naumryan66@gmail.com|fix(c1): align eval_c1_auc.py to canonical label key
+d488bd28705734cbbf4d1466e65d93e0478cc602|2026-03-11 23:43:45 -0700|Ryan|naumryan66@gmail.com|docs(c1): add macOS performance note to eval_c1_auc_torch.py
+95bf9d08952f25ec237d730d4553da72cbcc2ce9|2026-03-11 23:19:07 -0700|Ryan|naumryan66@gmail.com|feat(c2): add spec-mandated test_c2_model.py with 8 required tests
+25cdd01f505249dfe48de657ee604f3cf059ece1|2026-03-11 21:27:04 -0700|Ryan|naumryan66@gmail.com|docs(claude-md): add test suite timing, flaky SLO test, PyTorch/LightGBM deadlock notes
+edfecf36981ca6d8aaddd35e551b707b510d8449|2026-03-11 21:25:42 -0700|Ryan|naumryan66@gmail.com|docs: update CLAUDE.md — branch, test timing, C4 notes
+b43bf8319cc16cbde246198c4d396793e1b30f5a|2026-03-11 21:07:43 -0700|Ryan|naumryan66@gmail.com|chore(c4): update DISPUTE_FN_CURRENT to measured 0.01
+3808a7494499d6a0a7a236c1a0b22bec8c2981c9|2026-03-11 20:57:35 -0700|Ryan|naumryan66@gmail.com|fix(c4): add negation guard to prefilter keyword matching
+391028efc699765d2331473fd7d871422a653766|2026-03-11 18:48:10 -0700|Ryan|naumryan66@gmail.com|feat(c1): add PyTorch neural components for 100K+ sample training
+100d9b64d4b958ca7434a832f938a280a5992655|2026-03-11 15:15:35 -0700|Ryan|naumryan66@gmail.com|docs(c1): update performance docs to reflect val_AUC=0.9998 after stats enrichment
+f38f0dc5ca70b94ff599f3090db77c6506e47790|2026-03-11 14:00:51 -0700|Ryan|naumryan66@gmail.com|feat(dgen): populate sender/receiver/corridor stats to unlock 55 features
+ceb0a90dcc19780fb0dad57318f926f5d5387e24|2026-03-11 12:20:49 -0700|Ryan|naumryan66@gmail.com|fix(tests): eliminate flaky AUC test via module-level RNG reset + add @pytest.mark.slow variant
+5f0118af7496189391fefe35c0435ed7e8b67e3f|2026-03-10 20:55:04 -0700|Ryan|naumryan66@gmail.com|docs: comprehensive 4-layer documentation suite (Phase 9 complete)
+d196ab2ea6f76473d4dae3e25ca512ada4623304|2026-03-10 17:18:45 -0700|Ryan|naumryan66@gmail.com|refactor(tests): simplify review — DRY fixtures, typed params, imported constants
+4685a17f1adbf29db17ce8585abad56b1f8ab9d9|2026-03-10 16:32:27 -0700|Ryan|naumryan66@gmail.com|fix(mypy): resolve 8 type errors blocking CI typecheck + add lgbm ensemble tests
+f6a912e93ede2db32fa481be06862268b3a1b1a5|2026-03-10 15:52:21 -0700|Ryan|naumryan66@gmail.com|feat(c1): add Adam optimizer + LightGBM ensemble + val-based checkpointing
+fa1c9c65306a72a3927a24d17e7a98f5c0a9b43b|2026-03-10 15:20:58 -0700|Ryan|naumryan66@gmail.com|test: add comprehensive coverage for C3/C4/C5 and C6 security modules
+77b43d1a6b8bf9ceb8a63bb9482ed53992fc41f2|2026-03-10 10:05:00 -0700|Ryan|naumryan66@gmail.com|test: add 124 tests for kill switch, pipeline, encryption — coverage 84%→92%
+37a081815073574ee0ac0d8cff652a4551ecaa4d|2026-03-10 06:52:55 -0700|Ryan|naumryan66@gmail.com|test: add 77 comprehensive C2 PD model tests — coverage 14%→91%
+13a423d73ac97bab175e0a1d3e559c206f140b8f|2026-03-10 06:32:00 -0700|Ryan|naumryan66@gmail.com|fix: replace all deprecated datetime.utcnow() with timezone-aware alternatives
+246cc166ee9069294b3ad0cdffe177ec2ed5b4a1|2026-03-10 01:44:25 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #17 from YESHAPTNT/claude/product-overview-9irfT
+65e72b1893f7230f973680a7769bae5aac795b9e|2026-03-10 01:30:46 -0700|Ryan|naumryan66@gmail.com|feat: add 17 specialized AI agent team for autonomous LIP development
+12f4cd1e32aa12318111a7d2bbd75f745f994aff|2026-03-10 01:13:20 -0700|Ryan|naumryan66@gmail.com|feat: add 22 specialized Claude Code skills for LIP development
+e48b0c02844e874fc1b1f5a7c9df9f89bc080fb8|2026-03-10 01:05:11 -0700|Ryan|naumryan66@gmail.com|refactor: remove ALBS proof-of-concept, focus repo on LIP production platform
+8e5126eae5fdbb2a543f416d3329d440da8b2552|2026-03-10 00:30:43 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #18 from YESHAPTNT/add-claude-github-actions-1773127631946
+5b2656f2b71c1421d2dafad62796460dd9604dca|2026-03-10 00:27:15 -0700|YESHA|ryanktomegah@gmail.com|"Claude Code Review workflow"
+a5bd4da0af915fc7b3d01003baf2507a853b7ec4|2026-03-10 00:27:13 -0700|YESHA|ryanktomegah@gmail.com|"Claude PR Assistant workflow"
+b58adc2786506c5acd20953b040fda7997cbcc82|2026-03-09 20:42:38 +0000|Claude|noreply@anthropic.com|test(chaos): add 46 failure-mode tests + fix CI to include e2e suite
+a32a9363927a9ea4ac68925caecc3eaaf1801dac|2026-03-09 20:33:42 +0000|Claude|noreply@anthropic.com|fix(c4): expand prefilter keyword set to close multilingual FN gap
+00ff2fa02a703de20665062000341f940a393f60|2026-03-09 11:04:04 -0700|YESHA|ryanktomegah@gmail.com|Merge pull request #16 from YESHAPTNT/claude/consolidate-file-updates-CIPGP
+b5aca8d8e9d369cb0e300abb7af1371c7d7d5f0d|2026-03-09 15:50:10 +0000|Claude|noreply@anthropic.com|ci: retrigger CI after concurrency fix
+bdf4c9951893e38d36470952bd24e70ff39fbac3|2026-03-09 15:46:14 +0000|Claude|noreply@anthropic.com|ci: add concurrency group to cancel stale queued runs
+962956b9943632d745a9dd843a6f199e40c0078e|2026-03-09 15:30:07 +0000|Claude|noreply@anthropic.com|fix+ci: resolve mypy errors and raise coverage to 84%
+e606178b97c50d253e5480f62a569fddfd445aa2|2026-03-09 15:12:46 +0000|Claude|noreply@anthropic.com|feat: full-squad sprint — free LLM backend, sanctions loader, Kafka worker, SR 11-7, FORGE
+ccee2ab2e54ca5a468f5b1cb66fac2272f831968|2026-03-09 14:30:34 +0000|Claude|noreply@anthropic.com|fix+forge: align canonical latency SLO + add missing K8s manifests (C2/C3/C4/C6)
+4736f59f3bcc390cb63643d9a528a53d757459a3|2026-03-09 14:21:49 +0000|Claude|noreply@anthropic.com|test+ci: InferenceEngine SLO tests, batch consistency guards, mypy required, coverage 75%
+0a949bed3dd32e4d4982b10284ab39cc1c4b6739|2026-03-09 14:06:18 +0000|Claude|noreply@anthropic.com|perf(c1): vectorise integrated-gradient SHAP via batch forward passes
+467b9a7d5aec97a3a6be1cbf0a34a077319187f0|2026-03-09 07:16:15 +0000|Claude|noreply@anthropic.com|feat(c7+c8): wire LicenseeContext into C7 — licensee_id audit trail + TPS cap
+445f6883b62caab042cf1d8c89ae776144e4a3ff|2026-03-09 07:10:06 +0000|Claude|noreply@anthropic.com|feat(c8): add LIP License Manager — offline HMAC token enforcement
+613d6e25f16afe2eb87a406d5fd883f1d8236628|2026-03-09 07:03:18 +0000|Claude|noreply@anthropic.com|fix(biz-model): reframe BPI as technology licensor, sync canonical_numbers.yaml
+ee24b2111f72e7fb629f810dd3f45d74904c9a13|2026-03-09 06:09:26 +0000|Claude|noreply@anthropic.com|feat(quant): add platform royalty model (15% of fee collected)
+e658e87f6b6cc28ef7cf389a535f354ecaf50326|2026-03-09 05:40:49 +0000|Claude|noreply@anthropic.com|fix(c1): align latency SLO constants with canonical spec
+a50f74c8545ef8c03ac0143ff4761f1723ff69ab|2026-03-08 16:24:17 +0000|Claude|noreply@anthropic.com|fix+forge: mypy type errors (6 files) + add train_c2 and train_c6 workflows
+fb2f20c6a9d39816c246a8f3115ac78c429835d8|2026-03-08 16:04:55 +0000|Claude|noreply@anthropic.com|fix: cast Decimal lgd to float before fee_bps multiply in train_all
+1cb8ca707e42f2f73d005ef68261ce052b9adc61|2026-03-08 15:59:04 +0000|Claude|noreply@anthropic.com|fix: pass sending+receiving jurisdiction to lgd_for_corridor in train_all
+10cfff007d4c2d07432b27d8a59cf25271f9244e|2026-03-08 09:17:48 +0000|Claude|noreply@anthropic.com|QUANT+FORGE: fix LGD hardcode, add GH Actions monitor, add C4 corpus workflow
+735d6018d8346ef064ba2adba75e9bb45c65cdd5|2026-03-08 00:44:38 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #15 from ryanktomegah/claude/consolidate-file-updates-CIPGP
+e5ee59cd9b4843b4aa6e1f10776a1d9a16dc89ab|2026-03-08 08:35:38 +0000|Claude|noreply@anthropic.com|Fix train_c1.yml: setuptools quotes, always regenerate corpus, inline Python
+2da9a1689fc4c401d14928c1b00ccba2412ccdfe|2026-03-08 08:12:53 +0000|Claude|noreply@anthropic.com|Add manual C1 full-training workflow for GitHub Actions
+6e91bb47649f39b98a394afacb9f928e13902a57|2026-03-08 06:24:02 +0000|Claude|noreply@anthropic.com|Fix C1 validator: adaptive 3σ band at small N, exclude day_of_week from correlation check
+910395c5cb4fbb229eac750cc4c0953d71e5db11|2026-03-08 06:12:29 +0000|Claude|noreply@anthropic.com|Bump C2 and C6 corpus sizes: 30k→50k and 20k→50k respectively
+a582a0aac9be33f08477d2bff6453dff6b79bd51|2026-03-08 05:53:30 +0000|Claude|noreply@anthropic.com|Fix generate_all.py: add c3 to --components choices and default list
+c906ae242ce9165c09a1e604cd9cfd6a75529e3e|2026-03-08 05:50:13 +0000|Claude|noreply@anthropic.com|Fill model layer gaps: constants, C3 DGEN corpus, CI smoke-test gate
+8e38907e7428909ed1e858d353c072c4bcc2f194|2026-03-08 03:18:27 +0000|Claude|noreply@anthropic.com|Add C1 monitor dashboard, --log-level flag, and refresh corpus SHA256
+73538c669f0084aca1b50abd16dd657e0807a6d2|2026-03-08 00:47:44 +0000|Claude|noreply@anthropic.com|Fix stage3 O(n*m) feature extraction — 417x speedup for 100k corpus
+a2270e6fa6837c3dc234368e62091e1a901e8997|2026-03-08 00:04:39 +0000|Claude|noreply@anthropic.com|Add C5 streaming tests, C1 DGEN validator, and complete EU AI Act data card
+b7fa2bb5fa2d022b8235e73bdaa9a50da656adc0|2026-03-07 23:21:17 +0000|Claude|noreply@anthropic.com|Add lip/train_all.py — master model training script for C1, C2, C6
+7f5e162d2f0574fc5094072e77a583c70fa2b44a|2026-03-07 22:29:24 +0000|Claude|noreply@anthropic.com|Fix CI: BackendUnavailable error on pip install -e .
+d91eb039d8b5fded4e184adac77b552a6cbdd017|2026-03-07 22:24:00 +0000|Claude|noreply@anthropic.com|Add CLAUDE.md — project configuration for Claude Code sessions
+a7540c3548754210e1675c65d58124d0a7aeb29d|2026-03-07 22:18:58 +0000|Claude|noreply@anthropic.com|Fix all 183 ruff lint errors — CI now passes clean
+148751a8943543577ef2f46fe3f215a3efaf368f|2026-03-07 22:10:33 +0000|Claude|noreply@anthropic.com|Fix C2 validator target default rate (5.5% → 6.3%)
+dfef1b0d20354424a980395023e1476789871ad2|2026-03-07 22:06:54 +0000|Claude|noreply@anthropic.com|Fix numerical overflow in C1 GraphSAGE + TabTransformer training
+f7496e83350e9971fb6c4c287e1286e9902e7fee|2026-03-07 17:13:12 +0000|Claude|noreply@anthropic.com|[DGEN] Create Data Generation & Quality Engineer — all LIP training corpora
+94b5c49a71ae223fcf4046e668c30661dff2146c|2026-03-07 16:30:50 +0000|Claude|noreply@anthropic.com|[FORGE] Add GitHub Actions CI and complete Docker coverage for all 7 components
+ad95e80c3cf3b1192966f253883840753739db74|2026-03-07 16:28:53 +0000|Claude|noreply@anthropic.com|[TEAM] Systematic multi-domain hardening: QUANT + REX + CIPHER + FORGE
+9c6d6b2dc4f21bb8213e6973f904aae4cec04b44|2026-03-07 16:20:06 +0000|Claude|noreply@anthropic.com|[C1/C2] Add synthetic data generators, training fixes, and train_all orchestration
+90b8cb72979e85504ca261495c57715e137a0467|2026-03-07 16:04:19 +0000|Claude|noreply@anthropic.com|Add elite agent team as Claude Code slash commands
+58e3201f0df79e2f3466001916b121653ae94e60|2026-03-06 23:59:12 +0000|Claude|noreply@anthropic.com|Resolve 7 engineering gaps against Architecture Spec v1.2
+810a28d954642cfae34dd825ca9493cc826a3e89|2026-03-06 23:16:00 +0000|Claude|noreply@anthropic.com|Merge pull request #13 from ryanktomegah/ryanktomegah-patch-1
+ad2d3ec8411f88e16d23e610e75a48856d88a125|2026-03-06 15:14:21 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #13 from ryanktomegah/ryanktomegah-patch-1
+01498e15e29f7aa35ee3d8ca1e04280a11c68ef5|2026-03-06 15:13:50 -0800|ryanktomegah|ryanktomegah@gmail.com|New files for claude
+0fa63fb45b6e30ba119e8caf519d400402405527|2026-03-06 06:45:10 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Fix silent data corruption: use r[\"is_failure\"] instead of r.get(\"is_failure\", 0) in _prepare_pipeline_data
+53f9fb307b43f4b1dbc9d4844b1af6767822a0c1|2026-03-06 06:38:43 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+bc5add46b1bf64c74471c0bd2bd34db027e3be65|2026-03-06 06:10:06 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Address code review: improve __main__.py error handling
+3a64cc70504e11c8c105f393c797e9c04ba66eb8|2026-03-06 06:06:50 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Implement TASK 1-4: gnn deps, PyTorch models, train.py enhancements, CFPB CLI
+a53b909067dbfde89268bbf5831581146c020cd3|2026-03-06 02:28:15 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Address code review feedback: remove unused import, fix tag filter logic, improve docstring
+53cac3d852b6b842fee2712337639b0a3f6c05ce|2026-03-06 02:20:40 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add timestamp_utc to synthetic data, generate() alias, time-based split, train.py, and CFPB label mapper
+23c2dba52f9a8086945868cc896f754cff27fe70|2026-03-06 02:13:40 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan for Track B (C1 train.py) and Track C (C4 CFPB label mapper)
+c7c2a18b52f4ed48d3fd0583cdaa2ea7791b67c1|2026-03-06 02:10:02 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+f79ed0140d4a03cf207532c0feda9a2cf01b6c40|2026-03-05 18:07:35 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #10 from ryanktomegah/copilot/add-synthetic-data-module
+9422211dbdb03251a9ff373cf36f758352e3c7d0|2026-03-06 01:58:22 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add synthetic SWIFT payment data generator for C1 Failure Classifier training
+bdaeefbd1042584e0074210caddbbefa8a9e4641|2026-03-06 01:41:12 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+dd6ecd8ad002949b9a73c81821f07898454e6e67|2026-03-05 13:36:09 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #9 from ryanktomegah/copilot/add-end-to-end-pipeline-orchestrator
+cadf19051ad5b4e26c13dff5e264779d95834512|2026-03-05 21:31:26 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat: Phase 5 - E2E pipeline orchestrator, instrumentation, and 142 integration tests
+bfd75ed69c7eb5b76ef7abf7785a27489090032a|2026-03-05 21:14:41 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+8cec1e22f78bc8dfeeb0b304a587f49621346b71|2026-03-05 12:30:05 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #8 from ryanktomegah/copilot/create-project-structure-lip
+7ecfd9a1b5a181dd7096c0320a92b199a509e95d|2026-03-05 20:25:40 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Complete LIP platform: tests, infrastructure, configs, pyproject.toml — 252 tests passing
+9f623ce5dc5f4bc35810b7a82682a11d961622e6|2026-03-05 19:55:56 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add C6 AML velocity and C7 execution agent modules
+463f620852ced5ce9e4cfdc6a2a73c5cbcedf042|2026-03-05 19:48:26 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat: Add LIP C4 Dispute Classifier component (8 production Python files)
+f729cb606c518f81d91ea5f608b46085e9c1430f|2026-03-05 19:40:52 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(lip/c3): Add C3 Repayment Engine — Dual-Signal Settlement Monitoring
+00169f64049069d99e79aea60660ca6d0656da27|2026-03-05 19:34:09 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|fix(c2_pd_model/fee): clarify FEE_FLOOR_PER_7DAY_CYCLE as decimal not percent
+3f15248fb87e5debefe049407b2cfd4a313df55c|2026-03-05 19:32:44 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(c2_pd_model): add production Python files for LIP C2 PD Model component
+8c662847bb6c300c8197b40a21db80340911f889|2026-03-05 19:21:38 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|fix(lip/c1): address code review feedback
+09266264fd078472273eeccede4de32d3f389c94|2026-03-05 19:20:25 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(lip/c1): add C1 Failure Classifier component (10 modules)
+8fd6fb3b73bcdd6ed7dbaab75230d6674582cda4|2026-03-05 19:10:20 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|fix: remove spurious no-op field_validator from DecisionLogEntry
+11b4f5f34af615db172d72fa2f41d2690e23673c|2026-03-05 19:09:34 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat: add LIP production core modules (common layer)
+1ab3ce3b5d48e37d305a3459ba82d9df3ddf8a51|2026-03-05 19:03:40 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+be54c32d549ac18f79680a03d99e87be4f3bc388|2026-03-05 10:25:47 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #7 from ryanktomegah/copilot/upgrade-failure-prediction-engine
+5332fb26f2b455b6e93657a5ad026bc7e3cf68cb|2026-03-05 18:07:19 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat(ARIA): Phase 1 ML Core — GNN feature engineering, unified PD scaffold, dispute classifier, /dispute-check + /ml-architecture endpoints
+7f905d5c38f511239ae3428958e23b2bd38da6e3|2026-03-05 17:54:15 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+e88da3e7bb577b00dacf95b1db8839ff77008fc7|2026-02-28 10:12:08 -0800|ryanktomegah|ryanktomegah@gmail.com|Fix ECB €STR series key and update fallback rate to 0.01935
+1ee7ae69aa26460950f97d3b03cc509610983de2|2026-02-28 09:36:23 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #3
+2b5eea4334e7290e9793404e8302ac9495d55da3|2026-02-28 09:33:28 -0800|ryanktomegah|ryanktomegah@gmail.com|Resolve .gitignore merge conflict — adopt main's version
+7fcb5ad98dde3688dcf2c8885efdbd232e2959bc|2026-02-28 17:15:07 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add .github/copilot-instructions.md with project overview, build/test commands, and coding standards
+be434c00be25dc72c57fa93d94b4453dff1de9bd|2026-02-28 17:13:51 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+530876f4237fe843231202477854d7c2f76ac628|2026-02-28 08:09:07 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #2 from ryanktomegah/copilot/fix-frontend-validation-issues
+ad72dc0b8ff6daf24b985d4c6a87e8a1307905ad|2026-02-28 08:08:59 -0800|ryanktomegah|ryanktomegah@gmail.com|Merge pull request #1 from ryanktomegah/copilot/add-nextjs-frontend
+d855cf825d6c096d9ae6b8fa933506b1be1c823b|2026-02-27 19:24:59 -0800|ryanktomegah|ryanktomegah@gmail.com|Mark PR #1 as ready for review
+08a9d4654302b15504d99db1da0e521f760e6dfd|2026-02-28 02:51:24 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Fix PD model label in offer sheet and use SHA-256 instead of MD5
+2236402d373502a31e2e77e9275b06e594ca8952|2026-02-28 02:50:00 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add real-time market signal layer to CVA pricing engine
+6edbcd680227e77f404fcae603477fe45aa9953d|2026-02-28 02:43:56 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+6e8f8cb8d49f9257af5d5965d3f641b5965e86b8|2026-02-27 19:44:37 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Fix frontend validation constraints to match backend Pydantic model
+b57d506f549c05c42d95db02d364ed66ba8dde64|2026-02-27 19:42:06 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+2de766ac132791ef8c6d599a92dd84db81971719|2026-02-27 18:39:45 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|docs: add root README with step-by-step local preview instructions
+db63fff53d5fdab47c0feceaac5e68a44948b362|2026-02-27 18:35:37 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|chore: add .gitignore for __pycache__ and Python build artifacts
+eb94ebf268d1ccff852aaa5c7f255e9b62a52bdf|2026-02-27 18:35:06 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|fix: add CORS middleware, fix API field mapping, run full pipeline end-to-end
+18c0f6f073e3ca11fc1a943b125cb1a9fdbbcc0e|2026-02-27 18:18:16 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|feat: add Next.js 14 frontend for Automated Liquidity Bridging System
+94467b0fbc9bb0f1359a8958eacf229214f2d337|2026-02-27 17:45:45 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+d2100531369592b3b98fd774466db5852726342b|2026-02-27 09:16:30 -0800|ryanktomegah|ryanktomegah@gmail.com|Add files via upload

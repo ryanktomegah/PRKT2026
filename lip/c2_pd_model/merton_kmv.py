@@ -40,11 +40,9 @@ class MertonKMVSolver:
         self,
         max_iter: int = 100,
         tolerance: float = 1e-6,
-        barrier_penalty: float = 1e10
     ) -> None:
         self.max_iter = max_iter
         self.tolerance = tolerance
-        self.barrier_penalty = barrier_penalty
 
     def solve(
         self,

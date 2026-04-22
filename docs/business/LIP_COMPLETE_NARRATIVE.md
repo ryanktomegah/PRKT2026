@@ -29,7 +29,7 @@ JPMorgan's US patent 7089207B1 covers payment failure prediction for Tier 1 coun
 - **Tier 2:** Private companies with balance sheets. LIP uses a Damodaran industry-beta model to estimate PD without market data.
 - **Tier 3:** Data-sparse entities ("thin-file"). LIP uses an Altman Z-score proxy model that works with minimal financial inputs — jurisdiction-level default rates, sector medians, and rejection code class alone.
 
-The provisional patent specification (v5.2) covers the full pipeline: detection → classification → conditional offer → auto-repayment. The core novel claim is the two-step classification plus conditional offer logic — not the bridge loan mechanics themselves. Patent counsel briefing is pending before non-provisional filing.
+The current prosecution-ready provisional specification covers the full pipeline: detection → classification → conditional offer → auto-repayment. The core novel claim is the two-step classification plus conditional offer logic — not the bridge loan mechanics themselves. Patent counsel briefing is pending before non-provisional filing.
 
 ### Three Legal Entities
 

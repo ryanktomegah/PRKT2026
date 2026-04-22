@@ -24,8 +24,6 @@ from lip.integrity.evidence import (
     verify_evidence,
 )
 
-# Default freshness window for claims; matches the constant added to
-# lip/common/constants.py in Phase 4.
 DEFAULT_MAX_CLAIM_AGE_HOURS = 720  # 30 days
 
 
@@ -204,6 +202,10 @@ class ClaimsRegistry:
         if since is None:
             return list(self._claims.values())
         return [c for c in self._claims.values() if c.created_at >= since]
+
+    def iter_evidence(self) -> list[EvidenceRecord]:
+        """Return a snapshot of all registered evidence records."""
+        return list(self._evidence.values())
 
     def evidence_count(self) -> int:
         return len(self._evidence)
