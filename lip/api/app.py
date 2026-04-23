@@ -13,6 +13,9 @@ from __future__ import annotations
 import logging
 import os
 
+from lip.common.logging_setup import configure_app_logging
+
+configure_app_logging()
 logger = logging.getLogger(__name__)
 
 try:

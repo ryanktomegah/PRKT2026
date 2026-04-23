@@ -17,12 +17,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from lip.c8_license_manager.runtime import enforce_component_license
+from lip.common.logging_setup import configure_app_logging
 
 from .features import FeatureMasker, UnifiedFeatureEngineer
 from .inference import PDInferenceEngine, configure_inference_salt
 from .model import PDModel
 from .tier_assignment import TierFeatures, assign_tier
 
+configure_app_logging()
 logger = logging.getLogger(__name__)
 
 _DEFAULT_INFERENCE_SALT = b"lip_staging_c2_salt_32_bytes____"
