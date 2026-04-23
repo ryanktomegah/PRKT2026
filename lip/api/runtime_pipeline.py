@@ -30,6 +30,7 @@ from lip.c2_pd_model.api import C2Service
 from lip.c3_repayment_engine.repayment_loop import SettlementMonitor
 from lip.c4_dispute_classifier.model import DisputeClassifier
 from lip.c6_aml_velocity.aml_checker import AMLChecker
+from lip.c6_aml_velocity.bic_name_resolver import build_bic_name_resolver
 from lip.c6_aml_velocity.velocity import VelocityChecker
 from lip.c7_execution_agent.agent import ExecutionAgent, ExecutionConfig
 from lip.c7_execution_agent.decision_log import DecisionLogger
@@ -309,7 +310,7 @@ def _build_c6_checker(redis_client=None) -> AMLChecker:
     velocity = VelocityChecker(salt=_load_aml_salt(), redis_client=redis_client)
     return AMLChecker(
         velocity_checker=velocity,
-        entity_name_resolver=None,
+        entity_name_resolver=build_bic_name_resolver(),
         redis_client=redis_client,
     )
 

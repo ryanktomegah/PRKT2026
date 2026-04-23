@@ -157,7 +157,6 @@ class LIPPipeline:
         self._c3 = c3_monitor
         self._stress_detector = stress_detector
         self._notification = notification_service
-        self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
         # Per-corridor failure rates for C1 feature injection.
@@ -168,6 +167,9 @@ class LIPPipeline:
         # If not injected, attempt connection via REDIS_URL env var.
         # None = in-memory fallback (unit tests, local dev — no behavior change).
         self._redis_client = redis_client if redis_client is not None else create_redis_client()
+        # UETR dedup must share the pipeline's Redis client when available so
+        # retry detection survives multi-process / multi-replica deployments.
+        self._uetr_tracker = uetr_tracker or UETRTracker(redis_client=self._redis_client)
         # Phase 1.2: Conformal prediction — widens fee when model uncertainty is high
         self._conformal = conformal_predictor
         # Phase 1.3: Portfolio risk engine — tracks funded positions for VaR/concentration

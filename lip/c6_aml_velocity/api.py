@@ -16,9 +16,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from lip.c8_license_manager.runtime import enforce_component_license
+from lip.common.logging_setup import configure_app_logging
+from lip.common.redis_factory import create_redis_client
 
 from .aml_checker import AMLChecker
+from .bic_name_resolver import build_bic_name_resolver
 from .velocity import VelocityChecker
+
+configure_app_logging()
 
 _DEFAULT_SALT = b"lip_staging_aml_salt_32_bytes__"
 
@@ -69,9 +74,14 @@ def _serialize_result(result) -> dict:
 
 def create_app(checker: Optional[AMLChecker] = None) -> FastAPI:
     enforce_component_license("C6")
+    # Wire Redis when REDIS_URL is configured so StructuringDetector and
+    # VelocityChecker use shared state across replicas instead of in-memory
+    # fallbacks (the in-memory path emits single_replica warnings at boot).
+    redis_client = create_redis_client() if not checker else None
     aml_checker = checker or AMLChecker(
-        velocity_checker=VelocityChecker(salt=_load_salt()),
-        entity_name_resolver=None,
+        velocity_checker=VelocityChecker(salt=_load_salt(), redis_client=redis_client),
+        entity_name_resolver=build_bic_name_resolver(),
+        redis_client=redis_client,
     )
     app = FastAPI(title="LIP C6 AML Velocity", version="1.0.0")
 
