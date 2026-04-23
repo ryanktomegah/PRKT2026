@@ -38,12 +38,14 @@ jobs:
         run: |
           docker context use colima
           docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
+          docker build -f lip/infrastructure/docker/Dockerfile.c6 -t lip-local-c6:${{ github.sha }} .
           docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
 
       - name: Deploy staging slice
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           LIP_C4_IMAGE: lip-local-c4:${{ github.sha }}
+          LIP_C6_IMAGE: lip-local-c6:${{ github.sha }}
           LIP_API_IMAGE: lip-local-c7:${{ github.sha }}
         run: |
           chmod +x ./scripts/deploy_staging_self_hosted.sh
