@@ -113,6 +113,21 @@ ruff check lip/
 PYTHONPATH=. python lip/train_all.py --help
 ```
 
+### Deploy the Staging Slice
+
+```bash
+# Generate the signed C2 artifact (artifacts/ is gitignored)
+PYTHONPATH=. python scripts/generate_c2_artifact.py \
+    --hmac-key-file .secrets/c2_model_hmac_key
+
+# One-command staging deploy against a self-hosted kubeconfig
+LIP_API_IMAGE=lip-api:local LIP_C2_IMAGE=lip-c2:local \
+LIP_C4_IMAGE=lip-c4:local LIP_C6_IMAGE=lip-c6:local \
+./scripts/deploy_staging_self_hosted.sh --profile local-core
+```
+
+The staging `lip-api` runs the **real runtime pipeline** (`LIP_API_ENABLE_REAL_PIPELINE=true`) with the Torch C1 artifact, the signed C2 pickle, and Groq-backed C4 dispute classification. See [`docs/operations/deployment.md`](docs/operations/deployment.md) for profiles, env vars, and model-source verification.
+
 ---
 
 ## Documentation

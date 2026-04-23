@@ -76,6 +76,63 @@ mypy lip/
 ruff check lip/
 ```
 
+## Runtime Artifacts and Real Pipeline Flags
+
+The FastAPI surface can run in two modes, selected by `LIP_API_ENABLE_REAL_PIPELINE`:
+
+| Mode | Flag | Behavior |
+|------|------|----------|
+| Stub (default in tests) | unset / `"false"` | `miplo_router` uses an in-memory stub pipeline |
+| Real | `LIP_API_ENABLE_REAL_PIPELINE=true` | `lip/api/runtime_pipeline.py` mounts the full C1→C2→C4→C6→C7→C3 pipeline |
+
+When the real pipeline is enabled, these env vars control where the trained artifacts come from:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LIP_C1_MODEL_DIR` | unset (falls back to `create_default_model()`) | Directory containing the C1 Torch checkpoint (`c1_model_parquet.pt`), and optional `c1_lgbm_parquet.pkl` / `c1_calibrator.pkl` / `c1_scaler.pkl` |
+| `LIP_C2_MODEL_PATH` | unset (bootstrap model) | Path to the signed C2 pickle |
+| `LIP_MODEL_HMAC_KEY` | — | HMAC key for signed C2 pickle verification. **Required** when `LIP_C2_MODEL_PATH` is set |
+| `LIP_C1_THRESHOLD` | `constants.FAILURE_PROBABILITY_THRESHOLD` | Override τ* (usually not needed; threshold is QUANT-locked) |
+| `LIP_C4_BACKEND` | `mock` in tests | `groq` for live Qwen3-32B dispute classification |
+
+### Generate the C2 Signed Artifact
+
+```bash
+# Writes artifacts/c2_trained/c2_model.pkl + .pkl.sig + c2_training_report.json
+# artifacts/ is gitignored — regenerate per environment, never commit binaries
+PYTHONPATH=. python scripts/generate_c2_artifact.py \
+    --hmac-key-file .secrets/c2_model_hmac_key \
+    --output-dir artifacts/c2_trained
+```
+
+### Deploy / Redeploy Local Staging
+
+```bash
+# local-core profile: lip-api + lip-c2-pd + lip-c4-dispute + lip-c6-aml
+LIP_API_IMAGE=lip-api:local \
+LIP_C2_IMAGE=lip-c2:local \
+LIP_C4_IMAGE=lip-c4:local \
+LIP_C6_IMAGE=lip-c6:local \
+./scripts/deploy_staging_self_hosted.sh --profile local-core
+
+# Other profiles: local-full-non-gpu, gpu-full, analytics — see docs/operations/deployment.md
+```
+
+### Verify Model Source in Running Pods
+
+```bash
+# Canonical check — artifact files are present and signed inside the pod
+kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/
+kubectl -n lip-staging exec deploy/lip-api -- ls -l /app/artifacts/c1_trained/
+
+# Log-line check is only visible when the uvicorn CMD sets --log-level info.
+# Default staging CMD does not — add it to the Dockerfile for a debug rebuild.
+kubectl -n lip-staging logs deploy/lip-c2-pd | grep "C2 service ready"
+kubectl -n lip-staging logs deploy/lip-api  | grep "Runtime C1 engine ready"
+```
+
+The `C2Service.model_source` attribute (`artifact` vs `bootstrap`) is the programmatic truth; it is test-visible via `app.state.c2_service.model_source` and intentionally not exposed on `/health`. See [`../operations/deployment.md`](../operations/deployment.md) § Self-Hosted Staging Deployment for the full profile matrix and secret-loading rules.
+
 ## Canonical Constants — QUANT Sign-Off Required
 
 The following constants are **locked** and may only be changed with explicit QUANT team approval. Changing them without sign-off constitutes a model governance violation under SR 11-7.

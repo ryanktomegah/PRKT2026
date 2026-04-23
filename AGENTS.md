@@ -6,6 +6,9 @@
 ## Build, Test, and Development Commands
 Set up a local environment with `python -m venv .venv && source .venv/bin/activate` and `pip install -e "lip/[all]"`. Start local Kafka-compatible Redpanda and Redis with `./scripts/start_local_infra.sh` or `docker compose up -d`. Use `ruff check lip/` for linting, `mypy lip/` for type checks, and `PYTHONPATH=. python -m pytest lip/tests/ --ignore=lip/tests/test_e2e_pipeline.py -q` for the standard suite. Run component tests directly, for example `PYTHONPATH=. python -m pytest lip/tests/test_c6_aml_velocity.py -v`.
 
+### Runtime Artifacts & Staging
+Generate the signed C2 model artifact with `PYTHONPATH=. python scripts/generate_c2_artifact.py --hmac-key-file .secrets/c2_model_hmac_key`. Deploy the local staging slice (lip-api, lip-c2-pd, lip-c4-dispute, lip-c6-aml) with `./scripts/deploy_staging_self_hosted.sh --profile local-core`; other profiles are `local-full-non-gpu`, `gpu-full`, `analytics`. The real runtime pipeline activates via `LIP_API_ENABLE_REAL_PIPELINE=true`, with `LIP_C1_MODEL_DIR`, `LIP_C2_MODEL_PATH`, and `LIP_MODEL_HMAC_KEY` selecting the artifact load path. See `docs/operations/deployment.md` and `docs/engineering/developer-guide.md` for full details.
+
 ## Coding Style & Naming Conventions
 Follow Python conventions already enforced by `pyproject.toml`: 4-space indentation, type annotations on public functions, and Ruff with a 100-character line length. Test modules use `test_*.py`; classes use `Test*`; functions use `test_*`. Prefer `Decimal` for money, `datetime.now(tz=timezone.utc)` over naive UTC calls, and Google-style docstrings for public APIs. Keep naming consistent with the component prefixes (`c1_`, `c2_`, `p10_`) used across the repo.
 
