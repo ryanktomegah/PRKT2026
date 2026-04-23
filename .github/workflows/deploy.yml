@@ -1,20 +1,10 @@
-name: Deploy (Helm)
+name: Deploy Staging (Self-Hosted)
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target environment"
-        required: true
-        type: choice
-        options: [dev, staging, prod]
-      image_tag:
-        description: "Image tag to deploy (e.g. sha-abc1234 or v1.2.0)"
-        required: true
-        default: "latest"
 
 concurrency:
-  group: deploy-${{ inputs.environment }}
+  group: deploy-staging-self-hosted
   cancel-in-progress: false
 
 env:
@@ -22,38 +12,39 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to ${{ inputs.environment }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    name: Deploy to local staging
+    runs-on: [self-hosted, macOS, ARM64, staging]
+    environment: staging
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: "3.14.0"
-
       - name: Configure kubectl
-        uses: azure/k8s-set-context@v3
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      - name: Helm upgrade — ${{ inputs.environment }}
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
         run: |
-          helm upgrade --install lip ./lip/infrastructure/helm/lip \
-            --namespace lip \
-            --create-namespace \
-            --values lip/infrastructure/helm/lip/values-${{ inputs.environment }}.yaml \
-            --set image.tag=${{ inputs.image_tag }} \
-            --set image.registry=ghcr.io/${{ github.repository_owner }} \
-            --atomic \
-            --timeout 10m \
-            --wait
+          mkdir -p "$RUNNER_TEMP/kube"
+          printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kube/config"
+          chmod 600 "$RUNNER_TEMP/kube/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+          kubectl config use-context colima
 
-      - name: Verify rollout
+      - name: Ensure local cluster is running
         run: |
-          kubectl rollout status deployment/lip-c1-classifier -n lip --timeout=5m
-          kubectl rollout status deployment/lip-c6-aml         -n lip --timeout=5m
-          kubectl rollout status deployment/lip-c7-execution   -n lip --timeout=5m
+          colima start --kubernetes --save-config
+          kubectl get nodes -o wide
+
+      - name: Build local staging images
+        run: |
+          docker context use colima
+          docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
+          docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+
+      - name: Deploy staging slice
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LIP_C4_IMAGE: lip-local-c4:${{ github.sha }}
+          LIP_API_IMAGE: lip-local-c7:${{ github.sha }}
+        run: |
+          chmod +x ./scripts/deploy_staging_self_hosted.sh
+          ./scripts/deploy_staging_self_hosted.sh lip-staging
