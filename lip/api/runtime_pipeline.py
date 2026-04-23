@@ -9,7 +9,6 @@ from __future__ import annotations
 import base64
 import logging
 import os
-import pickle
 import time
 from pathlib import Path
 from typing import Any, Optional, Protocol, Tuple
@@ -38,6 +37,7 @@ from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
 from lip.c8_license_manager.license_token import LicenseeContext, ProcessorLicenseeContext
+from lip.common import secure_pickle
 from lip.common.borrower_registry import BorrowerRegistry
 from lip.common.known_entity_registry import KnownEntityRegistry
 from lip.pipeline import LIPPipeline
@@ -46,6 +46,13 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_AML_SALT = b"lip_staging_aml_salt_32_bytes__"
 _SHAP_TOP_N = 20
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on"}
 
 
 class _C1Predictor(Protocol):
@@ -132,10 +139,27 @@ class TorchArtifactInferenceEngine:
         return converted
 
     def _load_optional_pickle(self, path: Path) -> Any:
+        """Load a C1 supplementary artefact via secure_pickle.
+
+        Returns ``None`` if the payload is absent, the HMAC sidecar is missing,
+        or verification fails. The tri-state fallback in ``_build_c1_engine``
+        then degrades to the default NumPy model rather than crashing the API.
+        The B13-01 pickle ban forbids bypassing ``secure_pickle`` even for
+        repository-owned artefacts — sign them with ``scripts/sign_c1_artifacts.py``
+        before deploying, or the loader will reject them.
+        """
         if not path.exists():
             return None
-        with path.open("rb") as handle:
-            return pickle.load(handle)  # noqa: S301 - trusted repository-owned model artifacts
+        try:
+            return secure_pickle.load(path)
+        except secure_pickle.SecurePickleError as exc:
+            logger.warning(
+                "C1 optional artefact %s failed secure_pickle load (%s); "
+                "skipping (caller will fall back).",
+                path,
+                exc,
+            )
+            return None
 
     def _compute_shap_top20(self, tabular_features: np.ndarray) -> list[dict]:
         feature_names = self._tab_eng.feature_names()
@@ -251,6 +275,7 @@ def _load_aml_salt() -> bytes:
 def _build_c1_engine(redis_client=None) -> _C1Predictor:
     threshold = float(os.environ.get("LIP_C1_THRESHOLD", _DEFAULT_THRESHOLD))
     model_dir = os.environ.get("LIP_C1_MODEL_DIR", "").strip()
+    require_artifacts = _env_flag("LIP_REQUIRE_MODEL_ARTIFACTS")
 
     if model_dir:
         model_path = Path(model_dir)
@@ -269,6 +294,11 @@ def _build_c1_engine(redis_client=None) -> _C1Predictor:
                     model_path,
                     exc,
                 )
+                if require_artifacts:
+                    raise RuntimeError(
+                        "LIP_REQUIRE_MODEL_ARTIFACTS=1 but torch C1 artifacts "
+                        f"failed to load from {model_path}"
+                    ) from exc
 
     model = create_default_model()
     source = "default"
@@ -283,7 +313,16 @@ def _build_c1_engine(redis_client=None) -> _C1Predictor:
                 model_dir,
                 exc,
             )
+            if require_artifacts:
+                raise RuntimeError(
+                    "LIP_REQUIRE_MODEL_ARTIFACTS=1 but C1 model failed to "
+                    f"load from {model_dir}"
+                ) from exc
             model = create_default_model()
+    elif require_artifacts:
+        raise RuntimeError(
+            "LIP_REQUIRE_MODEL_ARTIFACTS=1 but LIP_C1_MODEL_DIR is not set."
+        )
 
     embedding_pipeline = CorridorEmbeddingPipeline(redis_client=redis_client)
     logger.info("Runtime C1 engine ready (%s)", source)
