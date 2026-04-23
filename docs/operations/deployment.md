@@ -163,25 +163,22 @@ LIP_C4_IMAGE=lip-c4:local \
 LIP_C6_IMAGE=lip-c6:local \
 ./scripts/deploy_staging_self_hosted.sh --profile local-core
 
-# 3. Confirm the artifact files are present inside the running pod — primary check.
-# This is the canonical verification: if the files are mounted with the right sizes
-# and signature present, the image was built with the intended artifacts.
-kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/
-# Expected: c2_model.pkl + c2_model.pkl.sig + c2_training_report.json
-
-kubectl -n lip-staging exec deploy/lip-api -- ls -l /app/artifacts/c1_trained/
-# Expected: c1_model_parquet.pt + c1_lgbm_parquet.pkl + train_metrics_parquet.json
-
-# 4. (Optional, requires --log-level info in the uvicorn CMD)
-# App-level loggers in lip/c2_pd_model/api.py and lip/api/runtime_pipeline.py emit
-# "C2 service ready (artifact|bootstrap)" and "Runtime C1 engine ready (artifact:<path>|default)"
-# at INFO. With the default CMD (no --log-level info), uvicorn suppresses these.
-# To enable in a debug rebuild, add --log-level info to the relevant Dockerfile CMD.
+# 3. Verify the C2 pod loaded the signed artifact (not bootstrap fallback)
 kubectl -n lip-staging logs deploy/lip-c2-pd | grep "C2 service ready"
+# Expected: "C2 service ready (artifact)"  — NOT "(bootstrap)"
+
+# 4. Verify the API loaded the real C1 Torch artifact
 kubectl -n lip-staging logs deploy/lip-api | grep "Runtime C1 engine ready"
+# Expected: "Runtime C1 engine ready (artifact:/app/artifacts/c1_trained)"
+
+# 5. Confirm the artifact files are present inside the running pod (supplemental)
+kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/
+kubectl -n lip-staging exec deploy/lip-api -- ls -l /app/artifacts/c1_trained/
 ```
 
-If the C2 logs later show `(bootstrap)` after `--log-level info` is enabled while `LIP_C2_MODEL_PATH` is set, the HMAC key in `.secrets/c2_model_hmac_key` does not match the key used when generating the artifact. Regenerate with the correct key and redeploy. Until `--log-level info` is wired, a mismatched key manifests as a `/predict` endpoint returning `model_source: "bootstrap"` on the `C2Service` state — inspected from a Python shell in the pod.
+If the C2 log shows `(bootstrap)` while `LIP_C2_MODEL_PATH` is set, the HMAC key in `.secrets/c2_model_hmac_key` does not match the key used when generating the artifact. Regenerate with the correct key and redeploy.
+
+> **Logging note.** App-level `lip.*` log lines are surfaced by `configure_app_logging()` in `lip/common/logging_setup.py`, called at import time from each service's `api.py`. The log level is set from `LIP_LOG_LEVEL` (default `INFO`). To raise the bar in production (e.g. to reduce volume), set `LIP_LOG_LEVEL=WARNING` in the pod env.
 
 ## CI/CD Pipeline
 

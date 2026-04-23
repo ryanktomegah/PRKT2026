@@ -47,6 +47,6 @@ These live inside the package because they import freely from `lip.c{N}_*` and `
 ## Cross-references
 
 - **Operational guide**: [`../data-pipeline.md`](../data-pipeline.md) for training command sequences
-- **Deployment**: [`../deployment.md`](../deployment.md) for the production K8s context (these scripts are local-dev / CI only)
+- **Deployment**: [`../../operations/deployment.md`](../../operations/deployment.md) for the production K8s context (these scripts are local-dev / CI only)
 - **Test suite**: [`tests.md`](tests.md) — `test_e2e_live.py` is the consumer of `start_local_infra.sh`
 - **CI**: `.github/workflows/` (run via `gh run list --repo ryanktomegah/PRKT2026`)

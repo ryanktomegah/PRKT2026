@@ -212,10 +212,12 @@ LIP_MODEL_HMAC_KEY=<from k8s secret lip-model-artifact-secret>
 
 For operational verification:
 
-| Signal | Command | Visibility |
-|--------|---------|------------|
-| Artifact presence in pod | `kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/` | Always works |
-| Service log line | `kubectl -n lip-staging logs deploy/lip-c2-pd \| grep "C2 service ready"` | Requires `--log-level info` in the uvicorn CMD (not set in the default staging image); `C2 service ready (artifact)` on success, `(bootstrap)` on verification failure |
+| Signal | Command | Expected |
+|--------|---------|----------|
+| Service log line | `kubectl -n lip-staging logs deploy/lip-c2-pd \| grep "C2 service ready"` | `C2 service ready (artifact)` on success, `(bootstrap)` on signature-verification failure or missing `LIP_C2_MODEL_PATH` |
+| Artifact presence in pod | `kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/` | `c2_model.pkl`, `c2_model.pkl.sig`, `c2_training_report.json` |
+
+Log output is configured by `lip/common/logging_setup.py::configure_app_logging()`, called at import time from `lip/c2_pd_model/api.py`. Default level is `INFO`; override via `LIP_LOG_LEVEL` env var.
 
 ---
 

@@ -85,4 +85,4 @@ Observability: each load path logs a single `ready` line at INFO so operators ca
 - **DORA / SR 11-7 export shape**: `regulatory_models.py` defines the canonical Pydantic models; the underlying data comes from `lip/common/regulatory_reporter.py`
 - **Portfolio reporting**: backed by `lip/risk/portfolio_risk.py` (see [`risk.md`](risk.md)) and `lip/c3_repayment_engine/`
 - **Cascade endpoints**: backed by `lip/p5_cascade_engine/` (see [`p5_cascade_engine.md`](p5_cascade_engine.md))
-- **Operative compliance**: see [`../decisions/EPG-19_compliance_hold_bridging.md`](../decisions/EPG-19_compliance_hold_bridging.md) — there is no API endpoint that can override the compliance-hold block
+- **Operative compliance**: see [`../../legal/decisions/EPG-19_compliance_hold_bridging.md`](../../legal/decisions/EPG-19_compliance_hold_bridging.md) — there is no API endpoint that can override the compliance-hold block

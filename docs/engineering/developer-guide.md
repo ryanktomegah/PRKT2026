@@ -121,17 +121,20 @@ LIP_C6_IMAGE=lip-c6:local \
 ### Verify Model Source in Running Pods
 
 ```bash
-# Canonical check — artifact files are present and signed inside the pod
-kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/
-kubectl -n lip-staging exec deploy/lip-api -- ls -l /app/artifacts/c1_trained/
-
-# Log-line check is only visible when the uvicorn CMD sets --log-level info.
-# Default staging CMD does not — add it to the Dockerfile for a debug rebuild.
+# Should print: "C2 service ready (artifact)"
 kubectl -n lip-staging logs deploy/lip-c2-pd | grep "C2 service ready"
-kubectl -n lip-staging logs deploy/lip-api  | grep "Runtime C1 engine ready"
+
+# Should print: "Runtime C1 engine ready (artifact:/app/artifacts/c1_trained)"
+kubectl -n lip-staging logs deploy/lip-api | grep "Runtime C1 engine ready"
+
+# Supplemental: artifact files present in pod
+kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/
+kubectl -n lip-staging exec deploy/lip-api  -- ls -l /app/artifacts/c1_trained/
 ```
 
-The `C2Service.model_source` attribute (`artifact` vs `bootstrap`) is the programmatic truth; it is test-visible via `app.state.c2_service.model_source` and intentionally not exposed on `/health`. See [`../operations/deployment.md`](../operations/deployment.md) § Self-Hosted Staging Deployment for the full profile matrix and secret-loading rules.
+`C2Service.model_source` (`artifact`, `bootstrap`, or `injected`) is the programmatic truth and is asserted in `test_c2_api_loads_signed_artifact`. It is intentionally not exposed on `/health`. See [`../operations/deployment.md`](../operations/deployment.md) § Self-Hosted Staging Deployment for the profile matrix and secret-loading rules.
+
+App-level logging is configured by `lip/common/logging_setup.py` via `configure_app_logging()` at service import time. Level is controlled by `LIP_LOG_LEVEL` (default `INFO`).
 
 ## Canonical Constants — QUANT Sign-Off Required
 
