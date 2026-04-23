@@ -15,6 +15,8 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from lip.c8_license_manager.runtime import enforce_component_license
+
 from .aml_checker import AMLChecker
 from .velocity import VelocityChecker
 
@@ -66,6 +68,7 @@ def _serialize_result(result) -> dict:
 
 
 def create_app(checker: Optional[AMLChecker] = None) -> FastAPI:
+    enforce_component_license("C6")
     aml_checker = checker or AMLChecker(
         velocity_checker=VelocityChecker(salt=_load_salt()),
         entity_name_resolver=None,

@@ -2,6 +2,18 @@ name: Deploy Staging (Self-Hosted)
 
 on:
   workflow_dispatch:
+    inputs:
+      staging_profile:
+        description: "Deployment profile"
+        required: true
+        default: local-core
+        type: choice
+        options:
+          - local-core
+          - local-full-non-gpu
+          - gpu-full
+          - analytics
+          - streaming-flink
 
 concurrency:
   group: deploy-staging-self-hosted
@@ -15,6 +27,8 @@ jobs:
     name: Deploy to local staging
     runs-on: [self-hosted, macOS, ARM64, staging]
     environment: staging
+    env:
+      STAGING_PROFILE: ${{ github.event.inputs.staging_profile || 'local-core' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,16 +51,46 @@ jobs:
       - name: Build local staging images
         run: |
           docker context use colima
-          docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
-          docker build -f lip/infrastructure/docker/Dockerfile.c6 -t lip-local-c6:${{ github.sha }} .
-          docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+          case "${STAGING_PROFILE}" in
+            local-core)
+              docker build --build-arg LIP_C2_EXTRAS=c2-runtime-min -f lip/infrastructure/docker/Dockerfile.c2 -t lip-local-c2:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c6 -t lip-local-c6:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+              ;;
+            local-full-non-gpu)
+              docker build --build-arg LIP_C2_EXTRAS=c2-runtime-min -f lip/infrastructure/docker/Dockerfile.c2 -t lip-local-c2:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c3 -t lip-local-c3:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c5-go -t lip-local-c5-go:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c6 -t lip-local-c6:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+              ;;
+            analytics)
+              docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+              ;;
+            streaming-flink)
+              docker build -f lip/infrastructure/docker/Dockerfile.c5 -t lip-local-c5:${{ github.sha }} .
+              ;;
+            gpu-full)
+              echo "gpu-full is gated behind a dedicated GPU-capable runner and prebuilt C1 image."
+              exit 1
+              ;;
+          esac
 
       - name: Deploy staging slice
         env:
+          STAGING_PROFILE: ${{ github.event.inputs.staging_profile || 'local-core' }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          LIP_C4_IMAGE: lip-local-c4:${{ github.sha }}
-          LIP_C6_IMAGE: lip-local-c6:${{ github.sha }}
           LIP_API_IMAGE: lip-local-c7:${{ github.sha }}
+          LIP_C2_IMAGE: lip-local-c2:${{ github.sha }}
+          LIP_C3_IMAGE: lip-local-c3:${{ github.sha }}
+          LIP_C4_IMAGE: lip-local-c4:${{ github.sha }}
+          LIP_C5_GO_IMAGE: lip-local-c5-go:${{ github.sha }}
+          LIP_C5_IMAGE: lip-local-c5:${{ github.sha }}
+          LIP_C6_IMAGE: lip-local-c6:${{ github.sha }}
+          LIP_LICENSE_TOKEN_JSON: ${{ secrets.LIP_LICENSE_TOKEN_JSON }}
+          LIP_LICENSE_KEY_HEX: ${{ secrets.LIP_LICENSE_KEY_HEX }}
         run: |
           chmod +x ./scripts/deploy_staging_self_hosted.sh
           ./scripts/deploy_staging_self_hosted.sh lip-staging

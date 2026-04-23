@@ -32,6 +32,7 @@ try:
     from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
     from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
     from lip.c7_execution_agent.kill_switch import KillSwitch
+    from lip.c8_license_manager.runtime import enforce_component_license
     from lip.common.borrower_registry import BorrowerRegistry
     from lip.common.known_entity_registry import KnownEntityRegistry
     from lip.common.local_env import load_repo_env_file
@@ -64,6 +65,7 @@ try:
 
         # Core components
         kill_switch = KillSwitch()
+        license_context = enforce_component_license("C7", kill_switch=kill_switch)
         # B2-13: Store in app state so the registry is reachable and not silently GC'd.
         borrower_registry = BorrowerRegistry(redis_client=redis_client)
         known_entity_registry = KnownEntityRegistry(redis_client=redis_client)
@@ -192,6 +194,7 @@ try:
         # from middleware, background tasks, or future endpoints.
         application.state.borrower_registry = borrower_registry
         application.state.known_entity_registry = known_entity_registry
+        application.state.license_context = license_context
 
         # Mount routers
         application.include_router(

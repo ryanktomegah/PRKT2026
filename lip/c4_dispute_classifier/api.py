@@ -13,6 +13,8 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from lip.c8_license_manager.runtime import enforce_component_license
+
 from .model import DisputeClassifier
 
 
@@ -27,12 +29,13 @@ class C4ClassifyRequest(BaseModel):
 def _serialize_result(result: dict) -> dict:
     serialized = dict(result)
     dispute_class = serialized.get("dispute_class")
-    if hasattr(dispute_class, "value"):
+    if dispute_class is not None and hasattr(dispute_class, "value"):
         serialized["dispute_class"] = dispute_class.value
     return serialized
 
 
 def create_app(classifier: Optional[DisputeClassifier] = None) -> FastAPI:
+    enforce_component_license("C4")
     c4_classifier = classifier or DisputeClassifier()
     app = FastAPI(title="LIP C4 Dispute Classifier", version="1.0.0")
 
