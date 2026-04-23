@@ -460,6 +460,8 @@ spec:
                 secretKeyRef:
                   name: lip-aml-secret
                   key: current_salt
+            - name: LIP_SANCTIONS_PATH
+              value: /app/lip/c6_aml_velocity/data/sanctions.json
             - name: LIP_ENFORCE_LICENSE_VALIDATION
               value: "true"
             - name: LIP_LICENSE_TOKEN_JSON
@@ -559,6 +561,8 @@ spec:
               value: /app/artifacts/c1_trained
             - name: LIP_C2_MODEL_PATH
               value: /app/artifacts/c2_trained/c2_model.pkl
+            - name: LIP_SANCTIONS_PATH
+              value: /app/lip/c6_aml_velocity/data/sanctions.json
             - name: LIP_API_ENABLE_REAL_PIPELINE
               value: "true"
             - name: LIP_ENFORCE_LICENSE_VALIDATION
