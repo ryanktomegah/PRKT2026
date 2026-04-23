@@ -62,6 +62,13 @@ PYTHONPATH=. python -m pytest lip/tests/test_e2e_pipeline.py -v
 GROQ_API_KEY_FILE=.secrets/groq_api_key PYTHONPATH=. python -m pytest lip/tests/test_c4_llm_integration.py -v
 # Auto-skipped without GROQ_API_KEY/GROQ_API_KEY_FILE.
 
+# Generate and publish the staging kubeconfig consumed by GitHub Actions deploys
+KUBE_SERVER="https://<cluster-endpoint>" \
+KUBE_TOKEN="<service-account-token>" \
+KUBE_CA_FILE=/path/to/ca.crt \
+./scripts/make_kubeconfig.sh .secrets/staging.kubeconfig
+./scripts/set_github_kubeconfig.sh .secrets/staging.kubeconfig
+
 # Type checking
 mypy lip/
 
