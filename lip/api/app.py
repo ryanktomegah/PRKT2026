@@ -33,6 +33,7 @@ try:
     from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
     from lip.c7_execution_agent.kill_switch import KillSwitch
     from lip.c8_license_manager.runtime import enforce_component_license
+    from lip.api.runtime_pipeline import build_runtime_pipeline, real_pipeline_enabled
     from lip.common.borrower_registry import BorrowerRegistry
     from lip.common.known_entity_registry import KnownEntityRegistry
     from lip.common.local_env import load_repo_env_file
@@ -48,6 +49,25 @@ try:
     # Local dev/test convenience: load gitignored .env.local when present,
     # but never override real environment variables injected by the runtime.
     load_repo_env_file()
+
+    def _decode_runtime_key(raw: str, env_name: str) -> bytes:
+        stripped = raw.strip()
+        if len(stripped) % 2 == 0 and all(
+            ch in "0123456789abcdefABCDEF" for ch in stripped
+        ):
+            try:
+                return bytes.fromhex(stripped)
+            except ValueError:
+                pass
+        try:
+            import base64 as _base64
+
+            return _base64.b64decode(stripped, validate=True)
+        except Exception as exc:
+            raise RuntimeError(
+                f"{env_name} is neither valid hex nor valid base64. "
+                "Refusing to start with an unparseable key."
+            ) from exc
 
     def create_app(pipeline=None, processor_context=None, cascade_graph=None,
                    systemic_risk_engine=None) -> FastAPI:
@@ -117,22 +137,8 @@ try:
         # endpoints return 401 rather than allowing unauthenticated access (B2-01).
         hmac_key_hex = os.environ.get("LIP_API_HMAC_KEY", "").strip()
         if hmac_key_hex:
-            # B2-05 / B2-06: Try base64 first, then hex.  Raise on both failures
-            # rather than silently falling back to UTF-8 encoding.
-            hmac_key: bytes
-            try:
-                import base64 as _base64
-                hmac_key = _base64.b64decode(hmac_key_hex, validate=True)
-                logger.debug("LIP_API_HMAC_KEY decoded as base64 (%d bytes)", len(hmac_key))
-            except Exception:
-                try:
-                    hmac_key = bytes.fromhex(hmac_key_hex)
-                    logger.debug("LIP_API_HMAC_KEY decoded as hex (%d bytes)", len(hmac_key))
-                except ValueError as exc:
-                    raise RuntimeError(
-                        "LIP_API_HMAC_KEY is neither valid base64 nor valid hex. "
-                        "Refusing to start with an unparseable key."
-                    ) from exc
+            hmac_key = _decode_runtime_key(hmac_key_hex, "LIP_API_HMAC_KEY")
+            logger.debug("LIP_API_HMAC_KEY decoded (%d bytes)", len(hmac_key))
             auth_dep = make_hmac_dependency(hmac_key)
         else:
             # No key configured: install a deny-all dependency so protected
@@ -196,6 +202,27 @@ try:
         application.state.known_entity_registry = known_entity_registry
         application.state.license_context = license_context
 
+        runtime_pipeline = pipeline
+        runtime_processor_context = processor_context
+        if runtime_pipeline is None and real_pipeline_enabled():
+            runtime_pipeline, derived_processor_context = build_runtime_pipeline(
+                kill_switch=kill_switch,
+                settlement_monitor=settlement_monitor,
+                borrower_registry=borrower_registry,
+                known_entity_registry=known_entity_registry,
+                redis_client=redis_client,
+                license_context=license_context,
+            )
+            if runtime_processor_context is None:
+                runtime_processor_context = derived_processor_context
+            logger.info(
+                "Real runtime pipeline enabled (processor_mode=%s)",
+                runtime_processor_context is not None,
+            )
+
+        application.state.runtime_pipeline = runtime_pipeline
+        application.state.processor_context = runtime_processor_context
+
         # Mount routers
         application.include_router(
             make_health_router(readiness_checker),
@@ -234,7 +261,7 @@ try:
             return metrics_collector.generate_latest()
 
         # MIPLO gateway (P3 processor deployments — conditional)
-        if pipeline is not None and processor_context is not None:
+        if runtime_pipeline is not None and runtime_processor_context is not None:
             from decimal import Decimal as _Decimal
 
             from lip.api.miplo_router import make_miplo_router
@@ -256,19 +283,19 @@ try:
             settlement_bridge.upgrade_to_processor_mode(
                 revenue_metering=revenue_metering,
                 nav_emitter=nav_emitter,
-                platform_take_rate_pct=_Decimal(str(processor_context.platform_take_rate_pct)),
+                platform_take_rate_pct=_Decimal(str(runtime_processor_context.platform_take_rate_pct)),
             )
 
             # Tenant-scoped portfolio reporter for MIPLO
             miplo_portfolio_reporter = PortfolioReporter(
                 repayment_loop=repayment_loop,
                 royalty_settlement=royalty_settlement,
-                licensee_id=processor_context.licensee_id,
+                licensee_id=runtime_processor_context.licensee_id,
                 risk_engine=risk_engine,
             )
 
             miplo_svc = MIPLOService(
-                pipeline, processor_context, metrics_collector,
+                runtime_pipeline, runtime_processor_context, metrics_collector,
                 portfolio_reporter=miplo_portfolio_reporter,
             )
             application.include_router(

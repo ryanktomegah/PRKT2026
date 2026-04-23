@@ -54,12 +54,22 @@ generate_ephemeral_license() {
     PYTHONPATH=. python - <<'PY'
 import json
 import secrets
+import os
 from datetime import date, timedelta
 
 from lip.c8_license_manager.license_token import ALL_COMPONENTS, LicenseToken, sign_token
 
 key = secrets.token_bytes(32)
 today = date.today()
+licensee_type = os.environ.get("LIP_STAGING_LICENSEE_TYPE", "PROCESSOR")
+sub_licensee_bics = [
+    bic.strip()
+    for bic in os.environ.get(
+        "LIP_PROCESSOR_SUB_LICENSEE_BICS",
+        "COBADEFF,DEUTDEFF,CHASUS33",
+    ).split(",")
+    if bic.strip()
+]
 token = LicenseToken(
     licensee_id="SELF_HOSTED_STAGING",
     issue_date=today.isoformat(),
@@ -69,6 +79,11 @@ token = LicenseToken(
     aml_count_cap=500,
     min_loan_amount_usd=500_000,
     deployment_phase="LICENSOR",
+    licensee_type=licensee_type,
+    sub_licensee_bics=sub_licensee_bics if licensee_type == "PROCESSOR" else [],
+    annual_minimum_usd=500_000 if licensee_type == "PROCESSOR" else 0,
+    performance_premium_pct=0.15 if licensee_type == "PROCESSOR" else 0.0,
+    platform_take_rate_pct=0.20 if licensee_type == "PROCESSOR" else 0.0,
     permitted_components=list(ALL_COMPONENTS),
 )
 signed = sign_token(token, key)
@@ -511,6 +526,17 @@ spec:
                 secretKeyRef:
                   name: lip-api-auth-secret
                   key: hmac_key
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lip-groq-secret
+                  key: api_key
+            - name: LIP_C4_BACKEND
+              value: groq
+            - name: LIP_C4_MODEL
+              value: qwen/qwen3-32b
+            - name: LIP_API_ENABLE_REAL_PIPELINE
+              value: "true"
             - name: LIP_ENFORCE_LICENSE_VALIDATION
               value: "true"
             - name: LIP_LICENSE_TOKEN_JSON
