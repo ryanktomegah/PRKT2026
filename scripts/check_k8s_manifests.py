@@ -136,8 +136,8 @@ def check_no_latest_in_prod(failures):
         if re.search(r"^\s+tag:\s*latest", line) and not line.strip().startswith("#")
     ]
     if latest_lines:
-        failures.append(f"values-prod.yaml uses tag: latest — must be explicit semver tag")
-        print(f"  [FAIL] values-prod.yaml uses tag: latest")
+        failures.append("values-prod.yaml uses tag: latest — must be explicit semver tag")
+        print("  [FAIL] values-prod.yaml uses tag: latest")
     else:
         print("  [PASS] values-prod.yaml does not hardcode tag: latest")
 
