@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # This avoids pulling the full repo ML/training stack (torch, flwr, opacus, dev tools)
 # into the staging image.
 COPY lip/ ./lip/
+COPY artifacts/c2_trained/ ./artifacts/c2_trained/
 RUN pip install --no-cache-dir -e "/app/lip[${LIP_C2_EXTRAS}]"
 
 # Model artifacts mounted at /models (c2_model.json)
@@ -31,5 +32,7 @@ USER lipuser
 
 # FastAPI inference server
 EXPOSE 8081
+
+ENV LIP_C2_MODEL_PATH=/app/artifacts/c2_trained/c2_model.pkl
 
 CMD ["uvicorn", "lip.c2_pd_model.api:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "2"]

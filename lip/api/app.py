@@ -29,11 +29,11 @@ try:
         make_known_entities_router,
         make_portfolio_router,
     )
+    from lip.api.runtime_pipeline import build_runtime_pipeline, real_pipeline_enabled
     from lip.c3_repayment_engine.repayment_loop import RepaymentLoop, SettlementMonitor
     from lip.c3_repayment_engine.settlement_handlers import SettlementHandlerRegistry
     from lip.c7_execution_agent.kill_switch import KillSwitch
     from lip.c8_license_manager.runtime import enforce_component_license
-    from lip.api.runtime_pipeline import build_runtime_pipeline, real_pipeline_enabled
     from lip.common.borrower_registry import BorrowerRegistry
     from lip.common.known_entity_registry import KnownEntityRegistry
     from lip.common.local_env import load_repo_env_file

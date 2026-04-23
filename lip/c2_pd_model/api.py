@@ -72,6 +72,7 @@ def _load_or_bootstrap_model() -> tuple[PDModel, str]:
     if model_path and os.path.exists(model_path):
         try:
             model.load(model_path)
+            logger.info("Loaded C2 model artifact from %s", model_path)
             return model, "artifact"
         except Exception as exc:
             logger.warning(
@@ -95,6 +96,7 @@ class C2Service:
             self._model = model
             self.model_source = "injected"
         self._salt = salt or _load_salt()
+        logger.info("C2 service ready (%s)", self.model_source)
 
     def predict(self, payment: dict[str, Any], borrower: dict[str, Any]) -> dict[str, Any]:
         configure_inference_salt(self._salt)

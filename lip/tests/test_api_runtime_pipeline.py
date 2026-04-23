@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import secrets
 from datetime import date, timedelta
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -45,8 +46,11 @@ def test_real_runtime_pipeline_mounts_and_processes_miplo_request(monkeypatch):
     from lip.api import app as app_module
 
     token_json, key_hex = _make_processor_token()
+    artifact_dir = Path(__file__).resolve().parents[2] / "artifacts" / "c1_trained"
     monkeypatch.setenv("LIP_API_ENABLE_REAL_PIPELINE", "true")
     monkeypatch.setenv("LIP_C4_BACKEND", "mock")
+    monkeypatch.setenv("LIP_C1_MODEL_DIR", str(artifact_dir))
+    monkeypatch.setenv("LOKY_MAX_CPU_COUNT", "1")
     monkeypatch.setenv("LIP_API_HMAC_KEY", key_hex)
     monkeypatch.setenv("LIP_ENFORCE_LICENSE_VALIDATION", "true")
     monkeypatch.setenv("LIP_LICENSE_TOKEN_JSON", token_json)
@@ -97,3 +101,29 @@ def test_real_runtime_pipeline_mounts_and_processes_miplo_request(monkeypatch):
     assert isinstance(data["failure_probability"], float)
     assert isinstance(data["above_threshold"], bool)
     assert data["outcome"]
+
+
+def test_torch_artifact_c1_engine_loads_repo_checkpoint(monkeypatch):
+    from lip.api.runtime_pipeline import TorchArtifactInferenceEngine
+
+    artifact_dir = Path(__file__).resolve().parents[2] / "artifacts" / "c1_trained"
+    monkeypatch.setenv("LOKY_MAX_CPU_COUNT", "1")
+    engine = TorchArtifactInferenceEngine(artifact_dir)
+
+    result = engine.predict(
+        {
+            "payment_id": "artifact-check-001",
+            "amount_usd": 75_000.0,
+            "timestamp": "2026-04-23T12:00:00+00:00",
+            "currency_pair": "USD_EUR",
+            "sending_bic": "COBADEFF",
+            "receiving_bic": "DEUTDEFF",
+            "charge_type": "SHA",
+            "message_type": "103",
+            "beneficiary_name": "Acme Corp",
+        }
+    )
+
+    assert 0.0 <= result["failure_probability"] <= 1.0
+    assert isinstance(result["above_threshold"], bool)
+    assert result["shap_top20"]

@@ -9,11 +9,23 @@ from __future__ import annotations
 import base64
 import logging
 import os
-from typing import Optional, Tuple
+import pickle
+import time
+from pathlib import Path
+from typing import Any, Optional, Protocol, Tuple
+
+import numpy as np
 
 from lip.c1_failure_classifier.embeddings import CorridorEmbeddingPipeline
-from lip.c1_failure_classifier.inference import _DEFAULT_THRESHOLD, InferenceEngine
-from lip.c1_failure_classifier.model import ClassifierModel, create_default_model
+from lip.c1_failure_classifier.features import TabularFeatureEngineer
+from lip.c1_failure_classifier.graph_builder import BICGraphBuilder
+from lip.c1_failure_classifier.inference import (
+    _DEFAULT_THRESHOLD,
+    LATENCY_P50_TARGET_MS,
+    LATENCY_P99_TARGET_MS,
+    InferenceEngine,
+)
+from lip.c1_failure_classifier.model import create_default_model
 from lip.c2_pd_model.api import C2Service
 from lip.c3_repayment_engine.repayment_loop import SettlementMonitor
 from lip.c4_dispute_classifier.model import DisputeClassifier
@@ -32,6 +44,175 @@ from lip.pipeline import LIPPipeline
 logger = logging.getLogger(__name__)
 
 _DEFAULT_AML_SALT = b"lip_staging_aml_salt_32_bytes__"
+_SHAP_TOP_N = 20
+
+
+class _C1Predictor(Protocol):
+    def predict(self, payment: dict) -> dict:
+        ...
+
+
+class TorchArtifactInferenceEngine:
+    """Load and serve the trained C1 torch checkpoint format from ``artifacts/``."""
+
+    def __init__(
+        self,
+        model_dir: Path,
+        *,
+        redis_client=None,
+        threshold: float = _DEFAULT_THRESHOLD,
+    ) -> None:
+        import torch
+
+        from lip.c1_failure_classifier.graphsage_torch import GraphSAGETorch
+        from lip.c1_failure_classifier.model_torch import (
+            ClassifierModelTorch,
+            MLPHeadTorch,
+        )
+        from lip.c1_failure_classifier.tabtransformer_torch import TabTransformerTorch
+
+        self._torch = torch
+        self._model_dir = model_dir
+        self._threshold = threshold
+        self._tab_eng = TabularFeatureEngineer()
+        self._graph = BICGraphBuilder()
+        self._embedding_pipeline = CorridorEmbeddingPipeline(redis_client=redis_client)
+        self._calibrator = None
+        self._scaler = None
+
+        model = ClassifierModelTorch(
+            graphsage=GraphSAGETorch(),
+            tabtransformer=TabTransformerTorch(),
+            mlp_head=MLPHeadTorch(),
+        )
+
+        checkpoint_path = model_dir / "c1_model_parquet.pt"
+        state_dict = self._load_torch_checkpoint(checkpoint_path)
+        model.load_state_dict(state_dict)
+        model.eval()
+        model.lgbm_model = self._load_optional_pickle(model_dir / "c1_lgbm_parquet.pkl")
+        self._calibrator = self._load_optional_pickle(model_dir / "c1_calibrator.pkl")
+        self._scaler = self._load_optional_pickle(model_dir / "c1_scaler.pkl")
+        self._model = model
+
+    def _load_torch_checkpoint(self, checkpoint_path: Path) -> Any:
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"C1 checkpoint not found: {checkpoint_path}")
+        try:
+            state_dict = self._torch.load(
+                checkpoint_path,
+                map_location="cpu",
+                weights_only=True,
+            )
+        except TypeError:
+            state_dict = self._torch.load(checkpoint_path, map_location="cpu")
+        return self._normalise_state_dict(state_dict)
+
+    def _normalise_state_dict(self, state_dict: Any) -> dict[str, Any]:
+        if not isinstance(state_dict, dict):
+            raise TypeError("Expected a checkpoint state_dict mapping.")
+
+        converted = dict(state_dict)
+        for key in list(state_dict):
+            if key.endswith("attn.in_proj_weight"):
+                q_weight, k_weight, v_weight = state_dict[key].chunk(3, dim=0)
+                prefix = key[: -len("in_proj_weight")]
+                converted[f"{prefix}q_proj.weight"] = q_weight
+                converted[f"{prefix}k_proj.weight"] = k_weight
+                converted[f"{prefix}v_proj.weight"] = v_weight
+                converted.pop(key, None)
+            elif key.endswith("attn.in_proj_bias"):
+                q_bias, k_bias, v_bias = state_dict[key].chunk(3, dim=0)
+                prefix = key[: -len("in_proj_bias")]
+                converted[f"{prefix}q_proj.bias"] = q_bias
+                converted[f"{prefix}k_proj.bias"] = k_bias
+                converted[f"{prefix}v_proj.bias"] = v_bias
+                converted.pop(key, None)
+        return converted
+
+    def _load_optional_pickle(self, path: Path) -> Any:
+        if not path.exists():
+            return None
+        with path.open("rb") as handle:
+            return pickle.load(handle)  # noqa: S301 - trusted repository-owned model artifacts
+
+    def _compute_shap_top20(self, tabular_features: np.ndarray) -> list[dict]:
+        feature_names = self._tab_eng.feature_names()
+        indexed = sorted(
+            enumerate(tabular_features),
+            key=lambda item: abs(float(item[1])),
+            reverse=True,
+        )[:_SHAP_TOP_N]
+        return [
+            {"feature": feature_names[index], "value": float(value)}
+            for index, value in indexed
+        ]
+
+    def _check_latency(self, latency_ms: float) -> None:
+        if latency_ms > LATENCY_P99_TARGET_MS:
+            logger.warning(
+                "Inference latency %.1f ms exceeds P99 target %.0f ms",
+                latency_ms, LATENCY_P99_TARGET_MS,
+            )
+        elif latency_ms > LATENCY_P50_TARGET_MS:
+            logger.debug(
+                "Inference latency %.1f ms exceeds P50 target %.0f ms",
+                latency_ms, LATENCY_P50_TARGET_MS,
+            )
+
+    def predict(self, payment: dict) -> dict:
+        t_start = time.perf_counter()
+
+        tabular_features = self._tab_eng.extract(payment)
+        sending_bic = str(payment.get("sending_bic", ""))
+        node_features = self._graph.get_node_features(sending_bic)
+        neighbor_features = [
+            self._graph.get_node_features(neighbor_bic)
+            for neighbor_bic in self._graph.get_neighbors(sending_bic, k=5)
+        ]
+        neighbor_array = (
+            np.asarray(neighbor_features, dtype=np.float64)
+            if neighbor_features else None
+        )
+
+        full_features = np.concatenate([node_features, tabular_features]).astype(np.float64)
+        if self._scaler is not None:
+            full_features = self._scaler.transform(full_features.reshape(1, -1)).reshape(-1)
+
+        currency_pair = str(payment.get("currency_pair", "UNKNOWN"))
+        corridor_embedding_used = self._embedding_pipeline.retrieve(currency_pair) is not None
+        if not corridor_embedding_used:
+            self._embedding_pipeline.cold_start_embedding(currency_pair, all_pairs=[])
+
+        probability = float(
+            self._model.predict_proba(
+                node_features=full_features[:8],
+                tabular_features=full_features,
+                neighbor_features=neighbor_array,
+            )
+        )
+
+        if self._calibrator is not None:
+            try:
+                probability = float(self._calibrator.predict(np.array([probability]))[0])
+            except Exception as exc:
+                logger.warning(
+                    "Unable to apply C1 calibrator from %s (%s); using raw probability.",
+                    self._model_dir,
+                    exc,
+                )
+
+        latency_ms = (time.perf_counter() - t_start) * 1_000.0
+        self._check_latency(latency_ms)
+
+        return {
+            "failure_probability": probability,
+            "above_threshold": probability >= self._threshold,
+            "inference_latency_ms": round(latency_ms, 3),
+            "threshold_used": float(self._threshold),
+            "corridor_embedding_used": corridor_embedding_used,
+            "shap_top20": self._compute_shap_top20(tabular_features),
+        }
 
 
 def real_pipeline_enabled() -> bool:
@@ -66,9 +247,29 @@ def _load_aml_salt() -> bytes:
         return raw.encode("utf-8")
 
 
-def _build_c1_engine(redis_client=None) -> InferenceEngine:
-    model = create_default_model()
+def _build_c1_engine(redis_client=None) -> _C1Predictor:
+    threshold = float(os.environ.get("LIP_C1_THRESHOLD", _DEFAULT_THRESHOLD))
     model_dir = os.environ.get("LIP_C1_MODEL_DIR", "").strip()
+
+    if model_dir:
+        model_path = Path(model_dir)
+        if (model_path / "c1_model_parquet.pt").exists():
+            try:
+                engine = TorchArtifactInferenceEngine(
+                    model_path,
+                    redis_client=redis_client,
+                    threshold=threshold,
+                )
+                logger.info("Runtime C1 engine ready (artifact:%s)", model_path)
+                return engine
+            except Exception as exc:
+                logger.warning(
+                    "Unable to load torch C1 artifacts from %s (%s); trying NumPy loader.",
+                    model_path,
+                    exc,
+                )
+
+    model = create_default_model()
     source = "default"
 
     if model_dir:
@@ -83,7 +284,6 @@ def _build_c1_engine(redis_client=None) -> InferenceEngine:
             )
             model = create_default_model()
 
-    threshold = float(os.environ.get("LIP_C1_THRESHOLD", _DEFAULT_THRESHOLD))
     embedding_pipeline = CorridorEmbeddingPipeline(redis_client=redis_client)
     logger.info("Runtime C1 engine ready (%s)", source)
     return InferenceEngine(

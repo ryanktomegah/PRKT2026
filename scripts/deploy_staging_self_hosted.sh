@@ -28,6 +28,14 @@ bool_flag() {
   esac
 }
 
+load_secret_value() {
+  local name="$1"
+  local path="$2"
+  if [[ -z "${!name:-}" && -f "${path}" ]]; then
+    export "${name}=$(<"${path}")"
+  fi
+}
+
 delete_if_present() {
   kubectl -n "${namespace}" delete "$@" --ignore-not-found >/dev/null 2>&1 || true
 }
@@ -285,6 +293,13 @@ spec:
             - containerPort: 8081
               name: http
           env:
+            - name: LIP_MODEL_HMAC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lip-model-artifact-secret
+                  key: model_hmac_key
+            - name: LIP_C2_MODEL_PATH
+              value: /app/artifacts/c2_trained/c2_model.pkl
             - name: LIP_ENFORCE_LICENSE_VALIDATION
               value: "true"
             - name: LIP_LICENSE_TOKEN_JSON
@@ -521,6 +536,11 @@ spec:
             - containerPort: 8080
               name: http
           env:${redis_url_env}
+            - name: LIP_MODEL_HMAC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lip-model-artifact-secret
+                  key: model_hmac_key
             - name: LIP_API_HMAC_KEY
               valueFrom:
                 secretKeyRef:
@@ -535,6 +555,10 @@ spec:
               value: groq
             - name: LIP_C4_MODEL
               value: qwen/qwen3-32b
+            - name: LIP_C1_MODEL_DIR
+              value: /app/artifacts/c1_trained
+            - name: LIP_C2_MODEL_PATH
+              value: /app/artifacts/c2_trained/c2_model.pkl
             - name: LIP_API_ENABLE_REAL_PIPELINE
               value: "true"
             - name: LIP_ENFORCE_LICENSE_VALIDATION
@@ -909,6 +933,9 @@ case "${profile}" in
 esac
 export DEPLOY_LOCAL_INFRA
 
+load_secret_value GROQ_API_KEY .secrets/groq_api_key
+load_secret_value LIP_MODEL_HMAC_KEY .secrets/c2_model_hmac_key
+
 if bool_flag "${DEPLOY_LOCAL_INFRA}"; then
   require_env LIP_API_IMAGE
 fi
@@ -920,6 +947,7 @@ case "${profile}" in
     require_env LIP_C6_IMAGE
     require_env LIP_API_IMAGE
     require_env GROQ_API_KEY
+    require_env LIP_MODEL_HMAC_KEY
     ;;
   local-full-non-gpu)
     require_env LIP_C2_IMAGE
@@ -929,6 +957,7 @@ case "${profile}" in
     require_env LIP_C6_IMAGE
     require_env LIP_API_IMAGE
     require_env GROQ_API_KEY
+    require_env LIP_MODEL_HMAC_KEY
     ;;
   gpu-full)
     require_env LIP_C1_IMAGE
@@ -940,6 +969,7 @@ case "${profile}" in
     require_env LIP_C6_IMAGE
     require_env LIP_API_IMAGE
     require_env GROQ_API_KEY
+    require_env LIP_MODEL_HMAC_KEY
     ;;
   analytics)
     require_env LIP_API_IMAGE
@@ -982,6 +1012,7 @@ if [[ "${profile}" == local-core || "${profile}" == local-full-non-gpu || "${pro
   apply_secret lip-groq-secret --from-literal=api_key="${GROQ_API_KEY}"
   apply_secret lip-api-auth-secret --from-literal=hmac_key="${api_hmac_key}"
   apply_secret lip-aml-secret --from-literal=current_salt="${aml_salt}"
+  apply_secret lip-model-artifact-secret --from-literal=model_hmac_key="${LIP_MODEL_HMAC_KEY}"
 fi
 
 if bool_flag "${DEPLOY_LOCAL_INFRA}"; then
