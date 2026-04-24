@@ -1,9 +1,41 @@
-# Dockerfile.c7 — C7 Execution Agent Container
-# Bank-side execution orchestrator (ELO)
+# Dockerfile.c7 — C7 Execution Agent Container (also the lip-api surface)
+# Bank-side execution orchestrator (ELO) + real runtime pipeline host
 # Zero outbound, 8GB RAM limit, T4 GPU optional for CPU fallback path
 # Architecture Spec S2.5: Kill switch, KMS unavailability, EU AI Act Art.14
+#
+# Multi-stage build:
+#   stage 1 (rust-builder): compile lip_c6_rust_velocity PyO3 wheel so the
+#     runtime pipeline's AMLChecker uses the Rust fast path instead of the
+#     CRITICAL "Rust extension not found — LATENCY DEGRADED" Python fallback.
+#   stage 2 (runtime): install the wheel + ML stack + LIP package.
 
-FROM python:3.11-slim
+ARG PYTHON_VERSION=3.11
+ARG RUST_VERSION=1.82
+
+FROM rust:${RUST_VERSION}-slim-bookworm AS rust-builder
+
+ARG PYTHON_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/maturin-venv \
+    && /opt/maturin-venv/bin/pip install --no-cache-dir "maturin>=1.7"
+
+WORKDIR /build
+COPY lip/c6_aml_velocity/rust_velocity/ ./rust_velocity/
+WORKDIR /build/rust_velocity
+RUN /opt/maturin-venv/bin/maturin build --release --interpreter python${PYTHON_VERSION} \
+    && mkdir -p /wheels \
+    && cp target/wheels/*.whl /wheels/
+
+# ---------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
 LABEL maintainer="LIP Engineering"
 LABEL component="c7-execution-agent"
@@ -16,17 +48,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Python dependencies
+# openai>=1.0.0 is required for the C4 dispute classifier's Groq/OpenAI-compatible
+# backend (LIP_C4_BACKEND=groq). Without it create_backend() falls back silently
+# to MockLLMBackend, which has no negation awareness and produces false positives
+# on negated disputes (see CLAUDE.md § C4 Dispute Classifier Notes).
 RUN pip install --no-cache-dir \
     numpy>=1.26.0 \
     pydantic>=2.5.0 \
     redis>=5.0.0 \
     cryptography>=42.0.0 \
+    scikit-learn>=1.5.0 \
+    lightgbm>=4.3.0 \
+    torch>=2.6.0 \
+    openai>=1.0.0 \
     uvicorn[standard]>=0.27.0 \
     fastapi>=0.110.0
+
+# Install the Rust velocity wheel so AMLChecker picks up the fast path.
+COPY --from=rust-builder /wheels/*.whl /tmp/wheels/
+RUN pip install --no-cache-dir /tmp/wheels/*.whl && rm -rf /tmp/wheels
 
 # Copy LIP package
 WORKDIR /app
 COPY lip/ ./lip/
+COPY artifacts/c1_trained/ ./artifacts/c1_trained/
+COPY artifacts/c2_trained/ ./artifacts/c2_trained/
 
 # Decision log storage (7-year retention backed by persistent volume)
 RUN mkdir -p /data/decision-log && chmod 700 /data/decision-log

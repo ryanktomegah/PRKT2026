@@ -2,12 +2,15 @@
 
 use lip_kill_switch::{activate, is_killed, reset, KILL_FLAG};
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Barrier};
+use std::sync::{Arc, Barrier, Mutex};
 use std::thread;
+
+static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 /// AtomicBool initialises to `false` — kill switch starts INACTIVE.
 #[test]
 fn test_atomic_flag_default_false() {
+    let _guard = TEST_LOCK.lock().unwrap();
     // Reset to known state before testing.
     KILL_FLAG.store(false, Ordering::SeqCst);
     assert!(!is_killed(), "kill flag must start false (INACTIVE)");
@@ -16,6 +19,7 @@ fn test_atomic_flag_default_false() {
 /// Calling `activate()` stores `true` with SeqCst; `is_killed()` observes it.
 #[test]
 fn test_activate_sets_flag() {
+    let _guard = TEST_LOCK.lock().unwrap();
     KILL_FLAG.store(false, Ordering::SeqCst);
     activate("unit test");
     assert!(is_killed(), "kill flag must be true after activate()");
@@ -26,6 +30,7 @@ fn test_activate_sets_flag() {
 /// Calling `reset()` stores `false` with SeqCst; `is_killed()` observes it.
 #[test]
 fn test_reset_clears_flag() {
+    let _guard = TEST_LOCK.lock().unwrap();
     activate("pre-reset test");
     assert!(is_killed());
     reset();
@@ -35,6 +40,7 @@ fn test_reset_clears_flag() {
 /// Activate → reset → activate cycle must be idempotent.
 #[test]
 fn test_activate_reset_cycle() {
+    let _guard = TEST_LOCK.lock().unwrap();
     KILL_FLAG.store(false, Ordering::SeqCst);
     for i in 0..5 {
         activate(&format!("cycle {}", i));
@@ -50,6 +56,7 @@ fn test_activate_reset_cycle() {
 /// Acquire load. All readers must observe `true` after the barrier.
 #[test]
 fn test_concurrent_reads_no_stale_values() {
+    let _guard = TEST_LOCK.lock().unwrap();
     KILL_FLAG.store(false, Ordering::SeqCst);
 
     let num_readers = 16;
@@ -87,6 +94,7 @@ fn test_concurrent_reads_no_stale_values() {
 /// same process. Verify that the test cleanup actually works.
 #[test]
 fn test_flag_isolation_after_reset() {
+    let _guard = TEST_LOCK.lock().unwrap();
     reset();
     assert!(!is_killed(), "flag must be false after explicit reset");
 }

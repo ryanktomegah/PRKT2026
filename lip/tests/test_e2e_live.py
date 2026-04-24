@@ -181,7 +181,10 @@ def _poll_for_uetr(consumer: Consumer, expected_uetr: str, timeout_s: float = 10
         msg = consumer.poll(0.5)
         if msg is None or msg.error():
             continue
-        decoded = json.loads(msg.value().decode("utf-8"))
+        value = msg.value()
+        if value is None:
+            continue
+        decoded = json.loads(value.decode("utf-8"))
         if decoded.get("GrpHdr", {}).get("MsgId") == expected_uetr:
             return msg
     raise TimeoutError(

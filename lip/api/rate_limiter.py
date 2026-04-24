@@ -92,11 +92,14 @@ class TokenBucketRateLimiter:
 
     def _check_redis(self, key: str) -> Tuple[bool, int]:
         """Redis-backed INCR+TTL rate check (cluster-wide, B2-11)."""
+        redis_client = self._redis
+        if redis_client is None:
+            return self._check_memory(key)
         redis_key = f"ratelimit:{key}:{int(time.time()) // self._period}"
         try:
-            count = self._redis.incr(redis_key)
+            count = redis_client.incr(redis_key)
             if count == 1:
-                self._redis.expire(redis_key, self._period)
+                redis_client.expire(redis_key, self._period)
             remaining = max(0, self._rate - int(count))
             allowed = int(count) <= self._rate
             return allowed, remaining

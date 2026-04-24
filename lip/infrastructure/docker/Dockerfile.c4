@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir \
     numpy>=1.26.0 \
     pydantic>=2.5.0 \
+    fastapi>=0.110.0 \
+    uvicorn[standard]>=0.27.0 \
+    openai>=1.0.0 \
     # GPTQ inference (auto-gptq or exllamav2 — uncomment as appropriate)
     # auto-gptq>=0.7.0 \
     # transformers>=4.38.0 \
@@ -41,4 +44,4 @@ EXPOSE 8080
 ENV LIP_COMPONENT=c4
 ENV PYTHONPATH=/app
 
-CMD ["python", "-m", "uvicorn", "lip.c4_dispute_classifier.model:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "uvicorn", "lip.c4_dispute_classifier.api:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -4,7 +4,7 @@
 >
 > **Why it exists.** The README advertises an "8-component pipeline" but the actual codebase contains at least 14 substantive subsystems. Patent families P5 (Cascade Engine) and P10 (Regulatory Data Product) live entirely inside `lip/` with no reader-facing documentation. The shared `common/` layer underpins everything but had no entry point. This directory closes those gaps.
 
-**Last updated:** 2026-04-07
+**Last updated:** 2026-04-23
 **Parent index:** [`../INDEX.md`](../INDEX.md)
 
 ---
@@ -33,26 +33,29 @@ This is **reference documentation**, not narrative. For the end-to-end story of 
 | [`common.md`](common.md) | Shared infrastructure | `lip/common/` | Schemas, constants, state machines, encryption, business calendar, registries, used by every component |
 | [`configs.md`](configs.md) | Canonical configuration | `lip/configs/` | YAML configuration files (canonical numbers, corridor defaults, rejection taxonomy) — the operative parameters of the platform |
 
-### Eight primary components (already documented in `lip/c{N}_*/README.md`)
+### Eight primary components (full codebase documentation)
 
-| Component | Path | README |
-|-----------|------|--------|
-| C1 — Failure Classifier | `lip/c1_failure_classifier/` | [`lip/c1_failure_classifier/README.md`](../../lip/c1_failure_classifier/README.md) |
-| C2 — PD Model | `lip/c2_pd_model/` | [`lip/c2_pd_model/README.md`](../../lip/c2_pd_model/README.md) |
-| C3 — Repayment Engine | `lip/c3_repayment_engine/` | [`lip/c3_repayment_engine/README.md`](../../lip/c3_repayment_engine/README.md) |
-| C4 — Dispute Classifier | `lip/c4_dispute_classifier/` | [`lip/c4_dispute_classifier/README.md`](../../lip/c4_dispute_classifier/README.md) |
-| C5 — Streaming | `lip/c5_streaming/` | [`lip/c5_streaming/README.md`](../../lip/c5_streaming/README.md) |
-| C6 — AML / Velocity | `lip/c6_aml_velocity/` | [`lip/c6_aml_velocity/README.md`](../../lip/c6_aml_velocity/README.md) |
-| C7 — Execution Agent | `lip/c7_execution_agent/` | [`lip/c7_execution_agent/README.md`](../../lip/c7_execution_agent/README.md) |
-| C8 — License Manager | `lip/c8_license_manager/` | [`lip/c8_license_manager/README.md`](../../lip/c8_license_manager/README.md) |
+Each component has both a short module README in `lip/c{N}_*/README.md` and a deep-dive codebase doc in this directory:
+
+| Component | Path | Codebase doc | Short README |
+|-----------|------|--------------|--------------|
+| C1 — Failure Classifier | `lip/c1_failure_classifier/` | [`c1_failure_classifier.md`](c1_failure_classifier.md) | [`lip/c1_failure_classifier/README.md`](../../../lip/c1_failure_classifier/README.md) |
+| C2 — PD Model | `lip/c2_pd_model/` | [`c2_pd_model.md`](c2_pd_model.md) | [`lip/c2_pd_model/README.md`](../../../lip/c2_pd_model/README.md) |
+| C3 — Repayment Engine | `lip/c3_repayment_engine/` | [`c3_repayment_engine.md`](c3_repayment_engine.md) | [`lip/c3_repayment_engine/README.md`](../../../lip/c3_repayment_engine/README.md) |
+| C4 — Dispute Classifier | `lip/c4_dispute_classifier/` | [`c4_dispute_classifier.md`](c4_dispute_classifier.md) | [`lip/c4_dispute_classifier/README.md`](../../../lip/c4_dispute_classifier/README.md) |
+| C5 — Streaming | `lip/c5_streaming/` | [`c5_streaming.md`](c5_streaming.md) | [`lip/c5_streaming/README.md`](../../../lip/c5_streaming/README.md) |
+| C6 — AML / Velocity | `lip/c6_aml_velocity/` | [`c6_aml_velocity.md`](c6_aml_velocity.md) | [`lip/c6_aml_velocity/README.md`](../../../lip/c6_aml_velocity/README.md) |
+| C7 — Execution Agent | `lip/c7_execution_agent/` | [`c7_execution_agent.md`](c7_execution_agent.md) | [`lip/c7_execution_agent/README.md`](../../../lip/c7_execution_agent/README.md) |
+| C8 — License Manager | `lip/c8_license_manager/` | [`c8_license_manager.md`](c8_license_manager.md) | — (spec only; no module README — CLI-only image) |
 
 ### Forward-looking patent families
 
 | File | Subsystem | Path | Patent |
 |------|-----------|------|--------|
-| [`c9_settlement_predictor.md`](c9_settlement_predictor.md) | C9 settlement-time forecaster | `lip/c9_settlement_predictor/` | Survival-analysis model for ETA bands |
+| [`c9_settlement_predictor.md`](c9_settlement_predictor.md) | C9 settlement-time forecaster | `lip/c9_settlement_predictor/` | Survival-analysis model for ETA bands — batch + optional runtime wiring via `LIP_C9_ENABLED=1` |
 | [`p5_cascade_engine.md`](p5_cascade_engine.md) | P5 supply-chain cascade engine | `lip/p5_cascade_engine/` | **P5 patent family** — corporate entity resolution, cascade propagation, intervention optimisation |
 | [`p10_regulatory_data.md`](p10_regulatory_data.md) | P10 regulatory data product | `lip/p10_regulatory_data/` | **P10 patent family** — privacy-preserving systemic-risk analytics for regulators |
+| [`p12_federated_learning.md`](p12_federated_learning.md) | P12 bank-consortium federated learning | `lip/p12_federated_learning/` | **P12 patent family** — research prototype; not wired into production |
 
 ### Cross-cutting infrastructure
 
@@ -74,9 +77,9 @@ This is **reference documentation**, not narrative. For the end-to-end story of 
 |-------|-------|----------|
 | Architecture overview | [`../architecture.md`](../architecture.md) | ✅ Algorithm 1, state machines, Redis/Kafka maps |
 | Per-component (C1–C8) | `lip/c{N}_*/README.md` | ✅ All eight |
-| Canonical specs (prosecution-grade) | [`../specs/BPI_C{N}_Component_Spec_v1.0*.md`](../specs/) | ✅ All eight; C3/C5/C7 split into Part1/Part2 |
+| Canonical specs (prosecution-grade) | [`../specs/BPI_C{N}_Component_Spec_v1.0*.md`](../specs/) | ✅ All eight (including the 2026-04-23 C8 spec); C3/C5/C7 split into Part1/Part2 |
 | Migration / hardening specs | [`../specs/`](../specs/) | ✅ C1, C2, C3, C5, C6, C7 |
-| Model cards (SR 11-7) | [`../../models/c1-model-card.md`](../../models/c1-model-card.md), [`../../models/c1-training-data-card.md`](../../models/c1-training-data-card.md), [`../../models/c2-model-card.md`](../../models/c2-model-card.md), [`../../legal/c6_sanctions_audit.md`](../../legal/c6_sanctions_audit.md) | ✅ C1, C2, C6 |
+| Model cards (SR 11-7) | [`../../models/c1-model-card.md`](../../models/c1-model-card.md), [`../../models/c1-training-data-card.md`](../../models/c1-training-data-card.md), [`../../models/c2-model-card.md`](../../models/c2-model-card.md), [`../../models/c4-model-card.md`](../../models/c4-model-card.md), [`../../models/c9-model-card.md`](../../models/c9-model-card.md), [`../../legal/c6_sanctions_audit.md`](../../legal/c6_sanctions_audit.md) | ✅ C1, C2, C4, C6, C9 |
 | Forward-looking patents | [`../../models/federated-learning-architecture.md`](../../models/federated-learning-architecture.md), [`../../models/cbdc-protocol-research.md`](../../models/cbdc-protocol-research.md), [`../../legal/patent/Future-Technology-Disclosure-v2.1.md`](../../legal/patent/Future-Technology-Disclosure-v2.1.md) | ✅ P9, P12; P5/P10 documented here |
 | Pipeline orchestrator | [`pipeline.md`](pipeline.md) | ✅ This directory |
 | Shared `common/` layer | [`common.md`](common.md) | ✅ This directory |

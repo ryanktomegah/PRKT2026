@@ -207,6 +207,19 @@ class PrometheusMetricsCollector:
             logger.info("prometheus_client wired — real metrics registered in default registry")
         except ImportError:
             logger.debug("prometheus_client not installed; using in-memory metrics")
+        except ValueError as exc:
+            # Multiple collectors can be constructed in the same Python process
+            # during tests or app factory reloads. prometheus_client rejects
+            # duplicate names in the default registry; keep the in-memory API
+            # available instead of failing construction.
+            self._prom_available = False
+            self._prom_histogram = None
+            self._prom_gauges.clear()
+            self._prom_counters.clear()
+            logger.warning(
+                "prometheus_client metric registration skipped; using in-memory metrics: %s",
+                exc,
+            )
 
     # ── latency ──────────────────────────────────────────────────────────────
 

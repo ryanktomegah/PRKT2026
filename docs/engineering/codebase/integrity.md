@@ -63,5 +63,5 @@ The module's `__init__.py` is intentionally minimal — only the docstring. Call
 
 - **DORA Art. 19 threshold helpers**: `lip/common/regulatory_reporter.py` (`DORAAuditEvent.within_threshold`), consumed by `breach_protocol.py`
 - **SR 11-7 model validation reports**: `lip/compliance/model_card_generator.py` produces them; `claims_registry.py` records them; `compliance_enforcer.py` gates them
-- **EPG decisions that this layer protects**: every 🟡 entry in [`../decisions/README.md`](../decisions/README.md) — the Integrity Shield is what makes "we said X" verifiable against "we actually did X"
+- **EPG decisions that this layer protects**: every 🟡 entry in [`../../legal/decisions/README.md`](../../legal/decisions/README.md) — the Integrity Shield is what makes "we said X" verifiable against "we actually did X"
 - **Patent claims**: `claims_registry.py` carries the published patent claims so `EPG-21` (language scrub) violations can be detected against the registry rather than against ad-hoc memory

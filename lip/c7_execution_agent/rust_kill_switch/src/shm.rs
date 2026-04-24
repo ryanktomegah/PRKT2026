@@ -34,7 +34,7 @@ pub const SHM_SIZE: usize = 288;
 
 // Byte offsets within the segment.
 const OFF_KILL_FLAG: usize = 0;
-const OFF_SHUTDOWN_FLAG: usize = 1;
+const _OFF_SHUTDOWN_FLAG: usize = 1;
 const OFF_ACTIVATED_AT: usize = 4;
 const OFF_REASON_LEN: usize = 12;
 const OFF_REASON_UTF8: usize = 16;
@@ -143,15 +143,16 @@ pub fn read_kill_status() -> io::Result<crate::KillSwitchStatus> {
 #[cfg(unix)]
 fn read_or_init_shm() -> io::Result<Vec<u8>> {
     use libc::{
-        flock, ftruncate, mmap, munmap, shm_open, LOCK_EX, MAP_FAILED, MAP_SHARED, O_CREAT,
-        O_RDWR, PROT_READ, PROT_WRITE, S_IRUSR, S_IWUSR,
+        c_uint, flock, ftruncate, mmap, munmap, shm_open, LOCK_EX, MAP_FAILED, MAP_SHARED,
+        O_CREAT, O_RDWR, PROT_READ, PROT_WRITE, S_IRUSR, S_IWUSR,
     };
     use std::ffi::CString;
     use std::ptr;
 
     let name = CString::new(SHM_NAME).unwrap();
     // SAFETY: shm_open is a standard POSIX syscall; all arguments are valid.
-    let fd = unsafe { shm_open(name.as_ptr(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR) };
+    let mode: c_uint = (S_IRUSR | S_IWUSR) as c_uint;
+    let fd = unsafe { shm_open(name.as_ptr(), O_CREAT | O_RDWR, mode) };
     if fd < 0 {
         return Err(io::Error::last_os_error());
     }
@@ -213,12 +214,16 @@ fn read_or_init_shm() -> io::Result<Vec<u8>> {
 /// same segment immediately after munmap (the kernel flushes on unmap).
 #[cfg(unix)]
 fn commit_to_shm(buf: &[u8]) -> io::Result<()> {
-    use libc::{mmap, munmap, shm_open, MAP_FAILED, MAP_SHARED, O_CREAT, O_RDWR, PROT_READ, PROT_WRITE, S_IRUSR, S_IWUSR};
+    use libc::{
+        c_uint, mmap, munmap, shm_open, MAP_FAILED, MAP_SHARED, O_CREAT, O_RDWR, PROT_READ,
+        PROT_WRITE, S_IRUSR, S_IWUSR,
+    };
     use std::ffi::CString;
     use std::ptr;
 
     let name = CString::new(SHM_NAME).unwrap();
-    let fd = unsafe { shm_open(name.as_ptr(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR) };
+    let mode: c_uint = (S_IRUSR | S_IWUSR) as c_uint;
+    let fd = unsafe { shm_open(name.as_ptr(), O_CREAT | O_RDWR, mode) };
     if fd < 0 {
         return Err(io::Error::last_os_error());
     }

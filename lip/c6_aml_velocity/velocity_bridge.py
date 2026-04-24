@@ -149,6 +149,8 @@ class RustVelocityChecker:
             )
         self._salt = salt
         self._uses_redis = uses_redis
+        self._rust_vel = None
+        self._py_vel = None
 
         if uses_redis:
             # Multi-replica safe path: Python VelocityChecker + Redis Lua.
@@ -156,7 +158,6 @@ class RustVelocityChecker:
             # available; the documented latency cost is ~1–4ms.
             from lip.c6_aml_velocity.velocity import VelocityChecker
 
-            self._rust_vel = None
             self._py_vel = VelocityChecker(salt=salt, redis_client=redis_client)
             logger.info(
                 "VelocityBridge using Python+Redis path — multi-replica "
@@ -167,11 +168,9 @@ class RustVelocityChecker:
                 window_seconds=window_seconds,
                 salt=list(salt),
             )
-            self._py_vel = None
         else:
             from lip.c6_aml_velocity.velocity import VelocityChecker
 
-            self._rust_vel = None
             self._py_vel = VelocityChecker(salt=salt, redis_client=None)
 
     def check(
@@ -192,6 +191,8 @@ class RustVelocityChecker:
                     entity_id, amount, beneficiary_id,
                     dollar_cap_override, count_cap_override,
                 )
+            if self._py_vel is None:
+                raise RuntimeError("VelocityBridge has no active backend")
             return self._py_vel.check(
                 entity_id, amount, beneficiary_id,
                 dollar_cap_override, count_cap_override,
@@ -210,14 +211,17 @@ class RustVelocityChecker:
     ):
         from lip.c6_aml_velocity.velocity import VelocityResult
 
+        rust_vel = self._rust_vel
+        if rust_vel is None:
+            raise RuntimeError("VelocityBridge Rust path requested without Rust backend")
         dollar_cap = float(dollar_cap_override) if dollar_cap_override is not None else 0.0
         count_cap = count_cap_override if count_cap_override is not None else 0
-        passed, reason, vol_usd, cnt = self._rust_vel.check(
+        passed, reason, vol_usd, cnt = rust_vel.check(
             entity_id, beneficiary_id, float(amount),
             dollar_cap, count_cap, 0.80,
         )
-        entity_hash = self._rust_vel.hash_id(entity_id)
-        conc = self._rust_vel.get_beneficiary_concentration(entity_id)
+        entity_hash = rust_vel.hash_id(entity_id)
+        conc = rust_vel.get_beneficiary_concentration(entity_id)
         return VelocityResult(
             passed=passed,
             reason=reason if reason else None,
@@ -239,6 +243,8 @@ class RustVelocityChecker:
         if self._rust_vel is not None:
             self._rust_vel.record(entity_id, beneficiary_id, float(amount))
         else:
+            if self._py_vel is None:
+                raise RuntimeError("VelocityBridge has no active backend")
             self._py_vel.record(
                 entity_id, amount, beneficiary_id,
                 dollar_cap_override, count_cap_override,
@@ -279,6 +285,8 @@ class RustVelocityChecker:
                 count_24h=int(cnt),
                 beneficiary_concentration=Decimal(str(round(conc, 6))) if conc > 0 else None,
             )
+        if self._py_vel is None:
+            raise RuntimeError("VelocityBridge has no active backend")
         return self._py_vel.check_and_record(
             entity_id, amount, beneficiary_id,
             dollar_cap_override, count_cap_override,
@@ -288,6 +296,8 @@ class RustVelocityChecker:
         """Return the hashed entity ID (for test/audit use)."""
         if self._rust_vel is not None:
             return self._rust_vel.hash_id(entity_id)
+        if self._py_vel is None:
+            raise RuntimeError("VelocityBridge has no active backend")
         return self._py_vel._hash_entity(entity_id)
 
     def get_rust_metrics(self) -> dict:
@@ -301,4 +311,6 @@ class RustVelocityChecker:
         if self._rust_vel is not None:
             self._rust_vel.flush()
         else:
+            if self._py_vel is None:
+                raise RuntimeError("VelocityBridge has no active backend")
             self._py_vel._window._records.clear()

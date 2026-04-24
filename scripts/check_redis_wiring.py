@@ -16,7 +16,6 @@ Usage:
 Exit code: 0 = all checks pass, 1 = any check fails.
 """
 import argparse
-import ast
 import inspect
 import sys
 from pathlib import Path
@@ -30,7 +29,10 @@ def check_static():
 
     # ── 1. redis_factory.py importable ───────────────────────────────────────
     try:
-        from lip.common.redis_factory import create_redis_client, _redact_url
+        from lip.common.redis_factory import (  # noqa: F401 — import-as-check
+            _redact_url,
+            create_redis_client,
+        )
         print("  [PASS] lip.common.redis_factory importable")
     except ImportError as e:
         failures.append(f"lip.common.redis_factory import failed: {e}")
@@ -131,7 +133,7 @@ def check_live():
         return failures
 
     from decimal import Decimal
-    from lip.c6_aml_velocity.velocity import RollingWindow, VelocityChecker
+    from lip.c6_aml_velocity.velocity import RollingWindow
 
     # CRUD cycle
     window = RollingWindow(window_seconds=86400, redis_client=client)

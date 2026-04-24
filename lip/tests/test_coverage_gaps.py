@@ -50,6 +50,7 @@ from lip.common.encryption import (
     sign_hmac_sha256,
     verify_hmac_sha256,
 )
+from lip.common.schemas import LoanOfferAcceptance, LoanOfferDelivery
 from lip.pipeline import FAILURE_PROBABILITY_THRESHOLD, LIPPipeline
 
 # ===========================================================================
@@ -648,7 +649,7 @@ class _MockC1:
     def predict(self, payment: dict) -> dict:
         return {
             "failure_probability": self._fp,
-            "above_threshold": self._fp > FAILURE_PROBABILITY_THRESHOLD,
+            "above_threshold": self._fp >= FAILURE_PROBABILITY_THRESHOLD,
             "shap_top20": [{"feature": f"f{i}", "value": 0.01} for i in range(20)],
         }
 
@@ -685,12 +686,13 @@ class _MockC4:
 class _MockC6:
     def __init__(self, passed: bool = True):
         self._passed = passed
+        self.records = []
 
     def check(self, entity_id, amount, beneficiary_id, **kwargs):
         return SimpleNamespace(passed=self._passed)
 
     def record(self, entity_id, amount, beneficiary_id, **kwargs):
-        """No-op: velocity recording is a side effect; tests don't assert on it."""
+        self.records.append((entity_id, amount, beneficiary_id, kwargs))
 
 
 class _MockC7:
@@ -712,6 +714,7 @@ class _MockC7:
                 "maturity_days": ctx.get("maturity_days", 7),
             },
             "decision_entry_id": "entry-001",
+            "delivery_id": "delivery-001",
         }
 
 
@@ -790,33 +793,41 @@ class TestPipelineBelowThreshold:
         result = p.process(event)
         assert result.total_latency_ms > 0
 
+    def test_threshold_boundary_is_inclusive(self):
+        p = _build_pipeline(fp=FAILURE_PROBABILITY_THRESHOLD)
+        event = _make_normalized_event()
+        result = p.process(event)
+        assert result.outcome == "OFFERED"
+        assert result.above_threshold is True
+
 
 class TestPipelineHappyPath:
-    """Full happy path: above threshold, no blocks, offer accepted."""
+    """Full happy path: above threshold, no blocks, offer generated."""
 
-    def test_funded_outcome(self):
+    def test_offered_outcome(self):
         p = _build_pipeline(fp=0.80)
         event = _make_normalized_event()
         result = p.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
 
-    def test_funded_has_loan_offer(self):
+    def test_offered_has_loan_offer(self):
         p = _build_pipeline(fp=0.80)
         event = _make_normalized_event()
         result = p.process(event)
         assert result.loan_offer is not None
         assert result.loan_offer["uetr"] == event.uetr
+        assert result.delivery_id == "delivery-001"
 
-    def test_funded_state_machine_history(self):
+    def test_offered_state_machine_history(self):
         p = _build_pipeline(fp=0.80)
         event = _make_normalized_event()
         result = p.process(event)
         assert "MONITORING" in result.payment_state_history
         assert "FAILURE_DETECTED" in result.payment_state_history
         assert "BRIDGE_OFFERED" in result.payment_state_history
-        assert "FUNDED" in result.payment_state_history
+        assert "FUNDED" not in result.payment_state_history
 
-    def test_funded_has_pd_and_fee(self):
+    def test_offered_has_pd_and_fee(self):
         p = _build_pipeline(fp=0.80, pd_score=0.07, fee_bps=350)
         event = _make_normalized_event()
         result = p.process(event)
@@ -898,6 +909,23 @@ class TestPipelineDisputeBlock:
         result = p.process(event)
         assert result.outcome != "DISPUTE_BLOCKED"
 
+    def test_c4_exception_fail_closed_as_dispute_blocked(self):
+        class RaisingC4:
+            def classify(self, **kwargs):
+                raise TimeoutError("c4 unavailable")
+
+        p = LIPPipeline(
+            c1_engine=_MockC1(0.80),
+            c2_engine=_MockC2(),
+            c4_classifier=RaisingC4(),
+            c6_checker=_MockC6(),
+            c7_agent=_MockC7(),
+        )
+        event = _make_normalized_event()
+        result = p.process(event)
+        assert result.outcome == "DISPUTE_BLOCKED"
+        assert result.dispute_class == "DISPUTE_POSSIBLE"
+
 
 class TestPipelineAMLBlock:
     """C6 returns failed AML check."""
@@ -917,14 +945,14 @@ class TestPipelineAMLBlock:
 
 
 class TestPipelineC3Registration:
-    """Pipeline registers funded loans with C3 settlement monitor."""
+    """Pipeline does not register C3 loans before offer acceptance."""
 
-    def test_c3_register_loan_called_on_funded(self):
+    def test_c3_register_loan_not_called_on_offer(self):
         mock_c3 = MagicMock()
         p = _build_pipeline(fp=0.80, c3_monitor=mock_c3)
         event = _make_normalized_event()
         p.process(event)
-        mock_c3.register_loan.assert_called_once()
+        mock_c3.register_loan.assert_not_called()
 
     def test_c3_not_called_when_below_threshold(self):
         mock_c3 = MagicMock()
@@ -940,20 +968,82 @@ class TestPipelineC3Registration:
         p.process(event)
         mock_c3.register_loan.assert_not_called()
 
-    def test_c3_exception_does_not_crash_pipeline(self):
-        """If C3 registration fails, pipeline should still return FUNDED."""
+    def test_c3_exception_is_not_reached_before_acceptance(self):
+        """Offer creation must not touch C3 registration."""
         mock_c3 = MagicMock()
         mock_c3.register_loan.side_effect = RuntimeError("C3 storage failure")
         p = _build_pipeline(fp=0.80, c3_monitor=mock_c3)
         event = _make_normalized_event()
         result = p.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
+        mock_c3.register_loan.assert_not_called()
+
+    def test_acceptance_finalizer_registers_c3_and_records_c6(self):
+        mock_c3 = MagicMock()
+        c6 = _MockC6()
+        p = LIPPipeline(
+            c1_engine=_MockC1(0.80),
+            c2_engine=_MockC2(),
+            c4_classifier=_MockC4(),
+            c6_checker=c6,
+            c7_agent=_MockC7(),
+            c3_monitor=mock_c3,
+        )
+        now = datetime.now(tz=timezone.utc)
+        offer_id = uuid.uuid4()
+        delivery = LoanOfferDelivery(
+            delivery_id=uuid.uuid4(),
+            offer_id=offer_id,
+            uetr=uuid.uuid4(),
+            elo_entity_id="ELO",
+            principal_usd=Decimal("100000"),
+            fee_bps=Decimal("300"),
+            fee_amount_usd=Decimal("57.53"),
+            maturity_days=7,
+            rejection_code_class="B",
+            offer_expiry=now,
+            pd_score=0.05,
+            delivered_at=now,
+        )
+        acceptance = LoanOfferAcceptance(
+            acceptance_id=uuid.uuid4(),
+            delivery_id=delivery.delivery_id,
+            offer_id=offer_id,
+            uetr=delivery.uetr,
+            elo_entity_id="ELO",
+            elo_operator_id="OPS-001",
+            accepted_at=now,
+        )
+        offer = {
+            "loan_amount": "100000",
+            "fee_bps": 300,
+            "maturity_days": 7,
+            "individual_payment_id": "payment-001",
+            "rejection_class": "CLASS_B",
+            "corridor": "USD_USD",
+            "loan_currency": "USD",
+            "aml_entity_id": "sender-entity",
+            "aml_beneficiary_id": "beneficiary-entity",
+        }
+
+        p.finalize_accepted_offer(acceptance, delivery, offer)
+
+        assert c6.records[0][0:3] == (
+            "sender-entity",
+            Decimal("100000"),
+            "beneficiary-entity",
+        )
+        mock_c3.register_loan.assert_called_once()
+        registered = mock_c3.register_loan.call_args.args[0]
+        assert registered.loan_id == str(offer_id)
+        assert registered.uetr == str(delivery.uetr)
+        assert registered.individual_payment_id == "payment-001"
 
 
 class TestPipelineLatency:
     """Pipeline latency tracking."""
 
-    def test_component_latencies_present_for_funded(self):
+    def test_component_latencies_present_for_offer(self):
         p = _build_pipeline(fp=0.80)
         event = _make_normalized_event()
         result = p.process(event)

@@ -21,6 +21,9 @@
 | `check_k8s_manifests.py` | Static linting of `lip/infrastructure/` Helm and K8s manifests against the canonical security requirements (PSS labels, securityContext, network policies, image pull policy). Run in CI. |
 | `check_redis_wiring.py` | Verifies that every code path that talks to Redis goes through `lip/common/redis_factory.py` (no direct `redis.Redis(...)` calls leaking past the factory) |
 | `check_temporal_features.py` | Verifies temporal-clustering integrity in DGEN-generated corpora — labels preserved, shapes preserved, epoch bounds correct, no train/test leakage on stratified splits |
+| `generate_c2_artifact.py` | Trains a C2 PD model on synthetic data and writes a **signed** pickle (`artifacts/c2_trained/c2_model.pkl` + `.pkl.sig`) plus a `c2_training_report.json`. Requires `LIP_MODEL_HMAC_KEY` (≥32 bytes) or `--hmac-key-file`. Output is gitignored — regenerate per environment, never commit the binary. Consumed by `lip/c2_pd_model/api.py` via `LIP_C2_MODEL_PATH`. |
+| `deploy_staging_self_hosted.sh` | One-command staging deploy against a self-hosted `kubeconfig` (colima / kind / k3s). Profiles: `local-core` (lip-api + lip-c2-pd + lip-c4-dispute + lip-c6-aml), `local-full-non-gpu`, `gpu-full`, `analytics`. Auto-loads `.secrets/groq_api_key` → `GROQ_API_KEY` and `.secrets/c2_model_hmac_key` → `LIP_MODEL_HMAC_KEY`. Injects `LIP_API_ENABLE_REAL_PIPELINE=true` + `LIP_C1_MODEL_DIR` + `LIP_C2_MODEL_PATH` into the API/C2 pods. See [`../../operations/deployment.md`](../../operations/deployment.md) § Self-Hosted Staging Deployment. |
+| `make_kubeconfig.sh` / `set_github_kubeconfig.sh` | Compose a service-account-scoped kubeconfig for the self-hosted runner and publish it to the GitHub Actions secret consumed by `.github/workflows/deploy-staging.yml`. |
 
 ## `/lip/scripts/` — package-internal tooling
 
@@ -44,6 +47,6 @@ These live inside the package because they import freely from `lip.c{N}_*` and `
 ## Cross-references
 
 - **Operational guide**: [`../data-pipeline.md`](../data-pipeline.md) for training command sequences
-- **Deployment**: [`../deployment.md`](../deployment.md) for the production K8s context (these scripts are local-dev / CI only)
+- **Deployment**: [`../../operations/deployment.md`](../../operations/deployment.md) for the production K8s context (these scripts are local-dev / CI only)
 - **Test suite**: [`tests.md`](tests.md) — `test_e2e_live.py` is the consumer of `start_local_infra.sh`
 - **CI**: `.github/workflows/` (run via `gh run list --repo ryanktomegah/PRKT2026`)

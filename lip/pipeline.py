@@ -7,14 +7,15 @@ Algorithm 1: End-to-End Pipeline Processing Loop
 For each payment event:
   1. C5 normalizes the raw event (done by caller; accepts NormalizedEvent)
   2. C1 extracts features + predicts failure_probability
-  3. If failure_probability > threshold (τ* = 0.110):
+  3. If failure_probability >= threshold (τ* = 0.110):
      a. C4 checks for dispute (hard_block check)
      b. C6 checks AML velocity (hard_block check)
      c. C2 computes PD + fee_bps (annualized, 300bps floor)
      d. Decision Engine aggregates signals, generates LoanOffer
      e. C7 receives offer, applies kill switch / KMS checks
-     f. If accepted: FUNDED state, C3 starts settlement monitoring
-  4. Return PipelineResult with full audit trail
+     f. Return OFFERED while the offer awaits ELO acceptance
+  4. C3 settlement monitoring starts only after ELO acceptance
+  5. Return PipelineResult with full audit trail
 
 Three-entity role mapping:
   MLO  — Money Lending Organisation
@@ -46,7 +47,7 @@ from lip.c5_streaming.event_normalizer import NormalizedEvent
 from lip.common.business_calendar import add_business_days, currency_to_jurisdiction
 from lip.common.notification_service import NotificationEventType, NotificationService
 from lip.common.redis_factory import create_redis_client
-from lip.common.schemas import TenantContext
+from lip.common.schemas import LoanOfferAcceptance, LoanOfferDelivery, TenantContext
 from lip.common.state_machines import (
     LoanState,
     LoanStateMachine,
@@ -157,7 +158,6 @@ class LIPPipeline:
         self._c3 = c3_monitor
         self._stress_detector = stress_detector
         self._notification = notification_service
-        self._uetr_tracker = uetr_tracker or UETRTracker()
         self.threshold = threshold
         self._global_tracker = global_latency_tracker
         # Per-corridor failure rates for C1 feature injection.
@@ -168,6 +168,9 @@ class LIPPipeline:
         # If not injected, attempt connection via REDIS_URL env var.
         # None = in-memory fallback (unit tests, local dev — no behavior change).
         self._redis_client = redis_client if redis_client is not None else create_redis_client()
+        # UETR dedup must share the pipeline's Redis client when available so
+        # retry detection survives multi-process / multi-replica deployments.
+        self._uetr_tracker = uetr_tracker or UETRTracker(redis_client=self._redis_client)
         # Phase 1.2: Conformal prediction — widens fee when model uncertainty is high
         self._conformal = conformal_predictor
         # Phase 1.3: Portfolio risk engine — tracks funded positions for VaR/concentration
@@ -323,7 +326,7 @@ class LIPPipeline:
             c1_result = self._c1.predict(payment_dict) if hasattr(self._c1, "predict") else self._c1(payment_dict)
 
         failure_probability = float(c1_result["failure_probability"])
-        above_threshold = failure_probability > self.threshold
+        above_threshold = failure_probability >= self.threshold
         shap_top20 = c1_result.get("shap_top20", [])
 
         # Phase 1.1: Feed numeric features to drift monitor for ADWIN detection
@@ -528,6 +531,9 @@ class LIPPipeline:
             "uetr": event.uetr,
             "individual_payment_id": event.individual_payment_id,
             "sending_bic": event.sending_bic,
+            "receiving_bic": event.receiving_bic,
+            "aml_entity_id": entity_id,
+            "aml_beneficiary_id": beneficiary_id,
             "failure_probability": failure_probability,
             "pd_score": pd_estimate,
             "fee_bps": fee_bps,
@@ -587,6 +593,7 @@ class LIPPipeline:
         c7_status = c7_result["status"]
         loan_offer = c7_result.get("loan_offer")
         decision_entry_id = c7_result.get("decision_entry_id")
+        delivery_id = c7_result.get("delivery_id")
 
         # --- Handle C7 COMPLIANCE_HOLD (EPG-09/10) -------------------------
         # Distinct from DECLINED: compliance/regulatory/legal holds have their own
@@ -710,57 +717,16 @@ class LIPPipeline:
             )
             return _record_and_return(result)
 
-        # --- OFFER accepted → FUNDED --------------------------------------
-        # Transition: FAILURE_DETECTED → BRIDGE_OFFERED → FUNDED
+        # --- OFFER generated → pending ELO acceptance ---------------------
+        # C7's OFFER means the bridge offer has been delivered or queued for
+        # delivery. It is not funding confirmation; C3 activation and portfolio
+        # exposure must wait for an explicit ELO acceptance callback.
         _record_payment_transition(PaymentState.BRIDGE_OFFERED)
-        _record_payment_transition(PaymentState.FUNDED)
-
-        # Transition loan state machine: OFFER_PENDING → ACTIVE
-        loan_sm.transition(LoanState.ACTIVE)
-
-        # GAP-02: Record the transaction in C6 after funding confirmed
-        with tracker.measure("c6_record"):
-            dollar_cap = None
-            count_cap = None
-            if hasattr(self._c7, "aml_dollar_cap_usd"):
-                dollar_cap = Decimal(str(self._c7.aml_dollar_cap_usd))
-            if hasattr(self._c7, "aml_count_cap"):
-                count_cap = self._c7.aml_count_cap
-
-            self._c6.record(
-                entity_id, event.amount, beneficiary_id,
-                dollar_cap_override=dollar_cap,
-                count_cap_override=count_cap
-            )
-
-        # Register with C3 settlement monitor
-        if self._c3 is not None and loan_offer is not None:
-            self._register_with_c3(event, loan_offer, maturity)
-
-        # Phase 1.3: Register funded position with portfolio risk engine
-        if self._risk_engine is not None and loan_offer is not None:
-            try:
-                now = datetime.now(tz=timezone.utc)
-                funded_loan = ActiveLoan(
-                    loan_id=loan_offer["loan_id"],
-                    uetr=event.uetr,
-                    individual_payment_id=event.individual_payment_id,
-                    principal=Decimal(str(loan_offer["loan_amount"])),
-                    fee_bps=int(loan_offer["fee_bps"]),
-                    maturity_date=now + timedelta(days=int(loan_offer["maturity_days"])),
-                    rejection_class=rejection_class_str,
-                    corridor=f"{event.currency}_USD",
-                    funded_at=now,
-                )
-                lgd_float = float(c2_result.get("lgd", 0.45))
-                self._risk_engine.add_position(funded_loan, pd=pd_estimate, lgd=lgd_float)
-            except Exception as exc:
-                logger.warning("Failed to add position to risk engine: %s", exc)
 
         total_ms = (time.perf_counter() - t_start) * 1_000.0
 
         result = PipelineResult(
-            outcome="FUNDED",
+            outcome="OFFERED",
             uetr=event.uetr,
             failure_probability=failure_probability,
             above_threshold=True,
@@ -775,6 +741,7 @@ class LIPPipeline:
             shap_values_c2=shap_values_c2,
             loan_offer=loan_offer,
             decision_entry_id=decision_entry_id,
+            delivery_id=delivery_id,
             payment_state=payment_sm.current_state.value,
             loan_state=loan_sm.current_state.value,
             payment_state_history=state_history,
@@ -816,10 +783,13 @@ class LIPPipeline:
                 )
         except Exception as exc:
             logger.error(
-                "C4 dispute classification failed for uetr=%s — defaulting to NOT_DISPUTE: %s",
+                "C4 dispute classification failed for uetr=%s — fail-closed as DISPUTE_POSSIBLE: %s",
                 event.uetr, exc,
             )
-            return {"dispute_class": DisputeClass.NOT_DISPUTE}
+            return {
+                "dispute_class": DisputeClass.DISPUTE_POSSIBLE,
+                "classification_unavailable": True,
+            }
 
     def _run_c6(
         self,
@@ -884,6 +854,148 @@ class LIPPipeline:
                     event.uetr,
                 )
                 return None
+
+    def finalize_accepted_offer(
+        self,
+        acceptance: LoanOfferAcceptance,
+        delivery: LoanOfferDelivery,
+        offer: dict,
+    ) -> None:
+        """Finalize funding after ELO accepts a delivered offer.
+
+        This is the post-acceptance boundary: C6 velocity recording, C3 active
+        loan registration, and portfolio exposure happen here rather than during
+        initial offer generation.
+        """
+        amount = Decimal(str(offer.get("loan_amount", delivery.principal_usd)))
+        fee_bps = int(Decimal(str(offer.get("fee_bps", delivery.fee_bps))))
+        maturity_days = int(offer.get("maturity_days", delivery.maturity_days))
+        entity_id = str(
+            offer.get("aml_entity_id")
+            or offer.get("sending_bic")
+            or delivery.elo_entity_id
+        )
+        beneficiary_id = str(
+            offer.get("aml_beneficiary_id")
+            or offer.get("receiving_bic")
+            or delivery.elo_entity_id
+        )
+
+        self._record_c6_after_acceptance(entity_id, amount, beneficiary_id)
+        self._register_accepted_offer_with_c3(acceptance, delivery, offer, amount, fee_bps, maturity_days)
+        self._add_accepted_offer_to_risk_engine(acceptance, delivery, offer, amount, fee_bps, maturity_days)
+
+    def _record_c6_after_acceptance(
+        self,
+        entity_id: str,
+        amount: Decimal,
+        beneficiary_id: str,
+    ) -> None:
+        dollar_cap = None
+        count_cap = None
+        if hasattr(self._c7, "aml_dollar_cap_usd"):
+            dollar_cap = Decimal(str(self._c7.aml_dollar_cap_usd))
+        if hasattr(self._c7, "aml_count_cap"):
+            count_cap = self._c7.aml_count_cap
+
+        recorder = self._c6 if hasattr(self._c6, "record") else getattr(self._c6, "_velocity", None)
+        if recorder is None or not hasattr(recorder, "record"):
+            logger.error("C6 recorder unavailable after offer acceptance; velocity state not updated")
+            return
+
+        try:
+            recorder.record(
+                entity_id,
+                amount,
+                beneficiary_id,
+                dollar_cap_override=dollar_cap,
+                count_cap_override=count_cap,
+            )
+        except Exception:
+            logger.exception("Failed to record C6 velocity after offer acceptance")
+
+    def _register_accepted_offer_with_c3(
+        self,
+        acceptance: LoanOfferAcceptance,
+        delivery: LoanOfferDelivery,
+        offer: dict,
+        amount: Decimal,
+        fee_bps: int,
+        maturity_days: int,
+    ) -> None:
+        if self._c3 is None:
+            return
+        try:
+            funded_at = acceptance.accepted_at
+            currency = str(offer.get("loan_currency", "USD"))
+            jurisdiction = currency_to_jurisdiction(currency)
+            maturity_date = datetime.combine(
+                add_business_days(funded_at.date(), maturity_days, jurisdiction),
+                funded_at.time(),
+                tzinfo=timezone.utc,
+            )
+            loan = ActiveLoan(
+                loan_id=str(acceptance.offer_id),
+                uetr=str(acceptance.uetr),
+                individual_payment_id=str(
+                    offer.get("individual_payment_id") or delivery.delivery_id
+                ),
+                principal=amount,
+                fee_bps=fee_bps,
+                maturity_date=maturity_date,
+                rejection_class=_normalise_rejection_class(
+                    str(offer.get("rejection_class") or delivery.rejection_code_class)
+                ),
+                corridor=str(offer.get("corridor", f"{currency}_USD")),
+                funded_at=funded_at,
+                licensee_id=getattr(self._c7, "licensee_id", ""),
+                deployment_phase=str(offer.get("deployment_phase", "LICENSOR")),
+            )
+            self._c3.register_loan(loan)
+            logger.info(
+                "Accepted offer registered with C3: loan_id=%s uetr=%s maturity=%s",
+                loan.loan_id,
+                loan.uetr,
+                maturity_date.isoformat(),
+            )
+        except Exception:
+            logger.exception("Failed to register accepted offer with C3")
+
+    def _add_accepted_offer_to_risk_engine(
+        self,
+        acceptance: LoanOfferAcceptance,
+        delivery: LoanOfferDelivery,
+        offer: dict,
+        amount: Decimal,
+        fee_bps: int,
+        maturity_days: int,
+    ) -> None:
+        if self._risk_engine is None:
+            return
+        try:
+            funded_at = acceptance.accepted_at
+            loan = ActiveLoan(
+                loan_id=str(acceptance.offer_id),
+                uetr=str(acceptance.uetr),
+                individual_payment_id=str(
+                    offer.get("individual_payment_id") or delivery.delivery_id
+                ),
+                principal=amount,
+                fee_bps=fee_bps,
+                maturity_date=funded_at + timedelta(days=maturity_days),
+                rejection_class=_normalise_rejection_class(
+                    str(offer.get("rejection_class") or delivery.rejection_code_class)
+                ),
+                corridor=str(offer.get("corridor", "USD_USD")),
+                funded_at=funded_at,
+            )
+            self._risk_engine.add_position(
+                loan,
+                pd=float(offer.get("pd_score", delivery.pd_score)),
+                lgd=float(offer.get("lgd", 0.45)),
+            )
+        except Exception as exc:
+            logger.warning("Failed to add accepted offer to risk engine: %s", exc)
 
     def _log_block(
         self,
@@ -1112,3 +1224,17 @@ class LIPPipeline:
         for component, latency in tracker.get_latest_all().items():
             self._global_tracker.record(component, latency)
         self._global_tracker.record("total", total_ms)
+
+
+def _normalise_rejection_class(value: str) -> str:
+    """Convert delivery class values (A/B/C) to RejectionClass strings."""
+    normalized = value.strip().upper()
+    if normalized in {"A", "CLASS_A"}:
+        return RejectionClass.CLASS_A.value
+    if normalized in {"B", "CLASS_B"}:
+        return RejectionClass.CLASS_B.value
+    if normalized in {"C", "CLASS_C"}:
+        return RejectionClass.CLASS_C.value
+    if normalized == "BLOCK":
+        return RejectionClass.BLOCK.value
+    return RejectionClass.CLASS_B.value

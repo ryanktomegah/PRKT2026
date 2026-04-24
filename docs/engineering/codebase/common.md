@@ -49,7 +49,7 @@ The module-level docstring describes itself as: *"shared utilities, schemas, con
 | File | Purpose |
 |------|---------|
 | `business_calendar.py` | `add_business_days`, `currency_to_jurisdiction` — closes GAP-09 (calendar-day maturities misfiring on non-business days). Maturity windows (CLASS_A=3d, CLASS_B=7d, CLASS_C=21d) are computed here. |
-| `governing_law.py` | `bic_to_jurisdiction()` derives governing law from BIC chars 4–5 (the SWIFT country code), **not** from payment currency. Implements EPG-14 — see [`../decisions/EPG-14_borrower_identity.md`](../decisions/EPG-14_borrower_identity.md). |
+| `governing_law.py` | `bic_to_jurisdiction()` derives governing law from BIC chars 4–5 (the SWIFT country code), **not** from payment currency. Implements EPG-14 — see [`../../legal/decisions/EPG-14_borrower_identity.md`](../../legal/decisions/EPG-14_borrower_identity.md). |
 
 ### 6. Settlement & money movement
 

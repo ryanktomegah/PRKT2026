@@ -41,6 +41,7 @@ artifacts/
 **/c6_corpus_*.json.sha256
 .env
 .env.local
+.secrets/
 
 # MLflow local tracking database
 mlflow.db

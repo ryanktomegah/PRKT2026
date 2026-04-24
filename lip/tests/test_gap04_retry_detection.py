@@ -61,9 +61,9 @@ class TestGap04RetryDetection:
         event = _make_event(uetr)
 
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         assert uetr_tracker.is_retry(uetr)
-        assert uetr_tracker.get_outcome(uetr) == "FUNDED"
+        assert uetr_tracker.get_outcome(uetr) == "OFFERED"
 
     def test_second_run_is_blocked(self, pipeline, uetr_tracker):
         uetr = "uetr-retry-1"
@@ -77,7 +77,7 @@ class TestGap04RetryDetection:
         assert result.outcome == "RETRY_BLOCKED"
         # Ensure it didn't call C1 again (if it was recorded correctly)
         # We can verify by looking at the outcome in the tracker
-        assert uetr_tracker.get_outcome(uetr) == "FUNDED"
+        assert uetr_tracker.get_outcome(uetr) == "OFFERED"
 
     def test_different_payments_not_blocked(self, pipeline):
         """Genuinely different payments (different amounts) should not be blocked."""
@@ -106,8 +106,8 @@ class TestGap04RetryDetection:
         p1 = pipeline.process(event_a)
         p2 = pipeline.process(event_b)
 
-        assert p1.outcome == "FUNDED"
-        assert p2.outcome == "FUNDED"
+        assert p1.outcome == "OFFERED"
+        assert p2.outcome == "OFFERED"
 
     def test_failed_outcomes_also_recorded(self, pipeline, uetr_tracker):
         # Mock C7 to DECLINE
@@ -152,7 +152,7 @@ class TestGap04TupleBasedRetryDetection:
         )
 
         result1 = pipeline.process(event1)
-        assert result1.outcome == "FUNDED"
+        assert result1.outcome == "OFFERED"
 
         result2 = pipeline.process(event2)
         assert result2.outcome == "RETRY_BLOCKED"
@@ -183,7 +183,7 @@ class TestGap04TupleBasedRetryDetection:
         )
 
         result1 = pipeline.process(event1)
-        assert result1.outcome == "FUNDED"
+        assert result1.outcome == "OFFERED"
 
         result2 = pipeline.process(event2)
         assert result2.outcome == "RETRY_BLOCKED"
@@ -214,10 +214,10 @@ class TestGap04TupleBasedRetryDetection:
         )
 
         result1 = pipeline.process(event1)
-        assert result1.outcome == "FUNDED"
+        assert result1.outcome == "OFFERED"
 
         result2 = pipeline.process(event2)
-        assert result2.outcome == "FUNDED"  # different sender — not a retry
+        assert result2.outcome == "OFFERED"  # different sender — not a retry
 
     def test_different_amount_beyond_tolerance_not_blocked(self, pipeline, uetr_tracker):
         """Amount difference > 0.01% should NOT be blocked."""
@@ -245,7 +245,7 @@ class TestGap04TupleBasedRetryDetection:
         )
 
         result1 = pipeline.process(event1)
-        assert result1.outcome == "FUNDED"
+        assert result1.outcome == "OFFERED"
 
         result2 = pipeline.process(event2)
-        assert result2.outcome == "FUNDED"  # amount too different — not a retry
+        assert result2.outcome == "OFFERED"  # amount too different — not a retry

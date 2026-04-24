@@ -12,6 +12,7 @@ Covers:
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 
 import pytest
 
@@ -30,6 +31,27 @@ from lip.c7_execution_agent.offer_delivery import (
 from lip.common.schemas import LoanOfferAcceptance, LoanOfferDelivery, LoanOfferRejection
 
 _HMAC_KEY = b"test_hmac_key_for_unit_tests_32b"
+
+
+class _FakeRedis:
+    def __init__(self):
+        self._kv = {}
+        self._sets = {}
+
+    def set(self, key, value):
+        self._kv[key] = value
+
+    def get(self, key):
+        return self._kv.get(key)
+
+    def sadd(self, key, value):
+        self._sets.setdefault(key, set()).add(value)
+
+    def srem(self, key, value):
+        self._sets.setdefault(key, set()).discard(value)
+
+    def smembers(self, key):
+        return set(self._sets.get(key, set()))
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +90,7 @@ def _make_payment_context(
 
 def _deliver_offer(
     svc: OfferDeliveryService,
-    uetr: str = None,
+    uetr: Optional[str] = None,
     expires_in_seconds: float = 900.0,
 ) -> tuple:
     """Deliver a synthetic offer to the service. Returns (offer_id_str, LoanOfferDelivery)."""
@@ -555,6 +577,35 @@ class TestOfferDeliveryServiceQueries:
         # snap1 should still have 1 element (it's a copy)
         assert len(snap1) == 1
         assert len(snap2) == 2
+
+
+class TestOfferDeliveryServiceDurableRedis:
+    def test_redis_backed_state_survives_service_recreation(self):
+        redis = _FakeRedis()
+        svc1 = OfferDeliveryService(redis_client=redis)
+        offer_id, delivery = _deliver_offer(svc1)
+
+        svc2 = OfferDeliveryService(redis_client=redis)
+        assert svc2.get_outcome(offer_id) == OfferDeliveryOutcome.PENDING
+        assert svc2.get_delivery(offer_id) == delivery
+
+        acceptance = svc2.accept(offer_id, elo_operator_id="OPS-REDIS")
+        assert svc1.get_outcome(offer_id) == OfferDeliveryOutcome.ACCEPTED
+        assert svc1.get_acceptance(offer_id) == acceptance
+        assert svc1.get_pending_deliveries() == []
+
+    def test_on_accept_resolved_receives_delivery_and_offer(self):
+        received = []
+        svc = OfferDeliveryService(
+            on_accept_resolved=lambda acceptance, delivery, offer: received.append(
+                (acceptance, delivery, offer)
+            )
+        )
+        offer_id, delivery = _deliver_offer(svc)
+        acceptance = svc.accept(offer_id, elo_operator_id="OPS-RESOLVED")
+
+        assert received == [(acceptance, delivery, svc.get_offer(offer_id))]
+        assert received[0][2]["loan_id"] == offer_id
 
 
 # ---------------------------------------------------------------------------

@@ -47,7 +47,7 @@ class DriftEvent:
 def _try_import_river_adwin():
     """Import ADWIN from river, returning None if unavailable."""
     try:
-        from river.drift import ADWIN
+        from river.drift import ADWIN  # type: ignore[import-not-found]
         return ADWIN
     except ImportError:
         return None

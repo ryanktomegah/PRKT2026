@@ -513,3 +513,7 @@ class RepaymentLoop:
         if self._thread.is_alive():
             logger.warning("RepaymentLoop thread did not stop within timeout.")
         self._thread = None
+
+    def is_monitoring(self) -> bool:
+        """Return True when the background monitoring thread is alive."""
+        return self._thread is not None and self._thread.is_alive()

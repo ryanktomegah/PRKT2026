@@ -476,10 +476,11 @@ class TestSanctionsScreenerComprehensive:
         ofac_hits = [h for h in hits if h.reference == "ACME SHELL CORP"]
         assert len(ofac_hits) == 0
 
-    def test_empty_name_returns_no_hits(self):
+    def test_empty_name_raises_value_error(self):
+        """ESG-01: Empty names must hard-fail to prevent sanctions bypass."""
         screener = SanctionsScreener()
-        hits = screener.screen("")
-        assert hits == []
+        with pytest.raises(ValueError, match="empty_name"):
+            screener.screen("")
 
     def test_missing_file_falls_back_to_mock(self):
         """When lists_path points to a non-existent file, mock data is used."""

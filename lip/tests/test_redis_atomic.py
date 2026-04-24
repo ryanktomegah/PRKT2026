@@ -1,10 +1,6 @@
-"""
-test_redis_atomic.py — Tests for atomic Redis operations (ESG-02).
-"""
-import pytest
+from unittest.mock import Mock
 
 from lip.c7_execution_agent.redis_atomic import AtomicOfferOperations
-from unittest.mock import Mock
 
 
 class TestAtomicOfferOperations:
@@ -59,7 +55,7 @@ class TestAtomicOfferOperations:
         operator_id = "operator-456"
         acceptance_id = "acceptance-789"
 
-        result = ops.accept_offer(offer_id, operator_id, acceptance_id)
+        ops.accept_offer(offer_id, operator_id, acceptance_id)
 
         assert mock_script.called
         # register_script returns a Mock, so the Mock's call args contain the script object
@@ -78,7 +74,7 @@ class TestAtomicOfferOperations:
         operator_id = "operator-456"
         rejection_reason = "Insufficient liquidity"
 
-        result = ops.reject_offer(offer_id, operator_id, rejection_reason)
+        ops.reject_offer(offer_id, operator_id, rejection_reason)
 
         assert mock_script.called
 
@@ -92,6 +88,6 @@ class TestAtomicOfferOperations:
 
         offer_id = "offer-123"
 
-        result = ops.expire_offer(offer_id)
+        ops.expire_offer(offer_id)
 
         assert mock_script.called

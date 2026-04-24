@@ -16,10 +16,13 @@ import numpy as np
 
 from lip.common import secure_pickle
 
+from .features import FeatureMasker
+
 logger = logging.getLogger(__name__)
 
 N_ESTIMATORS = 5
 _DEFAULT_SEEDS = [42, 43, 44, 45, 46]
+_PD_FEATURE_NAMES = FeatureMasker.get_full_feature_names()
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +73,27 @@ def _make_sklearn_model(random_seed: int, **params) -> Any:
         random_state=random_seed,
     )
     return GradientBoostingClassifier(**defaults)
+
+
+def _prepare_model_input(
+    model: Any,
+    X: np.ndarray,
+    feature_names: Optional[List[str]] = None,
+) -> Any:
+    """Return model input with stable feature names when pandas is available."""
+    X_arr = np.asarray(X, dtype=np.float64)
+    if X_arr.ndim == 1:
+        X_arr = X_arr[np.newaxis, :]
+    if not (hasattr(model, "feature_name_") or hasattr(model, "feature_names_in_")):
+        return X_arr
+
+    try:
+        import pandas as pd  # noqa: PLC0415
+
+        columns = list(getattr(model, "feature_names_in_", feature_names or _PD_FEATURE_NAMES))
+        return pd.DataFrame(X_arr, columns=columns)
+    except ImportError:
+        return X_arr
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +288,8 @@ class PDModel:
 
         proba_sum = np.zeros(len(X), dtype=np.float64)
         for model in self._models:
-            p = model.predict_proba(X)
+            X_model = _prepare_model_input(model, X)
+            p = model.predict_proba(X_model)
             # predict_proba returns (N, 2); column 1 is P(default=1)
             proba_sum += p[:, 1]
 
@@ -303,17 +328,18 @@ class PDModel:
             X = X[np.newaxis, :]
 
         pd_scores = self.predict_proba(X)
+        X_model = _prepare_model_input(self._models[0], X, feature_names)
 
         shap_matrix: Optional[np.ndarray] = None
         try:
             import shap as _shap  # noqa: PLC0415
 
             explainer = _shap.TreeExplainer(self._models[0])
-            raw = explainer.shap_values(X)
-            # Some versions return list [neg_class, pos_class]; take positive class
-            if isinstance(raw, list):
-                raw = raw[1]
-            shap_matrix = np.asarray(raw, dtype=np.float64)
+            explanation = explainer(X_model)
+            raw = np.asarray(explanation.values, dtype=np.float64)
+            if raw.ndim == 3:
+                raw = raw[:, :, 1]
+            shap_matrix = raw
         except (ImportError, ValueError, TypeError, AttributeError) as exc:
             logger.debug("SHAP unavailable (%s); returning zero SHAP values.", exc, exc_info=True)
             shap_matrix = np.zeros_like(X)

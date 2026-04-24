@@ -17,6 +17,7 @@ from typing import Any, List, Optional
 
 import numpy as np
 
+from .features import TabularFeatureEngineer
 from .graphsage import GRAPHSAGE_OUTPUT_DIM, GraphSAGEModel
 from .tabtransformer import TABTRANSFORMER_INPUT_DIM, TabTransformerModel
 
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 _COMBINED_DIM: int = GRAPHSAGE_OUTPUT_DIM + TABTRANSFORMER_INPUT_DIM  # 472
 _RNG = np.random.default_rng(seed=7)
+_TABULAR_FEATURE_NAMES = TabularFeatureEngineer().feature_names()
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +61,26 @@ def _sigmoid_arr(x: np.ndarray) -> np.ndarray:
 def _xavier_uniform(in_dim: int, out_dim: int, rng: np.random.Generator) -> np.ndarray:
     limit = np.sqrt(6.0 / (in_dim + out_dim))
     return rng.uniform(-limit, limit, size=(in_dim, out_dim)).astype(np.float64)
+
+
+def _prepare_lgbm_tabular_input(model: Any, tabular_features: np.ndarray) -> Any:
+    """Return LightGBM-friendly tabular input with stable feature names."""
+    x_tab = np.asarray(tabular_features[-88:], dtype=np.float64).reshape(1, -1)
+    feature_names = getattr(model, "feature_names_in_", None)
+    if isinstance(feature_names, np.ndarray):
+        feature_names = feature_names.tolist()
+    elif not isinstance(feature_names, (list, tuple)):
+        feature_names = None
+
+    if not feature_names and not hasattr(model, "feature_name_"):
+        return x_tab
+    try:
+        import pandas as pd  # noqa: PLC0415
+
+        columns = list(feature_names or _TABULAR_FEATURE_NAMES)
+        return pd.DataFrame(x_tab, columns=columns)
+    except ImportError:
+        return x_tab
 
 
 # ---------------------------------------------------------------------------
@@ -345,7 +367,7 @@ class ClassifierModel:
 
         if self.lgbm_model is not None:
             # Slicing to last 88 dims ensures compatibility if a 96-dim fused vector was passed
-            x_tab = np.asarray(tabular_features[-88:], dtype=np.float64).reshape(1, -1)
+            x_tab = _prepare_lgbm_tabular_input(self.lgbm_model, tabular_features)
             lgbm_prob = float(self.lgbm_model.predict_proba(x_tab)[0, 1])
             raw_score = 0.5 * neural_prob + 0.5 * lgbm_prob
         else:

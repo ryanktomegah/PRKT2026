@@ -1,9 +1,8 @@
 # LIP — Liquidity Intelligence Platform
 
-[![Tests](https://img.shields.io/badge/tests-1284%20passing-brightgreen)](https://github.com/ryanktomegah/PRKT2026/actions)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/ryanktomegah/PRKT2026/actions)
-[![Ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen)](https://docs.astral.sh/ruff/)
-[![Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://python.org)
+[![LIP CI](https://github.com/ryanktomegah/PRKT2026/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanktomegah/PRKT2026/actions/workflows/ci.yml)
+[![Ruff](https://img.shields.io/badge/ruff-enforced-blue)](https://docs.astral.sh/ruff/)
+[![Python](https://img.shields.io/badge/python-3.10--3.12-blue)](https://python.org)
 
 Real-time payment failure detection and automated bridge lending for correspondent banks. Built by BPI Technology. Patent-pending.
 
@@ -112,6 +111,21 @@ ruff check lip/
 ```bash
 PYTHONPATH=. python lip/train_all.py --help
 ```
+
+### Deploy the Staging Slice
+
+```bash
+# Generate the signed C2 artifact (artifacts/ is gitignored)
+PYTHONPATH=. python scripts/generate_c2_artifact.py \
+    --hmac-key-file .secrets/c2_model_hmac_key
+
+# One-command staging deploy against a self-hosted kubeconfig
+LIP_API_IMAGE=lip-api:local LIP_C2_IMAGE=lip-c2:local \
+LIP_C4_IMAGE=lip-c4:local LIP_C6_IMAGE=lip-c6:local \
+./scripts/deploy_staging_self_hosted.sh --profile local-core
+```
+
+The staging `lip-api` runs the **real runtime pipeline** (`LIP_API_ENABLE_REAL_PIPELINE=true`) with the Torch C1 artifact, the signed C2 pickle, and Groq-backed C4 dispute classification. See [`docs/operations/deployment.md`](docs/operations/deployment.md) for profiles, env vars, and model-source verification.
 
 ---
 

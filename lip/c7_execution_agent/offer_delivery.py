@@ -18,12 +18,13 @@ Three-entity role mapping:
 """
 
 import enum
+import json
 import logging
 import threading
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from lip.common.schemas import (
     LoanOfferAcceptance,
@@ -103,27 +104,33 @@ class OfferDeliveryService:
     def __init__(
         self,
         on_accept: Optional[Callable[[LoanOfferAcceptance], None]] = None,
+        on_accept_resolved: Optional[
+            Callable[[LoanOfferAcceptance, LoanOfferDelivery, dict], None]
+        ] = None,
         on_reject: Optional[Callable[[LoanOfferRejection], None]] = None,
         on_expire: Optional[Callable[[LoanOfferExpiry], None]] = None,
         delivery_endpoint: Optional[str] = None,
+        redis_client=None,
     ) -> None:
-        # B4-05: PROD-BLOCKER — delivery state is in-memory only.
-        # Pod restarts, OOM kills, or horizontal scaling will lose all pending
-        # deliveries. Before production deployment, replace _pending/_acceptances/
-        # _rejections/_expiries with a durable store (e.g. Redis or PostgreSQL)
-        # so offer state survives restarts and is visible across replicas.
-        logger.warning(
-            "OfferDeliveryService initialised with IN-MEMORY state. "
-            "Pod restarts will lose all pending deliveries. "
-            "PROD-BLOCKER: wire a durable store before production deployment."
-        )
+        if redis_client is None:
+            logger.warning(
+                "OfferDeliveryService initialised with IN-MEMORY state. "
+                "Pod restarts will lose all pending deliveries. "
+                "Use redis_client for production deployments."
+            )
+        else:
+            logger.info("OfferDeliveryService initialised with Redis-backed state.")
         self._on_accept = on_accept
+        self._on_accept_resolved = on_accept_resolved
         self._on_reject = on_reject
         self._on_expire = on_expire
         self._delivery_endpoint = delivery_endpoint
+        self._redis = redis_client
         self._lock = threading.Lock()
         # offer_id (str) → LoanOfferDelivery
         self._pending: Dict[str, LoanOfferDelivery] = {}
+        # offer_id (str) → raw C7 loan offer
+        self._offers: Dict[str, dict] = {}
         # offer_id (str) → LoanOfferAcceptance
         self._acceptances: Dict[str, LoanOfferAcceptance] = {}
         # offer_id (str) → LoanOfferRejection
@@ -176,7 +183,11 @@ class OfferDeliveryService:
         )
         offer_id_str = str(delivery.offer_id)
         with self._lock:
-            self._pending[offer_id_str] = delivery
+            if self._redis is not None:
+                self._redis_store_delivery(offer_id_str, delivery, offer)
+            else:
+                self._pending[offer_id_str] = delivery
+                self._offers[offer_id_str] = dict(offer)
         logger.info(
             "Offer delivered: offer_id=%s uetr=%s expiry=%s",
             offer_id_str,
@@ -221,8 +232,13 @@ class OfferDeliveryService:
             raise ValueError("elo_operator_id is required for audit trail")
 
         with self._lock:
-            self._check_resolvable(offer_id)
-            delivery = self._pending.pop(offer_id)
+            if self._redis is not None:
+                delivery = self._redis_get_resolvable_delivery(offer_id)
+                offer = self._redis_get_offer(offer_id)
+            else:
+                self._check_resolvable(offer_id)
+                delivery = self._pending.pop(offer_id)
+                offer = dict(self._offers.get(offer_id, {}))
             acceptance = LoanOfferAcceptance(
                 acceptance_id=uuid.uuid4(),
                 delivery_id=delivery.delivery_id,
@@ -232,7 +248,10 @@ class OfferDeliveryService:
                 elo_operator_id=elo_operator_id,
                 accepted_at=datetime.now(tz=timezone.utc),
             )
-            self._acceptances[offer_id] = acceptance
+            if self._redis is not None:
+                self._redis_store_acceptance(offer_id, acceptance)
+            else:
+                self._acceptances[offer_id] = acceptance
 
         logger.info(
             "Offer accepted: offer_id=%s operator=%s uetr=%s",
@@ -240,6 +259,11 @@ class OfferDeliveryService:
             elo_operator_id,
             acceptance.uetr,
         )
+        if self._on_accept_resolved is not None:
+            try:
+                self._on_accept_resolved(acceptance, delivery, offer)
+            except Exception:
+                logger.exception("on_accept_resolved callback raised for offer_id=%s", offer_id)
         if self._on_accept is not None:
             try:
                 self._on_accept(acceptance)
@@ -283,8 +307,11 @@ class OfferDeliveryService:
             raise ValueError("rejection_reason is required")
 
         with self._lock:
-            self._check_resolvable(offer_id)
-            delivery = self._pending.pop(offer_id)
+            if self._redis is not None:
+                delivery = self._redis_get_resolvable_delivery(offer_id)
+            else:
+                self._check_resolvable(offer_id)
+                delivery = self._pending.pop(offer_id)
             rejection = LoanOfferRejection(
                 rejection_id=uuid.uuid4(),
                 delivery_id=delivery.delivery_id,
@@ -295,7 +322,10 @@ class OfferDeliveryService:
                 rejection_reason=rejection_reason,
                 rejected_at=datetime.now(tz=timezone.utc),
             )
-            self._rejections[offer_id] = rejection
+            if self._redis is not None:
+                self._redis_store_rejection(offer_id, rejection)
+            else:
+                self._rejections[offer_id] = rejection
 
         logger.info(
             "Offer rejected: offer_id=%s operator=%s reason=%r",
@@ -327,13 +357,21 @@ class OfferDeliveryService:
         new_expiries: List[LoanOfferExpiry] = []
 
         with self._lock:
+            if self._redis is not None:
+                pending_items = [
+                    (oid, self._redis_get_delivery(oid))
+                    for oid in self._redis_pending_offer_ids()
+                ]
+            else:
+                pending_items = list(self._pending.items())
             to_expire = [
-                oid
-                for oid, delivery in list(self._pending.items())
-                if _is_expired(delivery, now)
+                (oid, delivery)
+                for oid, delivery in pending_items
+                if delivery is not None and _is_expired(delivery, now)
             ]
-            for oid in to_expire:
-                delivery = self._pending.pop(oid)
+            for oid, delivery in to_expire:
+                if self._redis is None:
+                    self._pending.pop(oid)
                 expiry = LoanOfferExpiry(
                     expiry_id=uuid.uuid4(),
                     delivery_id=delivery.delivery_id,
@@ -345,7 +383,10 @@ class OfferDeliveryService:
                     expired_at=now,
                     class_b_eligible=delivery.class_b_eligible,
                 )
-                self._expiries[oid] = expiry
+                if self._redis is not None:
+                    self._redis_store_expiry(oid, expiry)
+                else:
+                    self._expiries[oid] = expiry
                 new_expiries.append(expiry)
 
         for expiry in new_expiries:
@@ -373,6 +414,11 @@ class OfferDeliveryService:
             If ``offer_id`` is completely unknown to the service.
         """
         with self._lock:
+            if self._redis is not None:
+                state = self._redis_get_state(offer_id)
+                if state is None:
+                    raise OfferNotFoundException(f"offer_id {offer_id!r} not found")
+                return OfferDeliveryOutcome(state)
             if offer_id in self._acceptances:
                 return OfferDeliveryOutcome.ACCEPTED
             if offer_id in self._rejections:
@@ -386,21 +432,54 @@ class OfferDeliveryService:
     def get_acceptance(self, offer_id: str) -> Optional[LoanOfferAcceptance]:
         """Return the LoanOfferAcceptance for ``offer_id``, or None if not accepted."""
         with self._lock:
+            if self._redis is not None:
+                return self._redis_get_acceptance(offer_id)
             return self._acceptances.get(offer_id)
 
     def get_rejection(self, offer_id: str) -> Optional[LoanOfferRejection]:
         """Return the LoanOfferRejection for ``offer_id``, or None if not rejected."""
         with self._lock:
+            if self._redis is not None:
+                return self._redis_get_rejection(offer_id)
             return self._rejections.get(offer_id)
 
     def get_expiry(self, offer_id: str) -> Optional[LoanOfferExpiry]:
         """Return the LoanOfferExpiry for ``offer_id``, or None if not expired (EPG-23)."""
         with self._lock:
+            if self._redis is not None:
+                return self._redis_get_expiry(offer_id)
             return self._expiries.get(offer_id)
+
+    def get_offer(self, offer_id: str) -> Optional[dict]:
+        """Return the raw C7 loan offer dict for ``offer_id``, if known."""
+        with self._lock:
+            if self._redis is not None:
+                return self._redis_get_offer(offer_id)
+            offer = self._offers.get(offer_id)
+            return dict(offer) if offer is not None else None
+
+    def get_delivery(self, offer_id: str) -> Optional[LoanOfferDelivery]:
+        """Return the delivery record for ``offer_id``, if known."""
+        with self._lock:
+            if self._redis is not None:
+                return self._redis_get_delivery(offer_id)
+            delivery = self._pending.get(offer_id)
+            if delivery is not None:
+                return delivery
+            return None
 
     def get_pending_deliveries(self) -> List[LoanOfferDelivery]:
         """Return a snapshot of all PENDING (unresolved, unexpired) deliveries."""
         with self._lock:
+            if self._redis is not None:
+                return [
+                    delivery
+                    for delivery in (
+                        self._redis_get_delivery(oid)
+                        for oid in self._redis_pending_offer_ids()
+                    )
+                    if delivery is not None
+                ]
             return list(self._pending.values())
 
     # ── Internal ─────────────────────────────────────────────────────────────
@@ -438,6 +517,145 @@ class OfferDeliveryService:
             raise OfferExpiredException(
                 f"offer_id {offer_id!r} expired at {delivery.offer_expiry.isoformat()}"
             )
+
+
+    # ── Redis persistence ───────────────────────────────────────────────────
+
+    def _redis_key(self, offer_id: str, suffix: str) -> str:
+        return f"lip:c7:offer_delivery:{offer_id}:{suffix}"
+
+    def _redis_pending_key(self) -> str:
+        return "lip:c7:offer_delivery:pending"
+
+    def _redis_set_text(self, key: str, value: str) -> None:
+        self._redis.set(key, value.encode("utf-8"))
+
+    def _redis_get_text(self, key: str) -> Optional[str]:
+        raw = self._redis.get(key)
+        if raw is None:
+            return None
+        if isinstance(raw, bytes):
+            return raw.decode("utf-8")
+        return str(raw)
+
+    def _redis_set_model(self, key: str, model) -> None:
+        self._redis_set_text(key, model.model_dump_json())
+
+    def _redis_get_model(self, key: str, model_cls):
+        raw = self._redis_get_text(key)
+        if raw is None:
+            return None
+        return model_cls.model_validate_json(raw)
+
+    def _redis_set_json(self, key: str, value: dict[str, Any]) -> None:
+        self._redis_set_text(key, json.dumps(value, separators=(",", ":"), default=str))
+
+    def _redis_get_json(self, key: str) -> Optional[dict]:
+        raw = self._redis_get_text(key)
+        if raw is None:
+            return None
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else None
+
+    def _redis_get_state(self, offer_id: str) -> Optional[str]:
+        return self._redis_get_text(self._redis_key(offer_id, "state"))
+
+    def _redis_store_delivery(
+        self,
+        offer_id: str,
+        delivery: LoanOfferDelivery,
+        offer: dict,
+    ) -> None:
+        self._redis_set_text(self._redis_key(offer_id, "state"), OfferDeliveryOutcome.PENDING.value)
+        self._redis_set_model(self._redis_key(offer_id, "delivery"), delivery)
+        self._redis_set_json(self._redis_key(offer_id, "offer"), dict(offer))
+        self._redis.sadd(self._redis_pending_key(), offer_id)
+
+    def _redis_get_delivery(self, offer_id: str) -> Optional[LoanOfferDelivery]:
+        return self._redis_get_model(self._redis_key(offer_id, "delivery"), LoanOfferDelivery)
+
+    def _redis_get_offer(self, offer_id: str) -> dict:
+        return self._redis_get_json(self._redis_key(offer_id, "offer")) or {}
+
+    def _redis_get_acceptance(self, offer_id: str) -> Optional[LoanOfferAcceptance]:
+        return self._redis_get_model(self._redis_key(offer_id, "acceptance"), LoanOfferAcceptance)
+
+    def _redis_get_rejection(self, offer_id: str) -> Optional[LoanOfferRejection]:
+        return self._redis_get_model(self._redis_key(offer_id, "rejection"), LoanOfferRejection)
+
+    def _redis_get_expiry(self, offer_id: str) -> Optional[LoanOfferExpiry]:
+        return self._redis_get_model(self._redis_key(offer_id, "expiry"), LoanOfferExpiry)
+
+    def _redis_pending_offer_ids(self) -> List[str]:
+        raw_ids = self._redis.smembers(self._redis_pending_key())
+        result = []
+        for raw in raw_ids:
+            result.append(raw.decode("utf-8") if isinstance(raw, bytes) else str(raw))
+        return result
+
+    def _redis_get_resolvable_delivery(self, offer_id: str) -> LoanOfferDelivery:
+        state = self._redis_get_state(offer_id)
+        if state == OfferDeliveryOutcome.ACCEPTED.value or state == OfferDeliveryOutcome.REJECTED.value:
+            raise OfferAlreadyResolvedException(
+                f"offer_id {offer_id!r} has already been resolved"
+            )
+        if state == OfferDeliveryOutcome.EXPIRED.value:
+            raise OfferExpiredException(f"offer_id {offer_id!r} has expired")
+        if state is None:
+            raise OfferNotFoundException(f"offer_id {offer_id!r} not found")
+        if state != OfferDeliveryOutcome.PENDING.value:
+            raise OfferNotFoundException(f"offer_id {offer_id!r} has invalid state {state!r}")
+
+        delivery = self._redis_get_delivery(offer_id)
+        if delivery is None:
+            raise OfferNotFoundException(f"offer_id {offer_id!r} missing delivery record")
+
+        now = datetime.now(tz=timezone.utc)
+        if _is_expired(delivery, now):
+            expiry = LoanOfferExpiry(
+                expiry_id=uuid.uuid4(),
+                delivery_id=delivery.delivery_id,
+                offer_id=delivery.offer_id,
+                uetr=delivery.uetr,
+                elo_entity_id=delivery.elo_entity_id,
+                expiry_reason=OfferExpiryReason.TIMEOUT,
+                offer_generated_at=delivery.delivered_at,
+                expired_at=now,
+                class_b_eligible=delivery.class_b_eligible,
+            )
+            self._redis_store_expiry(offer_id, expiry)
+            raise OfferExpiredException(
+                f"offer_id {offer_id!r} expired at {delivery.offer_expiry.isoformat()}"
+            )
+
+        return delivery
+
+    def _redis_store_acceptance(
+        self,
+        offer_id: str,
+        acceptance: LoanOfferAcceptance,
+    ) -> None:
+        self._redis_set_text(self._redis_key(offer_id, "state"), OfferDeliveryOutcome.ACCEPTED.value)
+        self._redis_set_model(self._redis_key(offer_id, "acceptance"), acceptance)
+        self._redis.srem(self._redis_pending_key(), offer_id)
+
+    def _redis_store_rejection(
+        self,
+        offer_id: str,
+        rejection: LoanOfferRejection,
+    ) -> None:
+        self._redis_set_text(self._redis_key(offer_id, "state"), OfferDeliveryOutcome.REJECTED.value)
+        self._redis_set_model(self._redis_key(offer_id, "rejection"), rejection)
+        self._redis.srem(self._redis_pending_key(), offer_id)
+
+    def _redis_store_expiry(
+        self,
+        offer_id: str,
+        expiry: LoanOfferExpiry,
+    ) -> None:
+        self._redis_set_text(self._redis_key(offer_id, "state"), OfferDeliveryOutcome.EXPIRED.value)
+        self._redis_set_model(self._redis_key(offer_id, "expiry"), expiry)
+        self._redis.srem(self._redis_pending_key(), offer_id)
 
 
 # ---------------------------------------------------------------------------

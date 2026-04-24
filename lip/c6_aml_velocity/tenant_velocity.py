@@ -148,6 +148,8 @@ class StructuringDetector:
             pipe.expire(key, _STRUCTURING_TTL_SECONDS)
             pipe.execute()
             return
+        if self._registry is None:
+            raise RuntimeError("In-memory registry is unavailable in Redis-backed mode")
         self._registry[entity_hash][tenant_id] += amount
 
     def check(
@@ -178,7 +180,8 @@ class StructuringDetector:
                 self._decode(k): Decimal(self._decode(v)) for k, v in raw.items()
             }
         else:
-            tenant_volumes = dict(self._registry.get(entity_hash, {}))
+            registry = self._registry or {}
+            tenant_volumes = dict(registry.get(entity_hash, {}))
         tenant_count = len(tenant_volumes)
         combined = sum(tenant_volumes.values(), Decimal("0"))
         tenants = frozenset(tenant_volumes.keys())

@@ -128,11 +128,11 @@ class TestPipelineLatency:
         # At minimum C1 should be recorded for any result
         assert "c1" in result.component_latencies
 
-    def test_funded_pipeline_records_all_components(self):
+    def test_offered_pipeline_records_all_components(self):
         pipeline = _build_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         latencies = result.component_latencies
         for comp in ("c1", "c4", "c6", "c2", "c7"):
             assert comp in latencies, f"Missing latency for component: {comp}"

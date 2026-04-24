@@ -9,20 +9,19 @@ LABEL description="LIP C2 LightGBM PD model — bridge loan pricing and fee comp
 
 WORKDIR /app
 
+ARG LIP_C2_EXTRAS=c2-runtime
+
 # Install system dependencies required by LightGBM
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt requirements-ml.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-ml.txt
-
-# Copy LIP package
+# Copy and install only the C2 runtime dependency slice.
+# This avoids pulling the full repo ML/training stack (torch, flwr, opacus, dev tools)
+# into the staging image.
 COPY lip/ ./lip/
-WORKDIR /app/lip
-RUN pip install --no-cache-dir -e .
-WORKDIR /app
+COPY artifacts/c2_trained/ ./artifacts/c2_trained/
+RUN pip install --no-cache-dir -e "/app/lip[${LIP_C2_EXTRAS}]"
 
 # Model artifacts mounted at /models (c2_model.json)
 RUN mkdir -p /models
@@ -32,6 +31,8 @@ RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app /models
 USER lipuser
 
 # FastAPI inference server
-EXPOSE 8080
+EXPOSE 8081
 
-CMD ["uvicorn", "lip.c2_pd_model.inference:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "4"]
+ENV LIP_C2_MODEL_PATH=/app/artifacts/c2_trained/c2_model.pkl
+
+CMD ["uvicorn", "lip.c2_pd_model.api:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "2"]

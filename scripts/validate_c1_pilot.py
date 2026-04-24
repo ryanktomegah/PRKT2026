@@ -30,9 +30,13 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from lip.c5_streaming.event_normalizer import NormalizedEvent
+    from lip.pipeline import LIPPipeline
 
 logging.basicConfig(
     level=logging.INFO,
@@ -435,7 +439,7 @@ def run_validation(
     if metrics_path.exists():
         import json
         train_metrics = json.loads(metrics_path.read_text())
-        print(f"\n  Training metrics found:")
+        print("\n  Training metrics found:")
         print(f"    Val AUC:  {train_metrics.get('val_auc', '?')}")
         print(f"    F2 Score: {train_metrics.get('f2_score', '?')}")
         print(f"    ECE:      {train_metrics.get('ece_post_calibration', '?')}")
@@ -539,7 +543,7 @@ def run_validation(
 
     # Outcome distribution
     print(f"\n  {'─' * 50}")
-    print(f"  OUTCOME DISTRIBUTION")
+    print("  OUTCOME DISTRIBUTION")
     print(f"  {'─' * 50}")
     for outcome, count in sorted(outcomes.items(), key=lambda x: -x[1]):
         pct = 100.0 * count / total
@@ -560,7 +564,7 @@ def run_validation(
     print(f"    Above τ*: {above_count}/{len(probs)} ({100.0 * above_count / len(probs):.1f}%)")
 
     # Probability histogram (text-based)
-    print(f"\n    Histogram (10 bins):")
+    print("\n    Histogram (10 bins):")
     hist, bin_edges = np.histogram(probs, bins=10, range=(0, 1))
     max_count = max(hist) if max(hist) > 0 else 1
     for j in range(len(hist)):
@@ -574,7 +578,7 @@ def run_validation(
     lats = np.array(latencies) if latencies else np.array([0.0])
     lats_nonzero = lats[lats > 0] if len(lats[lats > 0]) > 0 else lats
     print(f"\n  {'─' * 50}")
-    print(f"  LATENCY (pipeline end-to-end)")
+    print("  LATENCY (pipeline end-to-end)")
     print(f"  {'─' * 50}")
     print(f"    P50:      {np.percentile(lats_nonzero, 50):.2f} ms")
     print(f"    P95:      {np.percentile(lats_nonzero, 95):.2f} ms")
@@ -585,27 +589,27 @@ def run_validation(
 
     # SHAP
     print(f"\n  {'─' * 50}")
-    print(f"  SHAP EXPLANATIONS")
+    print("  SHAP EXPLANATIONS")
     print(f"  {'─' * 50}")
     if shap_counts:
         print(f"    Payments with SHAP:   {len(shap_counts)}")
         print(f"    Avg features/payment: {np.mean(shap_counts):.1f}")
     else:
-        print(f"    No SHAP data collected (below-threshold payments skip)")
+        print("    No SHAP data collected (below-threshold payments skip)")
 
     # Calibration check
     print(f"\n  {'─' * 50}")
-    print(f"  CALIBRATION CHECK")
+    print("  CALIBRATION CHECK")
     print(f"  {'─' * 50}")
     if calibrator is not None:
         raw_test = np.array([0.1, 0.2, 0.3, 0.5, 0.7, 0.9])
         cal_test = calibrator.predict(raw_test)
-        print(f"    Calibrator transforms (raw → calibrated):")
+        print("    Calibrator transforms (raw → calibrated):")
         for r, c in zip(raw_test, cal_test):
             print(f"      {r:.1f} → {c:.4f}")
         print(f"    Calibrator fitted: {calibrator._is_fitted}")
     else:
-        print(f"    No calibrator loaded — raw scores used")
+        print("    No calibrator loaded — raw scores used")
 
     # Verdict
     print(f"\n  {'═' * 50}")
@@ -650,12 +654,12 @@ def run_validation(
     print(f"\n  VERDICT: {checks_passed}/{checks_total} checks passed")
 
     if checks_passed == checks_total:
-        print(f"\n  ✓ C1 MODEL VALIDATION PASSED")
-        print(f"    The trained model loads, produces calibrated predictions,")
-        print(f"    and the full pipeline generates correct outcomes.")
-        print(f"    Ready for pilot bank integration.")
+        print("\n  ✓ C1 MODEL VALIDATION PASSED")
+        print("    The trained model loads, produces calibrated predictions,")
+        print("    and the full pipeline generates correct outcomes.")
+        print("    Ready for pilot bank integration.")
     else:
-        print(f"\n  ✗ VALIDATION INCOMPLETE — review failures above")
+        print("\n  ✗ VALIDATION INCOMPLETE — review failures above")
 
     print(f"  {'═' * 50}\n")
 
@@ -704,8 +708,8 @@ def main():
     # Verify model directory
     if not args.model_dir.exists():
         print(f"ERROR: Model directory not found: {args.model_dir}")
-        print(f"Download artifacts first:")
-        print(f"  gh run download <run-id> --name <artifact-name> --dir artifacts/c1_trained")
+        print("Download artifacts first:")
+        print("  gh run download <run-id> --name <artifact-name> --dir artifacts/c1_trained")
         sys.exit(1)
 
     results = run_validation(

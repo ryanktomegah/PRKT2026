@@ -56,11 +56,11 @@ def _build_pipeline_with_logger(failure_probability=0.80, degraded=None):
 
 class TestDecisionLogEntry:
 
-    def test_funded_pipeline_produces_one_entry(self):
+    def test_offered_pipeline_produces_one_entry(self):
         pipeline, dl = _build_pipeline_with_logger(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         assert result.decision_entry_id is not None
         entry = dl.get(result.decision_entry_id)
         assert entry is not None

@@ -30,6 +30,24 @@ The HTTP layer exists for three audiences:
 
 The factory composes all routers (admin, MIPLO, portfolio, regulatory, cascade, health) and applies the HMAC authentication dependency from `auth.py`.
 
+### Stub vs. real runtime pipeline
+
+`miplo_router.py` delegates to whichever pipeline is mounted on `app.state.pipeline`. Selection is controlled by `LIP_API_ENABLE_REAL_PIPELINE`:
+
+| Flag value | Pipeline mounted | When used |
+|------------|------------------|-----------|
+| unset / `"false"` | In-memory stub (deterministic, no downstream dependencies) | Unit tests, contract tests, API-shape validation |
+| `"true"` | Full `LIPPipeline` composed by `lip/api/runtime_pipeline.py` | Staging, production, and any integration path that must exercise real C1 / C2 / C4 / C6 / C7 behavior |
+
+The real-runtime assembly (`runtime_pipeline.py`) is the bridge between the FastAPI surface and the trained artifacts. It:
+
+- Builds a C1 engine — preferring `TorchArtifactInferenceEngine` when `LIP_C1_MODEL_DIR` points to a directory with `c1_model_parquet.pt`, falling back to the NumPy loader, and finally to `create_default_model()` if neither is available. Tri-state fallback means a broken artifact degrades to a working engine rather than wedging the API.
+- Instantiates `C2Service` — which independently loads a **signed pickle** at `LIP_C2_MODEL_PATH` using `LIP_MODEL_HMAC_KEY` for verification (see [`../../models/c2-model-card.md`](../../models/c2-model-card.md) § 7).
+- Wires C4 against the Groq/Qwen3 backend when `LIP_C4_BACKEND=groq` and a `GROQ_API_KEY` is present; otherwise falls back to the mock dispute classifier.
+- Composes C6 velocity / sanctions and the C7 execution agent with the C3 settlement monitor — the same object graph the non-HTTP pipeline uses.
+
+Observability: each load path logs a single `ready` line at INFO so operators can confirm the active model source without an HTTP probe — `Runtime C1 engine ready (artifact:<path>)`, `C2 service ready (artifact)` (see [`../../operations/deployment.md`](../../operations/deployment.md) § Operator Commands).
+
 ---
 
 ## Routers and services
@@ -67,4 +85,4 @@ The factory composes all routers (admin, MIPLO, portfolio, regulatory, cascade, 
 - **DORA / SR 11-7 export shape**: `regulatory_models.py` defines the canonical Pydantic models; the underlying data comes from `lip/common/regulatory_reporter.py`
 - **Portfolio reporting**: backed by `lip/risk/portfolio_risk.py` (see [`risk.md`](risk.md)) and `lip/c3_repayment_engine/`
 - **Cascade endpoints**: backed by `lip/p5_cascade_engine/` (see [`p5_cascade_engine.md`](p5_cascade_engine.md))
-- **Operative compliance**: see [`../decisions/EPG-19_compliance_hold_bridging.md`](../decisions/EPG-19_compliance_hold_bridging.md) — there is no API endpoint that can override the compliance-hold block
+- **Operative compliance**: see [`../../legal/decisions/EPG-19_compliance_hold_bridging.md`](../../legal/decisions/EPG-19_compliance_hold_bridging.md) — there is no API endpoint that can override the compliance-hold block

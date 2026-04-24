@@ -49,7 +49,7 @@ class RedisPoolMonitor:
 
         try:
             # connection pool size (approximate number of connections)
-            pool = getattr(self._redis, 'connection_pool', None)
+            pool = getattr(self._redis, "connection_pool", None)
             if pool and hasattr(pool, 'created_connections'):
                 created = len(pool.created_connections)
                 # connections available (in pool, not checked out)
@@ -62,6 +62,8 @@ class RedisPoolMonitor:
         except Exception as exc:
             logger.warning("Failed to get pool utilization: %s", exc)
             return 0.0
+
+        return 0.0
 
     def check_connection_waits(self) -> dict:
         """Check if Redis connection waits are excessive.

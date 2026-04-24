@@ -172,7 +172,13 @@ class AMLChecker:
         # P3 tenant velocity infrastructure (Sprint 2b)
         self._tenant_checkers: dict[str, TenantVelocityChecker] = {}
         self._bpi_rolling_window = RollingWindow(redis_client=redis_client)
-        self._structuring_detector = StructuringDetector(single_replica=True)
+        # Structuring detection must share state across replicas when Redis is
+        # available; otherwise acknowledge the single-replica constraint
+        # (sufficient for unit tests and single-pod staging).
+        if redis_client is not None:
+            self._structuring_detector = StructuringDetector(redis_client=redis_client)
+        else:
+            self._structuring_detector = StructuringDetector(single_replica=True)
         self._base_salt = velocity_checker.salt
 
     # ── Public API ──────────────────────────────────────────────────────────

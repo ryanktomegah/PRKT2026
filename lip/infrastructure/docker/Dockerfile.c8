@@ -1,0 +1,60 @@
+# Dockerfile.c8 — C8 License Manager (admin / audit tooling image)
+# CIPHER-owned boundary component.
+#
+# Unlike C2 / C4 / C6 / C7, C8 does not run as a long-lived HTTP service in the
+# request path. The license validator is called at boot inside every component's
+# process (``enforce_component_license`` in ``lip/c8_license_manager/runtime.py``)
+# and signs / verifies tokens offline via HMAC-SHA256. The primary purpose of
+# this image is:
+#
+#   1. Offline license-token issuance / rotation tooling (BPI-side operations)
+#   2. Regulator-subscription and query-metering CLIs
+#   3. Revenue-metering reconciliation jobs
+#
+# It is NOT a licensee-facing component — banks must NEVER run this image.
+# The image contains no plaintext keys; all sign / verify operations require
+# the HMAC key to be mounted via ``LIP_LICENSE_SIGNING_KEY_FILE`` at runtime.
+
+FROM python:3.11-slim
+
+LABEL maintainer="LIP Engineering"
+LABEL component="c8-license-manager"
+LABEL description="LIP C8 license-issuance + metering tooling — BPI-operations-only"
+LABEL deployment-scope="bpi-only"
+
+WORKDIR /app
+
+# System packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Minimal dependency footprint — C8 does not import ML, Kafka, or HTTP stacks
+# in any of its entry points. Keeping this image small reduces the attack
+# surface of a component that handles licence-signing key material.
+RUN pip install --no-cache-dir \
+    numpy>=1.26.0 \
+    pydantic>=2.5.0 \
+    redis>=5.0.0 \
+    cryptography>=42.0.0 \
+    pyyaml>=6.0
+
+COPY lip/ ./lip/
+WORKDIR /app/lip
+RUN pip install --no-cache-dir -e .
+WORKDIR /app
+
+# Non-root user — C8 is security-boundary code; never run as root.
+RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app
+USER lipuser
+
+ENV LIP_COMPONENT=c8
+ENV PYTHONPATH=/app
+
+# C8 has no HTTP surface in this image. The entry point is the module CLI:
+#   docker run lip-c8:<tag> python -m lip.c8_license_manager.runtime --help
+#   docker run lip-c8:<tag> python -m lip.c8_license_manager.query_metering --help
+#   docker run lip-c8:<tag> python -m lip.c8_license_manager.revenue_metering --help
+# The default CMD prints a help banner so ``docker run`` without arguments
+# fails loudly instead of launching an unexpected service.
+CMD ["python", "-c", "print('LIP C8 License Manager — CLI-only image. Invoke with: python -m lip.c8_license_manager.runtime|query_metering|revenue_metering|regulator_subscription --help')"]

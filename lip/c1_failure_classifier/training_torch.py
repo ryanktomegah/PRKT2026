@@ -172,6 +172,8 @@ class TrainingPipelineTorch:
 
         use_graph = graph is not None and bic_train is not None
         if use_graph:
+            assert bic_train is not None
+            assert graph is not None
             nbr_tensor = _build_neighbor_tensor(bic_train, graph, self.config.k_neighbors_train)
             dataset = TensorDataset(node_feats, labels, nbr_tensor)
         else:
@@ -334,6 +336,8 @@ class TrainingPipelineTorch:
 
         use_graph = graph is not None and bic_train is not None
         if use_graph:
+            assert bic_train is not None
+            assert graph is not None
             nbr_train = _build_neighbor_tensor(bic_train, graph, self.config.k_neighbors_train)
             dataset = TensorDataset(node_feats, tab_feats, labels, nbr_train)
         else:
@@ -359,6 +363,8 @@ class TrainingPipelineTorch:
         # Pre-compute neighbor tensor for checkpoint eval set
         if use_graph:
             ckpt_bics = bic_val if (bic_val is not None and X_val is not None) else bic_train
+            assert ckpt_bics is not None
+            assert graph is not None
             ckpt_nbr: Optional[torch.Tensor] = _build_neighbor_tensor(
                 ckpt_bics, graph, self.config.k_neighbors_infer
             )

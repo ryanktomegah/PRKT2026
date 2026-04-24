@@ -185,6 +185,18 @@ jobs:
       - name: Run ruff
         run: ruff check lip/ --output-format=github
 
+  k8s-manifest-guard:
+    name: Kubernetes manifest guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Validate Docker/Kubernetes wiring
+        run: python scripts/check_k8s_manifests.py
+
   typecheck:
     name: Type check (mypy)
     runs-on: ubuntu-latest
@@ -326,3 +338,40 @@ jobs:
             lip/tests/test_c6_tenant_velocity.py \
             -v --tb=short -q
 
+  rust-build-c3:
+    name: Rust Build & Test (C3 state machine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+        with:
+          toolchain: stable
+
+      - name: Set up Python 3.11 for PyO3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Run Rust unit tests (C3)
+        working-directory: lip/c3/rust_state_machine
+        env:
+          PYO3_PYTHON: python
+        run: cargo test --all-targets
+
+  rust-build-c7:
+    name: Rust Build & Test (C7 kill switch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+        with:
+          toolchain: stable
+
+      - name: Run Rust unit tests (C7)
+        working-directory: lip/c7_execution_agent/rust_kill_switch
+        run: cargo test --all-targets -- --test-threads=1

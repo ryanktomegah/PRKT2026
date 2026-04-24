@@ -35,13 +35,13 @@ The full SWIFT / ISO 20022 rejection-code taxonomy mapping every code to one of 
 | Class | Maturity | Meaning |
 |-------|----------|---------|
 | `CLASS_A` | 3 days | Temporary / technical failures (AC01, AC04, AC06, AM01–AM12, BE01, BE05, DT01, ED01, etc.) |
-| `CLASS_B` | 7 days | Systemic / processing failures — **currently block-all in production** until pilot bank License Agreement carries `hold_bridgeable` API obligation. See [`../decisions/EPG-19_compliance_hold_bridging.md`](../decisions/EPG-19_compliance_hold_bridging.md) and [`../OPEN_BLOCKERS.md`](../OPEN_BLOCKERS.md). |
+| `CLASS_B` | 7 days | Systemic / processing failures — **currently block-all in production** until pilot bank License Agreement carries `hold_bridgeable` API obligation. See [`../../legal/decisions/EPG-19_compliance_hold_bridging.md`](../../legal/decisions/EPG-19_compliance_hold_bridging.md) and [`../OPEN_BLOCKERS.md`](../OPEN_BLOCKERS.md). |
 | `CLASS_C` | 21 days | Investigation / complex cases |
 | `BLOCK` | 0 days (no bridge) | Dispute / legal block / compliance hold — DNOR, CNOR, RR01–RR04, AG01, LEGL. Promoted to BLOCK class as defense Layer 1 of EPG-19. |
 
 **Authority rule.** Any change to a code's class assignment requires REX sign-off, because the BLOCK list IS the operative compliance policy. Promoting a code out of BLOCK without re-running the EPG-19 deliberation is a refusal-grade error.
 
-**Cross-reference:** the BLOCK list must NEVER appear enumerated in any published patent claim — see [`../decisions/EPG-20-21_patent_briefing.md`](../decisions/EPG-20-21_patent_briefing.md). Maintain this YAML, but do not paste it into outward-facing documents that get filed with the patent office.
+**Cross-reference:** the BLOCK list must NEVER appear enumerated in any published patent claim — see [`../../legal/decisions/EPG-20-21_patent_briefing.md`](../../legal/decisions/EPG-20-21_patent_briefing.md). Maintain this YAML, but do not paste it into outward-facing documents that get filed with the patent office.
 
 ### 3. `corridor_defaults.yaml` — currency-pair corridor parameters
 
