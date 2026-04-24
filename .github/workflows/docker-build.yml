@@ -47,6 +47,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Stage artifact placeholder directories
+        # Dockerfile.c2 and Dockerfile.c7 COPY artifacts/c*_trained/ into the
+        # image for the staging convenience path. artifacts/ is gitignored
+        # (CLAUDE.md "NEVER commit artifacts/" rule), so CI never has them.
+        # Create empty placeholders so Docker COPY succeeds; real deployments
+        # populate these directories via a separate artifact-distribution
+        # mechanism (K8s initContainer, volume mount, or `docker cp` before
+        # pod startup) — see docs/operations/deployment.md § Self-Hosted
+        # Staging Deployment for the signed-artifact contract.
+        run: |
+          mkdir -p artifacts/c1_trained artifacts/c2_trained
+          touch artifacts/c1_trained/.placeholder
+          touch artifacts/c2_trained/.placeholder
+
       - name: Free disk space (large ML images need it for c1/c2/c4)
         uses: jlumbroso/free-disk-space@main
         with:
