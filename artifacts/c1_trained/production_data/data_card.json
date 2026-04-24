@@ -1,0 +1,245 @@
+{
+  "schema_version": "1.0",
+  "data_card_type": "LIP_PRODUCTION_CORPUS",
+  "generated_at": "2026-03-21T06:40:10.099278+00:00Z",
+  "generation_tool": "lip.dgen.run_production_pipeline",
+  "dry_run": false,
+  "seed": 42,
+  "regulatory_compliance": {
+    "eu_ai_act_article": "10",
+    "eu_ai_act_requirement": "Data governance and data management practices",
+    "sr_11_7": "Out-of-time validation: 18-month temporal spread (2023-07 to 2025-01)",
+    "data_type": "FULLY_SYNTHETIC \u2014 no real transaction data, no real BICs",
+    "pii_present": false
+  },
+  "datasets": {
+    "payments_synthetic": {
+      "n_records": 10000000,
+      "file": "artifacts/production_data/payments_synthetic.parquet",
+      "validation": {
+        "dataset_name": "payments_synthetic",
+        "n_records": 10000000,
+        "passed": false,
+        "checks": [
+          {
+            "name": "label_distribution",
+            "passed": true,
+            "message": "RJCT fraction=0.200 (target 0.20 \u00b10.10) \u2014 PASS | n_rjct=2,000,000 n_success=8,000,000",
+            "details": {
+              "n_rjct": 2000000,
+              "n_success": 8000000,
+              "rjct_fraction": 0.2
+            }
+          },
+          {
+            "name": "null_sweep",
+            "passed": true,
+            "message": "0 nulls in 10 required fields",
+            "details": {
+              "null_counts": {
+                "uetr": 0,
+                "bic_sender": 0,
+                "bic_receiver": 0,
+                "corridor": 0,
+                "label": 0,
+                "amount_usd": 0,
+                "is_permanent_failure": 0,
+                "timestamp_utc": 0,
+                "currency_pair": 0,
+                "rail": 0
+              }
+            }
+          },
+          {
+            "name": "null_sweep",
+            "passed": true,
+            "message": "0 nulls in 3 required fields",
+            "details": {
+              "null_counts": {
+                "rejection_code": 0,
+                "rejection_class": 0,
+                "settlement_time_hours": 0
+              }
+            }
+          },
+          {
+            "name": "uetr_uniqueness",
+            "passed": true,
+            "message": "all 10,000,000 UETRs unique",
+            "details": {
+              "n_total": 10000000,
+              "n_unique": 10000000
+            }
+          },
+          {
+            "name": "rejection_code_chisquare",
+            "passed": false,
+            "message": "\u03c7\u00b2=26.72, p=0.0209 (FAIL \u2014 frequencies deviate from priors)",
+            "details": {
+              "chi2_statistic": 26.72096845238095,
+              "p_value": 0.020925518592234016,
+              "threshold": 0.05
+            }
+          },
+          {
+            "name": "amount_lognormality_shapiro_wilk",
+            "passed": false,
+            "message": "USD-EUR(p=0.3859) | EUR-USD(p=0.0140) | GBP-USD(p=0.2703) \u2014 overall FAIL",
+            "details": {
+              "by_corridor": {
+                "USD-EUR": {
+                  "n_sample": 100,
+                  "shapiro_stat": 0.9861967408521217,
+                  "p_value": 0.38591034680056574,
+                  "passed": true
+                },
+                "EUR-USD": {
+                  "n_sample": 100,
+                  "shapiro_stat": 0.9673925659984779,
+                  "p_value": 0.014010721494950903,
+                  "passed": false
+                },
+                "GBP-USD": {
+                  "n_sample": 100,
+                  "shapiro_stat": 0.9840405493032638,
+                  "p_value": 0.2702744892232398,
+                  "passed": true
+                }
+              }
+            }
+          },
+          {
+            "name": "settlement_p95_per_class",
+            "passed": true,
+            "message": "ClassA(obs=7.03h target=7.0h) | ClassB(obs=53.55h target=53.6h) | ClassC(obs=171.73h target=171.0h) \u2014 PASS",
+            "details": {
+              "by_class": {
+                "A": {
+                  "observed_p95h": 7.03,
+                  "target_p95h": 7.0,
+                  "tolerance_pct": 10.0,
+                  "band_lo": 6.3,
+                  "band_hi": 7.7,
+                  "passed": true
+                },
+                "B": {
+                  "observed_p95h": 53.55,
+                  "target_p95h": 53.6,
+                  "tolerance_pct": 10.0,
+                  "band_lo": 48.24,
+                  "band_hi": 58.96,
+                  "passed": true
+                },
+                "C": {
+                  "observed_p95h": 171.73,
+                  "target_p95h": 171.0,
+                  "tolerance_pct": 10.0,
+                  "band_lo": 153.9,
+                  "band_hi": 188.1,
+                  "passed": true
+                }
+              }
+            }
+          },
+          {
+            "name": "class_ratio_A_B_C",
+            "passed": true,
+            "message": "ClassA(act=0.349 tgt=0.35) | ClassB(act=0.400 tgt=0.40) | ClassC(act=0.250 tgt=0.25) \u2014 PASS",
+            "details": {
+              "by_class": {
+                "A": {
+                  "actual": 0.3494,
+                  "target": 0.35,
+                  "band_lo": 0.3,
+                  "band_hi": 0.4,
+                  "passed": true
+                },
+                "B": {
+                  "actual": 0.4004,
+                  "target": 0.4,
+                  "band_lo": 0.35,
+                  "band_hi": 0.45,
+                  "passed": true
+                },
+                "C": {
+                  "actual": 0.2502,
+                  "target": 0.25,
+                  "band_lo": 0.2,
+                  "band_hi": 0.3,
+                  "passed": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "aml_synthetic": {
+      "n_records": 100000,
+      "file": "artifacts/production_data/aml_synthetic.parquet",
+      "validation": {
+        "dataset_name": "aml_synthetic",
+        "n_records": 100000,
+        "passed": true,
+        "checks": [
+          {
+            "name": "null_sweep",
+            "passed": true,
+            "message": "0 nulls in 9 required fields",
+            "details": {
+              "null_counts": {
+                "uetr": 0,
+                "entity_id": 0,
+                "bic_sender": 0,
+                "bic_receiver": 0,
+                "amount_usd": 0,
+                "currency": 0,
+                "timestamp_utc": 0,
+                "aml_flag": 0,
+                "aml_type": 0
+              }
+            }
+          },
+          {
+            "name": "uetr_uniqueness",
+            "passed": true,
+            "message": "all 100,000 UETRs unique",
+            "details": {
+              "n_total": 100000,
+              "n_unique": 100000
+            }
+          },
+          {
+            "name": "aml_flag_rate",
+            "passed": true,
+            "message": "aml_flag rate=0.0277 (2,769/100,000) \u2014 target range [0.020, 0.030] \u2014 PASS",
+            "details": {
+              "n_flagged": 2769,
+              "n_total": 100000,
+              "rate": 0.02769
+            }
+          },
+          {
+            "name": "aml_type_distribution",
+            "passed": true,
+            "message": "CLEAN=0.9723 | STRUCTURING=0.0120 | VELOCITY=0.0106 | SANCTIONS_ADJACENT=0.0051 \u2014 PASS",
+            "details": {
+              "clean_rate": 0.97231,
+              "flagged_types": {
+                "STRUCTURING": 0.01197,
+                "VELOCITY": 0.01061,
+                "SANCTIONS_ADJACENT": 0.00511
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "intended_use": "Training and validation of LIP ML components (C1, C6). NOT suitable for production inference. NOT real financial data.",
+  "prohibited_uses": [
+    "Do not use as real transaction data",
+    "Do not use aml_synthetic for live sanctions screening",
+    "Do not commit output files to version control"
+  ]
+}

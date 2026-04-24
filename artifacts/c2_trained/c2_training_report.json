@@ -1,0 +1,17 @@
+{
+  "component": "C2",
+  "status": "ok",
+  "n_samples": 1200,
+  "n_trials": 2,
+  "n_models": 2,
+  "seed": 42,
+  "metrics": {
+    "auc": 0.896880209573708,
+    "brier": 0.05552124264961124,
+    "ks": 0.755656108597285
+  },
+  "artifacts": {
+    "model": "/Users/tomegah/PRKT2026/artifacts/c2_trained/c2_model.pkl",
+    "signature": "/Users/tomegah/PRKT2026/artifacts/c2_trained/c2_model.pkl.sig"
+  }
+}

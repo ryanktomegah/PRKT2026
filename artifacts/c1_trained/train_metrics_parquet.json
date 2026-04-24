@@ -1,0 +1,14 @@
+{
+  "val_auc": 0.794295,
+  "val_auc_torch": 0.794372,
+  "val_auc_lgbm": 0.79379,
+  "f2_threshold": 0.33,
+  "f2_score": 0.537111,
+  "ece": 0.181135,
+  "n_records": 910499,
+  "n_epochs": 20,
+  "train_elapsed_s": 1063.0,
+  "parquet_path": "artifacts/training_corpus_1m/payments_synthetic.parquet",
+  "sample_n": 1000000,
+  "seed": 42
+}

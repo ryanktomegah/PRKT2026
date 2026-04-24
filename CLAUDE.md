@@ -183,7 +183,8 @@ to calibrate compliance-hold resolution time expectations.
 ## Key Rules
 - Whenever a mistake is caught — by the user or self-identified — immediately add a generalised rule to this file that prevents the entire *class* of mistake, not just the specific instance. The rule must be broad enough to apply to future situations that share the same underlying failure mode.
 - Before assessing any data, metric, or code behaviour, read the source implementation and docstrings to verify the semantics and design intent of every field — never infer meaning from names, computed statistics, or surface patterns alone.
-- NEVER commit `artifacts/` (model binaries, generated data)
+- Commit `artifacts/c1_trained/` and `artifacts/c2_trained/` — trained + HMAC-signed model binaries are **code dependencies** of the runtime pipeline (Dockerfiles COPY them, tests assert on them, production loads them via `LIP_C1_MODEL_DIR` / `LIP_C2_MODEL_PATH`). Total footprint ~8MB; changes only on retrain + key rotation.
+- NEVER commit training corpora or intermediate outputs under `artifacts/` — `training_corpus_*/`, `production_data_*/`, `intermediate_*/`, `synthetic/` are gitignored. Regenerable from seed via `PYTHONPATH=. python -m lip.dgen.generate_all`.
 - NEVER commit `c6_corpus_*.json` (AML typology patterns — CIPHER rule)
 - NEVER commit API keys, tokens, or secrets of any kind — use `.env` (gitignored) locally and GitHub Actions secrets on Codespace. Reference secrets via environment variables only. If a key appears in any file being committed, stop and refuse.
 - Never derive governing law from payment currency — use the enrolled BIC's country code (chars 4–5). Currency is wrong for cross-border correspondent banking. (EPG-14 rule)
