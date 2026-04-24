@@ -2,7 +2,9 @@
 
 **Liquidity Intelligence Platform**
 **Bridgepoint Intelligence Inc.**
-**Last updated: 2026-03-21 | Ground truth: docs/c1-model-card.md, docs/c1-training-data-card.md**
+**Last updated: 2026-04-24 | Ground truth: docs/c1-model-card.md, docs/c1-training-data-card.md, docs/operations/releases/staging-rc-2026-04-24.md**
+
+**RC note:** the March 2026 narrative remains the historical base case, but the current staging RC has now been retrained, signed, and container-verified. Use the release note above for deployable artifact truth.
 
 ---
 
@@ -210,7 +212,7 @@ At 300 bps annualised, a 7-day $100K bridge generates a fee of $57.53 (0.0575% o
 
 ### Status
 
-C2 specification is complete. Training data (10M corpus) is available. Model training is pending ARIA implementation. LGD estimates are pre-pilot (jurisdiction-tiered defaults), not empirically calibrated. All C2 outputs carry this caveat until post-pilot recovery data replaces the estimates.
+C2 specification is complete. Training data (10M corpus) is available. Model training was pending ARIA implementation in the March 2026 narrative; as of the 2026-04-24 staging RC, C2 is trained, signed, and stress-gated for staging use. LGD estimates are still pre-pilot (jurisdiction-tiered defaults), not empirically calibrated. All C2 outputs carry this caveat until post-pilot recovery data replaces the estimates.
 
 ---
 

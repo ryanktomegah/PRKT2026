@@ -7,7 +7,7 @@
 **Version:** 1.0
 **Lead:** ARIA — ML & AI Engineering
 **Support:** NOVA (feature pipeline integration), FORGE (serving infrastructure)
-**Status:** ACTIVE BUILD
+**Status:** ACTIVE BUILD [UPDATE 2026-04-24: staging RC retrained, signed, and container-verified; see docs/operations/releases/staging-rc-2026-04-24.md]
 **Stealth Mode:** Active — Nothing External
 
 ---
