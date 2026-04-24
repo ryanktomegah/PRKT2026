@@ -53,6 +53,23 @@ class _FakeRedis:
     def smembers(self, key):
         return set(self._sets.get(key, set()))
 
+    def eval(self, _script, num_keys, *keys_and_args):
+        keys = keys_and_args[:num_keys]
+        args = keys_and_args[num_keys:]
+        state_key, record_key, pending_key = keys
+        expected_state, target_state, payload, offer_id, missing, ok = args
+        current = self.get(state_key)
+        if isinstance(current, bytes):
+            current = current.decode("utf-8")
+        if current is None:
+            return missing.encode("utf-8")
+        if current != expected_state:
+            return str(current).encode("utf-8")
+        self.set(state_key, str(target_state).encode("utf-8"))
+        self.set(record_key, str(payload).encode("utf-8"))
+        self.srem(pending_key, offer_id)
+        return ok.encode("utf-8")
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -578,6 +595,13 @@ class TestOfferDeliveryServiceQueries:
         assert len(snap1) == 1
         assert len(snap2) == 2
 
+    def test_delivery_lookup_survives_acceptance(self):
+        svc = OfferDeliveryService()
+        offer_id, delivery = _deliver_offer(svc)
+        svc.accept(offer_id, elo_operator_id="OPS-001")
+
+        assert svc.get_delivery(offer_id) == delivery
+
 
 class TestOfferDeliveryServiceDurableRedis:
     def test_redis_backed_state_survives_service_recreation(self):
@@ -606,6 +630,22 @@ class TestOfferDeliveryServiceDurableRedis:
 
         assert received == [(acceptance, delivery, svc.get_offer(offer_id))]
         assert received[0][2]["loan_id"] == offer_id
+
+    def test_redis_transition_prevents_second_resolution(self):
+        redis = _FakeRedis()
+        svc = OfferDeliveryService(redis_client=redis)
+        offer_id, _delivery = _deliver_offer(svc)
+
+        svc.accept(offer_id, elo_operator_id="OPS-REDIS")
+
+        with pytest.raises(OfferAlreadyResolvedException):
+            svc.reject(
+                offer_id,
+                elo_operator_id="OPS-REDIS",
+                rejection_reason="Too late",
+            )
+        assert svc.get_outcome(offer_id) == OfferDeliveryOutcome.ACCEPTED
+        assert svc.get_rejection(offer_id) is None
 
 
 # ---------------------------------------------------------------------------

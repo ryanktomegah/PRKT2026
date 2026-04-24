@@ -486,6 +486,13 @@ def build_runtime_pipeline(
     ``LIP_INTEGRITY_GATE_DISABLED``). A unit test that wants a minimal pipeline can
     set them all to the non-default.
     """
+    if redis_client is None and _env_flag("LIP_REQUIRE_DURABLE_OFFER_STORE"):
+        raise RuntimeError(
+            "LIP_REQUIRE_DURABLE_OFFER_STORE=1 but no Redis client is available. "
+            "Set REDIS_URL to a reachable Redis/Valkey endpoint or disable the "
+            "requirement for single-replica development only."
+        )
+
     decision_logger = _build_decision_logger()
     c7_agent = ExecutionAgent(
         kill_switch=kill_switch,

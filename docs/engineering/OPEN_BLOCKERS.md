@@ -4,26 +4,15 @@
 >
 > **What this is NOT.** This is not the full engineering backlog. Engineering work is tracked in `PROGRESS.md`. This register lists only items that block a live pilot bank deployment.
 
-**Last updated:** 2026-04-23
-**Engineering blocker count:** 1
+**Last updated:** 2026-04-24
+**Engineering blocker count:** 0
 **Legal/contractual/patent blocker count:** 4 (all critical-path)
 
 ---
 
 ## Critical Path to Pilot Launch
 
-The items below are the current critical path. They are **independent** — none of them blocks the others — but all must be complete before LIP can fund a single bridge in production.
-
-### 🔴 ENGINEERING-BLOCKER-01 — Durable offer-delivery state
-
-| Field | Value |
-|-------|-------|
-| **Owner** | Engineering |
-| **Gates** | All multi-pod or production deployments |
-| **Code reference** | `lip/c7_execution_agent/offer_delivery.py` |
-| **What is needed** | Replace the in-memory pending/accepted/rejected/expired offer maps with a durable, replica-safe store such as Redis or PostgreSQL. |
-| **Why it blocks** | Offer creation is now correctly separated from funding. A pod restart or horizontal scaling event must not lose pending ELO accept/reject decisions. |
-| **Downstream impact if delayed** | LIP can run local/staging tests, but production funding cannot safely rely on C7 offer delivery state. |
+The items below are the current critical path. They are **independent** — none of them blocks the others — but all must be complete before LIP can fund a single bridge in production. There are no open engineering blockers; production deployments must still set `REDIS_URL` and `LIP_REQUIRE_DURABLE_OFFER_STORE=1` so startup fails closed if durable offer storage is unavailable.
 
 ### 🔴 BLOCKER-01 — Legal counsel engagement: MRFA explicit B2B framing
 
@@ -112,11 +101,12 @@ There is no meaningful engineering work in step 3. Steps 1 and 2 are entirely ou
 
 For confidence that this register is real and not aspirational, here is what *was* on the critical path and is no longer:
 
-### Engineering — all closed as of 2026-03-22
+### Engineering — all closed as of 2026-04-24
 
 | Closed item | Resolution |
 |-------------|------------|
-| GAP-01: No loan acceptance protocol | Protocol shipped, but durable production storage remains open as ENGINEERING-BLOCKER-01 |
+| GAP-01: No loan acceptance protocol | Protocol shipped; offer creation now returns `OFFERED` until ELO acceptance |
+| ENGINEERING-BLOCKER-01: Durable offer-delivery state | Closed 2026-04-24. `OfferDeliveryService` now supports Redis-backed durable delivery/offer/acceptance/rejection/expiry state with atomic pending-to-terminal transitions. `build_runtime_pipeline()` supports `LIP_REQUIRE_DURABLE_OFFER_STORE=1` to fail startup when Redis is unavailable. |
 | GAP-02: AML velocity caps unscalable | Per-licensee caps via C8 token (EPG-16/17) |
 | GAP-03: No enrolled borrower registry | `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state |
 | GAP-04: No retry detection | Redis-ready `UETRTracker` with 30-min TTL + tuple-based dedup |

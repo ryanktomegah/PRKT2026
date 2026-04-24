@@ -63,6 +63,7 @@ C7 is the **zero-outbound** component in the canonical bank deployment. Its cont
    │  HTTPS POST to bank acceptance     │
    │  endpoint (LIP_OFFER_DELIVERY_     │
    │  ENDPOINT) OR in-process callback  │
+   │  Redis-backed durable state        │
    └────────────────────────────────────┘
                 │  bank accepts
                 ▼
@@ -89,7 +90,7 @@ Each sub-component has a different latency / safety requirement:
 | Orchestration (`agent.py`) | Python | Integration surface with the rest of the pipeline; needs to import from every other C* |
 | Kill switch (`rust_kill_switch/`) | Rust PyO3 | Must survive process crashes + be readable by any attached watchdog; uses memory-mapped shared state |
 | Offer router (`go_offer_router/`) | Go | Low-latency gRPC streaming to multiple ELOs; Go's goroutine scheduler outperforms Python asyncio at 10k+ concurrent streams |
-| Redis atomic ops (`redis_atomic.py`) | Python + Lua | Compare-and-set + lease semantics on the kill switch state, atomic under Redis WATCH/MULTI |
+| Offer state transitions (`offer_delivery.py`) | Python + Lua | Redis `EVAL` compare-and-set from `PENDING` to a terminal state, with in-memory fallback only for single-process tests/dev |
 
 ---
 
@@ -177,9 +178,13 @@ Two delivery modes:
 
 The in-process mode is used for `test_c7_offer_delivery.py` and for staging where the offer is accepted by a stub endpoint. In production, the endpoint is the bank's internal gRPC / HTTPS service that routes to their loan operations system.
 
-### Race condition guarding (`offer_delivery_race_fix.py`)
+### Durable state and race guarding
 
-Accept and expire can race: if the bank's acceptance arrives at the same moment as the offer expiry timer fires, both paths could try to finalise the loan. `OfferDeliveryService` uses a Redis atomic compare-and-set (`SET key value NX`) on the offer ID to ensure exactly one wins. The losing path returns `OfferExpiryReason.RACE_LOST` and logs at WARNING.
+`OfferDeliveryService` persists each delivered offer in Redis when a `redis_client` is injected by `build_runtime_pipeline()`. The service stores the delivery record, raw C7 offer payload, current lifecycle state, and terminal acceptance/rejection/expiry record under `lip:c7:offer_delivery:*` keys. Local in-memory maps remain available for unit tests and single-process demos only.
+
+Accept, reject, and expire can race: if the bank's acceptance arrives at the same moment as the offer expiry timer fires, both paths could try to finalize the loan. The Redis path uses a Lua `EVAL` compare-and-set that moves exactly one `PENDING` offer to `ACCEPTED`, `REJECTED`, or `EXPIRED` while writing the terminal record and removing the offer from the pending set in the same Redis command. The losing path raises the matching resolved/expired exception and does not call the finalizer.
+
+Production deployments should set `LIP_REQUIRE_DURABLE_OFFER_STORE=1`. With that flag enabled, `build_runtime_pipeline()` refuses to start unless a Redis client is available, preventing accidental in-memory offer state in multi-pod deployments.
 
 ### Override sweeper (`override_sweeper.py`)
 

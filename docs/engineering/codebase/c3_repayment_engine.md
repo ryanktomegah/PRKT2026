@@ -25,7 +25,7 @@ C3 is the **only** component that spans the Python/Rust boundary twice — the s
 
 ```
 C7 ExecutionAgent (loan accepted)
-        │  register(uetr, loan)
+        │  register_loan(loan)
         ▼
 ┌──────────────────────────────────────┐
 │  SettlementMonitor (Python)          │
@@ -152,9 +152,9 @@ Logged at boot: `"NAVEventEmitter thread started (interval=3600s)"`. If this lin
 
 | Consumer | How it uses C3 |
 |----------|---------------|
-| `lip/pipeline.py` | Calls `c3_monitor.register(uetr, loan)` after C7 accepts the offer |
+| `lip/pipeline.py` | Calls `c3_monitor.register_loan(loan)` from `LIPPipeline.finalize_accepted_offer()` after ELO acceptance |
 | `lip/api/runtime_pipeline.py` | Constructs `SettlementMonitor` + `SettlementHandlerRegistry.install_defaults()` |
-| `lip/c7_execution_agent/offer_delivery.py` | Reads `repayment_loop.finalize_accepted_offer` as the state-transition callback |
+| `lip/c7_execution_agent/offer_delivery.py` | Invokes the pipeline's acceptance-finalizer callback after an offer moves to `ACCEPTED` |
 | `lip/p10_regulatory_data/` | Consumes NAV events for the regulator data product |
 
 ---
