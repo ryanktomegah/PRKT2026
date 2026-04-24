@@ -5,12 +5,23 @@ import secrets
 from datetime import date, timedelta
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from lip.api.auth import sign_request
 from lip.c8_license_manager.license_token import ALL_COMPONENTS, LicenseToken, sign_token
 
 _ARTIFACT_DIR = Path(__file__).resolve().parents[2] / "artifacts" / "c1_trained"
+_C1_CHECKPOINT = _ARTIFACT_DIR / "c1_model_parquet.pt"
+
+_c1_artifacts_missing = pytest.mark.skipif(
+    not _C1_CHECKPOINT.is_file(),
+    reason=(
+        "C1 torch checkpoint not present (artifacts/c1_trained/ is gitignored). "
+        "Run `scripts/train_c1_on_parquet.py` or restore from CI artifact cache "
+        "to exercise this path locally."
+    ),
+)
 
 
 class _StubMetricsCollector:
@@ -44,6 +55,22 @@ def _make_processor_token() -> tuple[str, str]:
     return json.dumps(signed.to_dict(), separators=(",", ":")), key.hex()
 
 
+def test_runtime_pipeline_requires_durable_offer_store(monkeypatch):
+    from lip.api.runtime_pipeline import build_runtime_pipeline
+
+    monkeypatch.setenv("LIP_REQUIRE_DURABLE_OFFER_STORE", "1")
+
+    with pytest.raises(RuntimeError, match="LIP_REQUIRE_DURABLE_OFFER_STORE=1"):
+        build_runtime_pipeline(
+            kill_switch=object(),
+            settlement_monitor=object(),
+            borrower_registry=object(),
+            known_entity_registry=object(),
+            redis_client=None,
+        )
+
+
+@_c1_artifacts_missing
 def test_real_runtime_pipeline_mounts_and_processes_miplo_request(monkeypatch):
     from lip.api import app as app_module
 
@@ -105,6 +132,7 @@ def test_real_runtime_pipeline_mounts_and_processes_miplo_request(monkeypatch):
     assert data["outcome"]
 
 
+@_c1_artifacts_missing
 def test_torch_artifact_c1_engine_loads_repo_checkpoint(monkeypatch):
     from lip.api.runtime_pipeline import TorchArtifactInferenceEngine
 

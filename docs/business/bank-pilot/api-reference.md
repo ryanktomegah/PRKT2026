@@ -487,7 +487,8 @@ curl -X DELETE \
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `REDIS_URL` | No | Redis connection URL. When unset, LIP runs in-memory (no persistence across restarts). |
+| `REDIS_URL` | Yes for pilot/prod | Redis/Valkey connection URL. When unset, LIP can run in-memory for single-process demos only. |
+| `LIP_REQUIRE_DURABLE_OFFER_STORE` | Yes for pilot/prod | Set to `1` so startup fails closed if `REDIS_URL` is missing or unreachable. |
 | `LIP_API_HMAC_KEY` | No | HMAC signing key (hex-encoded or raw string). When unset, auth is disabled (dev mode only). |
 | `LIP_KILL_SWITCH_ACTIVE` | No | Set to `true` to start with kill switch engaged. |
 

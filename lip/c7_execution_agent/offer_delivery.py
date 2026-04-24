@@ -36,6 +36,23 @@ from lip.common.schemas import (
 
 logger = logging.getLogger(__name__)
 
+_REDIS_TRANSITION_OK = "__OK__"
+_REDIS_TRANSITION_MISSING = "__MISSING__"
+
+_LUA_TRANSITION_PENDING_WITH_RECORD = """
+local current = redis.call('GET', KEYS[1])
+if not current then
+    return ARGV[5]
+end
+if current ~= ARGV[1] then
+    return current
+end
+redis.call('SET', KEYS[1], ARGV[2])
+redis.call('SET', KEYS[2], ARGV[3])
+redis.call('SREM', KEYS[3], ARGV[4])
+return ARGV[6]
+"""
+
 
 # ---------------------------------------------------------------------------
 # Outcome enum
@@ -129,6 +146,8 @@ class OfferDeliveryService:
         self._lock = threading.Lock()
         # offer_id (str) → LoanOfferDelivery
         self._pending: Dict[str, LoanOfferDelivery] = {}
+        # offer_id (str) → LoanOfferDelivery, retained after resolution for audit lookups.
+        self._deliveries: Dict[str, LoanOfferDelivery] = {}
         # offer_id (str) → raw C7 loan offer
         self._offers: Dict[str, dict] = {}
         # offer_id (str) → LoanOfferAcceptance
@@ -187,6 +206,7 @@ class OfferDeliveryService:
                 self._redis_store_delivery(offer_id_str, delivery, offer)
             else:
                 self._pending[offer_id_str] = delivery
+                self._deliveries[offer_id_str] = delivery
                 self._offers[offer_id_str] = dict(offer)
         logger.info(
             "Offer delivered: offer_id=%s uetr=%s expiry=%s",
@@ -234,7 +254,7 @@ class OfferDeliveryService:
         with self._lock:
             if self._redis is not None:
                 delivery = self._redis_get_resolvable_delivery(offer_id)
-                offer = self._redis_get_offer(offer_id)
+                offer = self._redis_get_offer(offer_id) or {}
             else:
                 self._check_resolvable(offer_id)
                 delivery = self._pending.pop(offer_id)
@@ -249,7 +269,13 @@ class OfferDeliveryService:
                 accepted_at=datetime.now(tz=timezone.utc),
             )
             if self._redis is not None:
-                self._redis_store_acceptance(offer_id, acceptance)
+                transition = self._redis_transition_pending_with_record(
+                    offer_id,
+                    OfferDeliveryOutcome.ACCEPTED,
+                    "acceptance",
+                    acceptance,
+                )
+                self._raise_for_failed_transition(offer_id, transition)
             else:
                 self._acceptances[offer_id] = acceptance
 
@@ -323,7 +349,13 @@ class OfferDeliveryService:
                 rejected_at=datetime.now(tz=timezone.utc),
             )
             if self._redis is not None:
-                self._redis_store_rejection(offer_id, rejection)
+                transition = self._redis_transition_pending_with_record(
+                    offer_id,
+                    OfferDeliveryOutcome.REJECTED,
+                    "rejection",
+                    rejection,
+                )
+                self._raise_for_failed_transition(offer_id, transition)
             else:
                 self._rejections[offer_id] = rejection
 
@@ -384,7 +416,14 @@ class OfferDeliveryService:
                     class_b_eligible=delivery.class_b_eligible,
                 )
                 if self._redis is not None:
-                    self._redis_store_expiry(oid, expiry)
+                    transition = self._redis_transition_pending_with_record(
+                        oid,
+                        OfferDeliveryOutcome.EXPIRED,
+                        "expiry",
+                        expiry,
+                    )
+                    if transition != _REDIS_TRANSITION_OK:
+                        continue
                 else:
                     self._expiries[oid] = expiry
                 new_expiries.append(expiry)
@@ -463,7 +502,7 @@ class OfferDeliveryService:
         with self._lock:
             if self._redis is not None:
                 return self._redis_get_delivery(offer_id)
-            delivery = self._pending.get(offer_id)
+            delivery = self._deliveries.get(offer_id)
             if delivery is not None:
                 return delivery
             return None
@@ -574,8 +613,8 @@ class OfferDeliveryService:
     def _redis_get_delivery(self, offer_id: str) -> Optional[LoanOfferDelivery]:
         return self._redis_get_model(self._redis_key(offer_id, "delivery"), LoanOfferDelivery)
 
-    def _redis_get_offer(self, offer_id: str) -> dict:
-        return self._redis_get_json(self._redis_key(offer_id, "offer")) or {}
+    def _redis_get_offer(self, offer_id: str) -> Optional[dict]:
+        return self._redis_get_json(self._redis_key(offer_id, "offer"))
 
     def _redis_get_acceptance(self, offer_id: str) -> Optional[LoanOfferAcceptance]:
         return self._redis_get_model(self._redis_key(offer_id, "acceptance"), LoanOfferAcceptance)
@@ -623,12 +662,91 @@ class OfferDeliveryService:
                 expired_at=now,
                 class_b_eligible=delivery.class_b_eligible,
             )
-            self._redis_store_expiry(offer_id, expiry)
+            transition = self._redis_transition_pending_with_record(
+                offer_id,
+                OfferDeliveryOutcome.EXPIRED,
+                "expiry",
+                expiry,
+            )
+            if transition not in {
+                _REDIS_TRANSITION_OK,
+                OfferDeliveryOutcome.EXPIRED.value,
+            }:
+                self._raise_for_failed_transition(offer_id, transition)
             raise OfferExpiredException(
                 f"offer_id {offer_id!r} expired at {delivery.offer_expiry.isoformat()}"
             )
 
         return delivery
+
+    def _redis_transition_pending_with_record(
+        self,
+        offer_id: str,
+        target: OfferDeliveryOutcome,
+        record_suffix: str,
+        record_model,
+    ) -> str:
+        """Atomically move a Redis-backed offer out of PENDING and write its record."""
+        state_key = self._redis_key(offer_id, "state")
+        record_key = self._redis_key(offer_id, record_suffix)
+        pending_key = self._redis_pending_key()
+        payload = record_model.model_dump_json()
+        try:
+            raw = self._redis.eval(
+                _LUA_TRANSITION_PENDING_WITH_RECORD,
+                3,
+                state_key,
+                record_key,
+                pending_key,
+                OfferDeliveryOutcome.PENDING.value,
+                target.value,
+                payload,
+                offer_id,
+                _REDIS_TRANSITION_MISSING,
+                _REDIS_TRANSITION_OK,
+            )
+        except AttributeError:
+            return self._redis_transition_pending_with_record_non_atomic(
+                offer_id,
+                target,
+                record_suffix,
+                payload,
+            )
+        return raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
+
+    def _redis_transition_pending_with_record_non_atomic(
+        self,
+        offer_id: str,
+        target: OfferDeliveryOutcome,
+        record_suffix: str,
+        payload: str,
+    ) -> str:
+        """Fallback for unit-test fake Redis clients that do not implement EVAL."""
+        state = self._redis_get_state(offer_id)
+        if state is None:
+            return _REDIS_TRANSITION_MISSING
+        if state != OfferDeliveryOutcome.PENDING.value:
+            return state
+        self._redis_set_text(self._redis_key(offer_id, "state"), target.value)
+        self._redis_set_text(self._redis_key(offer_id, record_suffix), payload)
+        self._redis.srem(self._redis_pending_key(), offer_id)
+        return _REDIS_TRANSITION_OK
+
+    def _raise_for_failed_transition(self, offer_id: str, transition: str) -> None:
+        if transition == _REDIS_TRANSITION_OK:
+            return
+        if transition == _REDIS_TRANSITION_MISSING:
+            raise OfferNotFoundException(f"offer_id {offer_id!r} not found")
+        if transition == OfferDeliveryOutcome.EXPIRED.value:
+            raise OfferExpiredException(f"offer_id {offer_id!r} has expired")
+        if transition in {
+            OfferDeliveryOutcome.ACCEPTED.value,
+            OfferDeliveryOutcome.REJECTED.value,
+        }:
+            raise OfferAlreadyResolvedException(
+                f"offer_id {offer_id!r} has already been resolved"
+            )
+        raise OfferNotFoundException(f"offer_id {offer_id!r} has invalid state {transition!r}")
 
     def _redis_store_acceptance(
         self,
