@@ -28,6 +28,7 @@ from lip.c1_failure_classifier.model import create_default_model
 from lip.c2_pd_model.api import C2Service
 from lip.c3_repayment_engine.repayment_loop import SettlementMonitor
 from lip.c4_dispute_classifier.model import DisputeClassifier
+from lip.c5_streaming.stress_regime_detector import StressRegimeDetector
 from lip.c6_aml_velocity.aml_checker import AMLChecker
 from lip.c6_aml_velocity.bic_name_resolver import build_bic_name_resolver
 from lip.c6_aml_velocity.velocity import VelocityChecker
@@ -36,11 +37,18 @@ from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.c7_execution_agent.offer_delivery import OfferDeliveryService
 from lip.c8_license_manager.license_token import LicenseeContext, ProcessorLicenseeContext
+from lip.c9_settlement_predictor.model import SettlementTimePredictor
 from lip.common import secure_pickle
 from lip.common.borrower_registry import BorrowerRegistry
+from lip.common.conformal import ConformalPredictor
+from lip.common.drift_detector import FeatureDriftMonitor
 from lip.common.known_entity_registry import KnownEntityRegistry
+from lip.common.notification_service import NotificationService
+from lip.integrity.pipeline_gate import IntegrityGate
 from lip.pipeline import LIPPipeline
+from lip.risk.portfolio_risk import PortfolioRiskEngine
 
 logger = logging.getLogger(__name__)
 
@@ -354,6 +362,101 @@ def _build_c6_checker(redis_client=None) -> AMLChecker:
     )
 
 
+def _build_stress_detector() -> Optional[StressRegimeDetector]:
+    """Construct the C5 stress-regime detector unless explicitly disabled.
+
+    Env overrides:
+      LIP_STRESS_DETECTOR_DISABLED=1   — skip construction entirely
+      LIP_STRESS_BASELINE_SECONDS=...  — 24h baseline window (default 86400)
+      LIP_STRESS_CURRENT_SECONDS=...   — 1h current window (default 3600)
+      LIP_STRESS_MULTIPLIER=...        — trigger multiplier (default 3.0)
+      LIP_STRESS_MIN_TXNS=...          — min transactions for signal (default 20)
+    """
+    if _env_flag("LIP_STRESS_DETECTOR_DISABLED"):
+        return None
+    return StressRegimeDetector(
+        baseline_window_seconds=int(os.environ.get("LIP_STRESS_BASELINE_SECONDS", "86400")),
+        current_window_seconds=int(os.environ.get("LIP_STRESS_CURRENT_SECONDS", "3600")),
+        threshold_multiplier=float(os.environ.get("LIP_STRESS_MULTIPLIER", "3.0")),
+        min_transactions_for_signal=int(os.environ.get("LIP_STRESS_MIN_TXNS", "20")),
+    )
+
+
+def _build_drift_monitor() -> Optional[FeatureDriftMonitor]:
+    """Construct a FeatureDriftMonitor watching canonical C1 tabular features.
+
+    The monitor emits DriftEvents on distributional shift (ADWIN Hoeffding bound);
+    when wired, it feeds the pipeline's per-inference drift hook. Unset
+    LIP_DRIFT_MONITOR_DISABLED=1 to skip.
+    """
+    if _env_flag("LIP_DRIFT_MONITOR_DISABLED"):
+        return None
+    # Feature-name list mirrors the C1 TabularFeatureEngineer output.
+    features = TabularFeatureEngineer().feature_names()
+    delta = float(os.environ.get("LIP_DRIFT_DELTA", "0.002"))
+    return FeatureDriftMonitor(feature_names=features, delta=delta)
+
+
+def _build_conformal_predictor() -> Optional[ConformalPredictor]:
+    """Construct an uncalibrated ConformalPredictor.
+
+    The pipeline only invokes ``predict_interval`` when ``is_calibrated`` is
+    true, so shipping an uncalibrated instance is safe — it becomes a no-op
+    until calibration arrives via a batch job. Set LIP_CONFORMAL_DISABLED=1
+    to skip construction entirely.
+    """
+    if _env_flag("LIP_CONFORMAL_DISABLED"):
+        return None
+    coverage = float(os.environ.get("LIP_CONFORMAL_COVERAGE", "0.90"))
+    return ConformalPredictor(coverage_level=coverage)
+
+
+def _build_settlement_predictor() -> Optional[SettlementTimePredictor]:
+    """Construct the C9 settlement-time predictor.
+
+    When LIP_C9_ENABLED=1, fit the Cox PH model on synthetic data at boot so
+    ``predict_interval`` returns a usable estimate; C7 then uses it for
+    dynamic maturity. Default is OFF — C9 in production requires bank
+    settlement-history calibration before live use.
+    """
+    if not _env_flag("LIP_C9_ENABLED"):
+        return None
+    from lip.c9_settlement_predictor.synthetic_data import generate_settlement_data
+
+    predictor = SettlementTimePredictor()
+    n_samples = int(os.environ.get("LIP_C9_FIT_SAMPLES", "512"))
+    seed = int(os.environ.get("LIP_C9_FIT_SEED", "42"))
+    try:
+        X, durations, events = generate_settlement_data(n_samples=n_samples, seed=seed)
+        predictor.fit(X, durations, events)
+        logger.info(
+            "C9 settlement predictor fitted on synthetic corpus (samples=%d model=%s)",
+            n_samples,
+            predictor.model_type,
+        )
+        return predictor
+    except Exception as exc:
+        logger.warning(
+            "C9 settlement predictor fit failed (%s); falling back to static maturity.",
+            exc,
+        )
+        return None
+
+
+def _build_integrity_gate() -> Optional[IntegrityGate]:
+    """Construct the pre-start integrity gate.
+
+    Set LIP_INTEGRITY_GATE_DISABLED=1 to skip. When enabled, the gate runs
+    claims + OSS attribution checks at pipeline construction and raises
+    IntegrityGateError if integrity is not established (blocking).
+    """
+    if _env_flag("LIP_INTEGRITY_GATE_DISABLED"):
+        return None
+    # Registries auto-detect their persistent files at construction time;
+    # missing files simply leave the relevant check as a no-op.
+    return IntegrityGate(enabled=True)
+
+
 def build_runtime_pipeline(
     *,
     kill_switch: KillSwitch,
@@ -362,8 +465,27 @@ def build_runtime_pipeline(
     known_entity_registry: KnownEntityRegistry,
     redis_client=None,
     license_context: Optional[LicenseeContext] = None,
+    notification_service: Optional[NotificationService] = None,
+    risk_engine: Optional[PortfolioRiskEngine] = None,
 ) -> Tuple[LIPPipeline, Optional[ProcessorLicenseeContext]]:
-    """Assemble a real runtime pipeline from production component classes."""
+    """Assemble a real runtime pipeline from production component classes.
+
+    In addition to the core C1→C7 request path, wires the following optional
+    observability + governance components when env flags allow:
+
+    - ``stress_detector``    — C5 corridor stress regime, enabled by default
+    - ``drift_monitor``      — FeatureDriftMonitor on C1 tabular features, default ON
+    - ``conformal_predictor``— fee uncertainty interval, default ON (uncalibrated until fed)
+    - ``settlement_predictor``— C9 Cox PH dynamic maturity, default OFF (requires LIP_C9_ENABLED=1)
+    - ``integrity_gate``     — pre-start claims/OSS attribution check, default ON
+    - ``notification_service``— borrower-facing funded/repaid/overdue webhook sink, passed in by caller
+    - ``risk_engine``        — PortfolioRiskEngine for VaR + concentration, passed in by caller
+
+    Each is individually toggleable via env flags (``LIP_STRESS_DETECTOR_DISABLED``,
+    ``LIP_DRIFT_MONITOR_DISABLED``, ``LIP_CONFORMAL_DISABLED``, ``LIP_C9_ENABLED``,
+    ``LIP_INTEGRITY_GATE_DISABLED``). A unit test that wants a minimal pipeline can
+    set them all to the non-default.
+    """
     decision_logger = _build_decision_logger()
     c7_agent = ExecutionAgent(
         kill_switch=kill_switch,
@@ -378,6 +500,12 @@ def build_runtime_pipeline(
     c1_engine = _build_c1_engine(redis_client=redis_client)
     c2_service = C2Service()
 
+    stress_detector = _build_stress_detector()
+    drift_monitor = _build_drift_monitor()
+    conformal_predictor = _build_conformal_predictor()
+    settlement_predictor = _build_settlement_predictor()
+    integrity_gate = _build_integrity_gate()
+
     pipeline = LIPPipeline(
         c1_engine=c1_engine.predict,
         c2_engine=c2_service.predict,
@@ -386,6 +514,18 @@ def build_runtime_pipeline(
         c7_agent=c7_agent,
         c3_monitor=settlement_monitor,
         redis_client=redis_client,
+        stress_detector=stress_detector,
+        drift_monitor=drift_monitor,
+        conformal_predictor=conformal_predictor,
+        settlement_predictor=settlement_predictor,
+        integrity_gate=integrity_gate,
+        notification_service=notification_service,
+        risk_engine=risk_engine,
+    )
+    c7_agent.offer_delivery = OfferDeliveryService(
+        on_accept_resolved=pipeline.finalize_accepted_offer,
+        redis_client=redis_client,
+        delivery_endpoint=os.environ.get("LIP_OFFER_DELIVERY_ENDPOINT", "").strip() or None,
     )
 
     processor_context = (

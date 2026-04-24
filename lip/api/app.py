@@ -215,6 +215,8 @@ try:
                 known_entity_registry=known_entity_registry,
                 redis_client=redis_client,
                 license_context=license_context,
+                notification_service=notification_service,
+                risk_engine=risk_engine,
             )
             if runtime_processor_context is None:
                 runtime_processor_context = derived_processor_context
