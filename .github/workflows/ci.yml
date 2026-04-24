@@ -30,6 +30,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
 
       - name: Upgrade pip and build tools
         run: pip install --upgrade pip setuptools>=68 wheel
@@ -82,6 +85,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Upgrade pip
         run: pip install --upgrade pip setuptools>=68 wheel
       - name: Install dependencies
@@ -118,6 +124,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools>=68 wheel
@@ -181,6 +190,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - run: pip install ruff>=0.3.0
       - name: Run ruff
         run: ruff check lip/ --output-format=github
@@ -194,6 +206,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Validate Docker/Kubernetes wiring
         run: python scripts/check_k8s_manifests.py
 
@@ -206,6 +221,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools>=68 wheel
@@ -314,6 +332,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
 
       - name: Install maturin
         run: pip install "maturin>=1.0,<2.0"
@@ -354,6 +375,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
 
       - name: Run Rust unit tests (C3)
         working-directory: lip/c3/rust_state_machine
