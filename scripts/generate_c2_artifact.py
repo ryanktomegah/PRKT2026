@@ -32,7 +32,13 @@ def _parse_args() -> argparse.Namespace:
         "--n-samples",
         type=int,
         default=1200,
-        help="Synthetic training sample count.",
+        help="Synthetic training sample count when --corpus is not provided.",
+    )
+    parser.add_argument(
+        "--corpus",
+        type=Path,
+        default=None,
+        help="Optional DGEN C2 corpus JSON path. When provided, --n-samples is ignored.",
     )
     parser.add_argument(
         "--n-trials",
@@ -57,6 +63,18 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional file containing the secure-pickle HMAC key.",
+    )
+    parser.add_argument(
+        "--min-auc",
+        type=float,
+        default=0.70,
+        help="Fail if the trained model AUC is below this gate.",
+    )
+    parser.add_argument(
+        "--require-stress-pass",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Fail without writing a model artifact if the Tier-3 stress gate fails.",
     )
     return parser.parse_args()
 
@@ -84,12 +102,23 @@ def main() -> int:
     _load_hmac_key(args.hmac_key_file)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(
-        "Generating synthetic C2 training corpus: samples=%d seed=%d",
-        args.n_samples,
-        args.seed,
-    )
-    records = generate_pd_training_data(n_samples=args.n_samples, seed=args.seed)
+    if args.corpus is not None:
+        logger.info("Loading C2 training corpus: %s", args.corpus)
+        with args.corpus.open(encoding="utf-8") as fh:
+            records = json.load(fh)
+        corpus_source = str(args.corpus)
+    else:
+        logger.info(
+            "Generating synthetic C2 training corpus: samples=%d seed=%d",
+            args.n_samples,
+            args.seed,
+        )
+        records = generate_pd_training_data(n_samples=args.n_samples, seed=args.seed)
+        corpus_source = "lip.c2_pd_model.synthetic_data.generate_pd_training_data"
+
+    if not isinstance(records, list) or not records:
+        raise SystemExit("C2 corpus must be a non-empty JSON list of records.")
+
     model, metrics = PDTrainingPipeline(
         TrainingConfig(
             n_trials=args.n_trials,
@@ -98,26 +127,43 @@ def main() -> int:
         )
     ).run(records)
 
+    auc = float(metrics.get("auc", 0.0))
+    stress_test_passed = bool(metrics.get("stress_test_passed", True))
+    auc_passed = auc >= args.min_auc
+    stress_gate_passed = (not args.require_stress_pass) or stress_test_passed
+    status = "ok" if auc_passed and stress_gate_passed else "failed"
+
     model_path = args.output_dir / "c2_model.pkl"
     report_path = args.output_dir / "c2_training_report.json"
-    model.save(str(model_path))
 
     report = {
         "component": "C2",
-        "status": "ok",
-        "n_samples": args.n_samples,
+        "status": status,
+        "corpus_source": corpus_source,
+        "n_records": len(records),
         "n_trials": args.n_trials,
         "n_models": args.n_models,
         "seed": args.seed,
-        "metrics": {k: float(v) for k, v in metrics.items()},
+        "min_auc": args.min_auc,
+        "require_stress_pass": args.require_stress_pass,
+        "stress_test_passed": stress_test_passed,
+        "metrics": {
+            k: bool(v) if isinstance(v, bool) else float(v)
+            for k, v in metrics.items()
+        },
         "artifacts": {
             "model": str(model_path),
             "signature": f"{model_path}.sig",
         },
     }
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    logger.info("Saved signed C2 artifact to %s", model_path)
     logger.info("Saved C2 training report to %s", report_path)
+    if not auc_passed:
+        raise SystemExit(f"C2 AUC {auc:.4f} is below gate {args.min_auc:.4f}.")
+    if not stress_gate_passed:
+        raise SystemExit("C2 Tier-3 stress gate failed; refusing to write signed artifact.")
+    model.save(str(model_path))
+    logger.info("Saved signed C2 artifact to %s", model_path)
     return 0
 
 

@@ -80,6 +80,14 @@ class TorchArtifactInferenceEngine:
     ) -> None:
         import torch
 
+        try:
+            torch.set_num_threads(int(os.environ.get("LIP_TORCH_NUM_THREADS", "1")))
+            torch.set_num_interop_threads(
+                int(os.environ.get("LIP_TORCH_NUM_INTEROP_THREADS", "1"))
+            )
+        except RuntimeError as exc:
+            logger.debug("Torch thread pool already initialised; using existing settings (%s).", exc)
+
         from lip.c1_failure_classifier.graphsage_torch import GraphSAGETorch
         from lip.c1_failure_classifier.model_torch import (
             ClassifierModelTorch,

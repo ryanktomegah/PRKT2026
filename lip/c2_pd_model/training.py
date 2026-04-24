@@ -10,12 +10,12 @@ Three-entity role mapping:
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 from .features import UnifiedFeatureEngineer
-from .model import PDModel
+from .model import PDModel, _make_lgbm_model
 from .tier_assignment import Tier, TierFeatures, assign_tier
 
 logger = logging.getLogger(__name__)
@@ -289,7 +289,6 @@ class PDTrainingPipeline:
             optuna.logging.set_verbosity(optuna.logging.WARNING)
 
             def _objective(trial: "optuna.Trial") -> float:  # type: ignore[name-defined]
-                from sklearn.ensemble import GradientBoostingClassifier  # noqa: PLC0415
                 from sklearn.model_selection import cross_val_score  # noqa: PLC0415
 
                 params = {
@@ -299,7 +298,7 @@ class PDTrainingPipeline:
                     "subsample": trial.suggest_float("subsample", 0.5, 1.0),
                     "random_state": self.config.random_seed,
                 }
-                clf = GradientBoostingClassifier(**params)
+                clf = _make_lgbm_model(self.config.random_seed, **params)
                 scores = cross_val_score(
                     clf, X_train, y_train, cv=3, scoring="roc_auc", n_jobs=1
                 )
@@ -546,7 +545,7 @@ class PDTrainingPipeline:
     # Orchestrator
     # ------------------------------------------------------------------
 
-    def run(self, data: List[dict]) -> Tuple[PDModel, Dict[str, float]]:
+    def run(self, data: List[dict]) -> Tuple[PDModel, Dict[str, Union[float, bool]]]:
         """Execute the full nine-stage training pipeline.
 
         Parameters
@@ -582,15 +581,17 @@ class PDTrainingPipeline:
         tier_arr = np.array(tiers)
         tier3_idx = np.where(tier_arr == 3)[0]
         tier3_test_idx = np.intersect1d(tier3_idx, test_idx)
+        stress_test_passed = True
         if len(tier3_test_idx) > 0:
             X_tier3 = X[tier3_test_idx]
             logger.info(
                 "Stage 8: Tier-3 stress test on %d test-set samples (of %d total Tier-3).",
                 len(tier3_test_idx), len(tier3_idx),
             )
-            self.stage8_stress_test(model, X_tier3)
+            stress_test_passed = self.stage8_stress_test(model, X_tier3)
         else:
             logger.info("No Tier-3 records in test set; skipping stress test.")
 
         metrics = self.stage9_evaluation(model, X_test, y_test)
+        metrics["stress_test_passed"] = bool(stress_test_passed)
         return model, metrics

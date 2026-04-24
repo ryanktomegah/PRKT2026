@@ -1,17 +1,22 @@
 {
   "component": "C2",
   "status": "ok",
-  "n_samples": 1200,
-  "n_trials": 2,
-  "n_models": 2,
+  "corpus_source": "artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json",
+  "n_records": 50000,
+  "n_trials": 50,
+  "n_models": 5,
   "seed": 42,
+  "min_auc": 0.7,
+  "require_stress_pass": true,
+  "stress_test_passed": true,
   "metrics": {
-    "auc": 0.896880209573708,
-    "brier": 0.05552124264961124,
-    "ks": 0.755656108597285
+    "auc": 0.931482085175773,
+    "brier": 0.03374044185210159,
+    "ks": 0.7380619645214892,
+    "stress_test_passed": true
   },
   "artifacts": {
-    "model": "/Users/tomegah/PRKT2026/artifacts/c2_trained/c2_model.pkl",
-    "signature": "/Users/tomegah/PRKT2026/artifacts/c2_trained/c2_model.pkl.sig"
+    "model": "artifacts/c2_trained/c2_model.pkl",
+    "signature": "artifacts/c2_trained/c2_model.pkl.sig"
   }
 }
