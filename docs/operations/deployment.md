@@ -2,19 +2,22 @@
 
 ## Docker Images
 
-LIP ships 7 Docker images, one per deployable service:
+LIP ships Docker images under `lip/infrastructure/docker/`. Licensee deployments use the C1–C7 images; C8 is an operator-only image for BPI internal use.
 
-| Service | Dockerfile | Description |
-|---------|-----------|-------------|
-| `lip-c1` | `lip/c1_failure_classifier/Dockerfile` | C1 inference service (GPU-enabled) |
-| `lip-c2` | `lip/c2_pd_model/Dockerfile` | C2 PD inference service |
-| `lip-c3` | `lip/c3_repayment_engine/Dockerfile` | C3 settlement monitor |
-| `lip-c4` | `lip/c4_dispute_classifier/Dockerfile` | C4 dispute classifier |
-| `lip-c5` | `lip/c5_streaming/Dockerfile` | C5 Kafka worker + event normaliser |
-| `lip-c7` | `lip/c7_execution_agent/Dockerfile` | C7 execution agent |
-| `lip-c8` | `lip/c8_license_manager/Dockerfile` | C8 license validator |
+| Service | Dockerfile | Description | Deployment scope |
+|---------|-----------|-------------|------------------|
+| `lip-c1` | `Dockerfile.c1` | C1 inference service (GPU-enabled; Triton server) | Licensee |
+| `lip-c2` | `Dockerfile.c2` | C2 PD inference service (port 8081, uvicorn) | Licensee |
+| `lip-c3` | `Dockerfile.c3` | C3 settlement monitor (port 8083, uvicorn) | Licensee |
+| `lip-c4` | `Dockerfile.c4` | C4 dispute classifier (port 8080, uvicorn; openai ≥ 1.0.0 for Groq backend) | Licensee |
+| `lip-c5` | `Dockerfile.c5` + `Dockerfile.c5-go` | C5 Python worker + Go Kafka consumer | Licensee |
+| `lip-c6` | `Dockerfile.c6` | C6 AML / velocity / sanctions (port 8082, uvicorn; multi-stage with Rust `lip_c6_rust_velocity` wheel) | Licensee |
+| `lip-c7` (a.k.a. `lip-api`) | `Dockerfile.c7` | C7 execution agent + lip-api FastAPI surface (port 8080; multi-stage with Rust `lip_c6_rust_velocity` wheel) | Licensee |
+| `lip-c8` | `Dockerfile.c8` | **BPI-operator-only** — CLI tooling for license issuance, metering reconciliation, regulator subscription admin. **Not deployed to licensee clusters.** | **BPI internal** |
 
-C6 AML velocity runs inside the pipeline service (no separate image).
+Notes:
+- The `lip-api` (FastAPI) process is built from `Dockerfile.c7` because it mounts the C7 ExecutionAgent inline. The "C7 image" IS the lip-api image in the default staging topology.
+- C9 does not have its own Dockerfile. The `analytics` staging profile runs `python -m lip.c9_settlement_predictor.job` in the lip-api image as a Kubernetes Job.
 
 ## Kubernetes Manifests
 
