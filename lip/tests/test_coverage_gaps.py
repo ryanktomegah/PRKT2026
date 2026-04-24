@@ -686,7 +686,7 @@ class _MockC4:
 class _MockC6:
     def __init__(self, passed: bool = True):
         self._passed = passed
-        self.records = []
+        self.records: list[tuple[str, Decimal, str, dict]] = []
 
     def check(self, entity_id, amount, beneficiary_id, **kwargs):
         return SimpleNamespace(passed=self._passed)

@@ -5,10 +5,23 @@ import secrets
 from datetime import date, timedelta
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from lip.api.auth import sign_request
 from lip.c8_license_manager.license_token import ALL_COMPONENTS, LicenseToken, sign_token
+
+_ARTIFACT_DIR = Path(__file__).resolve().parents[2] / "artifacts" / "c1_trained"
+_C1_CHECKPOINT = _ARTIFACT_DIR / "c1_model_parquet.pt"
+
+_c1_artifacts_missing = pytest.mark.skipif(
+    not _C1_CHECKPOINT.is_file(),
+    reason=(
+        "C1 torch checkpoint not present (artifacts/c1_trained/ is gitignored). "
+        "Run `scripts/train_c1_on_parquet.py` or restore from CI artifact cache "
+        "to exercise this path locally."
+    ),
+)
 
 
 class _StubMetricsCollector:
@@ -42,11 +55,12 @@ def _make_processor_token() -> tuple[str, str]:
     return json.dumps(signed.to_dict(), separators=(",", ":")), key.hex()
 
 
+@_c1_artifacts_missing
 def test_real_runtime_pipeline_mounts_and_processes_miplo_request(monkeypatch):
     from lip.api import app as app_module
 
     token_json, key_hex = _make_processor_token()
-    artifact_dir = Path(__file__).resolve().parents[2] / "artifacts" / "c1_trained"
+    artifact_dir = _ARTIFACT_DIR
     monkeypatch.setenv("LIP_API_ENABLE_REAL_PIPELINE", "true")
     monkeypatch.setenv("LIP_C4_BACKEND", "mock")
     monkeypatch.setenv("LIP_C1_MODEL_DIR", str(artifact_dir))
@@ -103,10 +117,11 @@ def test_real_runtime_pipeline_mounts_and_processes_miplo_request(monkeypatch):
     assert data["outcome"]
 
 
+@_c1_artifacts_missing
 def test_torch_artifact_c1_engine_loads_repo_checkpoint(monkeypatch):
     from lip.api.runtime_pipeline import TorchArtifactInferenceEngine
 
-    artifact_dir = Path(__file__).resolve().parents[2] / "artifacts" / "c1_trained"
+    artifact_dir = _ARTIFACT_DIR
     monkeypatch.setenv("LOKY_MAX_CPU_COUNT", "1")
     engine = TorchArtifactInferenceEngine(artifact_dir)
 
