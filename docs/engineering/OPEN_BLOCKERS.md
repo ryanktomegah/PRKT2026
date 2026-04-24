@@ -2,17 +2,28 @@
 
 > **What this is.** Every item that stands between LIP and a live pilot bank deployment, lifted out of `PROGRESS.md` so it does not have to be hunted for. One row per blocker, with owner, gating decision, and downstream impact.
 >
-> **What this is NOT.** This is not the engineering backlog. Engineering work is tracked in `PROGRESS.md` and is largely complete (GAP-01 through GAP-17 all closed as of 2026-03-22). The blockers below are **legal, contractual, and patent-counsel work** that engineering cannot do for itself.
+> **What this is NOT.** This is not the full engineering backlog. Engineering work is tracked in `PROGRESS.md`. This register lists only items that block a live pilot bank deployment.
 
-**Last updated:** 2026-04-22
-**Engineering blocker count:** 0
+**Last updated:** 2026-04-23
+**Engineering blocker count:** 1
 **Legal/contractual/patent blocker count:** 4 (all critical-path)
 
 ---
 
 ## Critical Path to Pilot Launch
 
-The four items below are the entire critical path. They are **independent** — none of them blocks the others — but **all four must be complete** before LIP can fund a single bridge in production.
+The items below are the current critical path. They are **independent** — none of them blocks the others — but all must be complete before LIP can fund a single bridge in production.
+
+### 🔴 ENGINEERING-BLOCKER-01 — Durable offer-delivery state
+
+| Field | Value |
+|-------|-------|
+| **Owner** | Engineering |
+| **Gates** | All multi-pod or production deployments |
+| **Code reference** | `lip/c7_execution_agent/offer_delivery.py` |
+| **What is needed** | Replace the in-memory pending/accepted/rejected/expired offer maps with a durable, replica-safe store such as Redis or PostgreSQL. |
+| **Why it blocks** | Offer creation is now correctly separated from funding. A pod restart or horizontal scaling event must not lose pending ELO accept/reject decisions. |
+| **Downstream impact if delayed** | LIP can run local/staging tests, but production funding cannot safely rely on C7 offer delivery state. |
 
 ### 🔴 BLOCKER-01 — Legal counsel engagement: MRFA explicit B2B framing
 
@@ -105,7 +116,7 @@ For confidence that this register is real and not aspirational, here is what *wa
 
 | Closed item | Resolution |
 |-------------|------------|
-| GAP-01: No loan acceptance protocol | Offer delivery + acceptance protocol shipped (commit `0e7c69a`) |
+| GAP-01: No loan acceptance protocol | Protocol shipped, but durable production storage remains open as ENGINEERING-BLOCKER-01 |
 | GAP-02: AML velocity caps unscalable | Per-licensee caps via C8 token (EPG-16/17) |
 | GAP-03: No enrolled borrower registry | `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state |
 | GAP-04: No retry detection | Redis-ready `UETRTracker` with 30-min TTL + tuple-based dedup |

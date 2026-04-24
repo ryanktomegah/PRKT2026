@@ -2,7 +2,7 @@
 test_e2e_pipeline.py — 8 End-to-End pipeline scenarios.
 
 Scenarios:
-  1. Happy Path — Normal RJCT → FUNDED → REPAID
+  1. Happy Path — Normal RJCT → OFFERED → acceptance-driven funding
   2. Dispute Block
   3. AML Block
   4. Kill Switch Halt
@@ -78,11 +78,11 @@ def _make_pipeline(
 
 
 # ===========================================================================
-# Scenario 1: Happy Path — Normal RJCT → FUNDED
+# Scenario 1: Happy Path — Normal RJCT → OFFERED
 # ===========================================================================
 
 class TestScenario1HappyPath:
-    """Inject a Class-B RJCT event and verify the full funded pipeline path."""
+    """Inject a Class-B RJCT event and verify offer generation path."""
 
     def test_c1_produces_above_threshold_probability(self):
         pipeline = _make_pipeline(failure_probability=0.80)
@@ -118,26 +118,26 @@ class TestScenario1HappyPath:
         pipeline = _make_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         assert result.loan_offer is not None
         assert result.loan_offer["uetr"] == event.uetr
 
-    def test_payment_state_machine_transitions_to_funded(self):
+    def test_payment_state_machine_transitions_to_bridge_offered(self):
         pipeline = _make_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.payment_state == PaymentState.FUNDED.value
+        assert result.payment_state == PaymentState.BRIDGE_OFFERED.value
         history = result.payment_state_history
         assert PaymentState.MONITORING.value in history
         assert PaymentState.FAILURE_DETECTED.value in history
         assert PaymentState.BRIDGE_OFFERED.value in history
-        assert PaymentState.FUNDED.value in history
+        assert PaymentState.FUNDED.value not in history
 
-    def test_loan_state_machine_transitions_to_active(self):
+    def test_loan_state_machine_stays_offer_pending_until_acceptance(self):
         pipeline = _make_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.loan_state == LoanState.ACTIVE.value
+        assert result.loan_state == LoanState.OFFER_PENDING.value
 
     def test_decision_log_entry_written(self):
         pipeline = _make_pipeline(failure_probability=0.80)
@@ -150,13 +150,13 @@ class TestScenario1HappyPath:
         pipeline = _make_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")   # CLASS_B → 7 days
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         offer = result.loan_offer
         assert offer is not None
         assert offer.get("maturity_days") == 7
 
-    def test_settlement_triggers_repaid_state(self):
-        """Simulate camt.054 settlement signal → REPAID."""
+    def test_settlement_not_registered_before_offer_acceptance(self):
+        """C3 must not monitor an offer before ELO acceptance."""
         repaid_records = []
         registry = SettlementHandlerRegistry.create_default()
         um = UETRMappingTable()
@@ -167,9 +167,9 @@ class TestScenario1HappyPath:
         pipeline = _make_pipeline(failure_probability=0.80, c3_monitor=monitor)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
+        assert monitor.get_active_loans() == []
 
-        # Inject settlement signal
         settlement_msg = {
             "uetr": event.uetr,
             "individual_payment_id": event.individual_payment_id,
@@ -177,8 +177,7 @@ class TestScenario1HappyPath:
             "currency": "USD",
         }
         trigger = monitor.process_signal("SWIFT", settlement_msg)
-        assert trigger is not None
-        assert trigger["uetr"] == event.uetr
+        assert trigger is None
 
 
 # ===========================================================================
@@ -305,10 +304,10 @@ class TestScenario4KillSwitchHalt:
         pipeline = _make_pipeline(failure_probability=0.80, kill_switch=ks)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
 
-    def test_funded_loans_not_affected_by_kill_switch(self):
-        """Loans already funded before kill switch are preserved."""
+    def test_pending_offers_do_not_register_c3_loans_before_kill_switch(self):
+        """Offer generation alone must not create an active C3 loan."""
         _repaid = []
         registry = SettlementHandlerRegistry.create_default()
         um = UETRMappingTable()
@@ -318,17 +317,16 @@ class TestScenario4KillSwitchHalt:
         ks = KillSwitch()
         pipeline = _make_pipeline(failure_probability=0.80, kill_switch=ks, c3_monitor=monitor)
 
-        # Fund a loan BEFORE activating kill switch
+        # Generate an offer BEFORE activating kill switch.
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
 
         # Activate kill switch
         ks.activate("test")
 
-        # The funded loan in C3 monitor must still be retrievable
-        active_loans = monitor.get_active_loans()
-        assert any(loan.uetr == event.uetr for loan in active_loans)
+        # C3 registration happens only after ELO acceptance, not offer creation.
+        assert monitor.get_active_loans() == []
 
         # New offers are halted (use distinct BIC so AML velocity doesn't block first)
         event2 = make_event(rejection_code="CURR", sending_bic="CCCCGB2LXXX")
@@ -366,7 +364,7 @@ class TestScenario5KMSUnavailability:
         pipeline = _make_pipeline(failure_probability=0.80, degraded=dm)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
 
     def test_kms_gap_flag_in_state_dict(self):
         dm = DegradedModeManager()
@@ -404,12 +402,12 @@ class TestScenario6ThinFile:
         assert result.fee_bps is not None
         assert result.fee_bps >= int(FEE_FLOOR_BPS)
 
-    def test_thin_file_pipeline_still_funds(self):
+    def test_thin_file_pipeline_still_offers(self):
         """Thin-file borrowers should still get offers (fee floor applied)."""
         pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300, tier=3)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event, borrower={})
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
 
     def test_shap_values_present_in_result(self):
         pipeline = _make_pipeline(failure_probability=0.80)
@@ -425,9 +423,9 @@ class TestScenario6ThinFile:
 # ===========================================================================
 
 class TestScenario7MultiRailSummary:
-    """Smoke test that the pipeline wires correctly to C3 for multi-rail settlement."""
+    """Smoke test that offer creation does not prematurely activate C3."""
 
-    def test_pipeline_registers_loan_with_c3_monitor(self):
+    def test_pipeline_does_not_register_loan_with_c3_before_acceptance(self):
         registry = SettlementHandlerRegistry.create_default()
         um = UETRMappingTable()
         cb = CorridorBuffer()
@@ -436,13 +434,13 @@ class TestScenario7MultiRailSummary:
         pipeline = _make_pipeline(failure_probability=0.80, c3_monitor=monitor)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
 
         active = monitor.get_active_loans()
-        assert any(loan.uetr == event.uetr for loan in active)
+        assert active == []
 
-    def test_idempotent_settlement_signal(self):
-        """Duplicate settlement signals must not create duplicate repayment records."""
+    def test_unaccepted_offer_settlement_signal_is_ignored(self):
+        """Settlement signals are ignored until a loan is active in C3."""
         repaid = []
         registry = SettlementHandlerRegistry.create_default()
         um = UETRMappingTable()
@@ -454,14 +452,10 @@ class TestScenario7MultiRailSummary:
         event = make_event(rejection_code="CURR")
         pipeline.process(event)
 
-        # First settlement signal — deregisters the loan via explicit deregister
         msg = {"uetr": event.uetr, "amount": str(event.amount), "currency": "USD"}
         trigger1 = monitor.process_signal("SWIFT", msg)
-        assert trigger1 is not None
-        # Explicitly deregister the loan (simulating what the repayment loop does)
-        monitor.deregister_loan(event.uetr)
+        assert trigger1 is None
 
-        # Second (duplicate) signal — loan already deregistered
         trigger2 = monitor.process_signal("SWIFT", msg)
         assert trigger2 is None
 
@@ -505,7 +499,7 @@ class TestScenario8FeeArithmetic:
         pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
         event = make_event(rejection_code="CURR", amount=Decimal("1000000"))
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         assert result.fee_bps == 300                       # C2 output preserved
         assert result.loan_offer is not None
         assert result.loan_offer["fee_bps"] == 300         # canonical platform floor

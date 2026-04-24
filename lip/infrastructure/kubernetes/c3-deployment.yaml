@@ -25,7 +25,7 @@ spec:
           image: lip/c3-repayment:REQUIRE_TAG  # Set via Helm --set image.tag=<sha>
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - containerPort: 8083
               name: http
             - containerPort: 8082
               name: metrics
@@ -57,13 +57,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /health/live
-              port: 8080
+              port: 8083
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 8080
+              port: 8083
             initialDelaySeconds: 10
             periodSeconds: 5
           securityContext:
@@ -83,8 +83,8 @@ spec:
     app: lip-c3-repayment
   ports:
     - name: http
-      port: 8080
-      targetPort: 8080
+      port: 8083
+      targetPort: 8083
     - name: metrics
       port: 8082
       targetPort: 8082

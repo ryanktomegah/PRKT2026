@@ -94,7 +94,7 @@ class MockC1Engine:
         fp = self.failure_probability
         return {
             "failure_probability": fp,
-            "above_threshold": fp > THRESHOLD,
+            "above_threshold": fp >= THRESHOLD,
             "inference_latency_ms": 1.0,
             "threshold_used": THRESHOLD,
             "corridor_embedding_used": False,

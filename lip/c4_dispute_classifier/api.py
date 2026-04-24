@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from lip.c8_license_manager.runtime import enforce_component_license
@@ -36,8 +36,20 @@ def _serialize_result(result: dict) -> dict:
 
 def create_app(classifier: Optional[DisputeClassifier] = None) -> FastAPI:
     enforce_component_license("C4")
-    c4_classifier = classifier or DisputeClassifier()
+    c4_classifier = classifier
     app = FastAPI(title="LIP C4 Dispute Classifier", version="1.0.0")
+
+    def get_classifier() -> DisputeClassifier:
+        nonlocal c4_classifier
+        if c4_classifier is None:
+            try:
+                c4_classifier = DisputeClassifier()
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail="C4 dispute classifier backend is not configured.",
+                ) from exc
+        return c4_classifier
 
     @app.get("/health/live")
     def health_live() -> dict[str, str]:
@@ -49,7 +61,7 @@ def create_app(classifier: Optional[DisputeClassifier] = None) -> FastAPI:
 
     @app.post("/classify")
     def classify(payload: C4ClassifyRequest) -> dict:
-        result = c4_classifier.classify(
+        result = get_classifier().classify(
             rejection_code=payload.rejection_code,
             narrative=payload.narrative,
             amount=payload.amount,

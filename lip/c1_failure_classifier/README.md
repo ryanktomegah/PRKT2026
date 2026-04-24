@@ -41,7 +41,7 @@ C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
 | Key | Type | Description |
 |-----|------|-------------|
 | `failure_probability` | float | Predicted probability [0, 1] of payment failure |
-| `above_threshold` | bool | `True` when `failure_probability > τ*` |
+| `above_threshold` | bool | `True` when `failure_probability >= τ*` |
 | `shap_top20` | list[dict] | Top-20 SHAP feature contributions |
 | `inference_latency_ms` | float | Wall-clock inference time |
 | `model_version` | str | Artefact version tag |

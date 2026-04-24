@@ -10,8 +10,11 @@
 use lip_kill_switch::signal::SignalFlags;
 use lip_kill_switch::{is_killed, reset, KILL_FLAG};
 use std::sync::atomic::Ordering;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
+
+static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 /// Send SIGUSR1 to self → `kill_requested` flag set within 50ms.
 ///
@@ -21,6 +24,7 @@ use std::time::Duration;
 /// This test verifies correctness, not operational latency.
 #[test]
 fn test_sigusr1_sets_kill_requested_flag() {
+    let _guard = TEST_LOCK.lock().unwrap();
     let flags = SignalFlags::register().expect("register signal handlers");
 
     // Ensure clean state.
@@ -62,6 +66,7 @@ fn test_sigusr1_sets_kill_requested_flag() {
 /// actual signal delivery is typically sub-millisecond.
 #[test]
 fn test_sigterm_sets_shutdown_requested_flag() {
+    let _guard = TEST_LOCK.lock().unwrap();
     let flags = SignalFlags::register().expect("register signal handlers");
     flags.shutdown_requested.store(false, Ordering::SeqCst);
 
@@ -87,6 +92,7 @@ fn test_sigterm_sets_shutdown_requested_flag() {
 /// actual signal delivery is typically sub-millisecond.
 #[test]
 fn test_sighup_sets_reset_requested_flag() {
+    let _guard = TEST_LOCK.lock().unwrap();
     let flags = SignalFlags::register().expect("register signal handlers");
     flags.reset_requested.store(false, Ordering::SeqCst);
 

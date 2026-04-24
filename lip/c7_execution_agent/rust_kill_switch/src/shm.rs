@@ -34,7 +34,7 @@ pub const SHM_SIZE: usize = 288;
 
 // Byte offsets within the segment.
 const OFF_KILL_FLAG: usize = 0;
-const OFF_SHUTDOWN_FLAG: usize = 1;
+const _OFF_SHUTDOWN_FLAG: usize = 1;
 const OFF_ACTIVATED_AT: usize = 4;
 const OFF_REASON_LEN: usize = 12;
 const OFF_REASON_UTF8: usize = 16;

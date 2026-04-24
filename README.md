@@ -1,9 +1,8 @@
 # LIP — Liquidity Intelligence Platform
 
-[![Tests](https://img.shields.io/badge/tests-1284%20passing-brightgreen)](https://github.com/ryanktomegah/PRKT2026/actions)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/ryanktomegah/PRKT2026/actions)
-[![Ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen)](https://docs.astral.sh/ruff/)
-[![Python](https://img.shields.io/badge/python-3.13%2B-blue)](https://python.org)
+[![LIP CI](https://github.com/ryanktomegah/PRKT2026/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanktomegah/PRKT2026/actions/workflows/ci.yml)
+[![Ruff](https://img.shields.io/badge/ruff-enforced-blue)](https://docs.astral.sh/ruff/)
+[![Python](https://img.shields.io/badge/python-3.10--3.12-blue)](https://python.org)
 
 Real-time payment failure detection and automated bridge lending for correspondent banks. Built by BPI Technology. Patent-pending.
 
