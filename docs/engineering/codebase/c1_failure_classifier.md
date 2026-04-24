@@ -59,6 +59,14 @@ The trained C1 artifact directory is `artifacts/c1_trained/` (gitignored) and co
 | `c1_scaler.pkl` | StandardScaler for the 12 tabular features (HMAC-signed) | Optional — uses raw features if absent |
 | `train_metrics_parquet.json` | Training AUC / F2 / ECE for the shipped checkpoint | Advisory only |
 
+Current staging RC artifacts additionally include:
+
+- `c1_calibrator.pkl.sig`
+- `c1_scaler.pkl.sig`
+- `f2_threshold.txt`
+
+The RC snapshot trained on `2026-04-24` produced a best chronological OOT AUC of `0.8839` and a post-training summary AUC of `0.887623`.
+
 All `.pkl` files load through `lip.common.secure_pickle.load()` — B13-01 pickle ban applies. Sign newly-produced artifacts with `scripts/sign_c1_artifacts.py`.
 
 ---
@@ -67,7 +75,7 @@ All `.pkl` files load through `lip.common.secure_pickle.load()` — B13-01 pickl
 
 The runtime pipeline has a **tri-state fallback** for C1:
 
-1. **`TorchArtifactInferenceEngine`** — preferred. Loads from `LIP_C1_MODEL_DIR` when the directory contains `c1_model_parquet.pt`. This is what staging uses.
+1. **`TorchArtifactInferenceEngine`** — preferred. Loads from `LIP_C1_MODEL_DIR` when the directory contains `c1_model_parquet.pt`. This is what staging uses. In the current RC the loader also expects signed `c1_lgbm_parquet.pkl`, `c1_calibrator.pkl`, and `c1_scaler.pkl` when those files are present.
 2. **NumPy loader** — used when `LIP_C1_MODEL_DIR` is set but the `.pt` file is missing. Reads a legacy `.npz`-style checkpoint.
 3. **`create_default_model()`** — deterministic untrained fallback. Used only when neither path above succeeds. Logs at INFO so operators can tell.
 
@@ -78,6 +86,8 @@ Controlled by these env vars:
 | `LIP_C1_MODEL_DIR` | unset | Directory containing the C1 checkpoint bundle |
 | `LIP_C1_THRESHOLD` | `0.110` (QUANT-locked) | τ\* override — should never change without QUANT sign-off |
 | `LIP_REQUIRE_MODEL_ARTIFACTS` | `0` | When `1`, raise `RuntimeError` instead of falling back to the default model |
+| `LIP_TORCH_NUM_THREADS` | `1` | Runtime thread cap used before loading torch artifacts to avoid BLAS deadlock |
+| `LIP_TORCH_NUM_INTEROP_THREADS` | `1` | Interop thread cap paired with `LIP_TORCH_NUM_THREADS` |
 
 ### Latency instrumentation
 

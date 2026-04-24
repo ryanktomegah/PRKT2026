@@ -151,6 +151,11 @@ The `Dockerfile.c2` image `COPY`s `artifacts/c2_trained/` at build time (see `.d
 
 The `lip-api` deployment in staging is launched with `LIP_API_ENABLE_REAL_PIPELINE=true`, which mounts the full C1→C2→C4→C6→C7→C3 pipeline into the HTTP surface. The C1 engine is loaded from `LIP_C1_MODEL_DIR=/app/artifacts/c1_trained` via `TorchArtifactInferenceEngine` (see `lip/api/runtime_pipeline.py`). C4 runs Groq/Qwen3-32B live (`LIP_C4_BACKEND=groq`, `LIP_C4_MODEL=qwen/qwen3-32b`).
 
+Current RC expectation: both model loaders run in strict artifact mode, meaning `LIP_REQUIRE_MODEL_ARTIFACTS=1` is set for staging validation and the API should fail closed if C1 or C2 cannot load a signed artifact. The current RC artifacts are:
+
+- C1: `artifacts/c1_trained/c1_model_parquet.pt` plus signed `c1_lgbm_parquet.pkl`, `c1_calibrator.pkl`, and `c1_scaler.pkl`
+- C2: `artifacts/c2_trained/c2_model.pkl` plus `c2_model.pkl.sig`
+
 ### Operator Commands
 
 ```bash
@@ -173,6 +178,9 @@ kubectl -n lip-staging logs deploy/lip-c2-pd | grep "C2 service ready"
 # 4. Verify the API loaded the real C1 Torch artifact
 kubectl -n lip-staging logs deploy/lip-api | grep "Runtime C1 engine ready"
 # Expected: "Runtime C1 engine ready (artifact:/app/artifacts/c1_trained)"
+
+# 4b. Strict mode should be enabled in the RC environment
+kubectl -n lip-staging exec deploy/lip-api -- printenv | grep -E 'LIP_REQUIRE_MODEL_ARTIFACTS|LIP_TORCH_NUM_THREADS'
 
 # 5. Confirm the artifact files are present inside the running pod (supplemental)
 kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/

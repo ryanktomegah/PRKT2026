@@ -94,6 +94,7 @@ When the real pipeline is enabled, these env vars control where the trained arti
 | `LIP_MODEL_HMAC_KEY` | — | HMAC key for signed C2 pickle verification. **Required** when `LIP_C2_MODEL_PATH` is set |
 | `LIP_C1_THRESHOLD` | `constants.FAILURE_PROBABILITY_THRESHOLD` | Override τ* (usually not needed; threshold is QUANT-locked) |
 | `LIP_C4_BACKEND` | `mock` in tests | `groq` for live Qwen3-32B dispute classification |
+| `LIP_REQUIRE_MODEL_ARTIFACTS` | `0` | When `1`, fail closed instead of falling back to bootstrap/default models |
 
 ### Generate the C2 Signed Artifact
 
@@ -102,7 +103,11 @@ When the real pipeline is enabled, these env vars control where the trained arti
 # artifacts/ is gitignored — regenerate per environment, never commit binaries
 PYTHONPATH=. python scripts/generate_c2_artifact.py \
     --hmac-key-file .secrets/c2_model_hmac_key \
-    --output-dir artifacts/c2_trained
+    --output-dir artifacts/c2_trained \
+    --corpus artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json \
+    --n-trials 50 \
+    --n-models 5 \
+    --min-auc 0.70
 ```
 
 ### Deploy / Redeploy Local Staging
@@ -130,6 +135,11 @@ kubectl -n lip-staging logs deploy/lip-api | grep "Runtime C1 engine ready"
 # Supplemental: artifact files present in pod
 kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/
 kubectl -n lip-staging exec deploy/lip-api  -- ls -l /app/artifacts/c1_trained/
+
+# Strict artifact loading in staging RC
+LIP_REQUIRE_MODEL_ARTIFACTS=1
+LIP_TORCH_NUM_THREADS=1
+LIP_TORCH_NUM_INTEROP_THREADS=1
 ```
 
 `C2Service.model_source` (`artifact`, `bootstrap`, or `injected`) is the programmatic truth and is asserted in `test_c2_api_loads_signed_artifact`. It is intentionally not exposed on `/health`. See [`../operations/deployment.md`](../operations/deployment.md) § Self-Hosted Staging Deployment for the profile matrix and secret-loading rules.

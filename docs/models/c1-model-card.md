@@ -54,6 +54,26 @@ When the predicted failure probability exceeds the operating threshold (τ* = 0.
 
 ## 3. Training Results (C1v1.1.0)
 
+### 3.0 Current Staging RC Snapshot
+
+The latest staging RC was retrained on `2026-04-24` with the production-parameter path and signed supplementary artifacts:
+
+| Field | Value |
+|-------|-------|
+| Corpus | `artifacts/staging_rc_c1_5m/payments_synthetic.parquet` |
+| Generated rows | 5,000,000 |
+| BLOCK-filtered rows | 4,550,658 |
+| Training sample | 2,000,000 |
+| Epochs | 20 |
+| Best chronological OOT AUC | 0.8839 |
+| Post-training summary AUC | 0.887623 |
+| F2 score | 0.623269 |
+| Calibrated threshold | 0.1100 |
+| ECE post-calibration | 0.069066 |
+| Supplementary artifacts | `c1_calibrator.pkl`, `c1_scaler.pkl`, `c1_lgbm_parquet.pkl` (all signed) |
+
+This RC is deployable and verified, but the canonical production narrative remains the March 2026 10M-corpus baseline until the remote production-sized retrain is restored and promoted.
+
 ### 3.1 Training Configuration
 
 | Parameter | Value |

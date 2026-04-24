@@ -3,7 +3,7 @@
 > **Model ID:** M-02 C2v1.0.0
 > **Classification:** SR 11-7 Tier 2 Model | EU AI Act Art.13 Technical Documentation
 > **Status:** Pre-deployment (pending pilot bank engagement and Bank MRM review)
-> **Last updated:** 2026-03-21
+> **Last updated:** 2026-04-24
 
 ---
 
@@ -17,6 +17,24 @@
 | **Input** | BIC-level financial features, transaction history, jurisdiction risk, corridor metadata |
 | **Output** | `pd_score` (calibrated PD), `fee_bps` (annualised fee in basis points, 300 bps floor) |
 | **Downstream consumers** | C7 Execution Agent (loan offer generation), C3 Repayment Engine (settlement monitoring) |
+
+### Current Staging RC
+
+The current staging RC replaces the old toy artifact with a signed, production-parameter candidate:
+
+| Field | Value |
+|-------|-------|
+| Corpus | `artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json` |
+| Records | 50,000 |
+| Optuna trials | 50 |
+| Ensemble size | 5 |
+| Backend | LightGBM 4.6.0 |
+| Held-out AUC | 0.931482085175773 |
+| Brier | 0.03374044185210159 |
+| KS | 0.7380619645214892 |
+| Stress gate | Passed |
+
+The RC artifact is signed and loaded strictly from `artifacts/c2_trained/c2_model.pkl`.
 
 ---
 
@@ -187,10 +205,11 @@ This is a **deployment-time integrity control** (SR 11-7 Principle 4 — model c
 PYTHONPATH=. python scripts/generate_c2_artifact.py \
     --hmac-key-file .secrets/c2_model_hmac_key \
     --output-dir artifacts/c2_trained \
-    --n-samples 1200 --n-trials 2 --n-models 2 --seed 42
+    --corpus artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json \
+    --n-trials 50 --n-models 5 --min-auc 0.70
 ```
 
-The script writes the signed `.pkl` + `.sig` + training report. Outputs are **gitignored** under `artifacts/` — the script is the reproducible source, artifacts are rebuilt per deployment.
+The script writes the signed `.pkl` + `.sig` + training report. Outputs are **gitignored** under `artifacts/` — the script is the reproducible source, artifacts are rebuilt per deployment. The RC path now fails closed if the Tier-3 stress gate fails, so a signed artifact is only produced after passing both AUC and stress checks.
 
 ### 7.3 Runtime Env Vars
 

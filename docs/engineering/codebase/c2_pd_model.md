@@ -146,7 +146,7 @@ Staging/production loads the trained PD model from a signed pickle:
 3. On any verification failure: logs warning, returns a bootstrap model, sets `model_source="bootstrap"`
 4. On success: sets `model_source="artifact"` and logs `"C2 service ready (artifact)"`
 
-Generate the artifact with `scripts/generate_c2_artifact.py`. Verify model source via pod logs — see [`../../operations/deployment.md`](../../operations/deployment.md) § Operator Commands.
+Generate the artifact with `scripts/generate_c2_artifact.py`. The current RC path supports `--corpus`, `--n-trials 50`, `--n-models 5`, `--min-auc 0.70`, and fails closed when the Tier-3 stress gate fails. Verify model source via pod logs — see [`../../operations/deployment.md`](../../operations/deployment.md) § Operator Commands.
 
 ---
 
@@ -187,10 +187,11 @@ LIP_MODEL_HMAC_KEY=$(cat .secrets/c2_model_hmac_key) \
 PYTHONPATH=. python scripts/generate_c2_artifact.py \
     --hmac-key-file .secrets/c2_model_hmac_key \
     --output-dir artifacts/c2_trained \
-    --n-samples 1200 --n-trials 2 --n-models 2 --seed 42
+    --corpus artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json \
+    --n-trials 50 --n-models 5 --min-auc 0.70
 ```
 
-The defaults (n=1200, trials=2, models=2) are fast-iteration values for staging. Production training uses n=50000, trials=50, models=5.
+The defaults (n=1200, trials=2, models=2) remain fast-iteration values for staging smoke tests. The current RC uses the production-parameter path above and requires the Tier-3 stress gate to pass before it writes a signed artifact.
 
 ---
 
