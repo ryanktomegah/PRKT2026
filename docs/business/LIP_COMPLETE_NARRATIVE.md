@@ -382,12 +382,14 @@ MONITORING
 
 ### Maturity by Rejection Class
 
+Canonical class membership: `lip/c3_repayment_engine/rejection_taxonomy.py`. BLOCK list also published as `lip/common/block_codes.json` (single source of truth across Python, Rust, Go).
+
 | Class | Codes (examples) | Maturity | P95 Settlement | Description |
 |-------|-------------------|----------|----------------|-------------|
-| A | AC01, AC04, MD01, RC01 | 3 days | 7.05 hours | Routing/account errors |
-| B | RR01–RR04, FRAU, LEGL | 7 days | 53.58 hours | Systemic/processing delays |
-| C | AM04, AM05, FF01, MS03 | 21 days | 170.67 hours | Liquidity/complex |
-| BLOCK | DNOR, CNOR, RR01–RR04, AG01, LEGL | 0 days | Never | Compliance holds — NEVER bridged |
+| A | AC01, AC04, AM04, AM05, FF01, MD01, RC01 | 3 days | 7.05 hours | Routing/account/format errors — fast resolution |
+| B | MS02, MS03, NARR, CUST, AG02, NOAS, TIMO, TECH | 7 days | 53.58 hours | Systemic/processing delays — bridgeable. *Note: MS03/NARR are CLASS_B by code classification; banks may use them for FATF R.21 tipping-off-compliant SAR coding, which LIP cannot see — that is a compliance-visibility limit, not a class change.* |
+| C | AGNT, CVCY, FRSP, INDM, INVB, INVR | 21 days | 170.67 hours | Liquidity/complex — long-tail resolution |
+| BLOCK | EPG-19 (8): DNOR, CNOR, RR01–RR04, AG01, LEGL · Dispute/fraud (4): DISP, DUPL, FRAD, FRAU | 0 days | Never | Compliance/dispute hard-blocks — NEVER bridged. EPG-19 subset triggers `outcome=COMPLIANCE_HOLD`; dispute subset triggers `outcome=DISPUTE_BLOCKED`. |
 
 ---
 
@@ -405,7 +407,7 @@ These values require QUANT sign-off to change. They are the load-bearing numbers
 | Salt rotation | 365 days, 30-day overlap | CIPHER |
 | Decision log retention | 7 years | REX (SR 11-7) |
 | Stress multiplier | 3.0× (1h/24h ratio) | QUANT |
-| AML velocity default | 0 (unlimited) | CIPHER |
+| AML caps default | sentinel `_AML_CAP_UNSET` (-1) — must be set explicitly per-token; boot validator rejects sentinel. `0` is valid (means "unlimited"); `-1` is invalid (means "unset"). Source: `lip/c8_license_manager/license_token.py:42-87` (B3-03 fix, EPG-16/17). | CIPHER |
 | Maturity Class A | 3 days | QUANT |
 | Maturity Class B | 7 days | QUANT |
 | Maturity Class C | 21 days | QUANT |
@@ -478,7 +480,7 @@ Sixteen gaps documented in `CLIENT_PERSPECTIVE_ANALYSIS.md`. The five Tier 1 blo
 
 1. **GAP-01 — Offer delivery.** Pipeline generates LoanOffer but provides no mechanism for treasury systems to accept or decline. Offers silently expire at 15 minutes. Need: webhook + acceptance API.
 
-2. **GAP-02 — AML cap sizing.** ~~$1M/entity/24h cap is retail-scale.~~ **RESOLVED** (2026-03-18, commit 0ec874c). Default now 0 (unlimited), per-licensee via C8 token.
+2. **GAP-02 — AML cap sizing.** ~~$1M/entity/24h cap is retail-scale.~~ **RESOLVED** (2026-03-18, commit 0ec874c, EPG-16). Per-licensee caps required via C8 token. **Updated 2026-04-08 (B3-03):** default changed from `0 (unlimited)` to sentinel `_AML_CAP_UNSET (-1)`. `LicenseBootValidator` now rejects tokens with the sentinel; tokens must set `aml_dollar_cap_usd` and `aml_count_cap` explicitly. Source: `lip/c8_license_manager/license_token.py:42-87`.
 
 3. **GAP-03 — Enrolled Borrower Registry.** No registry exists. LIP generates offers to any BIC it sees, including intermediaries who never agreed to be borrowers. Need: Registry schema with MRFA status, C7 hard-block for unregistered BICs.
 

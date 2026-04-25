@@ -47,7 +47,7 @@ Any work in the next session must respect these. They are non-negotiable:
 | BLOCK class | 0 days | `lip/common/constants.py` |
 | UETR TTL buffer | 45 days | salt rotation 365d + 30d overlap |
 | Latency SLO | ≤ 94 ms | measured in `lip/tests/` |
-| AML caps | default 0 = unlimited, set per-licensee via C8 | EPG-16 |
+| AML caps | default sentinel `_AML_CAP_UNSET` (-1), must be set explicitly per-token (B3-03); `0` is valid (means "unlimited"); boot validator rejects sentinel | EPG-16/17, `lip/c8_license_manager/license_token.py:42-87` |
 
 **Never change these without the responsible agent's sign-off.** QUANT is the
 floor on fee math. CIPHER is the floor on AML/security. REX is the floor on

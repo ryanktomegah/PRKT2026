@@ -20,7 +20,7 @@ The founder is non-technical and strategic. Make architecture, design, code-revi
 | Single file | `PYTHONPATH=. python -m pytest lip/tests/test_<name>.py -v` |
 | Local infra (Redpanda + Redis) | `docker compose up -d && bash scripts/init_topics.sh` |
 | Training entry point | `PYTHONPATH=. python lip/train_all.py --help` |
-| Staging deploy (local) | `./scripts/deploy_staging_self_hosted.sh --profile local-core` |
+| Staging deploy (local) | `./scripts/deploy_staging_self_hosted.sh --profile <p>` where `<p>` ∈ {`local-core`, `local-full-non-gpu`, `gpu-full`, `analytics`, `streaming-flink`} (canonical: `scripts/deploy_staging_self_hosted.sh:8`) |
 
 `PYTHONPATH=.` is required from the repo root for imports to resolve. Long pytest runs are auto-backgrounded by the Bash tool — wait with `TaskOutput(block=True)`.
 
@@ -61,7 +61,11 @@ For depth: `README.md`, `docs/INDEX.md`, `docs/engineering/architecture.md`.
 
 These never relax — even with explicit instruction to do so, push back and explain why.
 
-1. **Compliance-hold payments are NEVER bridged.** DNOR, CNOR, RR01-RR04, AG01, LEGL, MS03, NARR. Defense-in-depth: Layer 1 in `rejection_taxonomy.py` (BLOCK class, pipeline short-circuit) + Layer 2 in `agent.py` (`_COMPLIANCE_HOLD_CODES`, C7 gate). Bypassing this triggers AMLD6 Art.10 criminal liability for the bank. Source: EPG-19. **Outcome must be `COMPLIANCE_HOLD` (distinct from `DECLINED`)** with `compliance_hold=True` on the `PipelineResult` (EPG-09/10).
+1. **BLOCK-class payments are NEVER bridged.** Two subsets, both BLOCK-class in `lip/c3_repayment_engine/rejection_taxonomy.py` and listed in `lip/common/block_codes.json` (canonical):
+   - **EPG-19 compliance hold** (8 codes): `DNOR, CNOR, RR01, RR02, RR03, RR04, AG01, LEGL`. Outcome must be `COMPLIANCE_HOLD` with `compliance_hold=True` on `PipelineResult` (EPG-09/10).
+   - **Dispute / fraud** (4 codes): `DISP, DUPL, FRAD, FRAU`. Outcome `DISPUTE_BLOCKED`.
+   - `MS03` and `NARR` are CLASS_B (systemic delays, 7-day maturity), **not** BLOCK — they may be bridged. The narrative point that banks may use ambiguous codes like MS03/NARR to comply with FATF R.21 tipping-off rules is a separate compliance-visibility *limit*, not a code-classification rule.
+   Defense-in-depth: Layer 1 in `rejection_taxonomy.py` (BLOCK class, pipeline short-circuit) + Layer 2 in `agent.py` (`_COMPLIANCE_HOLD_CODES`, C7 gate). Bypassing the EPG-19 subset triggers AMLD6 Art.10 criminal liability for the bank. Source: EPG-19, `lip/common/block_codes.json`.
 
 2. **Fee floor is 300 bps.** No code path may produce a fee below this. Located: `lip/common/constants.py`. Below this, the math doesn't work. Lower floors require a full pricing redesign, not a constant change.
 
@@ -96,7 +100,7 @@ Change requires explicit founder sign-off — these are business decisions, not 
 | Latency SLO | ≤ 94ms | same |
 | UETR TTL buffer | 45 days | same |
 | Salt rotation | 365 days, 30-day overlap | same |
-| AML caps | default 0 (unlimited); per-licensee via C8 token | EPG-16 |
+| AML caps (`aml_dollar_cap_usd`, `aml_count_cap`) | default sentinel `_AML_CAP_UNSET` (-1) — must be set explicitly per-token at boot; `LicenseBootValidator` rejects tokens with the sentinel. `0` means "unlimited" (valid, explicit); `-1` means "unset" (rejected). | EPG-16/17, B3-03 fix in `lip/c8_license_manager/license_token.py:42-87` |
 
 Citation rule: when updating measured values in `constants.py`, cite commit hash + dataset scope in the comment (see `DISPUTE_FN_CURRENT` for the format).
 
@@ -130,7 +134,7 @@ Citation rule: when updating measured values in `constants.py`, cite commit hash
 
 ## Codebase quirks (real gotchas)
 
-- **C4 `MockLLMBackend` has no negation awareness** (`lip/c4_dispute_classifier/model.py:87-93`) — it re-fires on "fraud"/"dispute" after prefilter passes. Use **prefilter-only FP rate** (not full-pipeline accuracy) as the C4 quality metric. Negation suite at `lip/c4_dispute_classifier/negation.py` (500 cases, 5 categories, 20 templates each).
+- **C4 `MockLLMBackend` has no negation awareness** (`lip/c4_dispute_classifier/model.py:88-93`) — it re-fires on "fraud"/"dispute" after prefilter passes. Use **prefilter-only FP rate** (not full-pipeline accuracy) as the C4 quality metric. Negation suite at `lip/c4_dispute_classifier/negation.py` generates 500 cases (5 categories × `n_per_category=100`, drawn from ~20 base templates per category and cycled).
 
 - **C4 Qwen3 backend rules:** Don't add `stop=["\n"," "]` to Groq calls — breaks generation inside `<think>` blocks. Use `/no_think` in system prompt + regex strip. Groq models in `models.list()` can still 403 — verify project permissions at console.groq.com. Never conclude on FP/FN rates from <100 cases. Don't switch model from `qwen/qwen3-32b` without a full 100-case negation corpus run.
 
@@ -140,7 +144,7 @@ Citation rule: when updating measured values in `constants.py`, cite commit hash
 
 - **`test_e2e_pipeline.py` is fully in-memory** (8 mock scenarios, no Kafka/Redis required). Safe to run without infra. Do NOT `--ignore` it.
 
-- **`test_e2e_live.py` requires live Redpanda at localhost:9092** — marked `@pytest.mark.live`, auto-skips when infra is down. Default suite excludes it: `--ignore=lip/tests/test_e2e_live.py`. Run explicitly: `PYTHONPATH=. python -m pytest lip/tests/test_e2e_live.py -m live -v`.
+- **`test_e2e_live.py` requires live Redpanda at localhost:9092** — marked `@pytest.mark.live`, auto-skips when infra is down (the marker handles skipping; there is no default `--ignore` in `pyproject.toml addopts`). Run explicitly with infra up: `PYTHONPATH=. python -m pytest lip/tests/test_e2e_live.py -m live -v`. To exclude from a default run when infra is partially up, add `--ignore=lip/tests/test_e2e_live.py` per `AGENTS.md`.
 
 - **`test_slo_p99_94ms`** in `test_c1_classifier.py` is timing-flaky — fails under CPU load, passes in isolation. Not a regression signal.
 

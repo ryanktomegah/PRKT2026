@@ -34,11 +34,14 @@
 
 M-01 predicts whether a specific cross-border B2B payment — identified by its UETR — will fail to settle within its rejection-class-appropriate maturity window:
 
+Canonical class membership: `lip/c3_repayment_engine/rejection_taxonomy.py`. BLOCK list also at `lip/common/block_codes.json`.
+
 | Rejection Class | Maturity Window | Example Codes |
 |-----------------|-----------------|---------------|
-| A | 3 days | AC01, AC04, AG01, RC01, MD01 |
-| B | 7 days | RR01, RR02, RR03, RR04, FRAU, LEGL |
-| C | 21 days | AM04, AM05, FF01, MS03 |
+| A | 3 days | AC01, AC04, AM04, AM05, FF01, MD01, RC01 |
+| B | 7 days | MS02, MS03, NARR, CUST, AG02, NOAS, TIMO |
+| C | 21 days | AGNT, CVCY, FRSP, INDM, INVB, INVR |
+| BLOCK | 0 (no offer) | DNOR, CNOR, RR01-RR04, AG01, LEGL, DISP, DUPL, FRAD, FRAU |
 
 When the predicted failure probability exceeds the operating threshold (τ* = 0.110), the MIPLO Decision Engine generates a bridge loan offer for the receiving bank's ELO to accept or decline.
 

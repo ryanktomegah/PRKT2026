@@ -32,7 +32,27 @@ pacs.002 rejection
 └─────────────────────────────────────────────────────────────────────────────┘
        │
        ▼
-  LoanOffer or BLOCKED/DECLINED/COMPLIANCE_HOLD
+  PipelineResult.outcome ∈ {
+      OFFERED,                  // C7 produced a bridge offer; ELO must accept
+                                //   to transition BRIDGE_OFFERED → FUNDED (async).
+      FUNDED,                   // post-acceptance state; C3 monitors repayment.
+      DISPUTE_BLOCKED,          // C4 hard-blocked.
+      AML_BLOCKED,              // C6 hard-blocked.
+      COMPLIANCE_HOLD,          // EPG-19 BLOCK code (DNOR, CNOR, RR01-RR04, AG01, LEGL).
+      DECLINED,                 // pricing or eligibility refusal.
+      BELOW_THRESHOLD,          // C1 failure probability < τ★.
+      HALT,                     // pipeline kill switch engaged.
+      PENDING_HUMAN_REVIEW,     // EPG-26 human-oversight gate.
+      RETRY_BLOCKED,            // C7 retry-budget exhausted.
+      AML_CHECK_UNAVAILABLE,    // C6 unavailable / fail-closed.
+      SYSTEM_ERROR,             // unhandled exception.
+  }
+       │ (only if FUNDED)
+       ▼
+  C3 Repayment Engine: UETR polling, settlement monitoring, repayment / default
+
+Source of truth for outcome strings: lip/pipeline_result.py:25-44
+Source of truth for state machine: lip/common/state_machines.py:91-148
 ```
 
 | Component | Purpose | Key Tech |

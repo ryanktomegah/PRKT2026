@@ -94,28 +94,41 @@ All 10,000,000 UETRs are unique. Verified by data validation pipeline.
 
 ### 4.2 Rejection Code Distribution
 
-15 ISO 20022 rejection codes across 3 classes:
+**Source of truth:** `lip/dgen/c1_generator.py:77-113` (canonical 14-code distribution post-B11-02 realignment, 2026-04-08 code review). Pre-B11-02 versions of this card listed RR01/RR02 as Class B, FRAU/LEGL as Class C, and NARR/FF01 as BLOCK — those labels were opposite to the canonical taxonomy and have been corrected. The pre-B11-02 corpus would have trained C1 to bridge EPG-19 compliance holds (catastrophic); current corpus is realigned and includes BLOCK examples (DNOR, CNOR, RR01-RR04, AG01, LEGL, DISP, DUPL, FRAD, FRAU).
+
+24 ISO 20022 rejection codes across 4 classes (A, B, C, BLOCK):
 
 | Code | Class | Raw Weight | Description |
 |------|-------|------------|-------------|
-| AC01 | A | 0.12 | Incorrect Account Number |
-| AC04 | A | 0.08 | Closed Account Number |
-| AG01 | A | 0.05 | Transaction Forbidden |
-| RC01 | A | 0.05 | Bank Identifier Incorrect |
-| MD01 | A | 0.05 | No Mandate |
-| RR01 | B | 0.10 | Missing Debtor Account or ID |
-| RR02 | B | 0.08 | Missing Debtor Name or Address |
-| RR03 | B | 0.07 | Missing Creditor Name or Address |
-| RR04 | B | 0.05 | Regulatory Reason |
-| FRAU | B | 0.05 | Fraudulent Origin |
-| LEGL | B | 0.05 | Specific Service offered by Agent |
-| AM04 | C | 0.12 | Insufficient Funds |
-| AM05 | C | 0.07 | Duplicate Payment |
-| FF01 | C | 0.03 | Invalid File Format |
-| MS03 | C | 0.03 | Not Specified Reason Agent |
+| AC01 | A | 0.10 | Incorrect Account Number |
+| AC04 | A | 0.07 | Closed Account |
+| AC06 | A | 0.04 | Blocked Account |
+| BE04 | A | 0.05 | Missing Creditor Address |
+| RC01 | A | 0.04 | BIC Invalid |
+| FF01 | A | 0.02 | Invalid File Format (Class A post-B11-02) |
+| AM04 | B | 0.13 | Insufficient Funds |
+| AM05 | B | 0.09 | Duplicate Payment |
+| CUST | B | 0.07 | Customer Decision |
+| NARR | B | 0.06 | Narrative (Class B post-B11-02) |
+| AG02 | B | 0.04 | Invalid Bank Operation Code |
+| AGNT | C | 0.05 | Incorrect Agent |
+| INVB | C | 0.04 | Invalid BIC |
+| NOAS | C | 0.03 | No Answer from Customer |
+| DNOR | BLOCK | 0.015 | Debtor Not Allowed to Send (EPG-02) |
+| CNOR | BLOCK | 0.015 | Creditor Not Allowed to Receive (EPG-03) |
+| RR01 | BLOCK | 0.018 | Missing Debtor Account/ID (EPG-01) |
+| RR02 | BLOCK | 0.014 | Missing Debtor Name/Address (EPG-01) |
+| RR03 | BLOCK | 0.012 | Missing Creditor Name/Address (EPG-01) |
+| RR04 | BLOCK | 0.014 | Regulatory Reason (EPG-07) |
+| AG01 | BLOCK | 0.012 | Transaction Forbidden (EPG-08) |
+| LEGL | BLOCK | 0.018 | Legal Decision (EPG-08) |
+| DISP | BLOCK | 0.013 | Disputed Transaction |
+| DUPL | BLOCK | 0.011 | Duplicate Detected |
+| FRAD | BLOCK | 0.011 | Fraudulent Origin |
+| FRAU | BLOCK | 0.018 | Fraud |
 
-**Class target fractions:** A = 35%, B = 40%, C = 25%
-**Observed fractions:** A = 34.94%, B = 40.04%, C = 25.02% — within tolerance
+**Class target fractions:** A ≈ 32%, B ≈ 39%, C ≈ 12%, BLOCK ≈ 17%
+**Observed fractions:** must be regenerated from the post-B11-02 corpus and reported here on next retrain.
 
 ### 4.3 BIC Pool
 

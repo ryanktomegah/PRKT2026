@@ -1,10 +1,13 @@
 # EPG-16 / EPG-17 / EPG-18 — AML Caps + Boot Enforcement + Human Review Routing
 
-**Status:** ✅ Implemented
+**Status:** ✅ Implemented (with subsequent hardening — see "Implementation evolution" below)
 **Decided:** 2026-03-18
 **Decision authority:** CIPHER (EPG-16/17), REX (EPG-18)
 **Source rationale:** [`/CLAUDE.md`](../../CLAUDE.md) § EPG-09/10/16/17/18
-**Implementation:** commit `0ec874c`
+**Implementation:** commit `0ec874c` (initial); B3-03 (2026-04-08 review) hardened the dataclass default
+
+> **⚠ Implementation evolution (2026-04-08, B3-03 fix):**
+> The EPG-16 decision below records the *semantic* intent: "0 = unlimited (valid, explicit)". The original implementation used `0` as the dataclass default, which created a silent-pass risk: a programmatically-constructed token with no explicit `aml_dollar_cap_usd` would get the unlimited default. The B3-03 fix changed the dataclass default to sentinel `_AML_CAP_UNSET` (`-1`), and `LicenseBootValidator` rejects any token where the cap fields equal the sentinel. The EPG-16/17 *intent* is unchanged — explicit caps mandatory at boot — but the *mechanism* is now sentinel-based rather than relying on the schema validator alone. Source: `lip/c8_license_manager/license_token.py:42-87`.
 
 ---
 

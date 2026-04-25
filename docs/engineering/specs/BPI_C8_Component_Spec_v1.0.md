@@ -83,8 +83,8 @@ class LicenseToken:
     expires_at: date              # HARD expiry; no grace period
     licensed_components: frozenset[str]  # {"C1","C2","C3","C4","C5","C6","C7"}
     max_tps: int                  # per-licensee rate limit (0 = unlimited; negotiated per contract)
-    aml_dollar_cap_usd: Decimal   # EPG-16; 0 = unlimited; explicit in every token (EPG-17)
-    aml_count_cap: int            # EPG-16; 0 = unlimited; explicit in every token (EPG-17)
+    aml_dollar_cap_usd: Decimal   # EPG-16/17; 0 = explicit "unlimited"; -1 = sentinel _AML_CAP_UNSET (rejected by boot validator, B3-03)
+    aml_count_cap: int            # EPG-16/17; 0 = explicit "unlimited"; -1 = sentinel _AML_CAP_UNSET (rejected by boot validator, B3-03)
     signature: Optional[str]      # hex HMAC-SHA256 digest over canonical_payload()
 ```
 

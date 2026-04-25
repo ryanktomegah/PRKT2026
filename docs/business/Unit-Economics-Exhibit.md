@@ -56,12 +56,14 @@ This ensures:
 
 ## 3. Maturity Windows by Rejection Class
 
+Canonical class membership: `lip/c3_repayment_engine/rejection_taxonomy.py`. BLOCK list also at `lip/common/block_codes.json`.
+
 | Rejection Class | Maturity (days) | Typical Codes | Description |
 |----------------|----------------|---------------|-------------|
-| Class A | 3 days | AC01, AM04, RC01 | Routing/account errors — fast resolution |
-| Class B | 7 days | AM05, MS03 | Systemic/processing delays |
-| Class C | 21 days | AG02, MD01 | Liquidity/sanctions/investigation holds |
-| BLOCK | 0 (no loan) | DNOR, CNOR, RR01-RR04, AG01, LEGL | Compliance holds — never bridged (EPG-19) |
+| Class A | 3 days | AC01, AC04, AM04, AM05, FF01, MD01, RC01 | Routing/account/format errors — fast resolution |
+| Class B | 7 days | MS02, MS03, NARR, CUST, AG02, NOAS, TIMO | Systemic/processing delays |
+| Class C | 21 days | AGNT, CVCY, FRSP, INDM, INVB, INVR | Liquidity/long-tail resolution |
+| BLOCK | 0 (no loan) | EPG-19 (8): DNOR, CNOR, RR01-RR04, AG01, LEGL · Dispute/fraud (4): DISP, DUPL, FRAD, FRAU | Compliance/dispute hard-blocks — never bridged (EPG-19) |
 
 ---
 

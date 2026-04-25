@@ -135,17 +135,22 @@ LIP consumes ISO 20022 payment status messages. The primary input is `pacs.002` 
 
 ### Supported Rejection Codes by Class
 
-**Class A — Technical/Missing Data (3-day maturity):**
-AC01, AC04, AC06, AM02, AM03, AM05, AM09, AM10, BE01, BE04, BE06, BE07, DT01, FF01, MS03, RC01, RR06, TM01
+Canonical class membership: `lip/c3_repayment_engine/rejection_taxonomy.py`. BLOCK list also at `lip/common/block_codes.json`.
 
-**Class B — Procedural Holds (currently blocked):**
-B1 subclass requires Bridgeability Certification API. B2 subclass permanently blocked.
+**Class A — Technical/Routing/Format Errors (3-day maturity):**
+AC01, AC04, AC06, AM01-AM06, AM09, AM10, AM12, BE01, BE05, DT01, ED01, ED03, ED05, FF01, FF03, FF05, MD01, MD02, MD06, RC01
 
-**Class C — Systemic/Processing (21-day maturity):**
-AG02, CUST, DNOR (non-compliance subset excluded), ED05, FOCR, MD01, MD02, NARR, NOAS, NOOR
+**Class B — Systemic/Processing Delays (7-day maturity per taxonomy; commercial deployment is the EPG-23 question — see below):**
+AG02, CURR, CUST, FOCR, MS02, MS03, NARR, NOAS, NOOR, PTNA, RCON, SVNR, TECH, TIMO, UPAY
 
-**BLOCK — Never Bridged:**
-DNOR (compliance), CNOR, RR01, RR02, RR03, RR04, AG01, LEGL
+**Commercial deployment of Class B is currently gated:** B1 (bridgeable with certification) requires the bank's `hold_bridgeable` Bridgeability Certification API per EPG-04/05; B2 (permanently blocked) stays blocked. Until the bank's certification system is integrated, all Class B rejections receive `class_b_eligible=False` and are not offered (EPG-23).
+
+**Class C — Investigation/Long-Tail (21-day maturity):**
+AGNT, CVCY, FRSP, INDM, INVB, INVR, OPAY, PCOR, QMIS, SMND, UMKA
+
+**BLOCK — Never Bridged (12 codes total):**
+- EPG-19 compliance hold (8): DNOR, CNOR, RR01, RR02, RR03, RR04, AG01, LEGL → outcome `COMPLIANCE_HOLD`
+- Dispute/fraud (4): DISP, DUPL, FRAD, FRAU → outcome `DISPUTE_BLOCKED`
 
 ---
 

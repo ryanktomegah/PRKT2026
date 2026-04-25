@@ -132,7 +132,7 @@ pipeline = LIPPipeline.from_defaults()
 
 event = NormalizedEvent(
     end_to_end_id="550e8400-e29b-41d4-a716-446655440000",
-    rejection_code="MS03",           # Class A — technical/missing data
+    rejection_code="MS03",           # Class B — systemic/processing delay (7d maturity per rejection_taxonomy.py)
     amount=1_000_000.0,
     currency="EUR",
     target_currency="USD",
