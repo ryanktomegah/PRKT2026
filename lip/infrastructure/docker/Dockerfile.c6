@@ -1,7 +1,40 @@
 # Dockerfile.c6 — C6 AML Velocity + Sanctions Container
 # Runs AMLChecker: sanctions screening → velocity controls → anomaly detection
+#
+# Multi-stage build:
+#   stage 1 (rust-builder): compile the lip_c6_rust_velocity PyO3 wheel.
+#     Without this wheel AMLChecker falls back to a pure-Python velocity/sanctions
+#     path that logs CRITICAL "Rust extension not found — LATENCY WILL BE DEGRADED"
+#     at startup and misses the sub-ms p99 target.
+#   stage 2 (runtime): install the wheel + the LIP package into a slim image.
 
-FROM python:3.11-slim
+ARG PYTHON_VERSION=3.11
+ARG RUST_VERSION=1.82
+
+FROM rust:${RUST_VERSION}-slim-bookworm AS rust-builder
+
+ARG PYTHON_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/maturin-venv \
+    && /opt/maturin-venv/bin/pip install --no-cache-dir "maturin>=1.7"
+
+WORKDIR /build
+COPY lip/c6_aml_velocity/rust_velocity/ ./rust_velocity/
+WORKDIR /build/rust_velocity
+RUN /opt/maturin-venv/bin/maturin build --release --interpreter python${PYTHON_VERSION} \
+    && mkdir -p /wheels \
+    && cp target/wheels/*.whl /wheels/
+
+# ---------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
 LABEL maintainer="LIP Engineering"
 LABEL component="c6-aml-velocity"
@@ -18,6 +51,11 @@ RUN pip install --no-cache-dir \
     pyyaml>=6.0 \
     fastapi>=0.110.0 \
     uvicorn[standard]>=0.27.0
+
+# Install the Rust velocity wheel first so sanctions_bridge / velocity_bridge
+# pick it up at import time (they log CRITICAL at the module level if absent).
+COPY --from=rust-builder /wheels/*.whl /tmp/wheels/
+RUN pip install --no-cache-dir /tmp/wheels/*.whl && rm -rf /tmp/wheels
 
 # Copy LIP package (c6 + common)
 COPY lip/ ./lip/

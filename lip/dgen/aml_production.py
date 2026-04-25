@@ -5,7 +5,7 @@ Generates `aml_synthetic.parquet` for C6 AML Velocity Module training.
 
 Pattern distribution (FATF-aligned, targets 2.8% overall AML flag rate):
   CLEAN              ~97.2%  — legitimate correspondent banking
-  STRUCTURING         ~1.2%  — amounts clustered just below $10,000 CTR threshold
+  STRUCTURING         ~1.2%  — amounts clustered just below the reporting threshold
   VELOCITY            ~1.1%  — entity transaction count 3–5x above corridor baseline
   SANCTIONS_ADJACENT  ~0.5%  — BIC pair involves a pre-flagged sanctions-adjacent institution
 
@@ -38,6 +38,7 @@ SECURITY NOTE: Do NOT commit the output of this module to the repository.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -46,8 +47,18 @@ import numpy as np
 
 _CORPUS_TAG = "SYNTHETIC_CORPUS_AML_PROD"
 
-# CTR/STR thresholds targeted by structuring patterns
-_CTR_THRESHOLD_USD = 10_000.0
+# B11-04 CIPHER: AML detection threshold MUST NOT be hardcoded in source.
+# Load from environment at generation time. Raises ValueError if unset.
+def _load_ctr_threshold() -> float:
+    """Load CTR/STR threshold from environment. Raises ValueError if unset."""
+    raw = os.environ.get("AML_THRESHOLD_CTR_USD")
+    if raw is None:
+        raise ValueError(
+            "AML_THRESHOLD_CTR_USD environment variable is not set. "
+            "Set it before generating the AML production corpus. "
+            "Never hardcode threshold values in source (CIPHER rule)."
+        )
+    return float(raw)
 
 # 18-month temporal range (2023-07-01 → 2025-01-01) for SR 11-7 OOT support
 _EPOCH_START = 1_688_169_600.0
@@ -124,17 +135,27 @@ def _clean_record(
 
 
 def _structuring_record(
-    rng: np.random.Generator, entity_id: str, ts: float, gen_ts: str
+    rng: np.random.Generator,
+    entity_id: str,
+    ts: float,
+    gen_ts: str,
+    ctr_threshold: float,
 ) -> dict[str, Any]:
-    """Structuring: amounts clustered just below $10,000 CTR threshold.
+    """Structuring: amounts clustered just below the reporting threshold.
+
+    Parameters
+    ----------
+    ctr_threshold:
+        Loaded from AML_THRESHOLD_CTR_USD environment variable at generation time.
+        Never hardcoded in source (B11-04 CIPHER rule).
 
     Characteristics:
-    - Amount tightly below $10K threshold (85–99.9% of threshold)
+    - Amount tightly below reporting threshold (85–99.9% of threshold)
     - Many transactions per day from same entity
     - Few unique counterparties (structuring is repetitive)
     - Low round-number rate (intentional to avoid detection)
     """
-    amount = float(rng.uniform(_CTR_THRESHOLD_USD * 0.85, _CTR_THRESHOLD_USD * 0.999))
+    amount = float(rng.uniform(ctr_threshold * 0.85, ctr_threshold * 0.999))
     txn_24h = int(rng.integers(4, 15))  # high frequency, below threshold repetition
 
     return {
@@ -282,6 +303,9 @@ def generate_aml_dataset(
     list[dict]
         Records with all required fields including aml_flag and aml_type.
     """
+    # B11-04 CIPHER: Load threshold from environment — raises ValueError if unset.
+    ctr_threshold = _load_ctr_threshold()
+
     rng = np.random.default_rng(seed)
     gen_ts = datetime.now(tz=timezone.utc).isoformat() + "Z"
 
@@ -303,7 +327,7 @@ def generate_aml_dataset(
         if pattern == "clean":
             rec = _clean_record(rng, entity_id, ts, gen_ts)
         elif pattern == "structuring":
-            rec = _structuring_record(rng, entity_id, ts, gen_ts)
+            rec = _structuring_record(rng, entity_id, ts, gen_ts, ctr_threshold)
         elif pattern == "velocity":
             rec = _velocity_record(rng, entity_id, ts, gen_ts)
         else:

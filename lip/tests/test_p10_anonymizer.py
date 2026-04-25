@@ -291,17 +291,22 @@ class TestLaplaceMechanism:
         assert initial - after == pytest.approx(0.5)
 
     def test_budget_exhaustion_returns_stale(self):
-        """When budget is exhausted, anonymize_batch returns stale=True results."""
+        """When budget is exhausted, anonymize_batch returns stale=True results.
+
+        B8-01: each batch costs 3*epsilon (sequential composition for 3
+        noised statistics). Budget=3.0, epsilon=0.5 => cost=1.5/batch =>
+        2 fresh batches then exhausted on the 3rd.
+        """
         from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
         from lip.p10_regulatory_data.telemetry_schema import (
             CorridorStatistic,
             TelemetryBatch,
         )
 
-        # Budget = 1.0, epsilon = 0.5 => 2 queries then exhausted
+        # Budget = 3.0, epsilon = 0.5 => 3*0.5=1.5 per batch => 2 batches then exhausted
         anon = RegulatoryAnonymizer(
             k=2, epsilon=Decimal("0.5"),
-            budget_per_cycle=Decimal("1.0"),
+            budget_per_cycle=Decimal("3.0"),
             rng_seed=42,
         )
         now = datetime.now(tz=timezone.utc)
@@ -324,13 +329,13 @@ class TestLaplaceMechanism:
                 ))
             return batches
 
-        # First call: budget available
+        # First call: budget available (costs 1.5, remaining = 1.5)
         results1 = anon.anonymize_batch(_make_batches())
         assert len(results1) == 1
         assert results1[0].stale is False
         assert results1[0].noise_applied is True
 
-        # Second call: budget available
+        # Second call: budget available (costs 1.5, remaining = 0.0)
         results2 = anon.anonymize_batch(_make_batches())
         assert results2[0].stale is False
 
@@ -432,9 +437,216 @@ class TestAnonymizerIntegration:
 
     def test_reset_budget_clears_cache(self):
         from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
-        anon = RegulatoryAnonymizer(k=5, rng_seed=42, budget_per_cycle=Decimal("1.0"))
+        # B8-01: budget must be >= 3*epsilon (1.5) for one batch to succeed
+        anon = RegulatoryAnonymizer(k=5, rng_seed=42, budget_per_cycle=Decimal("2.0"))
         batches = self._make_batches(n_banks=5)
         anon.anonymize_batch(batches)
         anon.reset_budget_cycle()
         status = anon.get_privacy_budget_status("EUR-USD")
-        assert status.budget_remaining == pytest.approx(1.0)
+        assert status.budget_remaining == pytest.approx(2.0)
+
+
+class TestDPCompositionAccounting:
+    """B8-01 regression: sequential composition must charge 3*epsilon per batch.
+
+    Before the fix, anonymize_batch applied Laplace noise to 3 statistics
+    (failure rate, total payments, failed payments) but only deducted epsilon
+    once. The true privacy cost is 3*epsilon per batch (sequential composition).
+    """
+
+    def _make_batches(self, n_banks=5, corridor="EUR-USD"):
+        from lip.p10_regulatory_data.telemetry_schema import CorridorStatistic, TelemetryBatch
+        now = datetime.now(tz=timezone.utc)
+        batches = []
+        for i in range(n_banks):
+            batches.append(TelemetryBatch(
+                batch_id=f"TB-{i:03d}", bank_hash=f"bank_hash_{i}",
+                period_start=now, period_end=now,
+                corridor_statistics=[CorridorStatistic(
+                    corridor=corridor,
+                    total_payments=100,
+                    failed_payments=5,
+                    failure_rate=0.05,
+                    failure_class_distribution={"CLASS_A": 3, "CLASS_B": 1, "CLASS_C": 1, "BLOCK": 0},
+                    mean_settlement_hours=4.0,
+                    p95_settlement_hours=18.0,
+                    amount_bucket_distribution={"0-10K": 50, "10K-100K": 50},
+                    stress_regime_active=False,
+                    stress_ratio=1.0,
+                )],
+                hmac_signature=f"sig_{i}",
+            ))
+        return batches
+
+    def test_single_batch_deducts_3_epsilon(self):
+        """One call to anonymize_batch should deduct 3*epsilon, not 1*epsilon."""
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+
+        epsilon = Decimal("0.5")
+        budget = Decimal("10.0")
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=epsilon, budget_per_cycle=budget, rng_seed=42,
+        )
+
+        anon.anonymize_batch(self._make_batches())
+        status = anon.get_privacy_budget_status("EUR-USD")
+        spent = Decimal(str(status.budget_spent))
+        expected = epsilon * 3  # 1.5
+        assert spent == pytest.approx(float(expected)), (
+            f"Expected 3*epsilon={expected} spent after one batch, got {spent}. "
+            "B8-01 regression: composition accounting under-counts."
+        )
+
+    def test_budget_spent_equals_n_batches_times_3_epsilon(self):
+        """After N batches, total spend = N * 3 * epsilon."""
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+
+        epsilon = Decimal("0.5")
+        budget = Decimal("10.0")
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=epsilon, budget_per_cycle=budget, rng_seed=42,
+        )
+
+        n_batches = 3
+        for _ in range(n_batches):
+            anon.anonymize_batch(self._make_batches())
+
+        status = anon.get_privacy_budget_status("EUR-USD")
+        expected_spent = float(epsilon * 3 * n_batches)  # 4.5
+        assert status.budget_spent == pytest.approx(expected_spent), (
+            f"Expected {expected_spent} spent after {n_batches} batches, "
+            f"got {status.budget_spent}. B8-01 regression."
+        )
+
+    def test_budget_exhausts_at_correct_batch_count(self):
+        """Budget=3.0, epsilon=0.5 => cost=1.5/batch => exactly 2 fresh batches."""
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=Decimal("0.5"),
+            budget_per_cycle=Decimal("3.0"),
+            rng_seed=42,
+        )
+
+        # Batch 1: should succeed (remaining = 1.5)
+        r1 = anon.anonymize_batch(self._make_batches())
+        assert r1[0].noise_applied is True
+        assert r1[0].stale is False
+
+        # Batch 2: should succeed (remaining = 0.0)
+        r2 = anon.anonymize_batch(self._make_batches())
+        assert r2[0].noise_applied is True
+        assert r2[0].stale is False
+
+        # Batch 3: budget exhausted — stale
+        r3 = anon.anonymize_batch(self._make_batches())
+        assert r3[0].stale is True
+
+
+class TestPrivacyBudgetExhaustedNeverReturnsRaw:
+    """B8-02 regression: budget exhaustion + no cache must raise, never return raw data.
+
+    Before the fix, a corridor seen for the first time after budget exhaustion
+    got its true failure rate published with zero noise (privacy guarantee = 0).
+    After the fix, PrivacyBudgetExhaustedError is raised.
+    """
+
+    def _make_batches(self, n_banks=5, corridor="EUR-USD"):
+        from lip.p10_regulatory_data.telemetry_schema import CorridorStatistic, TelemetryBatch
+        now = datetime.now(tz=timezone.utc)
+        batches = []
+        for i in range(n_banks):
+            batches.append(TelemetryBatch(
+                batch_id=f"TB-{i:03d}", bank_hash=f"bank_hash_{i}",
+                period_start=now, period_end=now,
+                corridor_statistics=[CorridorStatistic(
+                    corridor=corridor,
+                    total_payments=100,
+                    failed_payments=5,
+                    failure_rate=0.05,
+                    failure_class_distribution={"CLASS_A": 3, "CLASS_B": 1, "CLASS_C": 1, "BLOCK": 0},
+                    mean_settlement_hours=4.0,
+                    p95_settlement_hours=18.0,
+                    amount_bucket_distribution={"0-10K": 50, "10K-100K": 50},
+                    stress_regime_active=False,
+                    stress_ratio=1.0,
+                )],
+                hmac_signature=f"sig_{i}",
+            ))
+        return batches
+
+    def test_no_cache_raises_privacy_budget_exhausted(self):
+        """Budget exhausted + no cache = raise, not return raw data."""
+        from lip.p10_regulatory_data.anonymizer import (
+            PrivacyBudgetExhaustedError,
+            RegulatoryAnonymizer,
+        )
+
+        # Budget so small that even one batch can't complete (3*0.5 = 1.5 > 1.0)
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=Decimal("0.5"),
+            budget_per_cycle=Decimal("1.0"),
+            rng_seed=42,
+        )
+        with pytest.raises(PrivacyBudgetExhaustedError):
+            anon.anonymize_batch(self._make_batches())
+
+    def test_cached_result_served_when_available(self):
+        """Budget exhausted + cache available = stale cached result (not raw)."""
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+
+        # Budget for exactly 1 batch (3*0.5=1.5)
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=Decimal("0.5"),
+            budget_per_cycle=Decimal("1.5"),
+            rng_seed=42,
+        )
+
+        # First batch: succeeds and populates cache
+        r1 = anon.anonymize_batch(self._make_batches())
+        assert r1[0].noise_applied is True
+
+        # Second batch: budget exhausted, but cache available — stale
+        r2 = anon.anonymize_batch(self._make_batches())
+        assert r2[0].stale is True
+        assert r2[0].noise_applied is True  # inherited from cached result
+
+    def test_new_corridor_after_exhaustion_raises(self):
+        """A corridor with insufficient budget and no cache must raise."""
+        from lip.p10_regulatory_data.anonymizer import (
+            PrivacyBudgetExhaustedError,
+            RegulatoryAnonymizer,
+        )
+
+        # Budget too low for even one batch (3*0.5=1.5 > 1.0)
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=Decimal("0.5"),
+            budget_per_cycle=Decimal("1.0"),
+            rng_seed=42,
+        )
+
+        # GBP-EUR has no cache and insufficient budget — must raise
+        with pytest.raises(PrivacyBudgetExhaustedError):
+            anon.anonymize_batch(self._make_batches(corridor="GBP-EUR"))
+
+    def test_no_noise_applied_false_in_any_result(self):
+        """Grep guard: no result should ever have noise_applied=False.
+
+        B8-02 invariant: if noise wasn't applied, we either serve stale
+        (which inherited noise_applied=True) or raise.
+        """
+        from lip.p10_regulatory_data.anonymizer import RegulatoryAnonymizer
+
+        anon = RegulatoryAnonymizer(
+            k=5, epsilon=Decimal("0.5"),
+            budget_per_cycle=Decimal("10.0"),
+            rng_seed=42,
+        )
+
+        for _ in range(3):
+            results = anon.anonymize_batch(self._make_batches())
+            for r in results:
+                assert r.noise_applied is True, (
+                    "B8-02 regression: a result with noise_applied=False was "
+                    "returned. Raw un-noised data must never be released."
+                )

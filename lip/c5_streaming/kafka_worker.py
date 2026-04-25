@@ -160,17 +160,19 @@ class PaymentEventWorker:
 
     def _process_message(self, msg: Any) -> None:
         """
-        Decode → normalise → pipeline → produce.
+        Decode → normalise → pipeline → produce → commit offset.
 
-        Errors are caught and counted but do not stop the consumer loop.
-        The problematic message is NOT committed so it will be reprocessed
-        on restart (exactly-once semantics relies on idempotent producer +
-        transactional offsets; see kafka_config.py).
+        Offset is committed only after successful processing (including null-value
+        tombstones, which are skipped but safe to advance past). On any error path
+        the offset is NOT committed so the message is redelivered on restart.
+        enable.auto.commit=False is set in KafkaConfig.to_consumer_config().
         """
         try:
             raw_bytes = msg.value()
             if raw_bytes is None:
                 logger.warning("Received null-value message — skipping offset=%s", msg.offset())
+                if self._consumer is not None:
+                    self._consumer.commit(message=msg)
                 return
 
             raw: dict = json.loads(raw_bytes.decode("utf-8"))
@@ -186,6 +188,8 @@ class PaymentEventWorker:
                 self._produce_with_retry(out_topic, key_bytes, value_bytes)
 
             self._processed += 1
+            if self._consumer is not None:
+                self._consumer.commit(message=msg)
 
         except json.JSONDecodeError as exc:
             logger.error(
@@ -195,7 +199,14 @@ class PaymentEventWorker:
             )
             self._route_dead_letter(msg)
             self._errors += 1
-        except Exception:  # noqa: BLE001
+        except (SystemExit, KeyboardInterrupt):
+            # B6-10: never swallow process termination signals in a catch-all.
+            raise
+        except Exception:  # Intentional catch-all: any unhandled error must be
+            # routed to DLQ rather than crashing the consumer loop. Narrowing
+            # this catch further risks killing the consumer on unexpected errors
+            # in production (e.g. third-party library exceptions). The noqa is
+            # replaced by this comment explaining the deliberate design choice.
             logger.exception(
                 "Unexpected error processing offset=%s — routing to dead letter",
                 msg.offset(),
@@ -319,9 +330,9 @@ def _cli() -> None:
         bootstrap_servers=os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"
         ).split(","),
-        ssl_ca_location=os.environ.get("KAFKA_SSL_CA_LOCATION"),
-        ssl_cert_location=os.environ.get("KAFKA_SSL_CERT_LOCATION"),
-        ssl_key_location=os.environ.get("KAFKA_SSL_KEY_LOCATION"),
+        ssl_ca_location=os.environ.get("KAFKA_SSL_CA_LOCATION") or "",
+        ssl_cert_location=os.environ.get("KAFKA_SSL_CERT_LOCATION") or "",
+        ssl_key_location=os.environ.get("KAFKA_SSL_KEY_LOCATION") or "",
     )
 
     # Build a minimal pipeline function for standalone operation.

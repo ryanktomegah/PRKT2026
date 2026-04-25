@@ -16,6 +16,37 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
+class DPSelfAttention(nn.Module):
+    """Opacus-compatible multi-head self-attention.
+
+    Uses only nn.Linear and standard tensor operations so Opacus
+    can compute per-sample gradients. Mathematically equivalent
+    to nn.MultiheadAttention but without fused kernels.
+    """
+    def __init__(self, embed_dim: int, num_heads: int):
+        super().__init__()
+        assert embed_dim % num_heads == 0, "embed_dim must be divisible by num_heads"
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.head_dim = embed_dim // num_heads
+
+        self.q_proj = nn.Linear(embed_dim, embed_dim)
+        self.k_proj = nn.Linear(embed_dim, embed_dim)
+        self.v_proj = nn.Linear(embed_dim, embed_dim)
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, S, D = x.shape
+        q = self.q_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
+
+        attn = (q @ k.transpose(-2, -1)) / (self.head_dim ** 0.5)
+        attn = F.softmax(attn, dim=-1)
+        out = (attn @ v).transpose(1, 2).contiguous().view(B, S, D)
+        return self.out_proj(out)
+
 # ---------------------------------------------------------------------------
 # Constants (mirror tabtransformer.py)
 # ---------------------------------------------------------------------------
@@ -58,11 +89,7 @@ class _TransformerLayer(nn.Module):
         ff_dim: int = 64,
     ) -> None:
         super().__init__()
-        self.attn = nn.MultiheadAttention(
-            embed_dim=model_dim,
-            num_heads=num_heads,
-            batch_first=True,
-        )
+        self.attn = DPSelfAttention(embed_dim=model_dim, num_heads=num_heads)
         self.ln1 = nn.LayerNorm(model_dim)
         self.ff1 = nn.Linear(model_dim, ff_dim)
         self.ff2 = nn.Linear(ff_dim, model_dim)
@@ -90,7 +117,7 @@ class _TransformerLayer(nn.Module):
             Same shape as input.
         """
         # Multi-head self-attention + residual + LayerNorm
-        attn_out, _ = self.attn(h, h, h)
+        attn_out = self.attn(h)
         h = self.ln1(h + attn_out)
 
         # FFN with GELU + residual + LayerNorm
@@ -173,7 +200,7 @@ class TabTransformerTorch(nn.Module):
         h = self.proj_in(x).unsqueeze(1)  # (B, 1, 256)
 
         for layer in self.layers:
-            h = layer(h)
+            h = layer(h)  # Note: reusing h preserves grad chain
 
         # Pool: squeeze the trivial sequence dimension
         pooled = h.squeeze(1)              # (B, 256)

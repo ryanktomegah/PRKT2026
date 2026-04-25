@@ -152,8 +152,7 @@ class AMLChecker:
         # This allows the production entrypoint to pass redis_client=create_redis_client()
         # without requiring callers to reconstruct the VelocityChecker themselves.
         if redis_client is not None:
-            velocity_checker._redis = redis_client
-            velocity_checker._window._redis = redis_client
+            velocity_checker.set_redis_client(redis_client)
             logger.info("AMLChecker: Redis client wired into VelocityChecker")
         self._velocity = velocity_checker
         if sanctions_screener is not None:
@@ -173,7 +172,13 @@ class AMLChecker:
         # P3 tenant velocity infrastructure (Sprint 2b)
         self._tenant_checkers: dict[str, TenantVelocityChecker] = {}
         self._bpi_rolling_window = RollingWindow(redis_client=redis_client)
-        self._structuring_detector = StructuringDetector()
+        # Structuring detection must share state across replicas when Redis is
+        # available; otherwise acknowledge the single-replica constraint
+        # (sufficient for unit tests and single-pod staging).
+        if redis_client is not None:
+            self._structuring_detector = StructuringDetector(redis_client=redis_client)
+        else:
+            self._structuring_detector = StructuringDetector(single_replica=True)
         self._base_salt = velocity_checker.salt
 
     # ── Public API ──────────────────────────────────────────────────────────
@@ -210,9 +215,12 @@ class AMLChecker:
         beneficiary_name:
             Optional plaintext beneficiary name for sanctions screening.
         dollar_cap_override:
-            Optional USD cap to use instead of the default $1M limit.
+            Per-licensee USD cap from the C8 token (EPG-16). ``0`` = unlimited
+            (no velocity throttle for this licensee). When ``None``, the
+            VelocityChecker default applies (also ``0`` = unlimited).
         count_cap_override:
-            Optional count cap to use instead of the default 100 limit.
+            Per-licensee count cap from the C8 token (EPG-16). ``0`` = unlimited.
+            When ``None``, the VelocityChecker default applies.
 
         Returns
         -------
@@ -230,9 +238,9 @@ class AMLChecker:
             self._resolve_name(beneficiary_id) if self._resolve_name else beneficiary_id
         )
 
-        for name in (sender_name, bene_name):
+        for name, name_id in [(sender_name, entity_id), (bene_name, beneficiary_id)]:
             try:
-                hits = self._sanctions.screen(name)
+                hits = self._sanctions.screen(name, entity_id=name_id)
                 for hit in hits:
                     rule = f"SANCTIONS_{hit.list_name.value}_HIT"
                     triggered_rules.append(rule)
@@ -244,8 +252,37 @@ class AMLChecker:
                         hit.reference,
                         hit.confidence,
                     )
+            except ValueError as exc:
+                # ESG-01: Invalid entity name (empty, whitespace-only, or
+                # non-alphabetic) triggers hard block. This is a deliberate
+                # bypass prevention measure.
+                logger.error(
+                    "Sanctions screening blocked: invalid entity name for %s: %s. "
+                    "See lip.c6_sanctions_bypass logger for details.",
+                    name_id or "unknown", str(exc)
+                )
+                # Add triggered rule for audit trail
+                triggered_rules.append("SANCTIONS_INVALID_NAME_BLOCK")
+                return AMLResult(
+                    passed=False,
+                    reason="SANCTIONS_INVALID_NAME",
+                    anomaly_flagged=False,
+                    triggered_rules=triggered_rules,
+                    sanctions_hits=[],
+                    velocity_result=None,
+                )
             except Exception as exc:
-                logger.error("Sanctions screening error for entity '%s': %s", name[:16], exc)
+                # B7-07: Sanctions screening failure must fail-closed.
+                # If we can't screen, assume the worst.
+                logger.error("Sanctions screening error for entity '%s': %s — BLOCKING as precaution", name[:16], exc)
+                return AMLResult(
+                    passed=False,
+                    reason="SANCTIONS_SCREENING_ERROR",
+                    anomaly_flagged=False,
+                    triggered_rules=triggered_rules,
+                    sanctions_hits=[],
+                    velocity_result=None,
+                )
 
         if sanctions_hits:
             return AMLResult(

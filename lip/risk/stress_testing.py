@@ -95,7 +95,7 @@ def generate_daily_var_report(
     # Concentration analysis
     corridor_exposure: Dict[str, float] = {}
     for pos in positions:
-        corridor_exposure[pos.corridor] = corridor_exposure.get(pos.corridor, 0.0) + pos.principal
+        corridor_exposure[pos.corridor] = corridor_exposure.get(pos.corridor, 0.0) + float(pos.principal)
     total = sum(corridor_exposure.values()) or 1.0
     top_5 = sorted(corridor_exposure.items(), key=lambda x: x[1], reverse=True)[:5]
     top_concentrations = [

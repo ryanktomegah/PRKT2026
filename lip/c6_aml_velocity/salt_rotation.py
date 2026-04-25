@@ -15,14 +15,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
+from lip.common.constants import SALT_ROTATION_DAYS as ROTATION_INTERVAL_DAYS
+from lip.common.constants import SALT_ROTATION_OVERLAP_DAYS as OVERLAP_DAYS
+
 logger = logging.getLogger(__name__)
-
-ROTATION_INTERVAL_DAYS = 365
-OVERLAP_DAYS = 30
-
-# Rotation epoch validation hash — first 16 hex chars of the epoch zero digest.
-# Guards against accidental epoch-counter resets during salt rotation failover.
-_ROTATION_EPOCH_HASH: str = "d4fb9a0fe76fd218"
 
 
 @dataclass
@@ -119,8 +115,14 @@ class SaltRotationManager:
             old_salt = self.get_current_salt()
             new_salt = os.urandom(32)
             now = datetime.now(tz=timezone.utc)
-            self._previous = self._current
-            self._previous.is_active = False  # type: ignore[union-attr]
+            current = self._current
+            if current is None:
+                self._init_salt()
+                current = self._current
+            if current is None:
+                raise RuntimeError("Salt rotation requires an active current salt")
+            self._previous = current
+            self._previous.is_active = False
             self._store_salt("previous", self._previous)
             self._current = SaltRecord(
                 salt=new_salt,
@@ -133,9 +135,9 @@ class SaltRotationManager:
 
     def is_in_overlap_period(self) -> bool:
         """True if within OVERLAP_DAYS of the last rotation."""
-        if self._previous is None:
+        if self._previous is None or self._current is None:
             return False
-        cutoff = self._current.created_at + timedelta(days=OVERLAP_DAYS)  # type: ignore[union-attr]
+        cutoff = self._current.created_at + timedelta(days=OVERLAP_DAYS)
         return datetime.now(tz=timezone.utc) < cutoff
 
     def hash_with_current(self, value: str) -> str:
@@ -181,7 +183,9 @@ class SaltRotationManager:
         """
         if self._current is None:
             self._init_salt()
-        if datetime.now(tz=timezone.utc) >= self._current.expires_at:  # type: ignore[union-attr]
+        if self._current is None:
+            return False
+        if datetime.now(tz=timezone.utc) >= self._current.expires_at:
             self.rotate_salt()
             return True
         return False
@@ -233,3 +237,15 @@ class SaltRotationManager:
                 is_active=data["is_active"],
             )
         return None
+
+
+class SaltRotation(SaltRotationManager):
+    """Backward-compatible wrapper for legacy callers.
+
+    Historical tests and integrations use ``SaltRotation.current_salt()``.
+    ``SaltRotationManager`` is the canonical implementation, so this class
+    simply preserves the old method name.
+    """
+
+    def current_salt(self) -> bytes:
+        return self.get_current_salt()

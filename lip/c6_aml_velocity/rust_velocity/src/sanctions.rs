@@ -311,9 +311,9 @@ impl PySanctionsScreener {
     ///       - ``reference`` (str): Matched sanctions entry (uppercase canonical).
     fn screen(&self, py: Python<'_>, entity_name: &str) -> PyResult<PyObject> {
         let hits = self.inner.read().screen(entity_name);
-        let result = pyo3::types::PyList::empty_bound(py);
+        let result = pyo3::types::PyList::empty(py);
         for hit in hits {
-            let d = pyo3::types::PyDict::new_bound(py);
+            let d = pyo3::types::PyDict::new(py);
             d.set_item("entity_name_hash", &hit.entity_name_hash)?;
             d.set_item("list_name", hit.list_name.as_str())?;
             d.set_item("confidence", hit.confidence)?;
@@ -339,7 +339,7 @@ impl PySanctionsScreener {
     /// Return a dict of Prometheus-style metric counters.
     fn get_metrics(&self, py: Python<'_>) -> PyResult<PyObject> {
         let snap = self.inner.read().get_metrics_snapshot();
-        let d = pyo3::types::PyDict::new_bound(py);
+        let d = pyo3::types::PyDict::new(py);
         for (k, v) in snap {
             d.set_item(k, v)?;
         }
@@ -349,7 +349,7 @@ impl PySanctionsScreener {
     /// Health check: returns dict with `ok`, `entry_count`, `backend`.
     fn health_check(&self, py: Python<'_>) -> PyResult<PyObject> {
         let count = self.inner.read().entries.len();
-        let d = pyo3::types::PyDict::new_bound(py);
+        let d = pyo3::types::PyDict::new(py);
         d.set_item("ok", true)?;
         d.set_item("entry_count", count)?;
         d.set_item("backend", "rust_velocity")?;

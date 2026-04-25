@@ -326,16 +326,6 @@ func (s *OfferRouterServer) handleTriggerOffer(ctx context.Context, body []byte)
 		return errorResp("kill switch active — no new offers permitted")
 	}
 
-	// Concurrency gate
-	if s.cfg.MaxConcurrentOffers > 0 {
-		s.offersMu.RLock()
-		n := len(s.offers)
-		s.offersMu.RUnlock()
-		if n >= s.cfg.MaxConcurrentOffers {
-			return errorResp(fmt.Sprintf("max concurrent offers (%d) reached", s.cfg.MaxConcurrentOffers))
-		}
-	}
-
 	// Parse ExpiresAt — accept both RFC3339 (no fractions) and RFC3339Nano
 	var expiresAt time.Time
 	if req.ExpiresAt != "" {
@@ -357,7 +347,14 @@ func (s *OfferRouterServer) handleTriggerOffer(ctx context.Context, body []byte)
 
 	st := newOfferState(&req, expiresAt)
 
+	// B4-06: Concurrency gate and duplicate check are performed atomically under
+	// a single write-lock acquisition so no other goroutine can slip in between
+	// the len(s.offers) read and the s.offers[req.OfferID] write (TOCTOU fix).
 	s.offersMu.Lock()
+	if s.cfg.MaxConcurrentOffers > 0 && len(s.offers) >= s.cfg.MaxConcurrentOffers {
+		s.offersMu.Unlock()
+		return errorResp(fmt.Sprintf("max concurrent offers (%d) reached", s.cfg.MaxConcurrentOffers))
+	}
 	if _, exists := s.offers[req.OfferID]; exists {
 		s.offersMu.Unlock()
 		return errorResp(fmt.Sprintf("offer_id %q already registered", req.OfferID))

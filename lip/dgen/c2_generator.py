@@ -29,6 +29,9 @@ from typing import List
 
 import numpy as np
 
+from lip.common.constants import DGEN_EPOCH_SPAN, DGEN_EPOCH_START
+from lip.dgen.bic_pool import BICPool
+
 _CORPUS_TAG = "SYNTHETIC_CORPUS_C2_V2"
 
 _DEFAULT_RATE_TIER1 = 0.03
@@ -42,15 +45,14 @@ _CURRENCIES = [
     "USD/CHF", "EUR/CHF", "USD/SGD", "USD/HKD", "USD/AUD",
 ]
 
-_BICS = [
-    "DEUTDEDB", "BNPAFRPP", "BARCGB22", "CITIUS33", "HSBCHKHH",
-    "CHASUS33", "UBSWCHZH", "SOCGFRPP", "INGBNL2A", "NORDDKKK",
-]
+# B11-11: Use canonical BIC pool from bic_pool.py instead of inline list.
+_BIC_POOL = BICPool()
+_BICS = _BIC_POOL.all_bics  # 200 BICs (hub + spoke), ISO 9362-compliant
 
-# Base epoch for temporal spread (REX: SR 11-7 out-of-time splits)
-# Records spread over 18 months: 2023-07-01 → 2025-01-01
-_EPOCH_START = 1_688_169_600.0   # 2023-07-01 00:00:00 UTC
-_EPOCH_SPAN  = 18 * 30 * 86400   # ~18 months in seconds
+# B11-06: Base epoch imported from lip.common.constants (DGEN_EPOCH_START /
+# DGEN_EPOCH_SPAN) — 2023-07-01 → 2025-01-01, 18 months, SR 11-7 out-of-time.
+_EPOCH_START = DGEN_EPOCH_START
+_EPOCH_SPAN  = DGEN_EPOCH_SPAN
 
 
 # ---------------------------------------------------------------------------
@@ -140,12 +142,18 @@ def _derive_altman_z(fs: dict) -> float:
     return float(np.clip(z, -3.0, 10.0))
 
 
-def _derive_merton_dd(fs: dict, z: float) -> float:
-    """Distance-to-default proxy derived from Altman Z and leverage."""
+def _derive_merton_dd(fs: dict, z: float, rng: np.random.Generator) -> float:
+    """Distance-to-default proxy derived from Altman Z and leverage.
+
+    Parameters
+    ----------
+    rng:
+        Seeded generator — ensures reproducibility (B11-03: no global np.random).
+    """
     dte = fs["debt_to_equity"]
     # Higher Z and lower leverage → higher distance to default
     dd = 0.6 * z + 0.4 * max(0.0, 4.0 - dte)
-    return float(np.clip(dd + np.random.normal(0, 0.3), -2.0, 8.0))
+    return float(np.clip(dd + rng.normal(0, 0.3), -2.0, 8.0))
 
 
 def _gen_correlated_financials(rng: np.random.Generator, label: int) -> dict:
@@ -207,7 +215,7 @@ def _gen_payment(rng: np.random.Generator, idx: int, epoch_offset: float) -> dic
 def _gen_tier1_borrower(rng: np.random.Generator, label: int) -> dict:
     fs = _gen_correlated_financials(rng, label)
     z = _derive_altman_z(fs)
-    mdd = _derive_merton_dd(fs, z)
+    mdd = _derive_merton_dd(fs, z, rng)
 
     cb_score = int(np.clip(rng.normal(720 if label == 0 else 560, 50), 300, 850))
     ph_score = float(np.clip(rng.normal(0.85 if label == 0 else 0.45, 0.10), 0.0, 1.0))

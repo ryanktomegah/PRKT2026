@@ -6,7 +6,10 @@ See docs/specs/c3_state_machine_migration.md for full design rationale.
 
 Layers:
 1. StateMachineBridge — unified API over Rust (preferred) or pure Python (fallback).
-   Falls back silently when the compiled Rust extension is not available (e.g. CI).
+   Falls back to pure-Python ONLY when the environment variable
+   LIP_ALLOW_PYTHON_FALLBACK=1 is set (e.g. in CI without a compiled Rust wheel).
+   Without that flag, a missing Rust extension raises ImportError at module load
+   time — no silent degradation in production.
 
 2. PaymentWatchdog — background watchdog thread.
    Flags payments stuck in non-terminal states beyond a configurable TTL.
@@ -15,9 +18,9 @@ Layers:
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
-import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -28,6 +31,13 @@ from lip.c3_repayment_engine.rejection_taxonomy import RejectionClass
 from lip.c3_repayment_engine.rejection_taxonomy import classify_rejection_code as _py_classify
 from lip.c3_repayment_engine.rejection_taxonomy import is_dispute_block as _py_is_block
 from lip.c3_repayment_engine.rejection_taxonomy import maturity_days as _py_maturity_days_for_class
+from lip.c3_repayment_engine.settlement_handlers import (
+    extract_camt054_fields_from_dict as _extract_camt054_python,
+)
+from lip.c3_repayment_engine.settlement_handlers import (
+    extract_pacs008_fields_from_dict as _extract_pacs008_python,
+)
+from lip.common.constants import C3_WATCHDOG_FALLBACK_TTL_SECONDS as _WATCHDOG_FALLBACK_TTL
 from lip.common.state_machines import InvalidTransitionError, PaymentState
 from lip.common.state_machines import PaymentStateMachine as _PyPaymentStateMachine
 
@@ -38,7 +48,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
-    import lip_c3_rust_state_machine as _rust
+    import lip_c3_rust_state_machine as _rust  # type: ignore[import-untyped]
 
     _RUST_AVAILABLE = True
     logger.debug(
@@ -48,14 +58,14 @@ try:
 except ImportError:
     _rust = None  # type: ignore[assignment]
     _RUST_AVAILABLE = False
-    warnings.warn(
+    _msg = (
         "lip_c3_rust_state_machine Rust extension not found. "
-        "Falling back to pure-Python C3 state machine implementations. "
-        "Build the Rust extension with: "
-        "cd lip/c3/rust_state_machine && maturin build && pip install target/wheels/*.whl",
-        UserWarning,
-        stacklevel=2,
+        "Build with: cd lip/c3/rust_state_machine && maturin build && pip install target/wheels/*.whl. "
+        "Set LIP_ALLOW_PYTHON_FALLBACK=1 to enable pure-Python fallback (CI/testing only)."
     )
+    logger.error(_msg)
+    if not os.environ.get("LIP_ALLOW_PYTHON_FALLBACK"):
+        raise ImportError(_msg)
 
 # ---------------------------------------------------------------------------
 # Managed payment state machine (unified interface)
@@ -205,7 +215,9 @@ class StateMachineBridge:
     def is_block_code(self, code: str) -> bool:
         """Return True if *code* maps to the BLOCK rejection class.
 
-        Returns False for unknown codes — never raises.
+        Returns True for unknown codes (fail-closed) — an unrecognised
+        rejection code may indicate a compliance hold not yet in the taxonomy.
+        Never raises.
         """
         if _RUST_AVAILABLE:
             return _rust.is_block_code(code)
@@ -247,114 +259,6 @@ class StateMachineBridge:
 
 
 # ---------------------------------------------------------------------------
-# Pure-Python extraction fallbacks (mirror settlement_handlers.py logic)
-# ---------------------------------------------------------------------------
-
-
-def _extract_camt054_python(raw_message: dict) -> dict:
-    """Pure-Python camt.054 field extraction (fallback when Rust unavailable)."""
-    try:
-        notification = (
-            raw_message.get("BkToCstmrDbtCdtNtfctn", raw_message)
-            .get("Ntfctn", [raw_message])[0]
-        )
-        entry = notification.get("Ntry", [{}])[0]
-        txn_details = entry.get("NtryDtls", {}).get("TxDtls", {})
-
-        uetr = (
-            txn_details.get("Refs", {}).get("UETR")
-            or raw_message.get("uetr", "")
-        )
-        individual_payment_id = (
-            txn_details.get("Refs", {}).get("EndToEndId")
-            or raw_message.get("individual_payment_id", uetr)
-        )
-        amount_raw = (
-            entry.get("Amt", {}).get("#text")
-            or entry.get("Amt")
-            or raw_message.get("amount", "0")
-        )
-        currency = (
-            entry.get("Amt", {}).get("@Ccy")
-            or raw_message.get("currency", "USD")
-        )
-        settlement_time = (
-            txn_details.get("SttlmInf", {}).get("SttlmDt")
-            or raw_message.get("settlement_time")
-        )
-        rejection_code = (
-            txn_details.get("RtrInf", {}).get("Rsn", {}).get("Cd")
-            or raw_message.get("rejection_code")
-        )
-    except Exception as exc:
-        raise ValueError(f"camt.054 field extraction failed: {exc}") from exc
-
-    return {
-        "uetr": uetr or "",
-        "individual_payment_id": individual_payment_id or "",
-        "amount": str(amount_raw),
-        "currency": currency or "USD",
-        "settlement_time": settlement_time,
-        "rejection_code": rejection_code,
-    }
-
-
-def _extract_pacs008_python(raw_message: dict) -> dict:
-    """Pure-Python pacs.008 field extraction (fallback when Rust unavailable)."""
-    try:
-        tx_info = (
-            raw_message.get("FIToFICstmrCdtTrf", {})
-            .get("CdtTrfTxInf", [{}])[0]
-        )
-        uetr = (
-            tx_info.get("PmtId", {}).get("UETR")
-            or raw_message.get("uetr")
-            or raw_message.get("UETR", "")
-        )
-        end_to_end_id = (
-            tx_info.get("PmtId", {}).get("EndToEndId")
-            or raw_message.get("EndToEndId")
-            or raw_message.get("end_to_end_id", uetr)
-        )
-        amt_node = tx_info.get("IntrBkSttlmAmt", {})
-        if isinstance(amt_node, dict):
-            amount = (
-                amt_node.get("#text")
-                or amt_node.get("amount")
-                or raw_message.get("amount", "0")
-            )
-            currency = amt_node.get("@Ccy") or raw_message.get("currency", "USD")
-        else:
-            amount = raw_message.get("amount", "0")
-            currency = raw_message.get("currency", "USD")
-        settlement_date = (
-            tx_info.get("IntrBkSttlmDt")
-            or raw_message.get("settlement_date")
-            or raw_message.get("IntrBkSttlmDt")
-        )
-        debtor_bic = (
-            tx_info.get("DbtrAgt", {}).get("FinInstnId", {}).get("BICFI")
-            or raw_message.get("debtor_bic")
-        )
-        creditor_bic = (
-            tx_info.get("CdtrAgt", {}).get("FinInstnId", {}).get("BICFI")
-            or raw_message.get("creditor_bic")
-        )
-    except Exception as exc:
-        raise ValueError(f"pacs.008 field extraction failed: {exc}") from exc
-
-    return {
-        "uetr": uetr or "",
-        "end_to_end_id": end_to_end_id or "",
-        "amount": str(amount),
-        "currency": currency or "USD",
-        "settlement_date": settlement_date,
-        "debtor_bic": debtor_bic,
-        "creditor_bic": creditor_bic,
-    }
-
-
-# ---------------------------------------------------------------------------
 # Watchdog timer — stuck-state detection and alerting
 # ---------------------------------------------------------------------------
 
@@ -370,8 +274,9 @@ _DEFAULT_TTL_SECONDS: dict[str, float] = {
     "CANCELLATION_ALERT": 14 * 86_400,  # 14 days
 }
 
-#: Fallback TTL for states not listed in _DEFAULT_TTL_SECONDS (2× Class B 7d maturity).
-_FALLBACK_TTL_SECONDS: float = 14 * 86_400
+#: Fallback TTL for states not listed in _DEFAULT_TTL_SECONDS.
+#: Sourced from lip.common.constants.C3_WATCHDOG_FALLBACK_TTL_SECONDS (QUANT-controlled).
+_FALLBACK_TTL_SECONDS: float = _WATCHDOG_FALLBACK_TTL
 
 #: Terminal states — never flagged as stuck.
 _TERMINAL_STATES = frozenset({

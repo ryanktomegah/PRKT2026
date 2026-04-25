@@ -305,6 +305,11 @@ impl PyRollingVelocity {
         }
         let entity_hash = RollingVelocity::hash_id(entity_id, &self.salt);
         let bene_hash = RollingVelocity::hash_id(beneficiary_id, &self.salt);
+        // B7-01: amount_usd and dollar_cap_usd arrive as f64 from PyO3.
+        // f64 has ~15-17 significant digits; at $10M (1e7) the ULP is ~1e-9,
+        // well below 1 cent.  Precision loss only becomes material above ~$90T
+        // (2^53 cents).  Switching to rust_decimal would add a crate dep for
+        // negligible gain at realistic AML cap values.  Documented, not fixed.
         let amount_cents = (amount_usd * 100.0).round() as u64;
         let cap_cents = (dollar_cap_usd * 100.0).round() as u64;
         Ok(self.inner.check_inner(
@@ -460,7 +465,7 @@ impl PyRollingVelocity {
     /// Return a dict of Prometheus-style metric counters.
     fn get_metrics(&self, py: Python<'_>) -> PyResult<PyObject> {
         let snap = self.inner.get_metrics_snapshot();
-        let d = pyo3::types::PyDict::new_bound(py);
+        let d = pyo3::types::PyDict::new(py);
         for (k, v) in snap {
             d.set_item(k, v)?;
         }

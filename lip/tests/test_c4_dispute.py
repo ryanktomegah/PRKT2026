@@ -2,7 +2,7 @@
 test_c4_dispute.py — Tests for C4 Dispute Classifier
 """
 
-from lip.c4_dispute_classifier.model import DisputeClassifier, classify_dispute
+from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend, classify_dispute
 from lip.c4_dispute_classifier.multilingual import LanguageDetector
 from lip.c4_dispute_classifier.prefilter import apply_prefilter
 from lip.c4_dispute_classifier.prompt import DisputePromptBuilder
@@ -66,29 +66,29 @@ class TestPreFilter:
 
 class TestDisputeClassifier:
     def test_classify_returns_dict(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         result = clf.classify(rejection_code="AC01", narrative="Payment failed due to wrong IBAN")
         assert "dispute_class" in result
         assert "inference_latency_ms" in result
 
     def test_prefilter_shortcircuits(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         result = clf.classify(rejection_code="DISP", narrative="")
         assert result["prefilter_triggered"] is True
         assert result["dispute_class"] == DisputeClass.DISPUTE_CONFIRMED
 
     def test_fraud_narrative_classified(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         result = clf.classify(rejection_code=None, narrative="Unauthorized fraudulent charge")
         assert result["dispute_class"] in (DisputeClass.DISPUTE_CONFIRMED, DisputeClass.DISPUTE_POSSIBLE)
 
     def test_normal_narrative_not_dispute(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         result = clf.classify(rejection_code="AM04", narrative="Insufficient funds in account")
         assert result["dispute_class"] in (DisputeClass.NOT_DISPUTE, DisputeClass.DISPUTE_POSSIBLE)
 
     def test_classify_convenience_function(self):
-        cls = classify_dispute("AC01", "Wrong account number")
+        cls = classify_dispute("AC01", "Wrong account number", llm_backend=MockLLMBackend())
         assert isinstance(cls, DisputeClass)
 
     def test_timeout_fallback_is_possible(self):

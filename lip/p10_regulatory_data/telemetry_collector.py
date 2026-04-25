@@ -18,6 +18,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Dict, List
 
+from lip.common.block_codes import ALL_BLOCK_CODES as _BLOCK_CODES
 from lip.common.constants import (
     P10_AMOUNT_BUCKET_THRESHOLDS,
     P10_AMOUNT_BUCKETS,
@@ -30,15 +31,10 @@ if TYPE_CHECKING:
 
 # ---------------------------------------------------------------------------
 # Rejection code classification tables
-# Hardcoded to mirror event_normalizer.py and avoid circular imports.
-# Canonical source: lip/c3_repayment_engine/rejection_taxonomy.py
+# BLOCK class loaded from lip.common.block_codes (B6-01 single source of truth).
+# CLASS_A / CLASS_C are local to telemetry semantics and not part of the
+# cross-language drift surface.
 # ---------------------------------------------------------------------------
-_BLOCK_CODES: frozenset[str] = frozenset({
-    "DNOR", "CNOR",
-    "RR01", "RR02", "RR03", "RR04",
-    "AG01", "LEGL",
-    "DISP", "DUPL", "FRAD", "FRAU",
-})
 
 _CLASS_A_CODES: frozenset[str] = frozenset({
     "AC01", "AC04", "AC06", "AC13", "BE01", "BE04",

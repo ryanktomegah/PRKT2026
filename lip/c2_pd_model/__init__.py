@@ -133,11 +133,10 @@ def run_inference(
         PDResponse-compatible dict — see :meth:`PDInferenceEngine.predict`.
     """
     if salt is None:
-        logger.warning(
-            "run_inference called without an explicit salt. "
-            "Using zero-byte placeholder — NOT suitable for production."
+        raise ValueError(
+            "run_inference requires an explicit salt for borrower-ID hashing. "
+            "Source from a secrets manager in production (B10-07)."
         )
-        salt = b"\x00" * 32
 
     configure_inference_salt(salt)
 

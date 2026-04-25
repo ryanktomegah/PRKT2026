@@ -3,7 +3,7 @@ test_negation_suite.py — C4 negation test suite validation
 C4 Spec Section 10: 500 cases across 5 categories
 """
 
-from lip.c4_dispute_classifier.model import DisputeClassifier
+from lip.c4_dispute_classifier.model import DisputeClassifier, MockLLMBackend
 from lip.c4_dispute_classifier.negation import (
     NegationCategory,
     NegationTestRunner,
@@ -76,7 +76,7 @@ class TestNegationCategories:
 
 class TestNegationTestRunner:
     def test_runner_returns_results_dict(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         runner = NegationTestRunner(classifier=clf)
         # Use small suite for speed
         suite = generate_negation_test_suite(n_per_category=5)
@@ -88,14 +88,14 @@ class TestNegationTestRunner:
         assert "by_category" in results
 
     def test_runner_counts_add_up(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         runner = NegationTestRunner(classifier=clf)
         suite = generate_negation_test_suite(n_per_category=5)
         results = runner.run_suite(suite)
         assert results["passed"] + results["failed"] == results["total"]
 
     def test_accuracy_in_valid_range(self):
-        clf = DisputeClassifier()
+        clf = DisputeClassifier(llm_backend=MockLLMBackend())
         runner = NegationTestRunner(classifier=clf)
         suite = generate_negation_test_suite(n_per_category=5)
         results = runner.run_suite(suite)

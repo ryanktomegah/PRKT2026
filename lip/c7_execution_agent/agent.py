@@ -39,6 +39,7 @@ from lip.common.fx_risk_policy import FXRiskConfig
 from lip.common.governing_law import bic_to_jurisdiction, law_for_jurisdiction
 from lip.common.known_entity_registry import KnownEntityRegistry
 from lip.common.redis_factory import create_redis_client
+from lip.common.swift_disbursement import build_disbursement_message
 
 from .decision_log import DecisionLogEntryData, DecisionLogger
 from .degraded_mode import DegradedModeManager
@@ -226,7 +227,18 @@ class ExecutionAgent:
           decision_entry_id — str or None
           halt_reason      — str or None
         """
-        uetr = payment_context.get("uetr", str(uuid.uuid4()))
+        # B4-02: UETR is required for dedup — never generate a random UUID to fill in a
+        # missing UETR; doing so defeats idempotency and allows duplicate offers.
+        uetr = payment_context.get("uetr")
+        if not uetr:
+            logger.error("process_payment called with missing or empty uetr — declining fail-closed")
+            return {
+                "status": "DECLINE",
+                "loan_offer": None,
+                "decision_entry_id": None,
+                "halt_reason": "missing_uetr",
+            }
+        uetr = str(uetr)
         individual_payment_id = payment_context.get("individual_payment_id", "")
         tenant_id = str(payment_context.get("tenant_id", ""))
 
@@ -254,7 +266,7 @@ class ExecutionAgent:
             fee_bps = int(payment_context.get("fee_bps", int(FEE_FLOOR_BPS)))
             loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
             dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
-            aml_passed = bool(payment_context.get("aml_passed", True))
+            aml_passed = bool(payment_context.get("aml_passed", False))
 
             entry_id = self._log_decision(
                 uetr, individual_payment_id, "BLOCK",
@@ -273,7 +285,8 @@ class ExecutionAgent:
         fee_bps = int(payment_context.get("fee_bps", int(FEE_FLOOR_BPS)))
         loan_amount = Decimal(str(payment_context.get("loan_amount", "0")))
         dispute_class = str(payment_context.get("dispute_class", "NOT_DISPUTE"))
-        aml_passed = bool(payment_context.get("aml_passed", True))
+        # B4-01: CIPHER authority — missing AML result must fail-closed (never default True)
+        aml_passed = bool(payment_context.get("aml_passed", False))
 
         # 2. AML / dispute block
         if not aml_passed:
@@ -545,7 +558,13 @@ class ExecutionAgent:
                     payment_context.get("uetr"), static_maturity_days,
                     dynamic_days, maturity_days,
                 )
-            except Exception as exc:
+            except (ValueError, TypeError, RuntimeError, OSError) as exc:
+                # B4-12: narrowed from broad Exception to the plausible failure
+                # modes of an ML predictor call (bad inputs, model not fitted,
+                # inference error, I/O timeout). KeyboardInterrupt/SystemExit
+                # must propagate; unexpected bugs in the predictor should also
+                # surface rather than being silently swallowed. Static maturity
+                # fallback is preserved — this is a deliberate graceful-degrade.
                 logger.warning("C9 settlement predictor failed, using static maturity: %s", exc)
                 maturity_days = static_maturity_days
         loan_id = str(uuid.uuid4())
@@ -553,7 +572,7 @@ class ExecutionAgent:
 
         # GAP-06: Build SWIFT pacs.008 disbursement message so ELO can populate
         # EndToEndId and RmtInf/Ustrd on the outbound bridge credit transfer.
-        from lip.common.swift_disbursement import build_disbursement_message
+        # (build_disbursement_message is imported at module level)
         swift_msg = build_disbursement_message(uetr, loan_id, capped)
 
         # EPG-14 (REX, 2026-03-18): Derive governing law from the enrolled originating
@@ -572,16 +591,24 @@ class ExecutionAgent:
         return {
             "loan_id": loan_id,
             "uetr": uetr,
+            "individual_payment_id": payment_context.get("individual_payment_id", ""),
             "loan_amount": str(capped),
             "fee_bps": fee_bps,
             "maturity_days": maturity_days,
             "pd_score": pd,
+            "lgd": payment_context.get("lgd", 0.45),
             "offered_at": datetime.now(tz=timezone.utc).isoformat(),
             "expires_at": (datetime.now(tz=timezone.utc) + timedelta(minutes=15)).isoformat(),
             "swift_disbursement_ref": swift_msg.end_to_end_id,
             "swift_remittance_info": swift_msg.remittance_info,
             "governing_law": governing_law,
             "loan_currency": loan_currency,
+            "corridor": payment_context.get("corridor", f"{loan_currency}_USD"),
+            "rejection_class": payment_context.get("rejection_class", "CLASS_B"),
+            "sending_bic": payment_context.get("sending_bic", ""),
+            "receiving_bic": payment_context.get("receiving_bic", ""),
+            "aml_entity_id": payment_context.get("aml_entity_id", payment_context.get("sending_bic", "")),
+            "aml_beneficiary_id": payment_context.get("aml_beneficiary_id", payment_context.get("receiving_bic", "")),
             "deployment_phase": self.deployment_phase,
         }
 

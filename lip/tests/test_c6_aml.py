@@ -1,7 +1,10 @@
 """
 test_c6_aml.py — Tests for C6 AML Velocity Controls
 """
+import logging
 from decimal import Decimal
+
+import pytest
 
 from lip.c6_aml_velocity.aml_checker import AMLChecker
 from lip.c6_aml_velocity.anomaly import AnomalyDetector
@@ -118,6 +121,45 @@ class TestSanctionsScreener:
         for hit in hits:
             assert "TEST BLOCKED PARTY" not in hit.entity_name_hash
 
+    def test_empty_name_raises_value_error(self):
+        # ESG-01: Empty name should raise ValueError to prevent bypass
+        screener = SanctionsScreener()
+        with pytest.raises(ValueError, match="empty_name"):
+            screener.screen("")
+
+    def test_whitespace_only_name_raises_value_error(self):
+        # ESG-01: Whitespace-only name should raise ValueError
+        screener = SanctionsScreener()
+        with pytest.raises(ValueError, match="whitespace_only"):
+            screener.screen("   ")
+
+    def test_non_alphabetic_only_name_raises_value_error(self):
+        # ESG-01: Purely numeric/special character name should raise ValueError
+        screener = SanctionsScreener()
+        with pytest.raises(ValueError, match="non_alphabetic_only"):
+            screener.screen("123456")
+
+    def test_empty_name_with_entity_id_logs_bypass(self, caplog):
+        # ESG-01: Verify bypass logger is called for empty names
+        screener = SanctionsScreener()
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(ValueError):
+                screener.screen("", entity_id="TESTBIC123")
+        # Check that the bypass logger was called
+        bypass_logs = [r for r in caplog.records if r.name == "lip.c6_sanctions_bypass"]
+        assert len(bypass_logs) > 0
+        # Verify entity_id was logged
+        assert "TESTBIC123" in bypass_logs[0].msg or "TESTBIC123" in bypass_logs[0].message
+
+    def test_valid_name_passes_screening(self):
+        # ESG-01: Valid names should still work normally
+        screener = SanctionsScreener()
+        # Clear name passes
+        assert screener.is_clear("VALID COMPANY INC") is True
+        # Sanctioned name is still detected
+        hits = screener.screen("ACME SHELL CORP")
+        assert len(hits) > 0
+
 
 class TestAnomalyDetector:
     def _make_tx(self, amount=10000, hour=10, day=2):
@@ -128,9 +170,10 @@ class TestAnomalyDetector:
         }
 
     def test_predict_before_fit(self):
+        # B7-08: predict() before fit() now raises RuntimeError (fail-closed)
         det = AnomalyDetector()
-        result = det.predict(self._make_tx())
-        assert isinstance(result.is_anomaly, bool)
+        with pytest.raises(RuntimeError, match="called before fit"):
+            det.predict(self._make_tx())
 
     def test_fit_and_predict(self):
         det = AnomalyDetector()
@@ -271,8 +314,9 @@ class TestCrossLicenseeSaltRotationDualHash:
         cur_key = agg._make_key(cur_hash, "volume")
         prev_key = agg._make_key(prev_hash, "volume")
 
-        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("50000")
-        assert Decimal(agg._store.get(prev_key, "0")) == Decimal("50000")
+        # B7-05: _store now holds integer cents; $50,000 = 5,000,000 cents
+        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("5000000")
+        assert Decimal(agg._store.get(prev_key, "0")) == Decimal("5000000")
 
     def test_get_volume_reads_from_prev_salt_during_overlap(self):
         """get_cross_licensee_volume aggregates old-salt data during overlap."""
@@ -318,7 +362,8 @@ class TestCrossLicenseeSaltRotationDualHash:
         # Current-salt key should now have the volume
         cur_hash = cross_licensee_hash("TAX_MIGRATE_001", mgr.get_current_salt())
         cur_key = agg._make_key(cur_hash, "volume")
-        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("75000")
+        # B7-05: _store holds integer cents; $75,000 = 7,500,000 cents
+        assert Decimal(agg._store.get(cur_key, "0")) == Decimal("7500000")
 
     def test_no_dual_write_outside_overlap(self):
         """Outside the overlap window, only current-salt key is written."""

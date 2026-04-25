@@ -1,4 +1,4 @@
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
@@ -48,8 +48,12 @@ fn pyobj_to_json(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<serde_json:
         }
         return Ok(serde_json::Value::Array(arr));
     }
-    // Fallback: represent as string via Python's str()
-    Ok(serde_json::Value::String(obj.str()?.to_string()))
+    // Unknown type — fail closed with TypeError rather than silently coercing to string.
+    // Callers must pass dicts with JSON-serialisable values only.
+    Err(PyTypeError::new_err(format!(
+        "Cannot convert Python type '{}' to JSON: only str, int, float, bool, None, dict, list are supported",
+        obj.get_type().name()?
+    )))
 }
 
 // ---------------------------------------------------------------------------

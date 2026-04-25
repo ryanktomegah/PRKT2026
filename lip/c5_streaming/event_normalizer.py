@@ -7,12 +7,15 @@ Three-entity role mapping:
   MIPLO — Money In / Payment Lending Organisation
   ELO  — Execution Lending Organisation (bank-side agent, C7)
 """
+import json as _json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from pathlib import Path as _Path
 from typing import Optional
 
+from lip.common.block_codes import ALL_BLOCK_CODES as _BLOCK_REJECTION_CODES
 from lip.common.constants import P10_TELEMETRY_MIN_AMOUNT_USD
 
 logger = logging.getLogger(__name__)
@@ -20,15 +23,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # P10 Sprint 6 — telemetry eligibility constants
 # ---------------------------------------------------------------------------
-# Hardcoded to avoid circular import: event_normalizer → c3_repayment_engine →
-# c2_pd_model.fee → p5_cascade_engine → c5_streaming → event_normalizer.
-# Canonical source: lip/c3_repayment_engine/rejection_taxonomy.py (BLOCK class).
-_BLOCK_REJECTION_CODES: frozenset[str] = frozenset({
-    "DNOR", "CNOR",                     # prohibited-party (EPG-02/03)
-    "RR01", "RR02", "RR03", "RR04",     # KYC / regulatory holds (EPG-01/07/08)
-    "AG01", "LEGL",                      # legal / bank prohibition
-    "DISP", "DUPL", "FRAD", "FRAU",     # fraud / dispute
-})
+# BLOCK-class rejection codes are loaded from lip.common.block_codes (B6-01).
+# That module is the single source of truth shared across Python, Rust, and Go;
+# the cross-language drift test (B13-02) keeps every consumer in sync.
+# lip.common.block_codes is import-side-effect-free aside from JSON load, so it
+# does not reintroduce the historical event_normalizer → c3 → c2 → p5 → c5
+# circular import.
 
 # Sentinel BIC used by test/sandbox transactions across all rails.
 _TEST_BIC = "XXXXXXXXXXX"
@@ -48,26 +48,12 @@ _TEST_BIC = "XXXXXXXXXXX"
 #   - DO NOT add entries based on inference — only confirmed mappings.
 #   - Unknown codes are passed through unchanged; C7 and the taxonomy treat
 #     them as unrecognised and apply the safe default (7-day maturity / no offer).
-_PROPRIETARY_TO_ISO20022: dict[str, str] = {
-    # FedNow — regulatory / compliance holds
-    "F002": "RR04",           # FedNow: regulatory requirement hold
-    "REGULATORY_HOLD": "RR04",
-    "COMPLIANCE_HOLD": "RR04",
-    "COMPLIANCE_REVIEW": "RR04",
-    "AML_HOLD": "RR04",
-    # FedNow — legal / forbidden
-    "TRANSACTION_FORBIDDEN": "AG01",
-    "LEGAL_HOLD": "LEGL",
-    "LEGAL_DECISION": "LEGL",
-    # RTP (TCH) — compliance holds
-    "RTP_COMPLIANCE": "RR04",
-    "RTP_REGULATORY": "RR04",
-    "RTP_LEGAL": "LEGL",
-    "RTP_FORBIDDEN": "AG01",
-    # Common freeform strings that map unambiguously
-    "FRAUD": "FRAU",
-    "FRAUD_SUSPECTED": "FRAU",
-}
+# B6-03: Loaded from shared JSON — single source of truth for Python and Go.
+# Do NOT hand-maintain a parallel dict here.
+_PROPRIETARY_TO_ISO20022: dict[str, str] = _json.loads(
+    (_Path(__file__).resolve().parents[1] / "common" / "proprietary_iso20022_map.json")
+    .read_text()
+)["mapping"]
 
 
 def _normalize_rejection_code(code: str | None, rail: str) -> str | None:
@@ -176,43 +162,68 @@ def _compute_telemetry_eligibility(event: 'NormalizedEvent') -> bool:
 
 
 def _safe_decimal(value) -> Decimal:
-    """Coerce ``value`` to :class:`~decimal.Decimal`, returning ``Decimal('0')`` on failure.
+    """Coerce ``value`` to :class:`~decimal.Decimal`.
+
+    ``None`` is treated as an absent optional field and returns ``Decimal('0')``
+    with a WARNING logged — callers that expect None-as-zero must handle the
+    logged warning and document that the zero is intentional.
+
+    Any non-None value that cannot be parsed raises :class:`ValueError` with
+    context about what failed, so corrupt data surfaces immediately rather than
+    being silently replaced by a zero that would corrupt downstream loan math.
 
     Args:
-        value: Numeric value to convert (int, float, str, or Decimal).
+        value: Numeric value to convert (int, float, str, or Decimal), or None.
 
     Returns:
         Parsed :class:`~decimal.Decimal`, or ``Decimal('0')`` when ``value``
-        is ``None``, non-numeric, or raises :class:`~decimal.InvalidOperation`.
+        is ``None``.
+
+    Raises:
+        ValueError: When ``value`` is non-None but cannot be parsed as a Decimal.
     """
+    if value is None:
+        logger.warning("_safe_decimal received None — returning Decimal('0')")
+        return Decimal('0')
     try:
         return Decimal(str(value))
-    except (InvalidOperation, TypeError):
-        return Decimal('0')
+    except (InvalidOperation, TypeError) as exc:
+        raise ValueError(
+            f"Cannot parse {value!r} (type {type(value).__name__}) as Decimal: {exc}"
+        ) from exc
 
 
 def _safe_datetime(value) -> datetime:
-    """Coerce ``value`` to a :class:`~datetime.datetime`, falling back to UTC now.
+    """Coerce ``value`` to a :class:`~datetime.datetime`.
 
-    Accepts an existing :class:`~datetime.datetime` (returned as-is),
-    an ISO 8601 string, or any value that can be converted to a string
-    understood by :func:`~datetime.datetime.fromisoformat`.
+    Accepts an existing :class:`~datetime.datetime` (returned as-is) or an
+    ISO 8601 string.  Raises :class:`ValueError` for absent or unparseable
+    values — never substitutes ``datetime.now()`` for a missing event timestamp,
+    as that would corrupt time-series analytics and loan maturity calculations.
 
     Args:
-        value: Datetime value to parse (datetime, str, or None).
+        value: Datetime value to parse (datetime or str).
 
     Returns:
-        Parsed :class:`~datetime.datetime`, or ``datetime.now(UTC)`` when
-        ``value`` is ``None``, empty, or cannot be parsed.
+        Parsed :class:`~datetime.datetime`.
+
+    Raises:
+        ValueError: When ``value`` is ``None``, empty, or cannot be parsed as
+            an ISO 8601 datetime.
     """
     if isinstance(value, datetime):
         return value
-    if value:
-        try:
-            return datetime.fromisoformat(str(value))
-        except (ValueError, TypeError):
-            pass
-    return datetime.now(tz=timezone.utc)
+    if not value:
+        raise ValueError(
+            f"_safe_datetime received absent/empty value {value!r} — "
+            "event timestamp is required; never substitute datetime.now()"
+        )
+    try:
+        return datetime.fromisoformat(str(value))
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f"Cannot parse {value!r} (type {type(value).__name__}) as ISO 8601 datetime: {exc}"
+        ) from exc
 
 
 class EventNormalizer:
@@ -268,10 +279,10 @@ class EventNormalizer:
 
         if isinstance(inst_amt, dict):
             amount = _safe_decimal(inst_amt.get('value', inst_amt.get('Amt', '0')))
-            currency = inst_amt.get('Ccy', inst_amt.get('currency', 'USD'))
+            currency = str(inst_amt.get('Ccy', inst_amt.get('currency', 'USD')) or 'USD')
         else:
             amount = _safe_decimal(inst_amt)
-            currency = orig_ref.get('Ccy', 'USD')
+            currency = str(orig_ref.get('Ccy', 'USD') or 'USD')
 
         sending_bic = (
             msg.get('DbtrAgt', {}).get('FinInstnId', {}).get('BIC', '')
@@ -437,14 +448,25 @@ class EventNormalizer:
         )
 
     def normalize(self, rail: str, msg: dict) -> NormalizedEvent:
-        """Dispatch to correct normalizer based on rail string."""
+        """Dispatch to correct normalizer based on rail string.
+
+        Legacy rails (SWIFT, FEDNOW, RTP, SEPA) are handled in-class.
+        CBDC rails (CBDC_ECNY, CBDC_EEUR, CBDC_SAND_DOLLAR) are delegated to
+        :class:`~lip.c5_streaming.cbdc_normalizer.CBDCNormalizer` (P5 patent).
+        """
+        upper = rail.upper()
+
+        if upper.startswith("CBDC_"):
+            from lip.c5_streaming.cbdc_normalizer import CBDCNormalizer
+            return CBDCNormalizer().normalize(upper, msg)
+
         handlers = {
             'SWIFT': self.normalize_swift,
             'FEDNOW': self.normalize_fednow,
             'RTP': self.normalize_rtp,
             'SEPA': self.normalize_sepa,
         }
-        handler = handlers.get(rail.upper())
+        handler = handlers.get(upper)
         if handler is None:
             raise ValueError(f"Unknown rail: {rail}")
         event = handler(msg)

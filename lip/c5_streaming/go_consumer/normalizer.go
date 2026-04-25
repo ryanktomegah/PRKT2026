@@ -33,26 +33,28 @@ type NormalizedEvent struct {
 }
 
 // proprietaryToISO20022 maps FedNow / RTP proprietary rejection codes to their
-// ISO 20022 equivalents. Mirrors _PROPRIETARY_TO_ISO20022 in event_normalizer.py.
+// ISO 20022 equivalents.
+//
+// B6-03: The Python caller loads this mapping from
+// lip/common/proprietary_iso20022_map.json (single source of truth).
+// go:embed cannot cross module boundaries; the drift test
+// (lip/tests/test_proprietary_map_drift.py) text-parses this literal
+// and fails the build if it deviates from the JSON.
 var proprietaryToISO20022 = map[string]string{
-	// FedNow — regulatory / compliance holds
-	"F002":               "RR04",
-	"REGULATORY_HOLD":    "RR04",
-	"COMPLIANCE_HOLD":    "RR04",
-	"COMPLIANCE_REVIEW":  "RR04",
-	"AML_HOLD":           "RR04",
-	// FedNow — legal / forbidden
+	"F002":                  "RR04",
+	"REGULATORY_HOLD":       "RR04",
+	"COMPLIANCE_HOLD":       "RR04",
+	"COMPLIANCE_REVIEW":     "RR04",
+	"AML_HOLD":              "RR04",
 	"TRANSACTION_FORBIDDEN": "AG01",
 	"LEGAL_HOLD":            "LEGL",
 	"LEGAL_DECISION":        "LEGL",
-	// RTP (TCH)
-	"RTP_COMPLIANCE": "RR04",
-	"RTP_REGULATORY": "RR04",
-	"RTP_LEGAL":      "LEGL",
-	"RTP_FORBIDDEN":  "AG01",
-	// Common freeform
-	"FRAUD":          "FRAU",
-	"FRAUD_SUSPECTED": "FRAU",
+	"RTP_COMPLIANCE":        "RR04",
+	"RTP_REGULATORY":        "RR04",
+	"RTP_LEGAL":             "LEGL",
+	"RTP_FORBIDDEN":         "AG01",
+	"FRAUD":                 "FRAU",
+	"FRAUD_SUSPECTED":       "FRAU",
 }
 
 // normalizeRejectionCode maps a raw rejection code to its ISO 20022 equivalent.
@@ -74,8 +76,14 @@ func normalizeRejectionCode(code *string, rail string) *string {
 }
 
 // blockRejectionCodes contains all BLOCK-class ISO 20022 rejection codes.
-// Mirrors _BLOCK_REJECTION_CODES in event_normalizer.py. Hardcoded here because
-// Go cannot import the Python rejection taxonomy at runtime.
+//
+// B6-01: The Python and Rust callers load this set from
+// lip/common/block_codes.json (single source of truth). The go_consumer
+// module has its own go.mod, so go:embed cannot reach the JSON across
+// module boundaries; vendoring the JSON into the module is tracked as a
+// Phase 2 cleanup. Until then, the cross-language drift test
+// (lip/tests/test_block_code_drift.py) text-parses this literal and
+// fails the build if it deviates from block_codes.json.
 var blockRejectionCodes = map[string]bool{
 	"DNOR": true,
 	"CNOR": true,

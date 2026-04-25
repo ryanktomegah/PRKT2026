@@ -16,10 +16,23 @@ C2 is **Step 3** of Algorithm 1 — runs only after C4 and C6 have both passed (
 
 | Class / Function | File | Description |
 |-----------------|------|-------------|
-| `PDInferenceEngine` | `inference.py` | Routes to correct tier model; enforces fee floor |
-| `MertonKMVModel` | `merton_kmv.py` | Tier 1: Structural model for listed counterparties |
-| `DamodaranModel` | `damodaran.py` | Tier 2: Industry-beta model for private counterparties |
-| `AltmanZPrimeModel` | `altman_z_prime.py` | Tier 3: Thin-file Z' score for minimal-data cases |
+| `PDInferenceEngine` | `inference.py` | Production inference wrapper — routes tier, hashes borrower IDs, enforces fee floor |
+| `PDModel` | `model.py` | Trained ensemble used for production PD inference |
+| `MertonKMVSolver` | `merton_kmv.py` | Structural Merton/KMV asset-value solver (Crosbie & Bohn 2003) — Tier-1 feature input |
+| `merton_pd` | `baseline.py` | Analytic Merton PD — baseline/feature |
+| `altman_z_score`, `altman_pd` | `baseline.py` | Analytic Altman Z-score and PD mapping — baseline/feature; **see §Methodology caveat below** |
+| `assign_tier`, `hash_borrower_id` | `tier_assignment.py` | Data-availability tier routing + salted borrower-ID hashing |
+| `UnifiedFeatureEngineer` | `features.py` | 75-dim feature construction across tiers |
+| `compute_fee_bps_from_el`, `compute_cascade_adjusted_pd` | `fee.py` | Fee derivation from PD×LGD, with platform floor (300 bps) and warehouse floor (800 bps) |
+| `lgd_for_corridor` | `lgd.py` | Per-jurisdiction LGD table (fully-Decimal) |
+
+> **Methodology caveat (under ARIA+QUANT review, 2026-04-19)**: `altman_z_score`
+> currently implements the original Altman (1968) Z for **public** manufacturing
+> firms — it requires `market_cap` in X₄ (see `baseline.py:95`). For the stated
+> Tier-3 thin-file **private**-borrower use case, the Z′ (1983) variant with
+> book equity substituted for market cap and recalibrated coefficients
+> (0.717·X₁ + 0.847·X₂ + 3.107·X₃ + 0.420·X₄ + 0.998·X₅) is the correct model.
+> Tracked in `docs/engineering/review/2026-04-17/week-2-code-quality/module-c2-review.md` (C2-H2).
 
 ## Inputs / Outputs
 

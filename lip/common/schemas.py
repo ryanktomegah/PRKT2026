@@ -15,6 +15,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lip.common.constants import FEE_FLOOR_BPS
+
 # ---------------------------------------------------------------------------
 # Taxonomy enum  (S4.4)
 # ---------------------------------------------------------------------------
@@ -182,7 +184,7 @@ class PDResponse(BaseModel):
     )
     fee_bps: Decimal = Field(
         ...,
-        ge=Decimal("300"),
+        ge=FEE_FLOOR_BPS,
         description=(
             "ANNUALIZED rate in basis points.  "
             "Per-cycle fee = loan_amount * (fee_bps/10000) * (days_funded/365).  "
@@ -385,7 +387,7 @@ class LoanOffer(BaseModel):
     )
     fee_bps: Decimal = Field(
         ...,
-        ge=Decimal("300"),
+        ge=FEE_FLOOR_BPS,
         description=(
             "ANNUALIZED fee rate in basis points (floor 300 bps).  "
             "fee_amount_usd = principal_usd * (fee_bps/10000) * (maturity_days/365)."
@@ -715,7 +717,7 @@ class LoanOfferDelivery(BaseModel):
     )
     fee_bps: Decimal = Field(
         ...,
-        ge=Decimal("300"),
+        ge=FEE_FLOOR_BPS,
         description="Annualized fee rate in basis points (floor 300 bps).",
     )
     fee_amount_usd: Decimal = Field(

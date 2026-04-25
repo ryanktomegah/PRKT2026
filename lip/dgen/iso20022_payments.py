@@ -66,8 +66,8 @@ from lip.dgen.bic_pool import BICPool
 # Class A (permanent, 3-day maturity) — target 35% of failures
 #   These codes indicate account/routing issues that are not self-healing.
 #
-# Class B (compliance/AML hold, 7-day maturity) — target 40% of failures
-#   These codes indicate regulatory holds that may lift with documentation.
+# Class B (systemic/processing delay, 7-day maturity) — target 40% of failures
+#   These codes indicate systemic or processing delays that typically resolve.
 #
 # Class C (liquidity/timing, 21-day maturity) — target 25% of failures
 #   These codes indicate operational/liquidity issues that resolve over time.
@@ -681,9 +681,13 @@ def _inject_temporal_clustering(
     n_burst = max(1, int(len(rjct_senders) * burst_fraction))
     burst_bics = set(rng.choice(rjct_senders, size=n_burst, replace=False).tolist())
 
-    # Parse existing timestamps to unix seconds for arithmetic
+    # Parse existing timestamps to unix seconds for arithmetic.
+    # Force datetime64[ns] — pandas >=2.2 preserves parsed precision (ms/us/ns),
+    # so .astype("int64") would otherwise yield unit-dependent magnitudes.
     ts_unix = (
-        pd.to_datetime(df["timestamp_utc"], utc=True).astype("int64") // 10**9
+        pd.to_datetime(df["timestamp_utc"], utc=True)
+        .astype("datetime64[ns, UTC]")
+        .astype("int64") // 10**9
     ).to_numpy(dtype=np.float64)
     # Use canonical epoch constants — not data-derived — for reproducibility
     # and robustness against timestamp outliers.
@@ -732,9 +736,11 @@ def _inject_temporal_clustering(
     result["timestamp_utc"] = new_timestamps
 
     # Integrity check: labels must never be altered by timestamp resampling.
-    assert np.array_equal(original_labels, result["label"].to_numpy()), (
-        "BUG: _inject_temporal_clustering corrupted label column"
-    )
+    # NOTE: This is a raise, not an assert — it must survive python -O.
+    if not np.array_equal(original_labels, result["label"].to_numpy()):
+        raise RuntimeError(
+            "BUG: _inject_temporal_clustering corrupted label column"
+        )
     return result
 
 

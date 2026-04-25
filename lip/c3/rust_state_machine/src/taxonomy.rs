@@ -8,7 +8,89 @@
 ///   Class B → 7 days maturity  (systemic/processing errors)
 ///   Class C → 21 days maturity (investigation/complex errors)
 ///   BLOCK   → no bridge offered (compliance, dispute, legal)
+///
+/// B6-01: The BLOCK-class code list is loaded at compile time from
+/// `lip/common/block_codes.json` — the single source of truth shared with
+/// Python and Go. The cross-language drift test (B13-02) keeps every
+/// consumer in sync. Do not hand-maintain a parallel list in this file.
+use std::sync::OnceLock;
+
 use thiserror::Error;
+
+// ---------------------------------------------------------------------------
+// Shared BLOCK-codes ground truth (B6-01)
+// ---------------------------------------------------------------------------
+
+/// JSON payload bundled into the binary at compile time. The matching Python
+/// loader (`lip/common/block_codes.py`) reads the same file at import time;
+/// the regression test in `lip/tests/test_block_code_drift.py` verifies that
+/// every consumer (Python/Rust/Go) sees the same set.
+const BLOCK_CODES_JSON: &str = include_str!("../../../common/block_codes.json");
+
+struct BlockCodes {
+    compliance_hold: Vec<String>,
+    all_block: Vec<String>,
+}
+
+fn block_codes() -> &'static BlockCodes {
+    static CELL: OnceLock<BlockCodes> = OnceLock::new();
+    CELL.get_or_init(|| {
+        // We avoid the serde-derive dep by parsing via the loosely-typed
+        // serde_json::Value API and pulling the two known arrays out by name.
+        let value: serde_json::Value = serde_json::from_str(BLOCK_CODES_JSON)
+            .expect("lip/common/block_codes.json is malformed; refusing to start");
+
+        let extract = |key: &str| -> Vec<String> {
+            value
+                .get(key)
+                .and_then(|v| v.as_array())
+                .unwrap_or_else(|| panic!("block_codes.json missing array '{key}'"))
+                .iter()
+                .map(|v| {
+                    v.as_str()
+                        .unwrap_or_else(|| panic!("block_codes.json '{key}' contains non-string"))
+                        .to_string()
+                })
+                .collect()
+        };
+
+        let compliance_hold = extract("epg19_compliance_hold");
+        let dispute_fraud = extract("dispute_fraud_block");
+        let mut all_block = compliance_hold.clone();
+        all_block.extend(dispute_fraud);
+
+        // Defensive invariants matching the Python loader.
+        assert_eq!(
+            compliance_hold.len(),
+            8,
+            "EPG-19 compliance-hold set must have exactly 8 codes"
+        );
+        assert_eq!(
+            all_block.len(),
+            12,
+            "BLOCK class must have exactly 12 codes (8 compliance + 4 dispute/fraud)"
+        );
+
+        BlockCodes {
+            compliance_hold,
+            all_block,
+        }
+    })
+}
+
+/// EPG-19: Compliance-hold codes that must always be classified BLOCK.
+/// Loaded from `lip/common/block_codes.json` (B6-01 single source of truth).
+/// Defense-in-depth: these codes are also blocked at Layer 1 (pipeline
+/// short-circuit) and Layer 2 (C7 gate) per the EPG-19 architecture decision.
+pub fn compliance_hold_codes() -> &'static [String] {
+    &block_codes().compliance_hold
+}
+
+/// Full BLOCK class — EPG-19 compliance holds plus dispute/fraud codes.
+/// Loaded from `lip/common/block_codes.json`.
+pub fn all_block_codes() -> &'static [String] {
+    &block_codes().all_block
+}
 
 /// Classification tier for an ISO 20022 rejection reason code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -141,12 +223,6 @@ pub fn is_block(code: &str) -> bool {
     matches!(classify(code), Ok(RejectionClass::Block))
 }
 
-/// EPG-19: Compliance-hold codes that must always be classified BLOCK.
-/// Defense-in-depth: these codes are also blocked at Layer 1 (pipeline short-circuit)
-/// and Layer 2 (C7 gate) per the EPG-19 architecture decision.
-pub const COMPLIANCE_HOLD_CODES: &[&str] =
-    &["DNOR", "CNOR", "RR01", "RR02", "RR03", "RR04", "AG01", "LEGL"];
-
 // ---------------------------------------------------------------------------
 // Unit tests
 // ---------------------------------------------------------------------------
@@ -218,15 +294,29 @@ mod tests {
         assert_eq!(RejectionClass::Block.as_str(), "BLOCK");
     }
 
-    // EPG-compliance: all compliance-hold codes must be BLOCK
+    // EPG-compliance: every compliance-hold code from the shared JSON must be BLOCK
     #[test]
     fn test_compliance_hold_codes_are_block() {
-        for code in COMPLIANCE_HOLD_CODES {
+        for code in compliance_hold_codes() {
             assert_eq!(
                 classify(code).unwrap(),
                 RejectionClass::Block,
                 "Compliance-hold code {code} must be BLOCK (EPG-19)"
             );
         }
+    }
+
+    // B6-01: every code in the shared JSON BLOCK list must classify as Block
+    #[test]
+    fn test_all_block_codes_from_json_are_block() {
+        for code in all_block_codes() {
+            assert_eq!(
+                classify(code).unwrap(),
+                RejectionClass::Block,
+                "BLOCK code {code} (from block_codes.json) must classify as BLOCK"
+            );
+        }
+        assert_eq!(all_block_codes().len(), 12);
+        assert_eq!(compliance_hold_codes().len(), 8);
     }
 }

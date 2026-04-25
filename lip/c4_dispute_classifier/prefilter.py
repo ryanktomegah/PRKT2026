@@ -21,6 +21,14 @@ IMMEDIATE_BLOCK_CODES: frozenset = frozenset({
     "FRAU",   # Fraud
     "FRAD",   # Fraudulent instruction
     "DUPL",   # Duplicate payment (implies contested transaction)
+    # EPG-19: compliance-hold codes — all 8 must be blocked (REX final authority)
+    "DNOR",   # Debtor normalisation / permanent prohibition
+    "CNOR",   # Creditor normalisation / cannot locate
+    "RR01",   # Regulatory reason 01
+    "RR02",   # Regulatory reason 02
+    "RR03",   # Regulatory reason 03
+    "RR04",   # Regulatory reason 04
+    "AG01",   # Agent transaction type not supported / compliance hold
 })
 
 # Codes that are indicative of a dispute but cannot be confirmed without
@@ -241,7 +249,7 @@ class PreFilter:
                 rejection_code=normalised_code,
                 reason=(
                     f"Rejection code '{normalised_code}' is in the immediate-block "
-                    "set (DISP/LEGL/FRAU/FRAD/DUPL) — classified as DISPUTE_CONFIRMED."
+                    "set — classified as DISPUTE_CONFIRMED."
                 ),
             )
 
@@ -300,8 +308,12 @@ class PreFilter:
                     continue          # negated → skip this keyword
                 return DisputeClass.DISPUTE_CONFIRMED
 
+        # B10-09: Negotiation keywords must also check negation guard.
         for kw in _NEGOTIATION_KEYWORDS:
             if kw in lowered:
+                kw_pos = _find_keyword_token_pos(tokens, kw)
+                if kw_pos is not None and _is_negated(tokens, kw_pos):
+                    continue
                 return DisputeClass.NEGOTIATION
 
         return None

@@ -44,6 +44,7 @@ def _install_fake_confluent_kafka():
         def __init__(self, cfg):
             self._subscribed = []
             self._messages = []  # injected by tests
+            self.committed = []  # track committed messages for B6-07 tests
 
         def subscribe(self, topics):
             self._subscribed = topics
@@ -52,6 +53,10 @@ def _install_fake_confluent_kafka():
             if self._messages:
                 return self._messages.pop(0)
             return None
+
+        def commit(self, message=None, asynchronous=True):
+            if message is not None:
+                self.committed.append(message)
 
         def close(self):
             pass
@@ -117,9 +122,11 @@ def _make_swift_payload(uetr="test-uetr-001", rejection_code="AC01"):
 def _make_kafka_message(payload: dict, offset: int = 0):
     """Wrap a payload dict as a fake Kafka message."""
     import confluent_kafka as ck
+
     # Extract uetr from either flat or pacs.002 nested format
     uetr = payload.get("GrpHdr", {}).get("MsgId", payload.get("uetr", ""))
-    return ck._FakeMessage(
+    fake_message_cls = getattr(ck, "_FakeMessage")
+    return fake_message_cls(
         value=json.dumps(payload).encode("utf-8"),
         key=uetr.encode("utf-8"),
         offset=offset,
@@ -304,6 +311,88 @@ class TestWorkerStats(unittest.TestCase):
         self.assertEqual(stats["processed"], 0)
         self.assertEqual(stats["errors"], 0)
         self.assertTrue(stats["dry_run"])
+
+
+class TestOffsetCommitB607(unittest.TestCase):
+    """B6-07: offset must be committed only on success, never on error."""
+
+    def _make_mock_consumer(self):
+        consumer = MagicMock()
+        consumer.committed_messages = []
+
+        def _commit(message=None, asynchronous=True):
+            if message is not None:
+                consumer.committed_messages.append(message)
+
+        consumer.commit.side_effect = _commit
+        return consumer
+
+    def test_commit_on_success(self):
+        """Offset is committed after successful pipeline processing."""
+        worker = _make_worker(dry_run=True)
+        worker._consumer = self._make_mock_consumer()
+        worker._producer = None
+
+        payload = _make_swift_payload(uetr="commit-ok-001")
+        msg = _make_kafka_message(payload)
+        worker._process_message(msg)
+
+        self.assertEqual(worker._processed, 1)
+        worker._consumer.commit.assert_called_once_with(message=msg)
+
+    def test_no_commit_on_json_error(self):
+        """Offset is NOT committed when JSON decode fails."""
+        import confluent_kafka as ck
+
+        from lip.c5_streaming.kafka_config import KafkaConfig
+        from lip.c5_streaming.kafka_worker import PaymentEventWorker
+
+        cfg = KafkaConfig(bootstrap_servers=["localhost:9092"])
+        producer = ck.Producer({})
+        worker = PaymentEventWorker(cfg, lambda e: {}, dry_run=False)
+        worker._consumer = self._make_mock_consumer()
+        worker._producer = producer
+
+        bad_msg = ck._FakeMessage(value=b"not json{{", offset=77)
+        worker._process_message(bad_msg)
+
+        self.assertEqual(worker._errors, 1)
+        worker._consumer.commit.assert_not_called()
+
+    def test_no_commit_on_pipeline_error(self):
+        """Offset is NOT committed when the pipeline function raises."""
+        import confluent_kafka as ck
+
+        from lip.c5_streaming.kafka_config import KafkaConfig
+        from lip.c5_streaming.kafka_worker import PaymentEventWorker
+
+        cfg = KafkaConfig(bootstrap_servers=["localhost:9092"])
+        producer = ck.Producer({})
+        worker = PaymentEventWorker(cfg, lambda e: (_ for _ in ()).throw(RuntimeError("boom")), dry_run=False)
+        worker._consumer = self._make_mock_consumer()
+        worker._producer = producer
+
+        payload = _make_swift_payload(uetr="no-commit-001")
+        msg = _make_kafka_message(payload)
+        worker._process_message(msg)
+
+        self.assertEqual(worker._errors, 1)
+        worker._consumer.commit.assert_not_called()
+
+    def test_commit_on_null_value(self):
+        """Null-value tombstone messages advance the offset (safe to skip)."""
+        import confluent_kafka as ck
+
+        worker = _make_worker(dry_run=True)
+        worker._consumer = self._make_mock_consumer()
+        worker._producer = None
+
+        null_msg = ck._FakeMessage(value=None, offset=5)
+        worker._process_message(null_msg)
+
+        self.assertEqual(worker._processed, 0)
+        self.assertEqual(worker._errors, 0)
+        worker._consumer.commit.assert_called_once_with(message=null_msg)
 
 
 if __name__ == "__main__":

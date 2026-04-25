@@ -18,11 +18,29 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 _AES_KEY_BYTES: int = 32        # AES-256 requires a 32-byte key
 _GCM_NONCE_BYTES: int = 12      # 96-bit nonce recommended by NIST SP 800-38D
-_PBKDF2_ITERATIONS: int = 100_000
+_PBKDF2_ITERATIONS: int = 600_000  # OWASP 2023 recommendation for PBKDF2-HMAC-SHA256
 
-# FIPS 140-2 §4.9.1 power-on self-test reference digest — HMAC-SHA256 of a
-# known test vector. Verified at module import; mismatch raises RuntimeError.
-_HMAC_SELF_TEST_DIGEST: str = "5af824f02f9bedb4c6af06814be69fe6674d9c36d304edf84a8be011f1bc92e5"
+
+def _run_self_test() -> None:
+    """Minimal power-on self-test: encrypt→decrypt a known value and assert equality.
+
+    Raises RuntimeError if the round-trip fails, which indicates a broken
+    cryptography installation.  Called once at module import.
+    """
+    _test_key = b"\x00" * 32
+    _test_plaintext = b"lip-self-test-vector"
+    _nonce = b"\x00" * 12
+    _aesgcm = AESGCM(_test_key)
+    _ciphertext = _aesgcm.encrypt(_nonce, _test_plaintext, None)
+    _recovered = _aesgcm.decrypt(_nonce, _ciphertext, None)
+    if _recovered != _test_plaintext:
+        raise RuntimeError(
+            "AES-256-GCM self-test failed: encrypt→decrypt round-trip produced "
+            f"unexpected output ({_recovered!r} != {_test_plaintext!r})."
+        )
+
+
+_run_self_test()
 
 
 # ---------------------------------------------------------------------------
@@ -52,16 +70,19 @@ def generate_salt(length: int = 32) -> bytes:
 # ---------------------------------------------------------------------------
 
 def hash_identifier(value: str, salt: bytes) -> str:
-    """Return the SHA-256 hex digest of ``value + salt`` for pseudonymising identifiers.
+    """Return HMAC-SHA256 hex digest of *value* keyed with *salt* for pseudonymising identifiers.
 
-    The concatenation strategy is:  ``SHA-256(value.encode('utf-8') + salt)``.
+    Uses ``HMAC-SHA256(key=salt, msg=value.encode('utf-8'))`` so the salt
+    acts as a secret key, not just a prefix — raw SHA-256 concatenation is
+    vulnerable to length-extension attacks and offers no keyed binding.
 
     Parameters
     ----------
     value:
         The plaintext identifier to hash (e.g., borrower ID, entity ID).
     salt:
-        Per-deployment or per-record salt bytes.  Must not be empty.
+        Per-deployment or per-record salt bytes used as the HMAC key.
+        Must not be empty.
 
     Returns
     -------
@@ -75,8 +96,8 @@ def hash_identifier(value: str, salt: bytes) -> str:
     """
     if not salt:
         raise ValueError("Salt must not be empty.")
-    digest = hashlib.sha256(value.encode("utf-8") + salt).hexdigest()
-    return digest
+    mac = hmac.new(salt, value.encode("utf-8"), hashlib.sha256)
+    return mac.hexdigest()
 
 
 # ---------------------------------------------------------------------------

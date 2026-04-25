@@ -9,6 +9,7 @@ Empirically >90% for tree-like supply chain topologies.
 """
 from __future__ import annotations
 
+import heapq
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Set
@@ -75,30 +76,39 @@ class InterventionOptimizer:
         remaining = budget_usd
         priority = 1
 
-        while remaining > 0:
-            best_ratio = 0.0
-            best_candidate = None
+        # Build a max-heap (negate ratio for min-heap inversion) — O(n log n) initial build
+        # Each element: (-ratio, corporate_id) so we can pop the best candidate in O(log n)
+        heap: list = []
+        node_lookup: Dict[str, CascadeRiskNode] = {}
+        for node in cascade_result.cascade_map.values():
+            bridge_cost = node.incoming_volume_at_risk_usd
+            if bridge_cost <= 0:
+                continue
+            value_prevented = (
+                node.cascade_probability * node.incoming_volume_at_risk_usd
+                + node.downstream_value_at_risk_usd
+            )
+            ratio = value_prevented / bridge_cost
+            heapq.heappush(heap, (-ratio, node.corporate_id))
+            node_lookup[node.corporate_id] = node
 
-            for node in cascade_result.cascade_map.values():
-                if node.corporate_id in protected:
-                    continue
+        while remaining > 0 and heap:
+            neg_ratio, corp_id = heapq.heappop(heap)
 
-                bridge_cost = node.incoming_volume_at_risk_usd
-                if bridge_cost <= 0 or bridge_cost > remaining:
-                    continue
+            if corp_id in protected:
+                continue
 
-                value_prevented = (
-                    node.cascade_probability * node.incoming_volume_at_risk_usd
-                    + node.downstream_value_at_risk_usd
-                )
+            node = node_lookup[corp_id]
+            bridge_cost = node.incoming_volume_at_risk_usd
+            if bridge_cost > remaining:
+                continue
 
-                ratio = value_prevented / bridge_cost
-                if ratio > best_ratio:
-                    best_ratio = ratio
-                    best_candidate = (node, bridge_cost, value_prevented, ratio)
-
-            if best_candidate is None:
-                break
+            value_prevented = (
+                node.cascade_probability * node.incoming_volume_at_risk_usd
+                + node.downstream_value_at_risk_usd
+            )
+            ratio = -neg_ratio
+            best_candidate = (node, bridge_cost, value_prevented, ratio)
 
             node, cost, value, ratio = best_candidate
             action = InterventionAction(
@@ -144,16 +154,25 @@ class InterventionOptimizer:
     def _get_descendants(
         corporate_id: str, cascade_map: Dict[str, CascadeRiskNode]
     ) -> Set[str]:
-        """BFS to find all descendants of corporate_id in the cascade map."""
+        """BFS to find all descendants of corporate_id in the cascade map.
+
+        Uses a pre-built children index for O(n) total traversal instead of
+        O(n) per BFS step (was O(n²) overall).
+        """
+        # Build children index: parent_id -> [child_ids]
+        children: Dict[str, List[str]] = {}
+        for node in cascade_map.values():
+            parent = node.parent_corporate_id
+            if parent not in children:
+                children[parent] = []
+            children[parent].append(node.corporate_id)
+
         descendants: Set[str] = set()
         queue = [corporate_id]
         while queue:
             current = queue.pop()
-            for node in cascade_map.values():
-                if (
-                    node.parent_corporate_id == current
-                    and node.corporate_id not in descendants
-                ):
-                    descendants.add(node.corporate_id)
-                    queue.append(node.corporate_id)
+            for child_id in children.get(current, []):
+                if child_id not in descendants:
+                    descendants.add(child_id)
+                    queue.append(child_id)
         return descendants

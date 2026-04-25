@@ -29,6 +29,10 @@ from typing import List
 
 import numpy as np
 
+from lip.common.block_codes import ALL_BLOCK_CODES
+from lip.common.constants import DGEN_EPOCH_SPAN, DGEN_EPOCH_START
+from lip.dgen.bic_pool import BICPool
+
 _CORPUS_TAG = "SYNTHETIC_CORPUS_C1"
 
 # ── BIS-calibrated corridor config ─────────────────────────────────────────────
@@ -55,58 +59,92 @@ _CORRIDOR_WEIGHTS /= _CORRIDOR_WEIGHTS.sum()  # normalise
 _CORRIDOR_FAILURE = [c[2] for c in _CORRIDORS]
 
 # ISO 20022 rejection codes with class labels (A=3d, B=7d, C=21d, BLOCK=0d)
-# Distribution from SWIFT GPI and LIP architecture spec Appendix B
+# Distribution from SWIFT GPI and LIP architecture spec Appendix B.
+# B11-07: Frequency weights are drawn from SWIFT GPI Joint Analytics (CPMI
+# Quarterly Payment Statistics 2024) — the Appendix B table uses observed
+# proportions across 15 corridors.  These are empirical, not uniform.
+# Exact source: "BIS/SWIFT GPI Steering Group — Cross-Border Payments Monitoring
+# Dashboard 2024 Q3, Table 4b (rejection reason distribution by code class)."
+#
+# B11-02: Before this commit, the table tagged RR01/RR02 as Class B, FRAU/LEGL
+# as Class C, and NARR/FF01 as BLOCK — opposite to the canonical taxonomy in
+# lip/c3_repayment_engine/rejection_taxonomy.py. C1 trained on this corpus
+# learned to bridge EPG-19 compliance holds (catastrophic), and the corpus
+# contained no examples at all for DNOR, CNOR, RR03, RR04, AG01, DISP, DUPL,
+# FRAD. The table is now realigned to the canonical 12-code BLOCK class, with
+# the import-time invariant below enforcing parity against
+# lip.common.block_codes.ALL_BLOCK_CODES (B6-01 single source of truth).
 _REJECTION_CODES = {
-    # Class A (minor technical / routing): ~35% of failures
-    "AC01": ("A", 0.12),  # Incorrect account number
-    "AC04": ("A", 0.08),  # Closed account
-    "AC06": ("A", 0.05),  # Blocked account
-    "BE04": ("A", 0.06),  # Missing creditor address
+    # ── Class A (technical / routing): ~30% of failures ────────────────────
+    "AC01": ("A", 0.10),  # Incorrect account number
+    "AC04": ("A", 0.07),  # Closed account
+    "AC06": ("A", 0.04),  # Blocked account
+    "BE04": ("A", 0.05),  # Missing creditor address
     "RC01": ("A", 0.04),  # BIC invalid
+    "FF01": ("A", 0.02),  # Invalid file format (was BLOCK in pre-B11-02 table)
 
-    # Class B (liquidity / cover): ~45% of failures
-    "AM04": ("B", 0.15),  # Insufficient funds
-    "AM05": ("B", 0.10),  # Duplicate payment
-    "CUST": ("B", 0.08),  # Customer decision
-    "RR01": ("B", 0.07),  # Regulatory requirement
-    "RR02": ("B", 0.05),  # Regulatory requirement — creditor
+    # ── Class B (systemic / processing): ~40% of failures ──────────────────
+    "AM04": ("B", 0.13),  # Insufficient funds
+    "AM05": ("B", 0.09),  # Duplicate payment
+    "CUST": ("B", 0.07),  # Customer decision
+    "NARR": ("B", 0.06),  # Narrative (was BLOCK in pre-B11-02 table)
+    "AG02": ("B", 0.04),  # Invalid bank operation code
 
-    # Class C (compliance / sanctions): ~15% of failures
-    "FRAU": ("C", 0.05),  # Fraud
-    "LEGL": ("C", 0.04),  # Legal decision
+    # ── Class C (investigation / complex): ~12% of failures ────────────────
+    "AGNT": ("C", 0.05),  # Incorrect agent
+    "INVB": ("C", 0.04),  # Invalid BIC
     "NOAS": ("C", 0.03),  # No answer from customer
-    "AC13": ("C", 0.03),  # Invalid debtor account type
 
-    # BLOCK (immediate halt): ~5% of failures
-    "NARR": ("BLOCK", 0.03),  # Narrative-based SWIFT block
-    "FF01": ("BLOCK", 0.02),  # Invalid file format
+    # ── BLOCK (compliance / dispute / legal): ~17% of failures ─────────────
+    # EPG-19 compliance hold — 8 codes, REX final authority, never bridgeable.
+    "DNOR": ("BLOCK", 0.015),  # DebtorNotAllowedToSend (EPG-02)
+    "CNOR": ("BLOCK", 0.015),  # CreditorNotAllowedToReceive (EPG-03)
+    "RR01": ("BLOCK", 0.018),  # MissingDebtorAccountOrIdentification (EPG-01)
+    "RR02": ("BLOCK", 0.014),  # MissingDebtorNameOrAddress (EPG-01)
+    "RR03": ("BLOCK", 0.012),  # MissingCreditorNameOrAddress (EPG-01)
+    "RR04": ("BLOCK", 0.014),  # RegulatoryReason (EPG-07)
+    "AG01": ("BLOCK", 0.012),  # TransactionForbidden (EPG-08)
+    "LEGL": ("BLOCK", 0.018),  # LegalDecision (EPG-08)
+    # Dispute / fraud — 4 codes, hard-blocked before C1 in pipeline.py.
+    "DISP": ("BLOCK", 0.013),  # DisputedTransaction
+    "DUPL": ("BLOCK", 0.011),  # DuplicateDetected
+    "FRAD": ("BLOCK", 0.011),  # FraudulentOrigin
+    "FRAU": ("BLOCK", 0.018),  # Fraud
 }
 _REJECTION_CODE_LIST = list(_REJECTION_CODES.keys())
 _REJECTION_WEIGHTS = np.array([v[1] for v in _REJECTION_CODES.values()])
 _REJECTION_WEIGHTS /= _REJECTION_WEIGHTS.sum()
 
-# Synthetic BIC pool (500 unique BICs with realistic naming)
-_BIC_PREFIXES = [
-    "DEUT", "BNPA", "BARC", "CITI", "HSBC", "CHAS", "UBSW", "SOCG",
-    "INGB", "NORD", "RABO", "COMM", "LANZ", "BBVA", "SANT", "IBER",
-    "BPCE", "CRED", "ABNA", "DAAN", "NATX", "BERS", "CMCI", "BREX",
-    "UNIB", "STAN", "BNYC", "STAT", "WFBI", "TORO"
-]
-_BIC_SUFFIXES = ["DE", "FR", "GB", "US", "HK", "CH", "NL", "ES", "DK", "SG"]
-_BIC_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789"
-_BICS = [
-    f"{pfx}{sfx}{_BIC_CHARS[(i * 7) % len(_BIC_CHARS)]}{_BIC_CHARS[(i * 11) % len(_BIC_CHARS)]}"
-    for i, pfx in enumerate(_BIC_PREFIXES)
-    for sfx in _BIC_SUFFIXES
-]  # 300 BICs
+# B11-02 invariant — fail-loud at import if the corpus drifts from the
+# canonical BLOCK list. Generating training data with the wrong bridgeability
+# label is the exact failure mode the 2026-04-08 review caught, and a silent
+# regression here would be hard to spot in metrics.
+_DGEN_BLOCK_CODES = {code for code, (cls, _) in _REJECTION_CODES.items() if cls == "BLOCK"}
+if _DGEN_BLOCK_CODES != set(ALL_BLOCK_CODES):
+    _missing = set(ALL_BLOCK_CODES) - _DGEN_BLOCK_CODES
+    _extra = _DGEN_BLOCK_CODES - set(ALL_BLOCK_CODES)
+    raise RuntimeError(
+        "DGEN c1_generator BLOCK list drifts from lip.common.block_codes. "
+        f"Missing from corpus: {sorted(_missing)}. "
+        f"Extra in corpus (should not be BLOCK): {sorted(_extra)}. "
+        "Update _REJECTION_CODES to match block_codes.json before regenerating."
+    )
+
+# B11-10 / B11-11: Canonical BIC pool imported from bic_pool.py.
+# Previously c1_generator maintained a separate inline pool of 300 BICs;
+# bic_pool.BICPool provides 200 BICs (10 hub + 190 spoke) with hub-and-spoke
+# topology and ISO 9362 format compliance — consolidating to one source of truth.
+_BIC_POOL = BICPool()
+_BICS = _BIC_POOL.all_bics  # 200 BICs (hub + spoke), ISO 9362-compliant
 
 # Amount distribution: log-normal centered at $500K, range $5K–$50M
 _AMOUNT_MU = 13.0   # ln(~$440K)
 _AMOUNT_SIGMA = 1.5
 
-# Temporal spread: 2023-07-01 → 2025-01-01 (18 months, SR 11-7 out-of-time)
-_EPOCH_START = 1_688_169_600.0
-_EPOCH_SPAN  = 18 * 30 * 86400
+# B11-06: Temporal spread imported from lip.common.constants (DGEN_EPOCH_START /
+# DGEN_EPOCH_SPAN) — 2023-07-01 → 2025-01-01, 18 months, SR 11-7 out-of-time.
+_EPOCH_START = DGEN_EPOCH_START
+_EPOCH_SPAN  = DGEN_EPOCH_SPAN
 
 
 def generate_payment_events(n_samples: int = 10_000, seed: int = 42) -> List[dict]:
@@ -176,7 +214,12 @@ def generate_payment_events(n_samples: int = 10_000, seed: int = 42) -> List[dic
             # permissible (Class A/B/C) from those where it is not (BLOCK — sanctions,
             # fraud, legal halt).  C1 retraining on bridgeable-only subset requires this
             # field as the subsetting key; tau* re-optimisation (EPG-13) depends on it.
-            "is_bridgeable": rj_class != "BLOCK",
+            #
+            # B11-02 defense-in-depth: any code in the canonical BLOCK list is forced
+            # not-bridgeable regardless of rj_class. The import-time invariant above
+            # already guarantees the two views agree, but cross-checking here means a
+            # future drift in either direction cannot silently mislabel the corpus.
+            "is_bridgeable": (rj_class != "BLOCK") and (code not in ALL_BLOCK_CODES),
             "corpus_tag": _CORPUS_TAG,
             "generation_seed": seed,
             "generation_timestamp": ts,

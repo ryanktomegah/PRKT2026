@@ -93,7 +93,7 @@ class _SamplingC1Engine:
         fp = float(self._rng.beta(0.5, 14))
         return {
             "failure_probability": fp,
-            "above_threshold": fp > _THRESHOLD,
+            "above_threshold": fp >= _THRESHOLD,
             "inference_latency_ms": float(self._rng.uniform(1.0, 8.0)),
             "threshold_used": _THRESHOLD,
             "corridor_embedding_used": False,
@@ -244,7 +244,7 @@ def _print_report(
     latencies_ms: list[float],
     integrity: dict[str, bool],
 ) -> None:
-    funded      = outcomes.get("FUNDED", 0)
+    offered     = outcomes.get("OFFERED", 0)
     below       = outcomes.get("BELOW_THRESHOLD", 0)
     dispute     = outcomes.get("DISPUTE_BLOCKED", 0)
     aml         = outcomes.get("AML_BLOCKED", 0)
@@ -255,7 +255,7 @@ def _print_report(
     total_fee    = sum(fee_usd_list, Decimal("0"))
     total_royalty = sum(royalty_usd_list, Decimal("0"))
     total_bank   = total_fee - total_royalty
-    avg_fee      = (total_fee / funded) if funded else Decimal("0")
+    avg_fee      = (total_fee / offered) if offered else Decimal("0")
     med_fee      = (
         sorted(fee_usd_list)[len(fee_usd_list) // 2] if fee_usd_list else Decimal("0")
     )
@@ -291,7 +291,7 @@ def _print_report(
     print()
     print("VOLUME")
     print(f"  Payments processed:          {n:>10,}")
-    print(f"  Bridge loans triggered:      {funded:>10,}  {_pct(funded, n)}")
+    print(f"  Bridge offers generated:     {offered:>10,}  {_pct(offered, n)}")
     print(f"  Blocked by dispute (C4):     {dispute:>10,}  {_pct(dispute, n)}")
     print(f"  Blocked by AML (C6):         {aml:>10,}  {_pct(aml, n)}")
     print(f"  Halted by kill switch:       {halt:>10,}  {_pct(halt, n)}")
@@ -299,10 +299,10 @@ def _print_report(
     print(f"  Pending human review:        {pending:>10,}  {_pct(pending, n)}")
     print(f"  Below failure threshold:     {below:>10,}  {_pct(below, n)}")
     print()
-    print("FEE REVENUE")
+    print("PROJECTED OFFER FEE REVENUE")
     print(f"  Total fee USD:             {_usd(total_fee):>15}")
-    print(f"  Avg fee per loan:          {_usd(avg_fee):>15}")
-    print(f"  Median fee per loan:       {_usd(med_fee):>15}")
+    print(f"  Avg fee per offer:         {_usd(avg_fee):>15}")
+    print(f"  Median fee per offer:      {_usd(med_fee):>15}")
     print(f"  BPI royalty (30%):         {_usd(total_royalty):>15}")
     print(f"  Bank revenue (70%):        {_usd(total_bank):>15}")
     print()
@@ -313,7 +313,7 @@ def _print_report(
         print(f"  p95:  {bps_p95:>4}    Max:  {bps_max:>4}")
     else:
         print("FEE DISTRIBUTION (bps)")
-        print("  No funded loans in this run.")
+        print("  No bridge offers in this run.")
     print()
     print("LATENCY (ms per payment)")
     print(f"  p50:  {p50:>6.1f}ms")
@@ -390,7 +390,7 @@ def run_simulation(n: int, seed: int) -> int:
         outcome = result.outcome
         outcomes[outcome] = outcomes.get(outcome, 0) + 1
 
-        if outcome == "FUNDED":
+        if outcome == "OFFERED":
             # UETR integrity
             if not result.uetr:
                 uetr_missing = True
@@ -405,7 +405,7 @@ def run_simulation(n: int, seed: int) -> int:
             rej_class = classify_rejection_code(rejection_code)
             days = maturity_days(rej_class)
             if days == 0:
-                days = 7  # safety fallback (BLOCK codes never reach FUNDED)
+                days = 7  # safety fallback (BLOCK codes never reach OFFERED)
 
             fee_usd    = compute_loan_fee(amount, Decimal(str(fee_bps or _FEE_FLOOR)), days)
             royalty    = compute_platform_royalty(fee_usd)

@@ -23,13 +23,16 @@ HMAC vs. asymmetric signing:
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import hmac
 import json
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
-from typing import List, Optional
+from typing import ClassVar, List, Optional
+
+from lip.common.constants import MIN_LOAN_AMOUNT_USD
 
 logger = logging.getLogger(__name__)
 
@@ -72,13 +75,17 @@ class LicenseToken:
         on an unsigned (draft) token.
     """
 
-    licensee_id: str
-    issue_date: str
-    expiry_date: str
-    max_tps: int
-    aml_dollar_cap_usd: int = 0  # EPG-16: 0 = unlimited; 1M retail default removed
-    aml_count_cap: int = 0       # EPG-16: 0 = unlimited; 100 retail default removed
-    min_loan_amount_usd: int = 500000
+    schema_version: int = 1  # B3-02/B3-05: bump on every field add
+    licensee_id: str = ""
+    issue_date: str = ""
+    expiry_date: str = ""
+    max_tps: int = 0
+    # B3-03: Default to sentinel (-1) instead of 0 (unlimited). Programmatic
+    # construction must set caps explicitly; from_dict() sets them from JSON.
+    # 0 = unlimited (valid, explicit); -1 = unset (rejected by boot validator).
+    aml_dollar_cap_usd: int = _AML_CAP_UNSET  # EPG-16: must be set explicitly
+    aml_count_cap: int = _AML_CAP_UNSET       # EPG-16: must be set explicitly
+    min_loan_amount_usd: int = int(MIN_LOAN_AMOUNT_USD)
     deployment_phase: str = "LICENSOR"  # Phase 1=LICENSOR, Phase 2=HYBRID, Phase 3=FULL_MLO
     licensee_type: str = "BANK"  # "BANK" (direct) or "PROCESSOR" (platform licensing)
     sub_licensee_bics: List[str] = field(default_factory=list)  # Processor: authorised bank BICs
@@ -90,27 +97,27 @@ class LicenseToken:
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
+    # B3-02: fields excluded from the canonical payload (not signed).
+    _CANONICAL_EXCLUDE: ClassVar[frozenset] = frozenset({"hmac_signature"})
+
     def canonical_payload(self) -> bytes:
         """Return the UTF-8 bytes that are signed/verified.
 
-        All fields except ``hmac_signature`` serialised as JSON (sorted keys).
+        B3-02: derived from ``dataclasses.fields(self)`` so that adding a new
+        field to the dataclass automatically includes it in the HMAC.  No
+        hand-maintained field list — adding a field and forgetting to update
+        this method is no longer possible.
+
+        List-valued fields are sorted for deterministic serialization.
         """
-        payload = {
-            "licensee_id": self.licensee_id,
-            "issue_date": self.issue_date,
-            "expiry_date": self.expiry_date,
-            "max_tps": self.max_tps,
-            "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
-            "aml_count_cap": self.aml_count_cap,
-            "min_loan_amount_usd": self.min_loan_amount_usd,
-            "deployment_phase": self.deployment_phase,
-            "licensee_type": self.licensee_type,
-            "sub_licensee_bics": sorted(self.sub_licensee_bics),
-            "annual_minimum_usd": self.annual_minimum_usd,
-            "performance_premium_pct": self.performance_premium_pct,
-            "platform_take_rate_pct": self.platform_take_rate_pct,
-            "permitted_components": sorted(self.permitted_components),
-        }
+        payload = {}
+        for f in dataclasses.fields(self):
+            if f.name in self._CANONICAL_EXCLUDE:
+                continue
+            value = getattr(self, f.name)
+            if isinstance(value, list):
+                value = sorted(value)
+            payload[f.name] = value
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     def is_expired(self, as_of: Optional[date] = None) -> bool:
@@ -120,23 +127,7 @@ class LicenseToken:
         return check_date > expiry
 
     def to_dict(self) -> dict:
-        return {
-            "licensee_id": self.licensee_id,
-            "issue_date": self.issue_date,
-            "expiry_date": self.expiry_date,
-            "max_tps": self.max_tps,
-            "aml_dollar_cap_usd": self.aml_dollar_cap_usd,
-            "aml_count_cap": self.aml_count_cap,
-            "min_loan_amount_usd": self.min_loan_amount_usd,
-            "deployment_phase": self.deployment_phase,
-            "permitted_components": self.permitted_components,
-            "licensee_type": self.licensee_type,
-            "sub_licensee_bics": self.sub_licensee_bics,
-            "annual_minimum_usd": self.annual_minimum_usd,
-            "performance_premium_pct": self.performance_premium_pct,
-            "platform_take_rate_pct": self.platform_take_rate_pct,
-            "hmac_signature": self.hmac_signature,
-        }
+        return dataclasses.asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> "LicenseToken":
@@ -151,13 +142,14 @@ class LicenseToken:
                 f"Unknown licensee_type {licensee_type!r} — valid values: {sorted(_VALID_LICENSEE_TYPES)}"
             )
         return cls(
+            schema_version=int(data.get("schema_version", 1)),
             licensee_id=data["licensee_id"],
             issue_date=data["issue_date"],
             expiry_date=data["expiry_date"],
             max_tps=int(data["max_tps"]),
             aml_dollar_cap_usd=int(data["aml_dollar_cap_usd"]),   # EPG-17: required field — no silent default
             aml_count_cap=int(data["aml_count_cap"]),              # EPG-17: required field — no silent default
-            min_loan_amount_usd=int(data.get("min_loan_amount_usd", 500000)),
+            min_loan_amount_usd=int(data.get("min_loan_amount_usd", MIN_LOAN_AMOUNT_USD)),
             deployment_phase=phase,
             licensee_type=licensee_type,
             sub_licensee_bics=list(data.get("sub_licensee_bics", [])),
@@ -197,7 +189,7 @@ class LicenseeContext:
     aml_count_cap: int
     permitted_components: List[str]
     token_expiry: str
-    min_loan_amount_usd: int = 500000
+    min_loan_amount_usd: int = int(MIN_LOAN_AMOUNT_USD)
     deployment_phase: str = "LICENSOR"
 
 
@@ -243,23 +235,9 @@ def sign_token(token: LicenseToken, signing_key: bytes) -> LicenseToken:
         A new ``LicenseToken`` with ``hmac_signature`` set.
     """
     sig = _compute_hmac(token.canonical_payload(), signing_key)
-    return LicenseToken(
-        licensee_id=token.licensee_id,
-        issue_date=token.issue_date,
-        expiry_date=token.expiry_date,
-        max_tps=token.max_tps,
-        aml_dollar_cap_usd=token.aml_dollar_cap_usd,
-        aml_count_cap=token.aml_count_cap,
-        min_loan_amount_usd=token.min_loan_amount_usd,
-        deployment_phase=token.deployment_phase,
-        licensee_type=token.licensee_type,
-        sub_licensee_bics=list(token.sub_licensee_bics),
-        annual_minimum_usd=token.annual_minimum_usd,
-        performance_premium_pct=token.performance_premium_pct,
-        platform_take_rate_pct=token.platform_take_rate_pct,
-        permitted_components=list(token.permitted_components),
-        hmac_signature=sig,
-    )
+    # B3-02: use dataclasses.replace instead of field-by-field copy so new
+    # fields are automatically carried through without a hand-maintained list.
+    return dataclasses.replace(token, hmac_signature=sig)
 
 
 def verify_token(
@@ -284,7 +262,10 @@ def verify_token(
         ``True`` iff the HMAC is valid AND the token is not expired.
     """
     if not token.hmac_signature:
-        logger.warning("License token has no signature — rejecting")
+        logger.debug(
+            "License token has no signature — rejecting (licensee=%s)",
+            token.licensee_id[:8] + "…" if len(token.licensee_id) > 8 else token.licensee_id,
+        )
         return False
 
     expected = _compute_hmac(token.canonical_payload(), signing_key)

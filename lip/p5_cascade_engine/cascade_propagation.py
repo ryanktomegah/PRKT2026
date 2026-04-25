@@ -132,18 +132,24 @@ class CascadePropagationEngine:
                     visited.add(target_id)
                     queue.append((target_id, p_child, hop + 1))
 
-        # Phase 2: Bottom-up CVaR computation
-        # Sort by hop distance descending (deepest first)
+        # Phase 2: Bottom-up CVaR computation — O(n) with pre-built children index
+        # Build children index once instead of scanning all nodes per parent (was O(n²))
+        children_index: Dict[str, list] = {}
+        for child in cascade_map.values():
+            parent = child.parent_corporate_id
+            if parent not in children_index:
+                children_index[parent] = []
+            children_index[parent].append(child)
+
+        # Sort by hop distance descending (deepest first) — O(n log n) sort, O(n) pass
         sorted_nodes = sorted(
             cascade_map.values(), key=lambda n: n.hop_distance, reverse=True
         )
         for node in sorted_nodes:
-            # Accumulate children's CVaR into parent's downstream value
             children_cvar = sum(
                 child.cascade_probability * child.incoming_volume_at_risk_usd
                 + child.downstream_value_at_risk_usd
-                for child in cascade_map.values()
-                if child.parent_corporate_id == node.corporate_id
+                for child in children_index.get(node.corporate_id, [])
             )
             node.downstream_value_at_risk_usd = children_cvar
 

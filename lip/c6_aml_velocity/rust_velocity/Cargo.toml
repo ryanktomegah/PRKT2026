@@ -10,7 +10,7 @@ name = "lip_c6_rust_velocity"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3 = { version = "0.25", features = ["extension-module"] }
 dashmap = "6"
 aho-corasick = "1"
 sha2 = "0.10"

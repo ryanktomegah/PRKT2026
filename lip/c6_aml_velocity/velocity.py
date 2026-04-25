@@ -1,6 +1,13 @@
 """
 velocity.py — AML velocity controls
-Dollar cap $1M, count cap 100 per entity per 24hr rolling window.
+Dollar cap and count cap per entity per 24hr rolling window.
+
+Cap policy (EPG-16): caps default to ``0`` in the LIP binary, which means
+**unlimited** — no enforcement.  Effective caps are set per-licensee via the
+C8 license token (``aml_dollar_cap_usd`` / ``aml_count_cap``). A licensee
+that has not negotiated caps in its BPI license runs with no velocity-based
+velocity throttle; concentration and anomaly gates still apply.
+
 Beneficiary concentration: >80% to single beneficiary triggers alert.
 
 Three-entity role mapping:
@@ -40,9 +47,11 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Deque, Dict, List, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from lip.common.constants import (
+    BENEFICIARY_CONCENTRATION as BENEFICIARY_CONCENTRATION_THRESHOLD,
+)
 
-BENEFICIARY_CONCENTRATION_THRESHOLD = Decimal("0.80")
+logger = logging.getLogger(__name__)
 
 # Exponential decay half-life (hours) for velocity scoring — transactions older
 # than ~20h contribute < 50% weight to the rolling velocity estimate.
@@ -413,6 +422,19 @@ class VelocityChecker:
         # threads within the same process (EPG-25). Redis path uses Lua instead.
         self._check_record_lock = threading.Lock()
 
+    def set_redis_client(self, redis_client) -> None:
+        """Wire a Redis client into this VelocityChecker and its RollingWindow.
+
+        Use this public setter instead of mutating ``_redis`` and
+        ``_window._redis`` directly from outside the class (B7-04).
+
+        Args:
+            redis_client: A redis.Redis / redis.cluster.RedisCluster instance.
+        """
+        self._redis = redis_client
+        self._window._redis = redis_client
+        logger.info("VelocityChecker: Redis client set via set_redis_client()")
+
     def _hash_entity(self, entity_id: str) -> str:
         """Compute SHA-256(entity_id + salt) for the entity identifier.
 
@@ -507,8 +529,9 @@ class VelocityChecker:
         dollar_cap = dollar_cap_override if dollar_cap_override is not None else Decimal("0")
         count_cap = count_cap_override if count_cap_override is not None else 0
 
-        # EPG-16: 0 means unlimited — skip cap enforcement entirely.
-        if dollar_cap > 0 and vol + amount > dollar_cap:
+        # EPG-16: 0 = unlimited — explicitly guard before enforcing caps.
+        # A cap of 0 must NEVER be treated as "block all"; it means no limit.
+        if dollar_cap != 0 and vol + amount > dollar_cap:
             return VelocityResult(
                 passed=False, reason="DOLLAR_CAP_EXCEEDED",
                 entity_id_hash=entity_hash, dollar_volume_24h=vol,

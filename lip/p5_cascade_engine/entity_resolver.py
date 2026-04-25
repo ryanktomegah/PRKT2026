@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional, Set
 
 from lip.c1_failure_classifier.graph_builder import CorridorGraph, PaymentEdge
@@ -35,6 +36,7 @@ class CorporateEntityResolver:
         # Phase 1: Aggregate BIC edges to corporate pairs
         pair_edges: Dict[tuple, List[PaymentEdge]] = defaultdict(list)
         corp_bics: Dict[str, Set[str]] = defaultdict(set)
+        corridor_corps: Dict[str, Set[str]] = defaultdict(set)
 
         for edge in bic_graph.edges:
             src_corp = self._mapping.get(edge.sending_bic)
@@ -51,6 +53,11 @@ class CorporateEntityResolver:
             corp_bics[src_corp].add(edge.sending_bic)
             corp_bics[tgt_corp].add(edge.receiving_bic)
 
+            # Track corridor membership from currency_pair field
+            if edge.currency_pair:
+                corridor_corps[edge.currency_pair].add(src_corp)
+                corridor_corps[edge.currency_pair].add(tgt_corp)
+
         # Phase 2: Build CorporateEdge from aggregated edges
         corporate_edges: List[CorporateEdge] = []
 
@@ -60,7 +67,15 @@ class CorporateEntityResolver:
 
             total_volume = sum(e.amount_usd for e in edges)
             payment_count = len(edges)
-            dep_score = sum(e.amount_usd * e.dependency_score for e in edges) / total_volume
+            # Use Decimal arithmetic to avoid float division precision loss (B9-07)
+            d_total = Decimal(str(total_volume))
+            d_numerator = sum(
+                Decimal(str(e.amount_usd)) * Decimal(str(e.dependency_score))
+                for e in edges
+            )
+            dep_score = float(
+                (d_numerator / d_total).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+            )
             failed_count = sum(1 for e in edges if e.features.get("failed", False))
             failure_rate = failed_count / payment_count
             max_ts = max(e.timestamp for e in edges)
@@ -140,6 +155,7 @@ class CorporateEntityResolver:
             node_count=len(nodes),
             edge_count=len(corporate_edges),
             avg_dependency_score=avg_dep,
+            corridor_to_corporates={k: sorted(v) for k, v in corridor_corps.items()},
         )
 
         logger.info(

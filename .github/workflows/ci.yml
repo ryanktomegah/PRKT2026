@@ -30,6 +30,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
 
       - name: Upgrade pip and build tools
         run: pip install --upgrade pip setuptools>=68 wheel
@@ -45,6 +48,12 @@ jobs:
         run: pip install -e .
 
       - name: Run tests
+        env:
+          # B5-02: Rust extension not compiled in CI; allow Python fallback
+          LIP_ALLOW_PYTHON_FALLBACK: "1"
+          # B11-04 CIPHER: AML thresholds loaded from env, never from VCS
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m pytest lip/tests/ \
             --tb=short \
@@ -54,6 +63,10 @@ jobs:
 
       - name: Run tests with coverage (3.11 only)
         if: matrix.python-version == '3.11'
+        env:
+          LIP_ALLOW_PYTHON_FALLBACK: "1"
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m pytest lip/tests/ \
             --tb=short \
@@ -72,6 +85,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Upgrade pip
         run: pip install --upgrade pip setuptools>=68 wheel
       - name: Install dependencies
@@ -79,6 +95,10 @@ jobs:
           pip install -r requirements.txt -r requirements-ml.txt
           (cd lip && pip install -e .)
       - name: Run integrity tests
+        env:
+          LIP_ALLOW_PYTHON_FALLBACK: "1"
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m pytest lip/tests/test_integrity_*.py \
             --tb=short -v
@@ -104,18 +124,33 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools>=68 wheel
           pip install -r requirements.txt -r requirements-ml.txt
           cd lip && pip install -e .
       - name: Run DGEN smoke-test (C1 + C2 + C3 + C6)
+        env:
+          # B11-04 CIPHER: AML thresholds loaded from env, never from VCS
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m lip.dgen.generate_all \
             --output-dir /tmp/lip_smoke_corpus \
             --components c1 c2 c3 c6 \
             --smoke-test
       - name: Run train_all smoke-test (C1 + C2 + C6)
+        env:
+          # B10-01/B10-02: secure_pickle requires a non-empty HMAC key.
+          # This is a fixed CI test key — not a production secret.
+          # Production deployments must use a proper secret from the vault.
+          LIP_MODEL_HMAC_KEY: "ci-smoke-test-hmac-key-not-for-prod"
+          # B11-04 CIPHER: AML thresholds loaded from env, never from VCS
+          AML_THRESHOLD_CTR_USD: "10000"
+          AML_THRESHOLD_STR_EUR: "5000"
         run: |
           PYTHONPATH=. python -m lip.train_all \
             --corpus-dir /tmp/lip_smoke_corpus \
@@ -155,9 +190,27 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - run: pip install ruff>=0.3.0
       - name: Run ruff
         run: ruff check lip/ --output-format=github
+
+  k8s-manifest-guard:
+    name: Kubernetes manifest guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
+      - name: Validate Docker/Kubernetes wiring
+        run: python scripts/check_k8s_manifests.py
 
   typecheck:
     name: Type check (mypy)
@@ -168,6 +221,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools>=68 wheel
@@ -276,6 +332,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
 
       - name: Install maturin
         run: pip install "maturin>=1.0,<2.0"
@@ -300,3 +359,43 @@ jobs:
             lip/tests/test_c6_tenant_velocity.py \
             -v --tb=short -q
 
+  rust-build-c3:
+    name: Rust Build & Test (C3 state machine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+        with:
+          toolchain: stable
+
+      - name: Set up Python 3.11 for PyO3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-ml.txt
+
+      - name: Run Rust unit tests (C3)
+        working-directory: lip/c3/rust_state_machine
+        env:
+          PYO3_PYTHON: python
+        run: cargo test --all-targets
+
+  rust-build-c7:
+    name: Rust Build & Test (C7 kill switch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+        with:
+          toolchain: stable
+
+      - name: Run Rust unit tests (C7)
+        working-directory: lip/c7_execution_agent/rust_kill_switch
+        run: cargo test --all-targets -- --test-threads=1

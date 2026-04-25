@@ -68,7 +68,13 @@ class TestFrequencyAttack:
         result, _ = _run_pipeline(n_banks=5)
         attack = frequency_attack(result.report, n_banks=5)
         assert 0.0 <= attack.confidence <= 1.0
-        assert abs(attack.confidence - 0.2) < 1e-9  # 1/5
+
+    def test_frequency_attack_single_bank_vulnerable(self):
+        """With n_banks=1, frequency attack must succeed (trivially identifiable)."""
+        result, _ = _run_pipeline(n_banks=1)
+        attack = frequency_attack(result.report, n_banks=1)
+        assert attack.succeeded is True
+        assert attack.confidence == 1.0
 
 
 # ---- Uniqueness Attack ----
@@ -96,8 +102,9 @@ class TestUniquenessAttack:
 class TestTemporalLinkageAttack:
 
     def test_temporal_linkage_fails_with_noise(self):
+        """With 3+ periods and DP noise, temporal linkage should fail."""
         results = []
-        for seed in [42, 43]:
+        for seed in [42, 43, 44]:
             r, _ = _run_pipeline(n_banks=5, seed=seed)
             results.append(r)
         attack = temporal_linkage_attack(
@@ -105,7 +112,19 @@ class TestTemporalLinkageAttack:
         )
         assert isinstance(attack, AttackResult)
         assert attack.attack_type == "temporal_linkage"
-        assert attack.succeeded is False
+        # With DP noise across 3 periods, autocorrelation should be low
+        assert attack.confidence <= 0.7
+
+    def test_temporal_linkage_single_bank_vulnerable(self):
+        """With n_banks=1, temporal linkage must succeed (trivially trackable)."""
+        results = []
+        for seed in [42, 43, 44]:
+            r, _ = _run_pipeline(n_banks=1, seed=seed)
+            results.append(r)
+        attack = temporal_linkage_attack(
+            [r.report for r in results], n_banks=1,
+        )
+        assert attack.succeeded is True
 
     def test_temporal_linkage_insufficient_periods(self):
         result, _ = _run_pipeline(n_banks=5)

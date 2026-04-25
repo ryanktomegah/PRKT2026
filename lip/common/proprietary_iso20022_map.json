@@ -1,0 +1,19 @@
+{
+  "_comment": "Authoritative FedNow/RTP proprietary → ISO 20022 rejection code mapping. Single source of truth for Python and Go. See B6-03.",
+  "mapping": {
+    "F002": "RR04",
+    "REGULATORY_HOLD": "RR04",
+    "COMPLIANCE_HOLD": "RR04",
+    "COMPLIANCE_REVIEW": "RR04",
+    "AML_HOLD": "RR04",
+    "TRANSACTION_FORBIDDEN": "AG01",
+    "LEGAL_HOLD": "LEGL",
+    "LEGAL_DECISION": "LEGL",
+    "RTP_COMPLIANCE": "RR04",
+    "RTP_REGULATORY": "RR04",
+    "RTP_LEGAL": "LEGL",
+    "RTP_FORBIDDEN": "AG01",
+    "FRAUD": "FRAU",
+    "FRAUD_SUSPECTED": "FRAU"
+  }
+}

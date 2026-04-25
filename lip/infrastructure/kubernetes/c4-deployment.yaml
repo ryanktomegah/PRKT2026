@@ -6,7 +6,7 @@
 #      - Backend: qwen/qwen3-32b via Groq cloud API
 #      - No GPU required, no model-store volume needed
 #      - Requires outbound HTTPS to api.groq.com
-#      - Set env: LIP_C4_BACKEND=groq, GROQ_API_KEY=<key>
+#      - Set env: LIP_C4_BACKEND=groq, GROQ_API_KEY or mounted secret file
 #      - Use: c4-deployment-groq (below, after the --- separator)
 #
 #   2. LOCAL GPTQ (future bank-side, zero-outbound):

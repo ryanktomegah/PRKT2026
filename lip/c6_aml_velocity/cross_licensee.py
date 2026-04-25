@@ -83,18 +83,32 @@ class CrossLicenseeAggregator:
 
     # ── Public interface ──────────────────────────────────────────────────────
 
+    @staticmethod
+    def _cents_to_decimal(cents_str: str) -> Decimal:
+        """Convert an integer cents string to a Decimal dollar amount."""
+        return Decimal(int(cents_str)) / Decimal("100")
+
+    @staticmethod
+    def _decimal_to_cents(amount: Decimal) -> int:
+        """Convert a Decimal dollar amount to integer cents (truncates sub-cent fractions)."""
+        return int(amount * 100)
+
     def get_cross_licensee_volume(self, tax_id: str) -> Decimal:
-        """Return combined volume across current-salt (and previous-salt during overlap)."""
+        """Return combined volume across current-salt (and previous-salt during overlap).
+
+        Volume is stored in integer cents (via INCRBY) to avoid INCRBYFLOAT
+        floating-point rounding errors on money amounts (B7-05).
+        """
         current_hashed = cross_licensee_hash(tax_id, self._current_salt())
-        total = Decimal(self._get_value(self._make_key(current_hashed, "volume"), "0"))
+        raw = self._get_value(self._make_key(current_hashed, "volume"), "0")
+        total = self._cents_to_decimal(str(int(raw)) if raw else "0")
 
         prev_salt = self._previous_salt()
         if prev_salt is not None:
             prev_hashed = cross_licensee_hash(tax_id, prev_salt)
             if prev_hashed != current_hashed:
-                prev_total = Decimal(
-                    self._get_value(self._make_key(prev_hashed, "volume"), "0")
-                )
+                prev_raw = self._get_value(self._make_key(prev_hashed, "volume"), "0")
+                prev_total = self._cents_to_decimal(str(int(prev_raw)) if prev_raw else "0")
                 # Only add previous-salt data if it hasn't already been migrated
                 # into the current-salt key (migrate_overlap_period moves it over).
                 total = max(total, prev_total)
@@ -137,24 +151,28 @@ class CrossLicenseeAggregator:
             if prev_hashed == current_hashed:
                 prev_hashed = None  # same hash — no need for dual write
 
+        # B7-05: Store amounts in integer cents and use INCRBY (not INCRBYFLOAT)
+        # to avoid floating-point rounding errors on money amounts.
+        amount_cents = self._decimal_to_cents(amount)
         if self._redis:
             pipe = self._redis.pipeline()
-            pipe.incrbyfloat(vol_key, float(amount))
+            pipe.incrby(vol_key, amount_cents)
             pipe.incr(cnt_key)
             if prev_hashed is not None:
                 prev_vol_key = self._make_key(prev_hashed, "volume")
                 prev_cnt_key = self._make_key(prev_hashed, "count")
-                pipe.incrbyfloat(prev_vol_key, float(amount))
+                pipe.incrby(prev_vol_key, amount_cents)
                 pipe.incr(prev_cnt_key)
             pipe.execute()
         else:
-            self._store[vol_key] = str(Decimal(self._store.get(vol_key, "0")) + amount)
+            # In-memory path also stores cents (integer string) for consistency with Redis path
+            self._store[vol_key] = str(int(self._store.get(vol_key, "0")) + amount_cents)
             self._store[cnt_key] = int(self._store.get(cnt_key, 0)) + 1
             if prev_hashed is not None:
                 prev_vol_key = self._make_key(prev_hashed, "volume")
                 prev_cnt_key = self._make_key(prev_hashed, "count")
                 self._store[prev_vol_key] = str(
-                    Decimal(self._store.get(prev_vol_key, "0")) + amount
+                    int(self._store.get(prev_vol_key, "0")) + amount_cents
                 )
                 self._store[prev_cnt_key] = int(self._store.get(prev_cnt_key, 0)) + 1
 

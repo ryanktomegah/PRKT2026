@@ -32,7 +32,6 @@ from lip.integrity.compliance_enforcer import (
     jaccard_similarity,
 )
 
-# Default threshold; matches the constant added to lip/common/constants.py.
 DEFAULT_ZERO_INCIDENT_THRESHOLD = 0.95
 
 
@@ -221,7 +220,7 @@ class VendorIntegrityValidator:
         zeros = sum(1 for r in vendor_reports if r.incidents_found == 0)
         ratio = zeros / total
         return ZeroIncidentResult(
-            is_anomalous=ratio > self._zero_incident_threshold,
+            is_anomalous=ratio >= self._zero_incident_threshold,
             vendor_id=vendor_id,
             total_reports=total,
             reports_with_zero_incidents=zeros,

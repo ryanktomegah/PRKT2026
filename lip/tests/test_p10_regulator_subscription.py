@@ -38,7 +38,7 @@ def _make_regulator_token(
         regulator_id="OSFI-001",
         regulator_name="OSFI",
         subscription_tier=subscription_tier,
-        permitted_corridors=permitted_corridors,
+        permitted_corridors=tuple(permitted_corridors) if permitted_corridors is not None else None,
         query_budget_monthly=query_budget_monthly,
         privacy_budget_allocation=privacy_budget_allocation,
         valid_from=now - timedelta(days=1),
@@ -99,7 +99,7 @@ class TestRegulatoryQueryMetering:
 
     def test_record_query_updates_usage(self):
         token = _make_regulator_token(query_budget_monthly=5, privacy_budget_allocation=1.0)
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         signed = sign_regulator_token(token, _KEY)
         entry = meter.record_query(
             token=signed,
@@ -119,7 +119,7 @@ class TestRegulatoryQueryMetering:
             _make_regulator_token(query_budget_monthly=1, privacy_budget_allocation=1.0),
             _KEY,
         )
-        meter = RegulatoryQueryMetering()
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         meter.record_query(
             token=token,
             endpoint="/api/v1/regulatory/metadata",
@@ -143,7 +143,7 @@ class TestRegulatoryQueryMetering:
             _make_regulator_token(query_budget_monthly=10, privacy_budget_allocation=0.05),
             _KEY,
         )
-        meter = RegulatoryQueryMetering()
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         meter.record_query(
             token=token,
             endpoint="/api/v1/regulatory/metadata",
@@ -197,7 +197,7 @@ class TestRegulatoryRouterWithSubscriptionToken:
         )
         service = RegulatoryService(risk_engine=engine)
         limiter = TokenBucketRateLimiter(rate=1000, period_seconds=3600)
-        metering = RegulatoryQueryMetering(metering_key=_KEY)
+        metering = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         app = FastAPI()
         app.include_router(
             make_regulatory_router(
@@ -282,7 +282,7 @@ class TestUsageAnalytics:
     """Usage analytics billing summary and endpoint tests."""
 
     def test_billing_summary_empty_regulator(self):
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         summary = meter.get_billing_summary("OSFI-001")
         assert summary["query_count"] == 0
         assert summary["epsilon_consumed"] == 0.0
@@ -298,7 +298,7 @@ class TestUsageAnalytics:
         token = sign_regulator_token(
             _make_regulator_token(query_budget_monthly=10), _KEY
         )
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         for i in range(3):
             meter.record_query(
                 token=token,
@@ -317,7 +317,7 @@ class TestUsageAnalytics:
         token = sign_regulator_token(
             _make_regulator_token(query_budget_monthly=10), _KEY
         )
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         meter.record_query(
             token=token,
             endpoint="/metadata",
@@ -349,7 +349,7 @@ class TestUsageAnalytics:
         token = sign_regulator_token(
             _make_regulator_token(query_budget_monthly=100), _KEY
         )
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         latencies = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
                      110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
         for lat in latencies:
@@ -369,7 +369,7 @@ class TestUsageAnalytics:
         token = sign_regulator_token(
             _make_regulator_token(query_budget_monthly=10), _KEY
         )
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         meter.record_query(
             token=token,
             endpoint="/corridors",
@@ -395,7 +395,7 @@ class TestUsageAnalytics:
         token = sign_regulator_token(
             _make_regulator_token(query_budget_monthly=100), _KEY
         )
-        meter = RegulatoryQueryMetering(metering_key=_KEY)
+        meter = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         jan = datetime(2029, 1, 15, tzinfo=timezone.utc)
         feb = datetime(2029, 2, 15, tzinfo=timezone.utc)
         meter.record_query(
@@ -451,7 +451,7 @@ class TestUsageAnalytics:
         )
         service = RegulatoryService(risk_engine=engine)
         limiter = TokenBucketRateLimiter(rate=1000, period_seconds=3600)
-        metering = RegulatoryQueryMetering(metering_key=_KEY)
+        metering = RegulatoryQueryMetering(metering_key=_KEY, single_replica=True)
         app = FastAPI()
         app.include_router(
             make_regulatory_router(

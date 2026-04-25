@@ -11,8 +11,9 @@ Tier 2: Moderate data (30-100 observations)
 Tier 3: Pure P95 from data (> 100 observations)
 """
 import logging
-import time
+import threading
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -92,13 +93,14 @@ class CorridorBuffer:
         self._defaults = defaults or CorridorBufferDefaults()
         # Stores (timestamp_unix, settlement_days) tuples per corridor
         self._observations: Dict[str, List[Tuple[float, float]]] = {}
+        self._lock = threading.Lock()
 
     # ── Observation management ────────────────────────────────────────────────
 
     def add_observation(self, corridor: str, settlement_days: float) -> None:
         """Record an observed settlement latency (in days) for a corridor.
 
-        The observation is tagged with the current wall-clock timestamp for
+        The observation is tagged with the current UTC timestamp for
         90-day rolling-window enforcement.
 
         Args:
@@ -110,19 +112,24 @@ class CorridorBuffer:
                 f"settlement_days must be non-negative, got {settlement_days}"
             )
         key = corridor.strip().upper()
-        self._observations.setdefault(key, [])
-        self._prune(key)
-        self._observations[key].append((time.time(), float(settlement_days)))
-        logger.debug(
-            "Corridor %s: added observation %.2f days (n=%d)",
-            key, settlement_days, len(self._observations[key]),
-        )
+        with self._lock:
+            self._observations.setdefault(key, [])
+            self._prune_locked(key)
+            now_ts = datetime.now(timezone.utc).timestamp()
+            self._observations[key].append((now_ts, float(settlement_days)))
+            logger.debug(
+                "Corridor %s: added observation %.2f days (n=%d)",
+                key, settlement_days, len(self._observations[key]),
+            )
 
     # ── Rolling-window pruning ─────────────────────────────────────────────────
 
-    def _prune(self, key: str) -> None:
-        """Remove observations older than the 90-day rolling window."""
-        cutoff = time.time() - _WINDOW_SECONDS
+    def _prune_locked(self, key: str) -> None:
+        """Remove observations older than the 90-day rolling window.
+
+        Must be called with self._lock already held.
+        """
+        cutoff = datetime.now(timezone.utc).timestamp() - _WINDOW_SECONDS
         before = len(self._observations.get(key, []))
         self._observations[key] = [
             (ts, days)
@@ -136,16 +143,22 @@ class CorridorBuffer:
                 key, before - after, _WINDOW_DAYS,
             )
 
+    def _prune(self, key: str) -> None:
+        """Remove observations older than the 90-day rolling window (acquires lock)."""
+        with self._lock:
+            self._prune_locked(key)
+
     def purge_expired(self) -> int:
         """Purge expired observations from all corridors.
 
         Returns the total number of observations removed.
         """
         total_removed = 0
-        for key in list(self._observations.keys()):
-            before = len(self._observations[key])
-            self._prune(key)
-            total_removed += before - len(self._observations[key])
+        with self._lock:
+            for key in list(self._observations.keys()):
+                before = len(self._observations[key])
+                self._prune_locked(key)
+                total_removed += before - len(self._observations[key])
         if total_removed:
             logger.info(
                 "purge_expired: removed %d observation(s) across all corridors",
@@ -158,8 +171,9 @@ class CorridorBuffer:
     def get_buffer_tier(self, corridor: str) -> int:
         """Return the estimation tier for the corridor (0, 1, 2, or 3)."""
         key = corridor.strip().upper()
-        self._prune(key)
-        n = len(self._observations.get(key, []))
+        with self._lock:
+            self._prune_locked(key)
+            n = len(self._observations.get(key, []))
         if n == 0:
             return 0
         if n <= _TIER1_MAX:
@@ -181,15 +195,16 @@ class CorridorBuffer:
           Tier 3 → empirical_p95
         """
         key = corridor.strip().upper()
-        self._prune(key)
-        tier = self.get_buffer_tier(key)
-        default_p95 = self._defaults.get(key)
+        with self._lock:
+            self._prune_locked(key)
+            tier = self._tier_from_locked(key)
+            default_p95 = self._defaults.get(key)
+            observations = [days for _, days in self._observations.get(key, [])]
 
         if tier == 0:
             logger.debug("Corridor %s Tier 0: using default %.2f days", key, default_p95)
             return default_p95
 
-        observations = [days for _, days in self._observations[key]]
         empirical_p95 = float(np.percentile(observations, _P95_PERCENTILE))
 
         if tier == 1:
@@ -216,6 +231,17 @@ class CorridorBuffer:
         )
         return empirical_p95
 
+    def _tier_from_locked(self, key: str) -> int:
+        """Determine tier from current observations. Must be called with lock held."""
+        n = len(self._observations.get(key, []))
+        if n == 0:
+            return 0
+        if n <= _TIER1_MAX:
+            return 1
+        if n <= _TIER2_MAX:
+            return 2
+        return 3
+
     # ── Maturity extension ────────────────────────────────────────────────────
 
     def get_maturity_extension(self, corridor: str) -> int:
@@ -240,26 +266,29 @@ class CorridorBuffer:
         Observations are stored as ``[timestamp, days]`` pairs to preserve
         the rolling-window state across restarts.
         """
-        return {
-            "defaults": dict(self._defaults.defaults),
-            "observations": {
-                corridor: [[ts, days] for ts, days in obs]
-                for corridor, obs in self._observations.items()
-            },
-        }
+        with self._lock:
+            return {
+                "defaults": dict(self._defaults.defaults),
+                "observations": {
+                    corridor: [[ts, days] for ts, days in obs]
+                    for corridor, obs in self._observations.items()
+                },
+            }
 
     @classmethod
     def from_dict(cls, d: dict) -> "CorridorBuffer":
         """Restore a CorridorBuffer from a serialised dict."""
         defaults = CorridorBufferDefaults(defaults=dict(d.get("defaults", {})))
         instance = cls(defaults=defaults)
-        for corridor, obs in d.get("observations", {}).items():
-            parsed: List[Tuple[float, float]] = []
-            for entry in obs:
-                if isinstance(entry, (list, tuple)) and len(entry) == 2:
-                    parsed.append((float(entry[0]), float(entry[1])))
-                else:
-                    # Legacy format: bare float — stamp with current time
-                    parsed.append((time.time(), float(entry)))
-            instance._observations[corridor.upper()] = parsed
+        now_ts = datetime.now(timezone.utc).timestamp()
+        with instance._lock:
+            for corridor, obs in d.get("observations", {}).items():
+                parsed: List[Tuple[float, float]] = []
+                for entry in obs:
+                    if isinstance(entry, (list, tuple)) and len(entry) == 2:
+                        parsed.append((float(entry[0]), float(entry[1])))
+                    else:
+                        # Legacy format: bare float — stamp with current time
+                        parsed.append((now_ts, float(entry)))
+                instance._observations[corridor.upper()] = parsed
         return instance

@@ -22,9 +22,14 @@ class PipelineResult:
     ----------
     outcome:
         Final pipeline outcome. One of:
-        ``"FUNDED"`` | ``"DISPUTE_BLOCKED"`` | ``"AML_BLOCKED"`` |
+        ``"OFFERED"`` | ``"FUNDED"`` | ``"DISPUTE_BLOCKED"`` | ``"AML_BLOCKED"`` |
         ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"`` |
-        ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"`` | ``"AML_CHECK_UNAVAILABLE"``
+        ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"`` | ``"AML_CHECK_UNAVAILABLE"`` |
+        ``"SYSTEM_ERROR"``
+
+        ``"OFFERED"`` — C7 generated and delivered or queued a bridge offer. The
+        ELO has not accepted it yet; C3 activation and funded exposure must happen
+        only after an explicit acceptance callback.
 
         ``"PENDING_HUMAN_REVIEW"`` — C7 human review gate triggered; payment is parked
         pending operator decision. ``override_request_id`` is populated. Caller must store
@@ -42,7 +47,7 @@ class PipelineResult:
     failure_probability:
         C1 predicted failure probability in [0, 1].
     above_threshold:
-        ``True`` when ``failure_probability > FAILURE_PROBABILITY_THRESHOLD`` (τ* = 0.110).
+        ``True`` when ``failure_probability >= FAILURE_PROBABILITY_THRESHOLD`` (τ* = 0.110).
     shap_top20:
         Top-20 SHAP feature attributions from C1.
     dispute_class:
@@ -66,6 +71,9 @@ class PipelineResult:
         Loan offer dict from C7 ExecutionAgent, or ``None`` if no offer was made.
     decision_entry_id:
         ID of the ``DecisionLogEntry`` written by C7, or ``None``.
+    delivery_id:
+        ID of the ``LoanOfferDelivery`` record written by C7, or ``None`` when
+        no offer-delivery service is configured.
     payment_state:
         Final payment state-machine state (string value of ``PaymentState``).
     loan_state:
@@ -110,6 +118,7 @@ class PipelineResult:
     # C7 output
     loan_offer: Optional[dict] = None
     decision_entry_id: Optional[str] = None
+    delivery_id: Optional[str] = None
     # EPG-26: populated when outcome == "PENDING_HUMAN_REVIEW" — used by caller
     # to store context and re-enter the pipeline after human approval.
     override_request_id: Optional[str] = None

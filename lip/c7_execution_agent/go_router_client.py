@@ -130,9 +130,16 @@ class GoOfferRouterClient:
         self,
         addr: Optional[str] = None,
         timeout_seconds: float = 5.0,
+        insecure: Optional[bool] = None,
     ) -> None:
         self._addr = addr or os.environ.get("C7_GO_ROUTER_ADDR", "localhost:50057")
         self._timeout = timeout_seconds
+        # B4-09: default to TLS. Plaintext requires explicit opt-in via the
+        # `insecure=True` kwarg or the GRPC_INSECURE=true environment variable.
+        # This mirrors the Go consumer pattern from B6-04 (grpc_client.go).
+        if insecure is None:
+            insecure = os.environ.get("GRPC_INSECURE", "").lower() == "true"
+        self._insecure = insecure
         self._channel: Any = None
         self._stubs: Dict[str, Any] = {}
         self._channel_lock = threading.Lock()
@@ -314,7 +321,7 @@ class GoOfferRouterClient:
             On gRPC transport errors or non-accepted responses.
         """
         try:
-            import grpc  # noqa: PLC0415 — optional dependency
+            import grpc  # type: ignore[import-untyped]  # noqa: PLC0415
         except ImportError as exc:
             raise GoRouterError(
                 f"grpcio is not installed; cannot reach Go offer router: {exc}"
@@ -351,8 +358,19 @@ class GoOfferRouterClient:
                 # Double-checked locking: re-test under the lock to avoid a race
                 # where two threads both observe _channel is None and both create channels.
                 if self._channel is None:
-                    self._channel = grpc.insecure_channel(self._addr)
-                    logger.info(
-                        "GoOfferRouterClient: connected to Go offer router at %s", self._addr
-                    )
+                    if self._insecure:
+                        self._channel = grpc.insecure_channel(self._addr)
+                        logger.warning(
+                            "GoOfferRouterClient: connected to Go offer router at %s "
+                            "with INSECURE channel (GRPC_INSECURE=true or insecure=True). "
+                            "This must not be used in production.",
+                            self._addr,
+                        )
+                    else:
+                        creds = grpc.ssl_channel_credentials()
+                        self._channel = grpc.secure_channel(self._addr, creds)
+                        logger.info(
+                            "GoOfferRouterClient: connected to Go offer router at %s via TLS",
+                            self._addr,
+                        )
         return self._channel

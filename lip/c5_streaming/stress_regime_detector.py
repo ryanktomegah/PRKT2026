@@ -10,14 +10,23 @@ This signal is used to:
   2. Alert the licensee bank's risk desk via Kafka.
   3. Support P5 (Supply Chain Patent) cascade propagation logic.
 
-Kafka emission: :class:`StressRegimeEvent` is published to the
-``lip.stress.regime`` topic via best-effort fire-and-forget. On failure
-(or when no Kafka producer is configured), events accumulate in
-:attr:`StressRegimeDetector.emitted_events` for prototype-mode inspection.
+Kafka emission (T2.1 production wiring)
+---------------------------------------
+:class:`StressRegimeEvent` is published to the ``lip.stress.regime`` topic
+through an injected ``confluent_kafka.Producer``-compatible object with
+bounded exponential-backoff retries. On persistent failure the event is
+routed to the ``lip.dead.letter`` topic with a ``source-topic`` header so
+operators can replay it. Only when the DLQ route itself fails does the
+event fall through to :attr:`StressRegimeDetector.emitted_events` — that
+in-memory list is now a last-resort diagnostic, not a normal production
+code path.
 
-# PHASE-2-STUB: In production, wire a confluent_kafka.Producer to the bank's
-# Redpanda/Kafka cluster using KafkaConfig credentials. Replace in-memory
-# fallback with a dead-letter queue flushed to the ``lip.dead.letter`` topic.
+Why retry + DLQ and not just best-effort:
+  The stress-regime topic carries risk signals that trigger human review of
+  every subsequent offer in a stressed corridor. A silently-dropped alert
+  means the bank's risk desk never sees the spike. Even though the topic
+  is configured ``exactly_once=False`` (duplicates are harmless at the
+  consumer), silent drops are not acceptable.
 """
 from __future__ import annotations
 
@@ -29,6 +38,12 @@ from dataclasses import dataclass
 from typing import Callable, Deque, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Matches the worker's retry schedule (100ms / 200ms / 400ms) so operators
+# see consistent behaviour across the C5 producer surface.
+_EMIT_MAX_RETRIES = 3
+_EMIT_BACKOFF_BASE_MS = 100
+_DEAD_LETTER_TOPIC = "lip.dead.letter"
 
 
 @dataclass(frozen=True)
@@ -244,33 +259,87 @@ class StressRegimeDetector:
         return current_rate, baseline_rate
 
     def _emit(self, event: StressRegimeEvent) -> None:
-        """Publish event to Kafka or fall back to in-memory list."""
-        if self._producer is not None:
-            try:
-                self._producer.produce(  # type: ignore[attr-defined]
-                    topic=self.STRESS_TOPIC,
-                    key=event.corridor.encode(),
-                    value=event.to_json().encode(),
-                )
-                self._producer.poll(0)  # type: ignore[attr-defined]  # trigger delivery callbacks (non-blocking)
-                logger.info(
-                    "StressRegimeEvent emitted → Kafka: corridor=%s ratio=%.2f",
-                    event.corridor,
-                    event.ratio,
-                )
-            except Exception:
-                logger.exception(
-                    "Kafka emit failed; buffering StressRegimeEvent in-memory: corridor=%s",
-                    event.corridor,
-                )
-                self.emitted_events.append(event)
-        else:
-            # PHASE-2-STUB: replace with confluent_kafka.Producer in production
+        """Publish event to Kafka with retry + DLQ routing.
+
+        Flow:
+          1. If no producer is configured → prototype mode, keep in-memory.
+          2. Else: retry ``produce()`` up to ``_EMIT_MAX_RETRIES`` with
+             exponential backoff (100ms / 200ms / 400ms).
+          3. If all retries fail → route to the dead-letter topic with a
+             ``source-topic`` header.
+          4. Only if DLQ routing *also* fails → fall back to in-memory.
+             That is a diagnostic last resort; it means Kafka is
+             comprehensively unreachable and the operator needs to know.
+        """
+        if self._producer is None:
             logger.warning(
                 "No Kafka producer configured — StressRegimeEvent stored in-memory: "
                 "corridor=%s ratio=%.2f",
                 event.corridor,
                 event.ratio,
+            )
+            self.emitted_events.append(event)
+            return
+
+        key = event.corridor.encode()
+        value = event.to_json().encode()
+
+        last_exc: Optional[BaseException] = None
+        for attempt in range(_EMIT_MAX_RETRIES):
+            try:
+                self._producer.produce(  # type: ignore[attr-defined]
+                    topic=self.STRESS_TOPIC,
+                    key=key,
+                    value=value,
+                )
+                # Non-blocking: trigger any pending delivery callbacks so
+                # librdkafka reclaims buffers before the next record.
+                self._producer.poll(0)  # type: ignore[attr-defined]
+                logger.info(
+                    "StressRegimeEvent emitted → Kafka: corridor=%s ratio=%.2f",
+                    event.corridor,
+                    event.ratio,
+                )
+                return
+            except Exception as exc:  # broad: librdkafka can raise many types
+                last_exc = exc
+                backoff_ms = _EMIT_BACKOFF_BASE_MS * (2**attempt)
+                logger.warning(
+                    "StressRegimeEvent produce failed (attempt %d/%d, backoff %dms): %s",
+                    attempt + 1,
+                    _EMIT_MAX_RETRIES,
+                    backoff_ms,
+                    exc,
+                )
+                time.sleep(backoff_ms / 1000.0)
+
+        # All retries exhausted → route to DLQ
+        logger.error(
+            "StressRegimeEvent produce exhausted retries, routing to DLQ: "
+            "corridor=%s err=%s",
+            event.corridor,
+            last_exc,
+        )
+        try:
+            self._producer.produce(  # type: ignore[attr-defined]
+                topic=_DEAD_LETTER_TOPIC,
+                key=key,
+                value=value,
+                headers={
+                    "source-topic": self.STRESS_TOPIC,
+                    "error": str(last_exc)[:200] if last_exc is not None else "unknown",
+                },
+            )
+            self._producer.poll(0)  # type: ignore[attr-defined]
+            return
+        except Exception:
+            # DLQ itself is down — this is the only path that hits the
+            # in-memory fallback in production. Callers reading
+            # emitted_events see what was uncapturable at the broker.
+            logger.exception(
+                "StressRegimeEvent DLQ route also failed — buffering in-memory: "
+                "corridor=%s",
+                event.corridor,
             )
             self.emitted_events.append(event)
 

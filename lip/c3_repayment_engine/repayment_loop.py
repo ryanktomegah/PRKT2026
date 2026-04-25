@@ -323,9 +323,12 @@ class RepaymentLoop:
         # so REQUIRE_FULL does not consume the Redis SETNX token)
         _is_partial = settlement_amount < loan.principal
         _shortfall = loan.principal - settlement_amount if _is_partial else Decimal("0")
-        _shortfall_pct = (
-            float(_shortfall / loan.principal) if _is_partial and loan.principal > 0 else 0.0
+        # Shortfall ratio computed with Decimal arithmetic (QUANT rule: no float in fee path).
+        # Rounded and converted to float for the repayment record (informational ratio, not fee).
+        _shortfall_pct_dec = (
+            _shortfall / loan.principal if _is_partial and loan.principal > 0 else Decimal("0")
         )
+        _shortfall_pct = float(_shortfall_pct_dec)
         if _is_partial and self._partial_settlement_policy is not None:
             if self._partial_settlement_policy == PartialSettlementPolicy.REQUIRE_FULL:
                 logger.info(
@@ -510,3 +513,7 @@ class RepaymentLoop:
         if self._thread.is_alive():
             logger.warning("RepaymentLoop thread did not stop within timeout.")
         self._thread = None
+
+    def is_monitoring(self) -> bool:
+        """Return True when the background monitoring thread is alive."""
+        return self._thread is not None and self._thread.is_alive()

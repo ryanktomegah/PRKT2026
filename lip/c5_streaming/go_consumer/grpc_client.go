@@ -12,11 +12,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -44,23 +48,29 @@ type GRPCClient struct {
 // NewGRPCClient dials all three upstream services. Returns an error if any
 // connection cannot be established (fail-fast at startup).
 func NewGRPCClient(c1Addr, c2Addr, c6Addr string, timeout time.Duration, feeFloorBPS float64, fpThreshold float64) (*GRPCClient, error) {
-	dialOpts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
+	// B6-04: Default to TLS. Plaintext requires explicit GRPC_INSECURE=true.
+	var transportCreds grpc.DialOption
+	if strings.EqualFold(os.Getenv("GRPC_INSECURE"), "true") {
+		transportCreds = grpc.WithTransportCredentials(insecure.NewCredentials())
+	} else {
+		transportCreds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}))
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	dialOpts := []grpc.DialOption{
+		transportCreds,
+	}
 
-	c1, err := grpc.DialContext(ctx, c1Addr, dialOpts...)
+	c1, err := grpc.NewClient(c1Addr, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial c1 at %s: %w", c1Addr, err)
 	}
-	c2, err := grpc.DialContext(ctx, c2Addr, dialOpts...)
+	c2, err := grpc.NewClient(c2Addr, dialOpts...)
 	if err != nil {
 		_ = c1.Close()
 		return nil, fmt.Errorf("dial c2 at %s: %w", c2Addr, err)
 	}
-	c6, err := grpc.DialContext(ctx, c6Addr, dialOpts...)
+	c6, err := grpc.NewClient(c6Addr, dialOpts...)
 	if err != nil {
 		_ = c1.Close()
 		_ = c2.Close()

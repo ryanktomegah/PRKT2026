@@ -101,22 +101,75 @@ def frequency_attack(
 ) -> AttackResult:
     """Attempt to identify individual banks by payment volume distribution.
 
-    In anonymized output only aggregate corridor-level counts are visible.
-    Without per-bank breakdown, frequency analysis cannot attribute volume
-    to specific entities. Confidence equals random-guess baseline (1/n_banks).
+    B8-05: Real statistical test. If any corridor's volume is so skewed
+    that a single bank dominates (chi-squared goodness-of-fit vs uniform
+    distribution), an attacker could infer which bank is responsible.
+    A corridor with bank_count=1 trivially reveals identity. For corridors
+    with bank_count >= 2, we test whether the volume distribution across
+    corridors deviates significantly from what uniform contribution would
+    produce — high deviation means a dominant bank is identifiable.
     """
-    confidence = 1.0 / n_banks if n_banks > 0 else 1.0
-    succeeded = confidence > 0.5
+    if n_banks <= 0:
+        return AttackResult(
+            attack_type="frequency",
+            succeeded=True,
+            confidence=1.0,
+            details="No banks — vacuously vulnerable.",
+        )
+    if n_banks == 1:
+        return AttackResult(
+            attack_type="frequency",
+            succeeded=True,
+            confidence=1.0,
+            details="Single bank — trivially identifiable.",
+        )
+
+    snapshots = report.corridor_snapshots
+    if not snapshots:
+        return AttackResult(
+            attack_type="frequency",
+            succeeded=False,
+            confidence=0.0,
+            details="No corridor snapshots to analyze.",
+        )
+
+    # Collect payment volumes per corridor
+    volumes = np.array([s.total_payments for s in snapshots], dtype=np.float64)
+    total = volumes.sum()
+    if total == 0:
+        return AttackResult(
+            attack_type="frequency",
+            succeeded=False,
+            confidence=0.0,
+            details="Zero total payments across all corridors.",
+        )
+
+    # Chi-squared test: do corridor volumes deviate significantly from uniform?
+    # Under proper anonymisation with DP noise, volumes should not reveal
+    # individual bank contribution patterns.
+    n_corridors = len(volumes)
+    expected = np.full(n_corridors, total / n_corridors)
+    chi2, p_value = scipy_stats.chisquare(volumes, f_exp=expected)
+
+    # Also check for single-bank corridors (k-anonymity violation)
+    single_bank_corridors = sum(1 for s in snapshots if s.bank_count < 2)
+
+    # Attack succeeds if distribution is highly non-uniform (p < 0.01)
+    # OR any corridor has a single bank
+    succeeded = p_value < 0.01 or single_bank_corridors > 0
+    confidence = min(1.0, 1.0 - p_value) if p_value < 0.01 else (
+        1.0 if single_bank_corridors > 0 else 1.0 / n_banks
+    )
 
     return AttackResult(
         attack_type="frequency",
         succeeded=succeeded,
-        confidence=confidence,
+        confidence=round(confidence, 4),
         details=(
-            f"Aggregate-only output with {n_banks} banks. "
-            f"Best identification confidence: {confidence:.4f} "
-            f"(random baseline: {1 / n_banks:.4f}). "
-            f"k-anonymity ensures no corridor has <k banks visible."
+            f"Analyzed {n_corridors} corridors, {n_banks} banks. "
+            f"Chi-squared={chi2:.2f}, p={p_value:.4f}. "
+            f"Single-bank corridors: {single_bank_corridors}. "
+            f"{'VULNERABLE' if succeeded else 'No significant frequency signal'}."
         ),
     )
 
@@ -156,8 +209,10 @@ def temporal_linkage_attack(
 ) -> AttackResult:
     """Correlate anonymized output across time periods to track entities.
 
-    With aggregate-only data and DP noise, temporal correlation cannot
-    decompose corridor-level signals into per-bank contributions.
+    B8-05: Real statistical test. Cross-correlate corridor failure rates
+    across periods. High autocorrelation in a corridor's time series
+    (despite DP noise) suggests a persistent entity whose behaviour is
+    trackable. With proper DP noise, temporal correlation should be low.
     """
     if len(reports) < 2:
         return AttackResult(
@@ -166,19 +221,76 @@ def temporal_linkage_attack(
             confidence=0.0,
             details="Insufficient periods for temporal analysis (need >= 2).",
         )
+    if n_banks <= 0:
+        return AttackResult(
+            attack_type="temporal_linkage",
+            succeeded=True,
+            confidence=1.0,
+            details="No banks — vacuously vulnerable.",
+        )
+    if n_banks == 1:
+        return AttackResult(
+            attack_type="temporal_linkage",
+            succeeded=True,
+            confidence=1.0,
+            details="Single bank — trivially trackable across periods.",
+        )
 
-    confidence = 1.0 / n_banks if n_banks > 0 else 1.0
-    succeeded = confidence > 0.5
+    # Build time series of failure rates per corridor across periods
+    corridor_series: dict[str, list[float]] = {}
+    for report in reports:
+        for snap in report.corridor_snapshots:
+            corridor_series.setdefault(snap.corridor, []).append(snap.failure_rate)
+
+    # Compute mean absolute autocorrelation across corridors
+    # High autocorrelation = entity behaviour is persistent and trackable
+    # Need >= 3 points for lag-1 autocorrelation to be non-degenerate.
+    autocorrelations: list[float] = []
+    for corridor, series in corridor_series.items():
+        if len(series) < 3:
+            continue
+        arr = np.array(series)
+        mean = arr.mean()
+        std = arr.std()
+        if std < 1e-12:
+            # Constant series — no signal to correlate
+            continue
+        # Lag-1 autocorrelation
+        n = len(arr)
+        normalized = (arr - mean) / std
+        autocorr = float(np.dot(normalized[:-1], normalized[1:]) / (n - 1))
+        autocorrelations.append(abs(autocorr))
+
+    if not autocorrelations:
+        return AttackResult(
+            attack_type="temporal_linkage",
+            succeeded=False,
+            confidence=0.0,
+            details=(
+                f"Analyzed {len(reports)} periods. "
+                "No corridors with sufficient variance for temporal analysis."
+            ),
+        )
+
+    mean_autocorr = float(np.mean(autocorrelations))
+    max_autocorr = float(np.max(autocorrelations))
+
+    # If mean autocorrelation is high, an entity's pattern persists across
+    # periods despite DP noise — the anonymisation is leaking temporal signal.
+    # Threshold: 0.7 is a conservative bar for "trackable."
+    succeeded = mean_autocorr > 0.7 or max_autocorr > 0.9
+    confidence = min(1.0, mean_autocorr)
 
     return AttackResult(
         attack_type="temporal_linkage",
         succeeded=succeeded,
-        confidence=confidence,
+        confidence=round(confidence, 4),
         details=(
             f"Analyzed {len(reports)} periods, "
-            f"{len(reports[0].corridor_snapshots)} corridors. "
-            f"Aggregate-only data prevents per-bank temporal tracking. "
-            f"Best identification confidence: {confidence:.4f}."
+            f"{len(corridor_series)} corridors. "
+            f"Mean lag-1 |autocorrelation|={mean_autocorr:.4f}, "
+            f"max={max_autocorr:.4f}. "
+            f"{'VULNERABLE — temporal signal persists through DP noise' if succeeded else 'DP noise sufficiently decorrelates temporal signal'}."
         ),
     )
 
@@ -336,10 +448,12 @@ def generate_audit_report(
     dp_ver = verify_dp_distribution(anon2, epsilon=0.5, sensitivity=1.0)
 
     # Budget audit
+    # B8-01: sequential composition — each batch releases 3 noised statistics,
+    # so the per-batch cost is 3 * epsilon, not 1 * epsilon.
     budget_result = verify_budget_composition(
         anon2._budget,
         expected_queries={c: 1 for c in {r.corridor for r in anon_results}},
-        epsilon_per_query=0.5,
+        epsilon_per_query=0.5 * 3,
     )
 
     # Overall verdict

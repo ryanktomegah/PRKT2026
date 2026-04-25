@@ -23,11 +23,19 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Dict, FrozenSet, Optional
+from typing import Any, Dict, FrozenSet, Optional
 
 from .velocity import RollingWindow, VelocityChecker, VelocityResult
 
 logger = logging.getLogger(__name__)
+
+# T2.2c: Redis key schema for cross-tenant structuring state.
+# Hash per entity where the fields are tenant IDs and the values are
+# cumulative USD volume. TTL = 7 days so stale entities expire without
+# unbounded growth; 7d is wider than the 24h velocity window because
+# cross-tenant structuring plays out over longer timescales.
+_STRUCTURING_KEY_PREFIX = "lip:c6:structuring:"
+_STRUCTURING_TTL_SECONDS = 7 * 24 * 3600
 
 
 @dataclass
@@ -60,15 +68,61 @@ class StructuringDetector:
     This is a **soft flag** — it does not block transactions. The flag
     is surfaced in the AMLResult for human review.
 
-    In-memory storage for now. Redis-backed persistence will be added
-    when the MIPLO API gateway is built (Sprint 2c).
+    Deployment modes (T2.2c):
+      * ``single_replica=True`` — in-memory dict. State resets on restart
+        and is invisible to other replicas. Safe only for single-replica
+        deploys and local tests.
+      * ``redis_client=<redis.Redis>`` — Redis hash per entity where
+        fields are tenant IDs and values are cumulative USD volume.
+        ``HINCRBYFLOAT`` is natively atomic; ``HGETALL`` is a single
+        round-trip on the read path. TTL = 7 days so stale entities
+        expire without unbounded growth.
+
+    Exactly one of ``single_replica`` or ``redis_client`` must be supplied.
     """
 
-    def __init__(self) -> None:
-        # entity_hash → {tenant_id: cumulative_volume}
-        self._registry: Dict[str, Dict[str, Decimal]] = defaultdict(
-            lambda: defaultdict(Decimal)
-        )
+    def __init__(
+        self,
+        *,
+        single_replica: bool = False,
+        redis_client: Any = None,
+    ) -> None:
+        if redis_client is not None and single_replica:
+            raise ValueError(
+                "Pass exactly one of single_replica=True or redis_client — "
+                "not both. Redis-backed mode implies multi-replica safety."
+            )
+        if redis_client is None and not single_replica:
+            raise ValueError(
+                "StructuringDetector uses in-memory state that resets on "
+                "redeploy and multiplies N× across replicas. Pass "
+                "single_replica=True to acknowledge single-replica constraint, "
+                "or configure a Redis-backed store (B7-10)."
+            )
+        self._redis = redis_client
+        # entity_hash → {tenant_id: cumulative_volume}; None when Redis-backed.
+        self._registry: Optional[Dict[str, Dict[str, Decimal]]]
+        if redis_client is not None:
+            self._registry = None
+            logger.info(
+                "StructuringDetector running in Redis-backed multi-replica mode"
+            )
+        else:
+            self._registry = defaultdict(lambda: defaultdict(Decimal))
+            logger.warning(
+                "StructuringDetector running with single_replica=True — "
+                "cross-tenant structuring detection will not work across replicas"
+            )
+
+    @staticmethod
+    def _redis_key(entity_hash: str) -> str:
+        return f"{_STRUCTURING_KEY_PREFIX}{entity_hash}"
+
+    @staticmethod
+    def _decode(value: Any) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8")
+        return str(value)
 
     def record(
         self,
@@ -79,13 +133,23 @@ class StructuringDetector:
         """Record a transaction for structuring detection.
 
         Called after a passing velocity check. Accumulates volume per
-        (entity_hash, tenant_id) pair.
+        (entity_hash, tenant_id) pair. On the Redis path, uses
+        ``HINCRBYFLOAT`` which is atomic at the hash-field level.
 
         Args:
             entity_hash: BPI-scoped SHA-256 hash of the entity.
             tenant_id: Processor tenant identifier.
             amount: Transaction amount in USD.
         """
+        if self._redis is not None:
+            key = self._redis_key(entity_hash)
+            pipe = self._redis.pipeline()
+            pipe.hincrbyfloat(key, tenant_id, float(amount))
+            pipe.expire(key, _STRUCTURING_TTL_SECONDS)
+            pipe.execute()
+            return
+        if self._registry is None:
+            raise RuntimeError("In-memory registry is unavailable in Redis-backed mode")
         self._registry[entity_hash][tenant_id] += amount
 
     def check(
@@ -110,7 +174,14 @@ class StructuringDetector:
         Returns:
             StructuringResult with detection outcome.
         """
-        tenant_volumes = self._registry.get(entity_hash, {})
+        if self._redis is not None:
+            raw = self._redis.hgetall(self._redis_key(entity_hash)) or {}
+            tenant_volumes: Dict[str, Decimal] = {
+                self._decode(k): Decimal(self._decode(v)) for k, v in raw.items()
+            }
+        else:
+            registry = self._registry or {}
+            tenant_volumes = dict(registry.get(entity_hash, {}))
         tenant_count = len(tenant_volumes)
         combined = sum(tenant_volumes.values(), Decimal("0"))
         tenants = frozenset(tenant_volumes.keys())

@@ -10,12 +10,12 @@ Three-entity role mapping:
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 from .features import UnifiedFeatureEngineer
-from .model import PDModel
+from .model import PDModel, _make_lgbm_model
 from .tier_assignment import Tier, TierFeatures, assign_tier
 
 logger = logging.getLogger(__name__)
@@ -221,7 +221,7 @@ class PDTrainingPipeline:
 
         Returns
         -------
-        Tuple of (X_train, X_val, X_test, y_train, y_val, y_test)
+        Tuple of (X_train, X_val, X_test, y_train, y_val, y_test, test_idx)
         """
         n = len(y)
 
@@ -253,6 +253,7 @@ class PDTrainingPipeline:
             y[train_idx],
             y[val_idx],
             y[test_idx],
+            test_idx,
         )
 
     # ------------------------------------------------------------------
@@ -288,7 +289,6 @@ class PDTrainingPipeline:
             optuna.logging.set_verbosity(optuna.logging.WARNING)
 
             def _objective(trial: "optuna.Trial") -> float:  # type: ignore[name-defined]
-                from sklearn.ensemble import GradientBoostingClassifier  # noqa: PLC0415
                 from sklearn.model_selection import cross_val_score  # noqa: PLC0415
 
                 params = {
@@ -298,7 +298,7 @@ class PDTrainingPipeline:
                     "subsample": trial.suggest_float("subsample", 0.5, 1.0),
                     "random_state": self.config.random_seed,
                 }
-                clf = GradientBoostingClassifier(**params)
+                clf = _make_lgbm_model(self.config.random_seed, **params)
                 scores = cross_val_score(
                     clf, X_train, y_train, cv=3, scoring="roc_auc", n_jobs=1
                 )
@@ -403,8 +403,8 @@ class PDTrainingPipeline:
             calibrator.fit(raw_probs, y_val)
             model._calibrator = calibrator  # type: ignore[attr-defined]
             logger.info("Stage 7 — isotonic calibration applied on %d validation samples.", len(y_val))
-        except Exception as exc:
-            logger.warning("Stage 7 calibration skipped (%s).", exc)
+        except (ImportError, ValueError, RuntimeError) as exc:
+            logger.warning("Stage 7 calibration skipped (%s).", exc, exc_info=True)
 
         return model
 
@@ -521,8 +521,8 @@ class PDTrainingPipeline:
                 metrics["ks"] = float(ks_stat)
             else:
                 metrics["ks"] = float("nan")
-        except Exception:
-            # Manual KS
+        except (ImportError, ValueError, TypeError):
+            # Manual KS fallback when scipy is unavailable or ks_2samp fails
             pos_scores = np.sort(pds[y_test == 1])
             neg_scores = np.sort(pds[y_test == 0])
             if len(pos_scores) > 0 and len(neg_scores) > 0:
@@ -545,7 +545,7 @@ class PDTrainingPipeline:
     # Orchestrator
     # ------------------------------------------------------------------
 
-    def run(self, data: List[dict]) -> Tuple[PDModel, Dict[str, float]]:
+    def run(self, data: List[dict]) -> Tuple[PDModel, Dict[str, Union[float, bool]]]:
         """Execute the full nine-stage training pipeline.
 
         Parameters
@@ -566,7 +566,7 @@ class PDTrainingPipeline:
         # Extract timestamps for chronological OOT split (SR 11-7 compliance).
         # C2 generator produces 18-month temporal span with 'timestamp' field.
         timestamps = np.array([float(r.get("timestamp", 0.0)) for r in data])
-        X_train, X_val, X_test, y_train, y_val, y_test = (
+        X_train, X_val, X_test, y_train, y_val, y_test, test_idx = (
             self.stage4_train_val_test_split(X, y, timestamps=timestamps)
         )
 
@@ -574,16 +574,24 @@ class PDTrainingPipeline:
         model = self.stage6_ensemble_training(X_train, y_train, best_params)
         model = self.stage7_calibration(model, X_val, y_val)
 
-        # Thin-file stress test on Tier-3 samples in the test set
+        # Thin-file stress test on Tier-3 samples restricted to the TEST set
+        # only. B10-03: Using all Tier-3 (including train) contaminates the
+        # stress test — the model would be evaluated on data it trained on.
         tiers = self.stage2_tier_assignment(data)
         tier_arr = np.array(tiers)
         tier3_idx = np.where(tier_arr == 3)[0]
-        # Intersect with test indices (approximate: use all tier-3 from full dataset)
-        if len(tier3_idx) > 0:
-            X_tier3 = X[tier3_idx]
-            self.stage8_stress_test(model, X_tier3)
+        tier3_test_idx = np.intersect1d(tier3_idx, test_idx)
+        stress_test_passed = True
+        if len(tier3_test_idx) > 0:
+            X_tier3 = X[tier3_test_idx]
+            logger.info(
+                "Stage 8: Tier-3 stress test on %d test-set samples (of %d total Tier-3).",
+                len(tier3_test_idx), len(tier3_idx),
+            )
+            stress_test_passed = self.stage8_stress_test(model, X_tier3)
         else:
-            logger.info("No Tier-3 records found; skipping stress test.")
+            logger.info("No Tier-3 records in test set; skipping stress test.")
 
         metrics = self.stage9_evaluation(model, X_test, y_test)
+        metrics["stress_test_passed"] = bool(stress_test_passed)
         return model, metrics

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from lip.integrity.claims_registry import ClaimsRegistry
 from lip.integrity.oss_tracker import OSSAttributionRegistry
-from lip.integrity.pipeline_gate import IntegrityGate
+from lip.integrity.pipeline_gate import IntegrityGate, IntegrityGateError
 
 _KEY = b"integrity_test__32bytes_________"
 
@@ -24,10 +24,16 @@ def test_gate_disabled_always_passes():
 
 def test_gate_with_oss_registry_scans_packages():
     gate = IntegrityGate(oss_registry=OSSAttributionRegistry())
-    result = gate.check()
-    # We don't assert pass/fail here because the live environment may have
-    # packages with UNKNOWN licenses; we only assert the scan ran.
-    assert result.oss_packages_scanned > 0
+    # The gate is blocking: it may raise IntegrityGateError if the live
+    # environment has packages with unknown licenses or attribution gaps.
+    # We only assert that the scan ran (i.e., oss_packages_scanned > 0),
+    # not that it passed — the live environment may have unattributed packages.
+    try:
+        result = gate.check()
+        assert result.oss_packages_scanned > 0
+    except IntegrityGateError as exc:
+        # Gate blocked correctly — verify the scan did run by checking issues
+        assert exc.issues  # at least one issue was found, scan ran
 
 
 def test_gate_with_claims_registry_reports_counts():

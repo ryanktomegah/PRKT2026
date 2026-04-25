@@ -291,9 +291,9 @@ class TestTaxonomy:
     def test_is_block_false_for_class_a(self, bridge: StateMachineBridge):
         assert not bridge.is_block_code("AC01")
 
-    def test_is_block_false_for_unknown_code(self, bridge: StateMachineBridge):
-        # Never raises — returns False
-        assert not bridge.is_block_code("UNKNOWN_GARBAGE")
+    def test_is_block_true_for_unknown_code(self, bridge: StateMachineBridge):
+        # Fail-closed: unknown codes return True (may be unrecognised compliance hold)
+        assert bridge.is_block_code("UNKNOWN_GARBAGE")
 
     def test_epg19_compliance_hold_codes_are_block(self, bridge: StateMachineBridge):
         """EPG-19: All 8 compliance-hold codes must be BLOCK (defense-in-depth)."""
@@ -520,7 +520,7 @@ class TestRustPythonParity:
         assert rust_result["debtor_bic"] == py_result["debtor_bic"]
 
     def test_taxonomy_parity(self):
-        import lip_c3_rust_state_machine as rust
+        import lip_c3_rust_state_machine as rust  # type: ignore[import-untyped]
 
         from lip.c3_repayment_engine.rejection_taxonomy import (
             classify_rejection_code as py_classify,

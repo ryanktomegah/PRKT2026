@@ -6,6 +6,14 @@ All fixtures use in-memory state only; no external services required.
 
 from __future__ import annotations
 
+# NB: `_test_env` must be imported BEFORE any `lip.*` module so its
+# import-time side effects (e.g. LIP_MODEL_HMAC_KEY for secure_pickle)
+# are in place by the time pytest starts collecting and importing tests.
+# isort: off
+import lip.tests._test_env  # noqa: F401 — import-time side effects
+# isort: on
+
+import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -24,8 +32,35 @@ from lip.c7_execution_agent.decision_log import DecisionLogger
 from lip.c7_execution_agent.degraded_mode import DegradedModeManager
 from lip.c7_execution_agent.human_override import HumanOverrideInterface
 from lip.c7_execution_agent.kill_switch import KillSwitch
+from lip.common.local_env import load_repo_env_file
 from lip.instrumentation import LatencyTracker
 from lip.pipeline import LIPPipeline
+
+# Live integration modules use real external services and can conflict with
+# unit-test modules that inject fake broker clients at import time.
+# Default behavior: isolate these modules from normal runs.
+_LIVE_TEST_MODULES = {"test_e2e_live.py", "test_redis_live.py"}
+_EXPLICIT_ONLY_LIVE_MODULES = {"test_c4_llm_integration.py"}
+load_repo_env_file()
+
+
+def _is_explicit_target(config, filename: str) -> bool:  # type: ignore[no-untyped-def]
+    """Return True when pytest was invoked directly against a given file."""
+    for arg in getattr(config, "args", []):
+        if str(arg).endswith(filename):
+            return True
+    return False
+
+
+def pytest_ignore_collect(collection_path, config):  # type: ignore[no-untyped-def]
+    """Ignore live integration modules unless explicitly enabled."""
+    if os.environ.get("LIP_RUN_LIVE_TESTS") == "1":
+        return False
+    name = getattr(collection_path, "name", "")
+    if name in _EXPLICIT_ONLY_LIVE_MODULES:
+        return not _is_explicit_target(config, name)
+    return name in _LIVE_TEST_MODULES
+
 
 # ---------------------------------------------------------------------------
 # Shared test constants
@@ -59,7 +94,7 @@ class MockC1Engine:
         fp = self.failure_probability
         return {
             "failure_probability": fp,
-            "above_threshold": fp > THRESHOLD,
+            "above_threshold": fp >= THRESHOLD,
             "inference_latency_ms": 1.0,
             "threshold_used": THRESHOLD,
             "corridor_embedding_used": False,

@@ -1,0 +1,180 @@
+/Users/tomegah/.pyenv/versions/3.14.3/lib/python3.14/site-packages/authlib/_joserfc_helpers.py:8: AuthlibDeprecationWarning: authlib.jose module is deprecated, please use joserfc instead.
+It will be compatible before version 2.0.0.
+  from authlib.jose import ECKey
+
+
+[33m[1m+===========================================================================================================================================================================================+[0m
+
+
+[31m[1mDEPRECATED: [0m[33m[1mthis command (`check`) has been DEPRECATED, and will be unsupported beyond 01 June 2024.[0m
+
+
+[32mWe highly encourage switching to the new [0m[32m[1m`scan`[0m[32m command which is easier to use, more powerful, and can be set up to mimic the deprecated command if required.[0m
+
+
+[33m[1m+===========================================================================================================================================================================================+[0m
+
+
++==============================================================================+
+
+                               /$$$$$$            /$$
+                              /$$__  $$          | $$
+           /$$$$$$$  /$$$$$$ | $$  \__//$$$$$$  /$$$$$$   /$$   /$$
+          /$$_____/ |____  $$| $$$$   /$$__  $$|_  $$_/  | $$  | $$
+         |  $$$$$$   /$$$$$$$| $$_/  | $$$$$$$$  | $$    | $$  | $$
+          \____  $$ /$$__  $$| $$    | $$_____/  | $$ /$$| $$  | $$
+          /$$$$$$$/|  $$$$$$$| $$    |  $$$$$$$  |  $$$$/|  $$$$$$$
+         |_______/  \_______/|__/     \_______/   \___/   \____  $$
+                                                          /$$  | $$
+                                                         |  $$$$$$/
+  by safetycli.com                                        \______/
+
++==============================================================================+
+
+ [1mANNOUNCEMENTS[0m 
+
+[33m  * Warning: numpy, scikit-learn, pydantic, cryptography, fastapi, uvicorn,[0m 
+[33m    redis, pyyaml, fpdf2, torch, flwr, opacus, dp-accounting, lightgbm, shap,[0m 
+[33m    optuna, prometheus-client, pytest, pytest-cov, ruff, mypy, httpx and fpdf2[0m 
+[33m    are unpinned. Safety by default does not report on potential[0m 
+[33m    vulnerabilities in unpinned packages. It is recommended to pin your[0m 
+[33m    dependencies unless this is a library meant for distribution. To learn more[0m 
+[33m    about reporting these, specifier range handling, and options for scanning[0m 
+[33m    unpinned packages visit https://docs.pyup.io/docs/safety-range-specs[0m 
+
++==============================================================================+
+
+ [1mREPORT[0m 
+
+  Safety [1mv3.7.0[0m is scanning for [1mVulnerabilities[0m[1m...[0m
+[1m  Scanning dependencies[0m in your [1mfiles:[0m
+
+  -> requirements.txt
+  -> requirements-ml.txt
+
+  Using [1mopen-source vulnerability database[0m
+[1m  Found and scanned 23 packages[0m
+  Timestamp [1m2026-04-19 01:02:52[0m
+[1m  0[0m[1m vulnerabilities reported[0m
+[1m  8[0m[1m vulnerabilities ignored[0m
+
++==============================================================================+
+ [1mVULNERABILITIES REPORTED[0m 
++==============================================================================+
+
+-> Vulnerability may be present given that your fpdf2 install specifier is
+   <3.0,>=2.7.0
+[1m   Vulnerability ID: [0m80915
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/80915/97c[0m
+
+
+-> Vulnerability may be present given that your lightgbm install specifier is
+   <5.0,>=4.3.0
+[1m   Vulnerability ID: [0m78808
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/78808/97c[0m
+
+
+-> Vulnerability may be present given that your torch install specifier is
+   <3.0,>=2.6.0
+[1m   Vulnerability ID: [0m78828
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/78828/97c[0m
+
+
+-> Vulnerability may be present given that your torch install specifier is
+   <3.0,>=2.6.0
+[1m   Vulnerability ID: [0m76769
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/76769/97c[0m
+
+
+-> Vulnerability may be present given that your fpdf2 install specifier is
+   <3.0,>=2.7.0
+[1m   Vulnerability ID: [0m80915
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/80915/97c[0m
+
+
+-> Vulnerability may be present given that your cryptography install specifier
+   is <47.0,>=44.0.0
+[1m   Vulnerability ID: [0m76170
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/76170/97c[0m
+
+
+-> Vulnerability may be present given that your cryptography install specifier
+   is <47.0,>=44.0.0
+[1m   Vulnerability ID: [0m86217
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/86217/97c[0m
+
+
+-> Vulnerability may be present given that your scikit-learn install specifier
+   is <2.0,>=1.4.0
+[1m   Vulnerability ID: [0m71596
+[32m[1m   This vulnerability is being ignored.[0m
+[1m   Reason: [0mThis vulnerability is being ignored due to the 'ignore-
+   unpinned-requirements' flag (default True). To change this, set 'ignore-
+   unpinned-requirements' to False under 'security' in your policy file. See
+   https://docs.pyup.io/docs/safety-20-policy-file for more information.
+[1m   For more information about this vulnerability, visit
+   [0mhttps://getsafety.com/v/71596/97c[0m
+
+
++==============================================================================+
+
+ Scan was completed. 0 vulnerabilities were reported. 8 vulnerabilities from 5 
+ packages were ignored. 
+
++==============================================================================+[0m
+
+
+[33m[1m+===========================================================================================================================================================================================+[0m
+
+
+[31m[1mDEPRECATED: [0m[33m[1mthis command (`check`) has been DEPRECATED, and will be unsupported beyond 01 June 2024.[0m
+
+
+[32mWe highly encourage switching to the new [0m[32m[1m`scan`[0m[32m command which is easier to use, more powerful, and can be set up to mimic the deprecated command if required.[0m
+
+
+[33m[1m+===========================================================================================================================================================================================+[0m
+
+

@@ -1,20 +1,25 @@
 # Dockerfile.c1 — C1 Failure Classifier GPU Inference Container
 # Uses Triton Inference Server with CUDA support
 
-FROM nvcr.io/nvidia/tritonserver:24.01-py3
+# B12-02: Updated from 24.01-py3 (Jan 2024, known CVEs in bundled OpenSSL/gRPC).
+FROM nvcr.io/nvidia/tritonserver:25.04-py3
 
 LABEL maintainer="LIP Engineering"
 LABEL component="c1-failure-classifier"
 LABEL description="LIP C1 GraphSAGE+TabTransformer failure classifier — GPU inference"
 
 # Install Python dependencies
+# --ignore-installed cryptography: Triton base image ships a Debian-managed
+# cryptography build (no pip RECORD file); pip cannot uninstall it normally.
+# Reinstalling with --ignore-installed lays a fresh wheel on top.
+RUN pip install --no-cache-dir --ignore-installed "cryptography>=42.0.0,<44.0"
 RUN pip install --no-cache-dir \
-    numpy>=1.26.0 \
-    scikit-learn>=1.4.0 \
-    shap>=0.44.0 \
-    pydantic>=2.5.0 \
-    redis>=5.0.0 \
-    cryptography>=42.0.0
+    "numpy>=1.26.0,<3.0" \
+    "scikit-learn>=1.4.0,<2.0" \
+    "shap>=0.44.0,<1.0" \
+    "pydantic>=2.5.0,<3.0" \
+    "redis>=5.0.0,<6.0" \
+    "cryptography>=42.0.0,<44.0"
 
 # Copy LIP package
 WORKDIR /app

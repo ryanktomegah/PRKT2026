@@ -26,6 +26,7 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 
 import numpy as np
+from scipy.stats import norm
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,9 @@ class MonteCarloVaRResult:
 class MCPosition:
     """Position for Monte Carlo simulation."""
     loan_id: str
-    principal: float  # EAD in USD
-    pd: float         # probability of default [0, 1]
-    lgd: float        # loss given default [0, 1]
+    principal: Decimal  # EAD in USD
+    pd: float           # probability of default [0, 1]
+    lgd: float          # loss given default [0, 1]
     corridor: str
     rejection_class: str
 
@@ -151,7 +152,7 @@ class MonteCarloVaREngine:
         self,
         num_simulations: int = DEFAULT_NUM_SIMULATIONS,
         default_correlation: float = DEFAULT_CORRELATION,
-        seed: int = 42,
+        seed: Optional[int] = None,
     ) -> None:
         self._num_sims = num_simulations
         self._correlation = default_correlation
@@ -192,7 +193,7 @@ class MonteCarloVaREngine:
         # Apply scenario
         pds = np.array([p.pd for p in positions], dtype=np.float64)
         lgds = np.array([p.lgd for p in positions], dtype=np.float64)
-        eads = np.array([p.principal for p in positions], dtype=np.float64)
+        eads = np.array([float(p.principal) for p in positions], dtype=np.float64)
 
         if scenario is not None:
             pds = pds * scenario.pd_multiplier
@@ -280,7 +281,6 @@ class MonteCarloVaREngine:
         Z = sqrt_rho * M[:, np.newaxis] + sqrt_1_minus_rho * epsilon  # (num_sims, n)
 
         # Convert to uniform via Phi (normal CDF)
-        from scipy.stats import norm
         U = norm.cdf(Z)  # (num_sims, n)
 
         # Default indicator: default when U < PD

@@ -237,7 +237,7 @@ def inspect_bis_swift_gpi() -> DatasetInspectionResult:
             },
             "settlement_p95_hours_by_class": {
                 "CLASS_A_permanent": 7.0,
-                "CLASS_B_compliance": 54.0,
+                "CLASS_B_systemic": 54.0,
                 "CLASS_C_liquidity": 171.0,
             },
             "top_rejection_codes_ranked": [

@@ -10,15 +10,19 @@ Three-entity role mapping:
 
 import logging
 import os
-import pickle
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+from lip.common import secure_pickle
+
+from .features import FeatureMasker
 
 logger = logging.getLogger(__name__)
 
 N_ESTIMATORS = 5
 _DEFAULT_SEEDS = [42, 43, 44, 45, 46]
+_PD_FEATURE_NAMES = FeatureMasker.get_full_feature_names()
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +73,27 @@ def _make_sklearn_model(random_seed: int, **params) -> Any:
         random_state=random_seed,
     )
     return GradientBoostingClassifier(**defaults)
+
+
+def _prepare_model_input(
+    model: Any,
+    X: np.ndarray,
+    feature_names: Optional[List[str]] = None,
+) -> Any:
+    """Return model input with stable feature names when pandas is available."""
+    X_arr = np.asarray(X, dtype=np.float64)
+    if X_arr.ndim == 1:
+        X_arr = X_arr[np.newaxis, :]
+    if not (hasattr(model, "feature_name_") or hasattr(model, "feature_names_in_")):
+        return X_arr
+
+    try:
+        import pandas as pd  # noqa: PLC0415
+
+        columns = list(getattr(model, "feature_names_in_", feature_names or _PD_FEATURE_NAMES))
+        return pd.DataFrame(X_arr, columns=columns)
+    except ImportError:
+        return X_arr
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +288,8 @@ class PDModel:
 
         proba_sum = np.zeros(len(X), dtype=np.float64)
         for model in self._models:
-            p = model.predict_proba(X)
+            X_model = _prepare_model_input(model, X)
+            p = model.predict_proba(X_model)
             # predict_proba returns (N, 2); column 1 is P(default=1)
             proba_sum += p[:, 1]
 
@@ -302,19 +328,20 @@ class PDModel:
             X = X[np.newaxis, :]
 
         pd_scores = self.predict_proba(X)
+        X_model = _prepare_model_input(self._models[0], X, feature_names)
 
         shap_matrix: Optional[np.ndarray] = None
         try:
             import shap as _shap  # noqa: PLC0415
 
             explainer = _shap.TreeExplainer(self._models[0])
-            raw = explainer.shap_values(X)
-            # Some versions return list [neg_class, pos_class]; take positive class
-            if isinstance(raw, list):
-                raw = raw[1]
-            shap_matrix = np.asarray(raw, dtype=np.float64)
-        except Exception as exc:
-            logger.debug("SHAP unavailable (%s); returning zero SHAP values.", exc)
+            explanation = explainer(X_model)
+            raw = np.asarray(explanation.values, dtype=np.float64)
+            if raw.ndim == 3:
+                raw = raw[:, :, 1]
+            shap_matrix = raw
+        except (ImportError, ValueError, TypeError, AttributeError) as exc:
+            logger.debug("SHAP unavailable (%s); returning zero SHAP values.", exc, exc_info=True)
             shap_matrix = np.zeros_like(X)
 
         shap_values_list = [
@@ -331,12 +358,17 @@ class PDModel:
     # ------------------------------------------------------------------
 
     def save(self, path: str) -> None:
-        """Serialise the full ensemble to a pickle file at *path*.
+        """Serialise the full ensemble to an integrity-signed pickle at *path*.
+
+        Writes ``<path>`` and the sidecar ``<path>.sig`` via
+        :mod:`lip.common.secure_pickle`, which computes an HMAC-SHA256
+        signature that :meth:`load` verifies before touching pickle.
+        Requires ``LIP_MODEL_HMAC_KEY`` to be set in the environment.
 
         Parameters
         ----------
         path:
-            Destination file path.  Directories must exist.
+            Destination file path.  Parent directory is created if missing.
         """
         self._require_fitted()
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -345,20 +377,27 @@ class PDModel:
             "random_seeds": self.random_seeds,
             "models": self._models,
         }
-        with open(path, "wb") as fh:
-            pickle.dump(payload, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        # B10-02: route through secure_pickle.dump so the artefact ships with
+        # an HMAC-SHA256 sidecar. The matching load() verifies before
+        # invoking pickle.
+        secure_pickle.dump(payload, path)
         logger.info("PDModel saved to %s", path)
 
     def load(self, path: str) -> None:
-        """Deserialise an ensemble from a pickle file at *path*.
+        """Deserialise an ensemble from an integrity-signed pickle at *path*.
 
         Parameters
         ----------
         path:
-            Source file path produced by :meth:`save`.
+            Source file path produced by :meth:`save`. The sidecar
+            ``<path>.sig`` must be present and must validate against
+            ``LIP_MODEL_HMAC_KEY``; otherwise :class:`~lip.common.secure_pickle.SecurePickleError`
+            is raised and no deserialisation occurs.
         """
-        with open(path, "rb") as fh:
-            payload = pickle.load(fh)  # noqa: S301 — trusted model artifacts only
+        # B10-02: secure_pickle.load raises SecurePickleError on any integrity
+        # failure and never falls through to raw pickle.load. See
+        # lip/tests/test_pickle_ban.py (B13-01) for the regression guard.
+        payload = secure_pickle.load(path)
         self.n_models = payload["n_models"]
         self.random_seeds = payload["random_seeds"]
         self._models = payload["models"]

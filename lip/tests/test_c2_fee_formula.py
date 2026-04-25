@@ -32,8 +32,6 @@ from lip.c2_pd_model.fee import (
     compute_tiered_fee_floor,
 )
 from lip.common.constants import (
-    FEE_FLOOR_TIER_MID_BPS,
-    FEE_FLOOR_TIER_SMALL_BPS,
     FEE_TIER_MID_THRESHOLD_USD,
     MIN_LOAN_AMOUNT_USD,
 )
@@ -490,37 +488,33 @@ class TestSingleSourceIntegration:
 class TestTieredFeeFloor:
     """compute_tiered_fee_floor() boundary and value tests.
 
-    Tier thresholds:
-      principal < $500K   → 500 bps (FEE_FLOOR_TIER_SMALL_BPS)
-      $500K ≤ p < $2M     → 400 bps (FEE_FLOOR_TIER_MID_BPS)
-      p ≥ $2M             → 300 bps (FEE_FLOOR_BPS / canonical floor)
+    Post commit 256e808, the tiered-by-principal schedule was flattened:
+    compute_tiered_fee_floor returns FEE_FLOOR_BPS (300) for every loan size.
+    Warehouse eligibility (>=800 bps for SPV funding) is enforced elsewhere —
+    via is_spv_warehouse_eligible() at origination and via the 800-bps raise
+    in compute_cascade_adjusted_pd — not through this helper.
     """
 
     @pytest.mark.parametrize(
-        "loan_amount, expected_bps",
+        "loan_amount",
         [
-            # Small tier (< $500K)
-            (Decimal("0.01"),       Decimal("500")),
-            (Decimal("100000"),     Decimal("500")),
-            (Decimal("499999.99"),  Decimal("500")),
-            # Mid tier ($500K ≤ p < $2M)
-            (Decimal("500000"),     Decimal("400")),
-            (Decimal("500000.01"),  Decimal("400")),
-            (Decimal("1000000"),    Decimal("400")),
-            (Decimal("1999999.99"), Decimal("400")),
-            # Canonical floor (≥ $2M)
-            (Decimal("2000000"),    Decimal("300")),
-            (Decimal("2000000.01"), Decimal("300")),
-            (Decimal("10000000"),   Decimal("300")),
+            Decimal("0.01"),
+            Decimal("100000"),
+            Decimal("499999.99"),
+            Decimal("500000"),
+            Decimal("500000.01"),
+            Decimal("1000000"),
+            Decimal("1999999.99"),
+            Decimal("2000000"),
+            Decimal("2000000.01"),
+            Decimal("10000000"),
         ],
     )
-    def test_tiered_floor_values(
-        self, loan_amount: Decimal, expected_bps: Decimal
-    ) -> None:
-        """Verify each tier returns the correct QUANT-blessed floor bps."""
+    def test_tiered_floor_values(self, loan_amount: Decimal) -> None:
+        """Every loan size now resolves to the canonical 300 bps platform floor."""
         result = compute_tiered_fee_floor(loan_amount)
-        assert result == expected_bps, (
-            f"compute_tiered_fee_floor({loan_amount}) = {result}, expected {expected_bps}"
+        assert result == FEE_FLOOR_BPS, (
+            f"compute_tiered_fee_floor({loan_amount}) = {result}, expected {FEE_FLOOR_BPS}"
         )
 
     def test_canonical_floor_matches_fee_floor_bps_constant(self) -> None:
@@ -528,12 +522,12 @@ class TestTieredFeeFloor:
         assert compute_tiered_fee_floor(Decimal("2000000")) == FEE_FLOOR_BPS
 
     def test_small_tier_floor_matches_constant(self) -> None:
-        """The <$500K result must equal FEE_FLOOR_TIER_SMALL_BPS."""
-        assert compute_tiered_fee_floor(Decimal("100000")) == FEE_FLOOR_TIER_SMALL_BPS
+        """Small principals share the flattened 300 bps platform floor."""
+        assert compute_tiered_fee_floor(Decimal("100000")) == FEE_FLOOR_BPS
 
     def test_mid_tier_floor_matches_constant(self) -> None:
-        """The $500K–$2M result must equal FEE_FLOOR_TIER_MID_BPS."""
-        assert compute_tiered_fee_floor(Decimal("1000000")) == FEE_FLOOR_TIER_MID_BPS
+        """Mid-range principals share the flattened 300 bps platform floor."""
+        assert compute_tiered_fee_floor(Decimal("1000000")) == FEE_FLOOR_BPS
 
     def test_returns_decimal(self) -> None:
         """Return type must be Decimal for downstream Decimal arithmetic safety."""
@@ -544,8 +538,8 @@ class TestTieredFeeFloor:
         assert compute_tiered_fee_floor(FEE_TIER_MID_THRESHOLD_USD) == FEE_FLOOR_BPS
 
     def test_min_loan_boundary_is_inclusive(self) -> None:
-        """MIN_LOAN_AMOUNT_USD exactly maps to the mid-tier 400 bps floor."""
-        assert compute_tiered_fee_floor(MIN_LOAN_AMOUNT_USD) == FEE_FLOOR_TIER_MID_BPS
+        """MIN_LOAN_AMOUNT_USD now resolves to the canonical 300 bps platform floor."""
+        assert compute_tiered_fee_floor(MIN_LOAN_AMOUNT_USD) == FEE_FLOOR_BPS
 
 
 # ---------------------------------------------------------------------------
@@ -554,12 +548,22 @@ class TestTieredFeeFloor:
 
 
 class TestCascadeAdjustedPD:
-    """compute_cascade_adjusted_pd() correctness, guard, and invariant tests."""
+    """compute_cascade_adjusted_pd() correctness, guard, and invariant tests.
+
+    QUANT invariant (commit 256e808): cascade-adjusted pricing is the SPV-funded
+    pricing path. The function raises ValueError whenever the cascade-adjusted
+    fee would fall below WAREHOUSE_ELIGIBILITY_FLOOR_BPS (800 bps) — SPV-funded
+    loans must yield ≥8% to service the capital structure. All valid inputs
+    therefore require ``base_pd × lgd × 10_000 × (1 − CASCADE_DISCOUNT_CAP) ≥ 800``.
+    With default ``lgd=0.45``, this means ``base_pd ≳ 0.254``. Tests in this
+    class use ``base_pd=0.30`` (1350 bps pre-discount, 945 bps post-max-discount)
+    which stays comfortably above the warehouse floor.
+    """
 
     def test_no_cascade_value_yields_no_discount(self) -> None:
         """Zero cascade value prevented → zero discount → unchanged PD and fee."""
         result = compute_cascade_adjusted_pd(
-            base_pd=Decimal("0.01"),
+            base_pd=Decimal("0.30"),
             cascade_value_prevented=Decimal("0"),
             intervention_cost=Decimal("1000000"),
         )
@@ -569,7 +573,7 @@ class TestCascadeAdjustedPD:
     def test_discount_capped_at_30_percent(self) -> None:
         """CASCADE_DISCOUNT_CAP (30%) is never exceeded regardless of value/cost ratio."""
         result = compute_cascade_adjusted_pd(
-            base_pd=Decimal("0.05"),
+            base_pd=Decimal("0.30"),
             cascade_value_prevented=Decimal("1000000000"),  # very large
             intervention_cost=Decimal("1"),
         )
@@ -579,19 +583,27 @@ class TestCascadeAdjustedPD:
     def test_adjusted_pd_always_less_than_or_equal_base_pd(self) -> None:
         """Cascade adjustment can only reduce PD, never increase it."""
         result = compute_cascade_adjusted_pd(
-            base_pd=Decimal("0.02"),
+            base_pd=Decimal("0.30"),
             cascade_value_prevented=Decimal("500000"),
             intervention_cost=Decimal("1000000"),
         )
         assert result.cascade_adjusted_pd <= result.base_pd
 
-    def test_quant_invariant_fee_floor_never_violated(self) -> None:
-        """cascade_adjusted_fee_bps must always be >= FEE_FLOOR_BPS (300 bps)."""
+    def test_quant_invariant_warehouse_floor_never_violated(self) -> None:
+        """cascade_adjusted_fee_bps must always be >= WAREHOUSE_ELIGIBILITY_FLOOR_BPS (800 bps).
+
+        For SPV-funded loans the relevant floor is 800 bps, not the 300 bps
+        platform floor. This test picks inputs that land just above the
+        warehouse floor after the 30% max discount and verifies the guard
+        permits them through without raising.
+        """
+        from lip.common.constants import WAREHOUSE_ELIGIBILITY_FLOOR_BPS
         result = compute_cascade_adjusted_pd(
-            base_pd=Decimal("0.001"),  # very low PD — floor will be binding
+            base_pd=Decimal("0.30"),
             cascade_value_prevented=Decimal("100000"),
             intervention_cost=Decimal("1000000"),
         )
+        assert result.cascade_adjusted_fee_bps >= Decimal(str(WAREHOUSE_ELIGIBILITY_FLOOR_BPS))
         assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
 
     def test_invalid_base_pd_above_one_raises(self) -> None:
@@ -612,15 +624,20 @@ class TestCascadeAdjustedPD:
                 intervention_cost=Decimal("1000000"),
             )
 
-    def test_base_pd_zero_is_valid(self) -> None:
-        """base_pd = 0 is a valid edge case (risk-free borrower)."""
-        result = compute_cascade_adjusted_pd(
-            base_pd=Decimal("0"),
-            cascade_value_prevented=Decimal("0"),
-            intervention_cost=Decimal("1000000"),
-        )
-        assert result.base_pd == Decimal("0")
-        assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
+    def test_base_pd_below_warehouse_floor_raises(self) -> None:
+        """PD too low to clear the 800 bps warehouse floor must raise.
+
+        Previously this was ``test_base_pd_zero_is_valid``. Under the SPV
+        warehouse invariant (commit 256e808), a risk-free borrower cannot be
+        priced through this function — the cascade-adjusted fee lands at the
+        300 bps platform floor, which is below the 800 bps warehouse minimum.
+        """
+        with pytest.raises(ValueError, match="WAREHOUSE_ELIGIBILITY_FLOOR_BPS"):
+            compute_cascade_adjusted_pd(
+                base_pd=Decimal("0"),
+                cascade_value_prevented=Decimal("0"),
+                intervention_cost=Decimal("1000000"),
+            )
 
     def test_base_pd_one_is_valid(self) -> None:
         """base_pd = 1.0 is a valid edge case (certain default)."""
@@ -631,3 +648,21 @@ class TestCascadeAdjustedPD:
         )
         assert result.base_pd == Decimal("1")
         assert result.cascade_adjusted_fee_bps >= FEE_FLOOR_BPS
+
+    def test_warehouse_guard_survives_python_optimize_mode(self) -> None:
+        """B13-03: Warehouse-floor guard must hold even under ``python -O``.
+
+        The guard in compute_cascade_adjusted_pd is ``raise`` not ``assert``
+        (B10-08 + 256e808). This test exercises the raise path directly —
+        if the check were still an ``assert``, running under ``python -O``
+        would silently drop the guard and no exception would surface.
+
+        Inputs chosen to produce fee <800 bps (very low PD + max cascade
+        discount ⇒ 300 bps platform floor ⇒ below warehouse floor ⇒ raise).
+        """
+        with pytest.raises(ValueError, match="WAREHOUSE_ELIGIBILITY_FLOOR_BPS"):
+            compute_cascade_adjusted_pd(
+                base_pd=Decimal("0.0001"),
+                cascade_value_prevented=Decimal("9999999"),
+                intervention_cost=Decimal("1"),
+            )

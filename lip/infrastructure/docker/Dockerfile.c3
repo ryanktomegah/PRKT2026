@@ -14,7 +14,9 @@ RUN pip install --no-cache-dir \
     pydantic>=2.5.0 \
     redis>=5.0.0 \
     cryptography>=42.0.0 \
-    pyyaml>=6.0
+    pyyaml>=6.0 \
+    fastapi>=0.110.0 \
+    uvicorn[standard]>=0.27.0
 
 # Copy LIP package
 COPY lip/ ./lip/
@@ -26,10 +28,10 @@ WORKDIR /app
 RUN useradd -m -o -u 1000 lipuser && chown -R lipuser:lipuser /app
 USER lipuser
 
-# Settlement handler listens on Kafka; no inbound HTTP port
-# Kafka broker address and Redis URL injected via environment:
-#   KAFKA_BOOTSTRAP_SERVERS, REDIS_URL
+# Internal health surface on 8083; the repayment monitor runs in-process.
 ENV KAFKA_BOOTSTRAP_SERVERS="kafka:9092" \
     REDIS_URL="redis://redis:6379/0"
 
-CMD ["python", "-m", "lip.c3_repayment_engine.repayment_loop"]
+EXPOSE 8083
+
+CMD ["uvicorn", "lip.c3_repayment_engine.api:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "1"]

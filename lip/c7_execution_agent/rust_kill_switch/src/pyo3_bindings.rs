@@ -69,7 +69,7 @@ fn get_status(py: Python<'_>) -> PyResult<PyObject> {
 
 /// Register the PyO3 module `lip_kill_switch`.
 #[pymodule]
-fn lip_kill_switch(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn lip_kill_switch(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_killed, m)?)?;
     m.add_function(wrap_pyfunction!(activate_kill, m)?)?;
     m.add_function(wrap_pyfunction!(reset_kill, m)?)?;

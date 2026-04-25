@@ -1,20 +1,22 @@
-name: Deploy (Helm)
+name: Deploy Staging (Self-Hosted)
 
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Target environment"
+      staging_profile:
+        description: "Deployment profile"
         required: true
+        default: local-core
         type: choice
-        options: [dev, staging, prod]
-      image_tag:
-        description: "Image tag to deploy (e.g. sha-abc1234 or v1.2.0)"
-        required: true
-        default: "latest"
+        options:
+          - local-core
+          - local-full-non-gpu
+          - gpu-full
+          - analytics
+          - streaming-flink
 
 concurrency:
-  group: deploy-${{ inputs.environment }}
+  group: deploy-staging-self-hosted
   cancel-in-progress: false
 
 env:
@@ -22,38 +24,73 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to ${{ inputs.environment }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    name: Deploy to local staging
+    runs-on: [self-hosted, macOS, ARM64, staging]
+    environment: staging
+    env:
+      STAGING_PROFILE: ${{ github.event.inputs.staging_profile || 'local-core' }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: "3.14.0"
-
       - name: Configure kubectl
-        uses: azure/k8s-set-context@v3
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      - name: Helm upgrade — ${{ inputs.environment }}
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
         run: |
-          helm upgrade --install lip ./lip/infrastructure/helm/lip \
-            --namespace lip \
-            --create-namespace \
-            --values lip/infrastructure/helm/lip/values-${{ inputs.environment }}.yaml \
-            --set image.tag=${{ inputs.image_tag }} \
-            --set image.registry=ghcr.io/${{ github.repository_owner }} \
-            --atomic \
-            --timeout 10m \
-            --wait
+          mkdir -p "$RUNNER_TEMP/kube"
+          printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kube/config"
+          chmod 600 "$RUNNER_TEMP/kube/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+          kubectl config use-context colima
 
-      - name: Verify rollout
+      - name: Ensure local cluster is running
         run: |
-          kubectl rollout status deployment/lip-c1-classifier -n lip --timeout=5m
-          kubectl rollout status deployment/lip-c6-aml         -n lip --timeout=5m
-          kubectl rollout status deployment/lip-c7-execution   -n lip --timeout=5m
+          colima start --kubernetes --save-config
+          kubectl get nodes -o wide
+
+      - name: Build local staging images
+        run: |
+          docker context use colima
+          case "${STAGING_PROFILE}" in
+            local-core)
+              docker build --build-arg LIP_C2_EXTRAS=c2-runtime-min -f lip/infrastructure/docker/Dockerfile.c2 -t lip-local-c2:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c6 -t lip-local-c6:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+              ;;
+            local-full-non-gpu)
+              docker build --build-arg LIP_C2_EXTRAS=c2-runtime-min -f lip/infrastructure/docker/Dockerfile.c2 -t lip-local-c2:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c3 -t lip-local-c3:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c4 -t lip-local-c4:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c5-go -t lip-local-c5-go:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c6 -t lip-local-c6:${{ github.sha }} .
+              docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+              ;;
+            analytics)
+              docker build -f lip/infrastructure/docker/Dockerfile.c7 -t lip-local-c7:${{ github.sha }} .
+              ;;
+            streaming-flink)
+              docker build -f lip/infrastructure/docker/Dockerfile.c5 -t lip-local-c5:${{ github.sha }} .
+              ;;
+            gpu-full)
+              echo "gpu-full is gated behind a dedicated GPU-capable runner and prebuilt C1 image."
+              exit 1
+              ;;
+          esac
+
+      - name: Deploy staging slice
+        env:
+          STAGING_PROFILE: ${{ github.event.inputs.staging_profile || 'local-core' }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LIP_API_IMAGE: lip-local-c7:${{ github.sha }}
+          LIP_C2_IMAGE: lip-local-c2:${{ github.sha }}
+          LIP_C3_IMAGE: lip-local-c3:${{ github.sha }}
+          LIP_C4_IMAGE: lip-local-c4:${{ github.sha }}
+          LIP_C5_GO_IMAGE: lip-local-c5-go:${{ github.sha }}
+          LIP_C5_IMAGE: lip-local-c5:${{ github.sha }}
+          LIP_C6_IMAGE: lip-local-c6:${{ github.sha }}
+          LIP_LICENSE_TOKEN_JSON: ${{ secrets.LIP_LICENSE_TOKEN_JSON }}
+          LIP_LICENSE_KEY_HEX: ${{ secrets.LIP_LICENSE_KEY_HEX }}
+        run: |
+          chmod +x ./scripts/deploy_staging_self_hosted.sh
+          ./scripts/deploy_staging_self_hosted.sh lip-staging

@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-import mlflow
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
@@ -94,6 +93,7 @@ class TrainingConfig:
     k_neighbors_infer: int = 5
     val_split: float = 0.2
     random_seed: int = 42
+    strict_oot: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +349,18 @@ class TrainingPipeline:
             indices = np.argsort(timestamps)
             logger.info("stage4: chronological OOT split enabled (timestamps provided)")
         else:
+            # B10-04: Warn loudly when falling back to random split.
+            # Random split violates SR 11-7 OOT validation requirements.
+            logger.warning(
+                "stage4: timestamps missing or length mismatch — falling back to "
+                "RANDOM split. This violates SR 11-7 OOT validation requirements. "
+                "Ensure training data includes 'timestamp' field."
+            )
+            if getattr(self.config, "strict_oot", False):
+                raise ValueError(
+                    "strict_oot=True but timestamps are missing or length mismatch. "
+                    "Cannot perform chronological OOT split."
+                )
             indices = self._rng.permutation(n)
 
         train_idx = indices[: n - n_val]
@@ -543,32 +555,49 @@ class TrainingPipeline:
 
         Returns
         -------
-        lgb.LGBMClassifier
-            Trained LightGBM classifier.
+        object
+            Trained LightGBM classifier, or a sklearn GradientBoostingClassifier
+            fallback when LightGBM is unavailable in the local runtime.
         """
-        import lightgbm as lgb
-
         n_pos = int(y_train.sum())
         n_neg = int(len(y_train) - n_pos)
         logger.info(
             "stage5b_lightgbm_pretrain: %d train samples (%d pos / %d neg)",
             len(y_train), n_pos, n_neg,
         )
+        try:
+            import lightgbm as lgb  # noqa: PLC0415
 
-        lgbm = lgb.LGBMClassifier(
-            n_estimators=300,
-            learning_rate=0.05,
-            max_depth=6,
-            num_leaves=63,
-            min_child_samples=20,
-            colsample_bytree=0.8,
-            subsample=0.8,
-            is_unbalance=True,
-            random_state=self.config.random_seed,
-            verbose=-1,
-        )
+            lgbm = lgb.LGBMClassifier(
+                n_estimators=300,
+                learning_rate=0.05,
+                max_depth=6,
+                num_leaves=63,
+                min_child_samples=20,
+                colsample_bytree=0.8,
+                subsample=0.8,
+                is_unbalance=True,
+                random_state=self.config.random_seed,
+                verbose=-1,
+            )
+        except (ImportError, OSError) as exc:
+            from sklearn.ensemble import GradientBoostingClassifier  # noqa: PLC0415
+
+            logger.warning(
+                "stage5b_lightgbm_pretrain: lightgbm unavailable (%s) — "
+                "falling back to GradientBoostingClassifier",
+                exc,
+            )
+            lgbm = GradientBoostingClassifier(
+                n_estimators=200,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.8,
+                random_state=self.config.random_seed,
+            )
+
         lgbm.fit(X_train, y_train.astype(int))
-        logger.info("stage5b_lightgbm_pretrain: complete")
+        logger.info("stage5b_lightgbm_pretrain: complete (%s)", type(lgbm).__name__)
         return lgbm
 
     # ------------------------------------------------------------------
@@ -749,8 +778,13 @@ class TrainingPipeline:
             ece_before, ece_after
         )
 
-        mlflow.log_metric("ece_pre_calibration", ece_before)
-        mlflow.log_metric("ece_post_calibration", ece_after)
+        # T2.5: structured training-time telemetry via stdlib logging.
+        # mlflow was removed to eliminate a 13-CVE dependency surface; the
+        # runtime never used the tracking server.
+        logger.info(
+            "c1_training.metric ece_pre_calibration=%.6f ece_post_calibration=%.6f",
+            ece_before, ece_after,
+        )
 
         if ece_after > ece_before:
             logger.warning("Calibration degraded ECE: %.5f -> %.5f", ece_before, ece_after)
@@ -885,7 +919,7 @@ class TrainingPipeline:
         model = _run_stage("stage7_joint_training", self.stage7_joint_training, graphsage, tabtransformer, X_train, y_train, X_val, y_val)
         model.lgbm_model = lgbm_model  # attach LightGBM to complete the 3-model ensemble
         ece_after = _run_stage("stage7b_probability_calibration", self.stage7b_probability_calibration, model, X_val, y_val)
-        mlflow.log_metric("c1_ece_after_calibration", ece_after)
+        logger.info("c1_training.metric c1_ece_after_calibration=%.6f", ece_after)
         # Gate updated 2026-03-21: isotonic calibration achieves ECE=0.0687;
         # original 0.05 target was pre-calibration aspiration. 0.08 is
         # production-viable per c1-model-card.md §3.3.
