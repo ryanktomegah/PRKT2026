@@ -26,21 +26,34 @@ The founder is non-technical and strategic. Make architecture, design, code-revi
 
 ## Architecture
 
-Pipeline: `pacs.002 → C5 → C6 → C1 → C4 → C2 → C7 → C3 → LoanOffer | BLOCKED | DECLINED | COMPLIANCE_HOLD`
+**Pipeline** (synchronous, ≤94ms): `pacs.002 → C5 → C6 → C1 → C4 → C2 → C7` produces a `PipelineResult` with `outcome ∈ {OFFERED, DISPUTE_BLOCKED, AML_BLOCKED, BELOW_THRESHOLD, HALT, DECLINED, PENDING_HUMAN_REVIEW, RETRY_BLOCKED, COMPLIANCE_HOLD, AML_CHECK_UNAVAILABLE, SYSTEM_ERROR}`.
+
+**Lifecycle** (async, post-pipeline): `OFFERED` is **not** funded exposure. `OFFERED → FUNDED` requires an **explicit ELO acceptance callback** — C3 activates and exposure begins only on that transition. Source: `lip/pipeline_result.py:30-32`, `lip/common/state_machines.py:123-128`.
+
+```
+MONITORING → FAILURE_DETECTED → BRIDGE_OFFERED ─┬→ OFFER_DECLINED (terminal)
+                                                ├→ OFFER_EXPIRED  (terminal)
+                                                └→ FUNDED ─┬→ REPAID / BUFFER_REPAID (terminal)
+                                                           ├→ DEFAULTED              (terminal)
+                                                           ├→ REPAYMENT_PENDING      (transient)
+                                                           └→ CANCELLATION_ALERT     (camt.056/pacs.004 recall)
+```
+
+The pipeline short-circuits to a terminal outcome on dispute / AML / compliance hold; those payments never reach `BRIDGE_OFFERED`.
 
 | Component | Purpose | Stack |
 |-----------|---------|-------|
 | C1 | Failure classifier | GraphSAGE + TabTransformer + LightGBM (PyTorch) |
 | C2 | PD model + fee pricing | Merton/KMV + Damodaran + Altman Z' (LightGBM) |
-| C3 | Repayment FSM | UETR polling + settlement monitoring (Rust via PyO3) |
+| C3 | Repayment FSM (post-FUNDED) | UETR polling + settlement monitoring (Rust via PyO3) |
 | C4 | Dispute classifier | Qwen3-32B via Groq with negation-aware prefilter |
 | C5 | Streaming ingestion | Kafka + ISO 20022 normalisation (Go consumer) |
 | C6 | AML / velocity | Sanctions + velocity counters (Rust via PyO3) |
-| C7 | Execution agent | Loan execution + kill switch (Go gRPC router) |
+| C7 | Execution agent (offer generation) | Loan execution + kill switch (Go gRPC router) |
 | C8 | License manager | HMAC-SHA256 token enforcement (cross-cutting) |
 | P5 / P10 / P12 | Cascade engine, regulatory data product, federated learning | Patent extensions |
 
-Production package is `lip/`. FastAPI surface is `lip/api/`. Schemas/constants in `lip/common/`. Mixed-language subsystems are colocated with their Python wrappers (`lip/c3/rust_state_machine/`, `lip/c5_streaming/go_consumer/`, etc.).
+Production package is `lip/`. FastAPI surface is `lip/api/`. Schemas/constants/state machines in `lip/common/`. Mixed-language subsystems are colocated with their Python wrappers (`lip/c3/rust_state_machine/`, `lip/c5_streaming/go_consumer/`, etc.).
 
 For depth: `README.md`, `docs/INDEX.md`, `docs/engineering/architecture.md`.
 
@@ -105,7 +118,9 @@ Citation rule: when updating measured values in `constants.py`, cite commit hash
 | **2 — Substantive** | New features, schema changes, API surface changes, model retraining, new components, anything with a public surface | `codex/<topic>` branch, draft PR, run relevant `pytest` subset, paste verification commands in PR body. |
 | **3 — Sensitive** | Fee math, AML/sanctions code, IP/patent text, model architecture, canonical constants, anything in `lip/c2/fee.py`, `lip/c2/cascade*`, `lip/c6/`, `lip/c8/`, `lip/common/constants.py`, `lip/common/governing_law.py`, or any model-deployment path | Re-read the non-negotiables. Document reasoning in PR. Run full `pytest`. State explicitly which non-negotiable applies. Out-of-time validation record + data card required for model deployments (REX). |
 
-**Field semantics rule:** Before assessing any data, metric, or code behaviour, read the source implementation and docstrings to verify the semantics of every field. Never infer meaning from field names, computed statistics, or surface patterns alone. (Origin: 2026-03-17 — `is_permanent_failure.mean()` was misread as "failure rate" when the field actually means "rejection is permanent vs recoverable", producing a wrong quality report.)
+**Field semantics rule:** Before assessing any data, metric, or code behaviour — **or summarising system behaviour in any document, including this one** — read the source implementation and docstrings to verify the semantics of every field, state, or outcome. Never infer meaning from field names, prior summaries, README descriptions, or surface patterns alone.
+- Origin 2026-03-17: `is_permanent_failure.mean()` was misread as "failure rate" when the field means "rejection is permanent vs recoverable" — produced a wrong quality report.
+- Origin 2026-04-25: CLAUDE.md was authored with a 4-element pipeline-outcome list and an `OFFER → C3` arrow, both derived from the README's surface description. Source (`pipeline_result.py`, `state_machines.py`) defines 12 outcome strings and gates `OFFERED → FUNDED` on an explicit ELO acceptance callback. **Even authoring this file is not exempt from the rule.**
 
 **Mistake → rule generalization:** When you make a mistake — yours or you spot one in the code — add a generalized rule to this file that prevents the *class* of error, not just the specific instance. Always err broader. ("I misread `is_permanent_failure`" becomes "verify field semantics before drawing statistical conclusions" — never "remember to check `is_permanent_failure`".)
 
