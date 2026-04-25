@@ -1,8 +1,16 @@
 # RBC Pilot Strategy — BPI Planning Document
 
+> **⚠ STATUS — SUPERSEDED as of 2026-04-18. Do NOT execute.**
+>
+> This document plans an "Angle 6" approach (resign → patent → external vendor) that **is no longer viable**. On 2026-04-18 the founder confirmed LIP was conceived *during* RBC employment, which under the RBC offer-letter IP-assignment clause makes LIP RBC property on the face of the contract. Sections **6 (Framing Your RBC Background)** and **8 (Timeline — Resign from RBC, File provisional patent)** rely on a framing that is now fraudulent.
+>
+> **Hold all execution until counsel opines** on (a) clause enforceability under BC employment law, (b) unrelated-to-business carve-out, and (c) waiver/license-back path. Sections 1–5 (org map, regulatory landscape, value proposition, pitch deck) remain factually useful for any post-clearance approach.
+>
+> See `~/.claude/projects/-Users-tomegah/memory/project_rbc_ip_clause_analysis.md` and `project_rbc_pilot_strategy.md` for the current status.
+
 > **DRAFT — BPI internal use only. Do NOT share with RBC or any external party.**
-> This document plans the approach for engaging RBC as BPI's first pilot bank customer.
-> Execution gated on: (1) IP resolution, (2) patent filing, (3) clean separation from RBC employment.
+> This document originally planned the approach for engaging RBC as BPI's first pilot bank customer.
+> Original execution premise (now broken): (1) IP resolution, (2) patent filing, (3) clean separation from RBC employment.
 
 ---
 
@@ -209,6 +217,8 @@ Structured around RBCx's three intake questions:
 
 ## 6. Framing Your RBC Background
 
+> **⚠ This section is fraudulent post-2026-04-18 IP admission.** The "After leaving RBC, I founded BPI" framing below presumes pre-RBC or unrelated-to-employment conception. Founder confirmed conception was during RBC employment. Do NOT use this framing. Counsel must drive any honest framing of the founder–RBC relationship.
+
 You previously worked at RBC. This is an advantage but must be framed carefully.
 
 **What to say:**
@@ -249,6 +259,8 @@ You previously worked at RBC. This is an advantage but must be framed carefully.
 ---
 
 ## 8. Timeline
+
+> **⚠ This timeline is built on the broken Angle-6 premise.** "Resign → file patent → external vendor" presumes BPI Technology can claim ownership of LIP IP. Per 2026-04-18 IP admission, that premise is dead until counsel opines. Do not execute this timeline as written.
 
 | Milestone | Target | Dependencies |
 |-----------|--------|-------------|
