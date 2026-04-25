@@ -4,6 +4,9 @@
 
 > **Internal planning document — founder's personal financial model. NOT for external distribution.**
 
+> **⚠ Status (as of 2026-04-25):** PARTIALLY SUPERSEDED — IP-ownership-conditional.
+> All equity-journey and wealth-creation projections in this model presume BPI Technology owns the LIP IP and can raise against it. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts that ownership in question pending counsel review. The dilution math, valuation milestones, and after-tax wealth math remain valid as scenario analysis; what's conditional is whether BPI Tech holds the asset that supports those valuations. See `CLAUDE.md` non-negotiable #6.
+
 All revenue figures sourced from and cross-referenced against [Revenue-Projection-Model.md](Revenue-Projection-Model.md). Where this document cites revenue, conservative single-Tier-1-bank scenario is default unless stated otherwise.
 
 ---

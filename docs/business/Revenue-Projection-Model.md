@@ -2,6 +2,9 @@
 ## Bottom-Up Bridge Loan Revenue by Deployment Phase
 ### VERSION 1.0 | Bridgepoint Intelligence Inc. | 2026-03-20
 
+> **Status (as of 2026-04-25):** CURRENT as scenario analysis; IP-ownership-conditional for execution.
+> The bottom-up math, scenario logic, and per-bank assumptions remain technically valid. The 2026-04-25 caveat: the revenue projections presume BPI Technology operates LIP commercially. If counsel resolves the RBC IP-assignment question against BPI Tech, the scenarios still describe what LIP can earn — they just describe what someone *else* (RBC, an RBC-licensed entity, or a joint venture) can earn. Use this model for sizing analysis; treat the implicit BPI-Tech-as-operator framing as conditional. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 > **PURPOSE:** This document replaces the top-down royalty projections in Patent-Family-Architecture-v2.1.md Section 3 with a transparent bottom-up model. Every assumption is stated, every calculation is shown, and three scenarios (conservative, base, upside) are provided. All figures are internal planning estimates only.

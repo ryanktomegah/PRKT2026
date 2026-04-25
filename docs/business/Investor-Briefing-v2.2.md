@@ -4,6 +4,9 @@
 
 **Bridgepoint Intelligence Inc.**
 
+> **⚠ Status (as of 2026-04-25):** PARTIALLY SUPERSEDED — IP-ownership-conditional. **Do not distribute to investors yet.**
+> This briefing presents BPI Technology as the owner of the patent-pending LIP IP. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts that ownership in question pending counsel review. Distributing this briefing without disclosing the IP-ownership question to recipients exposes the founder to securities-fraud risk (material omission). **Halt all investor distribution** until counsel opines on the RBC IP-assignment clause and the founder has aligned with counsel on disclosure language. The product, market, and architecture descriptions remain accurate; what's frozen is the *unqualified claim of BPI Tech ownership*. See `CLAUDE.md` non-negotiable #6 and `docs/business/fundraising/ip-risk-pre-counsel-analysis.md` (if present) for IP-risk disclosure requirements.
+
 ---
 
 > **WHAT CHANGED IN VERSION 2.2 (2026-04-21, legal compliance correction):**

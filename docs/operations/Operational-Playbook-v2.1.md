@@ -4,6 +4,9 @@
 
 *All dates are stated as offsets from the Provisional Filing Date (PFD). Insert the actual PFD throughout this document once the provisional receipt is received.*
 
+> **⚠ Status (as of 2026-04-25):** SUPERSEDED — PFD-anchored execution frozen.
+> Every action in this playbook is anchored on the Provisional Filing Date (PFD) and presumes the founder/BPI Technology can lawfully file. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts that ability in question pending counsel review. **Halt all PFD-anchored actions** (filing, bank outreach, licensing-deal negotiation) until counsel opines on the RBC IP-assignment clause. The operational sequencing logic and stage-gate structure remain useful as a template; the *clock*, however, has not started. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 > **WHAT CHANGED IN VERSION 2.1:**

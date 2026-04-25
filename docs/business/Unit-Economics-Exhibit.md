@@ -2,6 +2,9 @@
 ## Bridge Loan Fee Mechanics, Phase Splits, and Minimum Thresholds
 ### VERSION 2.0 | Bridgepoint Intelligence Inc.
 
+> **Status (as of 2026-04-25):** CURRENT — fee math is operator-agnostic.
+> The fee formula, phase splits, and minimum thresholds in this document describe LIP's commercial mechanics regardless of who operates the platform. The 2026-04-18 IP-ownership question (see `CLAUDE.md` non-negotiable #6) does not affect the math here — it affects *who collects the BPI fee share*. Use this document as the canonical reference for fee mechanics.
+
 ---
 
 ## 1. The Fee Formula

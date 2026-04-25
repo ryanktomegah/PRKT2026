@@ -2,6 +2,9 @@
 ## Sourced Data for All Market Claims in BPI Documentation
 ### VERSION 1.0 | Bridgepoint Intelligence Inc. | 2026-03-20
 
+> **Status (as of 2026-04-25):** CURRENT — pure factual content.
+> Market sizing, transaction volumes, and citation chain are independent of any operator/IP-ownership question. This document remains the canonical source for downstream market claims regardless of how the IP-ownership question (see `CLAUDE.md` non-negotiable #6) is resolved. Citations should be re-verified annually; next review due 2027-03-20.
+
 ---
 
 > **PURPOSE:** This document is the single source of truth for every market claim made in BPI investor communications, patent filings, and internal planning documents. Every number has an inline citation. If a number appears in another BPI document without matching this fact sheet, this fact sheet governs.

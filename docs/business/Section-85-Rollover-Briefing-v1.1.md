@@ -4,6 +4,9 @@
 
 *Prepared by: Ryan Tomegah (Founder) | Reference: Income Tax Act s. 85(1)*
 
+> **⚠ Status (as of 2026-04-25):** SUPERSEDED — DO NOT EXECUTE.
+> This briefing's premise — that the founder owns LIP IP and can transfer it into Bridgepoint Intelligence Inc. via Section 85(1) rollover — is contingent on the RBC IP-assignment clause being resolved in the founder's favour. The 2026-04-18 founder admission that LIP was conceived during RBC employment makes the founder's ownership uncertain on the face of the contract. **Executing the s.85(1) rollover before counsel sign-off would attempt to transfer property that may not be the founder's to transfer**, exposing the founder to (a) tax-attack risk if CRA later determines no transferable property existed, and (b) a fraudulent-conveyance allegation from RBC if RBC asserts ownership. Do not present this briefing to the accountant or sign any T2057 until counsel has opined. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 > **WHAT CHANGED IN VERSION 1.1:**

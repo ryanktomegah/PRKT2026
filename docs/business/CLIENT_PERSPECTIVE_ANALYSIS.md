@@ -7,6 +7,9 @@
 > produced after the P1 patent application is filed. Do not share with prospective licensees,
 > investors, or counsel prior to P1 filing.
 
+> **Status (as of 2026-04-25):** CURRENT — architectural analysis is operator-agnostic.
+> The bank-COO perspective, gap analysis, and client archetypes describe what LIP must satisfy regardless of who operates it. The 2026-04-18 IP-ownership question (see `CLAUDE.md` non-negotiable #6) does not invalidate this analysis. Note: the "after P1 filing" gating language above is itself frozen — patent filing is on hold pending counsel.
+
 ---
 
 ## PART 0: Executive Summary

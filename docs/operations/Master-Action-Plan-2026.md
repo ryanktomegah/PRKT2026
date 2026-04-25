@@ -5,6 +5,9 @@
 **Status:** PRE-FILING CRITICAL PATH  
 **Priority:** Execute Gate A items within 30 days
 
+> **⚠ Status (as of 2026-04-25):** SUPERSEDED — Path-to-Billions sequencing broken.
+> Every gate in this plan presumes the founder owns LIP IP and can transfer it to BPI Technology to monetize. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts that ownership in question pending counsel review. **Halt all gate execution** (filing, capital raise, RBC outreach, vendor selection) until counsel opines on the RBC IP-assignment clause. The audit findings themselves remain useful diagnostically; what's broken is the *execution timeline*. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 ## EXECUTIVE SUMMARY

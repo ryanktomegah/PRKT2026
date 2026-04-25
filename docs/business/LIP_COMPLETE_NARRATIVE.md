@@ -6,6 +6,9 @@
 
 **RC note:** the March 2026 narrative remains the historical base case, but the current staging RC has now been retrained, signed, and container-verified. Use the release note above for deployable artifact truth.
 
+> **⚠ Status (as of 2026-04-25):** PARTIALLY SUPERSEDED — IP-ownership-conditional for go-to-market narrative.
+> The technical narrative (architecture, model performance, pipeline mechanics) is CURRENT. What's frozen: every passage that frames BPI Technology as the IP owner, the licensor to banks, or the entity raising capital against the platform. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts that ownership in question pending counsel review. **Do not distribute this narrative externally** until counsel resolves the RBC IP-assignment clause. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 ## Part 1: What This Is and Why It Exists

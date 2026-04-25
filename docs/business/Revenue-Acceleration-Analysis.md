@@ -2,6 +2,9 @@
 ## What Is Preventing BPI From Making $500M to $1B in Revenue Yearly?
 ### Bridgepoint Intelligence Inc. | 2026-03-26
 
+> **⚠ Status (as of 2026-04-25):** PARTIALLY SUPERSEDED — IP-ownership-conditional.
+> The diagnosis ("LIP is monetizing 1 of 7+ capabilities") and the patent-portfolio expansion thesis remain useful strategically. What's frozen: every revenue-acceleration play assumes BPI Technology owns the underlying patents. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts that ownership in question pending counsel review. **Treat the analytical diagnosis as valid; halt any execution play that depends on BPI Tech filing or licensing additional capabilities.** See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 > **PURPOSE:** This document answers the founder's question directly. The existing Revenue Projection Model projects $226M (conservative) to $863M (base) at Year 10 with 15 banks. The patent portfolio covers a $194.6T market (FXC Intelligence 2024, projected to $320T by 2032). After deep analysis of internal docs and external market research, the diagnosis is clear: **BPI has built a payment intelligence platform but is pricing and selling it as a single-product bridge lending company.** The revenue model captures only 1 of 7+ monetizable capabilities covered by the 15-patent portfolio.

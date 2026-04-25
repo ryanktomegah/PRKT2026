@@ -2,6 +2,9 @@
 ## Adjacent Players, Differentiation, and Patent Defensibility
 ### VERSION 1.0 | Bridgepoint Intelligence Inc. | 2026-03-20
 
+> **Status (as of 2026-04-25):** CURRENT — competitive analysis is operator-agnostic.
+> Competitor profiles, differentiation arguments, and prior-art analysis describe LIP's market position regardless of who operates it. **Caveat:** the "patent defensibility" framing presumes BPI Technology can file and enforce. The 2026-04-18 IP-ownership question (see `CLAUDE.md` non-negotiable #6) puts that in question. Read the competitive *facts* as current; treat the *enforcement-strategy* sections as conditional on counsel.
+
 ---
 
 > **PURPOSE:** This document provides the competitive analysis that investors will ask for. For each adjacent player: what they do, whether they solve the same problem, and why LIP's approach is differentiated.

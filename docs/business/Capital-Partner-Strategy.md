@@ -2,6 +2,9 @@
 ## Warehouse Facility, SPV Architecture, and Path to Securitization
 ### VERSION 2.0 | Bridgepoint Intelligence Inc. | 2026-04-13
 
+> **⚠ Status (as of 2026-04-25):** PARTIALLY SUPERSEDED — IP-ownership-conditional.
+> Capital partners will conduct IP-ownership diligence as a condition precedent. The 2026-04-18 founder admission that LIP was conceived during RBC employment puts BPI Technology's IP ownership in question pending counsel review. **Halt all capital partner outreach** until counsel resolves the RBC IP-assignment clause. The SPV architecture, warehouse-facility math, and securitization path remain technically valid; what's frozen is BPI Tech's standing to *contribute IP* into the SPV structure. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 > **PURPOSE:** This document lays out BPI's strategy for securing a capital partner to fund Phase 2 (Hybrid) and Phase 3 (Full MLO) bridge lending operations. It is written for internal planning and for sharing with prospective capital partners. Every number is derived from validated models in [Revenue-Projection-Model.md](Revenue-Projection-Model.md) and [Unit-Economics-Exhibit.md](Unit-Economics-Exhibit.md). Where numbers are unflattering, they are presented anyway. Sophisticated capital partners can smell a deck that hides --> hard math -- BPI does not hide it.

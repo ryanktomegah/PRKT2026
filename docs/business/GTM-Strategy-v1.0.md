@@ -7,6 +7,9 @@
 **GTM Clock Start:** Provisional Filing Date (PFD) — all timelines in this document are relative to PFD
 **Sequencing Constraint (Angle 6):** Nothing approaches a bank until: (1) RBC employment fully separated, (2) IP counsel confirms clean break, (3) provisional patent filed. GTM clock starts at PFD.
 
+> **⚠ Status (as of 2026-04-25):** SUPERSEDED — Angle-6 premise broken.
+> This playbook is anchored on Angle 6 (resign → patent → external-vendor approach), which presumes pre-RBC or unrelated-to-employment conception. The 2026-04-18 founder admission that LIP was conceived during RBC employment broke that premise. **Halt all GTM execution** until counsel opines on the RBC IP-assignment clause (enforceability, unrelated-to-business carve-out, waiver/license-back path). Market sizing, competitive positioning, and pricing logic remain valid; the sequencing and vendor framing do not. See `CLAUDE.md` non-negotiable #6.
+
 ---
 
 ## DATA DISCREPANCY NOTICE
