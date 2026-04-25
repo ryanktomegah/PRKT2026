@@ -2,12 +2,12 @@
 
 ## Role in Pipeline
 
-C1 is the **pipeline entry gate**. It consumes every normalised payment event produced by C5 and predicts the probability that the underlying SWIFT / FedNow / RTP / SEPA payment will fail to settle. Only events that exceed the failure-probability threshold τ* proceed to the downstream components (C4, C6, C2, C7).
+C1 is the **pipeline entry gate**. It consumes every normalised payment event produced by C5 and predicts the probability that the underlying SWIFT / FedNow / RTP / SEPA payment will fail to settle. Events at or above the failure-probability threshold τ* proceed to the downstream components (C4, C6, C2, C7).
 
 ## Algorithm 1 Position
 
 ```
-C5 → [C1] → if failure_probability > τ* → C4 ∥ C6 → C2 → C7 → C3
+C5 → [C1] → if failure_probability >= τ* → C4 ∥ C6 → C2 → C7
 ```
 
 C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
@@ -41,7 +41,7 @@ C1 is **Step 1** of Algorithm 1 (Architecture Spec v1.2 §3).
 | Key | Type | Description |
 |-----|------|-------------|
 | `failure_probability` | float | Predicted probability [0, 1] of payment failure |
-| `above_threshold` | bool | `True` when `failure_probability > τ*` |
+| `above_threshold` | bool | `True` when `failure_probability >= τ*` |
 | `shap_top20` | list[dict] | Top-20 SHAP feature contributions |
 | `inference_latency_ms` | float | Wall-clock inference time |
 | `model_version` | str | Artefact version tag |

@@ -324,7 +324,7 @@ def compute_cascade_adjusted_pd(
     # QUANT invariant: warehouse-eligible loans must meet 800 bps floor
     # Platform floor (300 bps) is checked by compute_fee_bps_from_el,
     # but warehouse eligibility (800 bps) must be verified here for cascade-adjusted fees.
-    if cascade_adjusted_fee_bps < Decimal(str(WAREHOUSE_ELIGIBILITY_FLOOR_BPS)):
+    if cascade_adjusted_fee_bps < WAREHOUSE_ELIGIBILITY_FLOOR_BPS:
         raise ValueError(
             f"CASCADE_ADJUSTED_FEE {cascade_adjusted_fee_bps} bps < "
             f"WAREHOUSE_ELIGIBILITY_FLOOR_BPS={WAREHOUSE_ELIGIBILITY_FLOOR_BPS}. "

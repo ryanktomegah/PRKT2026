@@ -146,17 +146,17 @@ class TestForbiddenTransitions:
 
 class TestPipelineStateTransitions:
 
-    def test_happy_path_full_sequence(self):
+    def test_happy_path_offer_sequence(self):
         pipeline = _build_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
+        assert result.outcome == "OFFERED"
         history = result.payment_state_history
         # History must contain all expected states in order
         assert history[0] == PaymentState.MONITORING.value
         assert PaymentState.FAILURE_DETECTED.value in history
         assert PaymentState.BRIDGE_OFFERED.value in history
-        assert history[-1] == PaymentState.FUNDED.value
+        assert history[-1] == PaymentState.BRIDGE_OFFERED.value
 
     def test_dispute_path_sequence(self):
         pipeline = _build_pipeline(failure_probability=0.80)
@@ -174,12 +174,12 @@ class TestPipelineStateTransitions:
         # Should stay at MONITORING
         assert history[-1] == PaymentState.MONITORING.value
 
-    def test_loan_sm_offer_pending_to_active(self):
+    def test_loan_sm_stays_offer_pending_until_acceptance(self):
         pipeline = _build_pipeline(failure_probability=0.80)
         event = make_event(rejection_code="CURR")
         result = pipeline.process(event)
-        assert result.outcome == "FUNDED"
-        assert result.loan_state == LoanState.ACTIVE.value
+        assert result.outcome == "OFFERED"
+        assert result.loan_state == LoanState.OFFER_PENDING.value
 
     def test_loan_sm_stays_offer_pending_on_block(self):
         pipeline = _build_pipeline(failure_probability=0.80)

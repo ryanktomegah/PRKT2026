@@ -1,5 +1,6 @@
 """Canonical constants for LIP — Architecture Spec v1.2 Appendix A."""
 from decimal import Decimal
+from typing import Final
 
 # ── Failure-rate assumptions ──────────────────────────────────────────
 FAILURE_RATE_CONSERVATIVE = Decimal("0.030")   # 3.0%
@@ -15,29 +16,29 @@ CREDIT_TIER_2_MIN_BPS = 540   # lower boundary for Tier 2 (inclusive)
 CREDIT_TIER_3_MIN_BPS = 900   # lower boundary for Tier 3 (inclusive)
 
 # ── Fee parameters ────────────────────────────────────────────────────
-FEE_FLOOR_BPS              = Decimal("300")    # 300 bps annualized floor (platform minimum - ALL loans)
-FEE_FLOOR_PER_7DAY_CYCLE   = Decimal("0.000575")  # 0.0575% per 7-day cycle
+FEE_FLOOR_BPS: Final[Decimal]            = Decimal("300")    # 300 bps annualized floor (platform minimum - ALL loans)
+FEE_FLOOR_PER_7DAY_CYCLE: Final[Decimal] = Decimal("0.000575")  # 0.0575% per 7-day cycle
 # Warehouse eligibility threshold for SPV-funded loans (Phase 2/3). Loans priced below this
 # rate are routed to bank balance sheet (BPI earns IP royalty only). Loans at or above
 # this rate are warehouse-eligible and generate positive returns for BPI equity.
 # At 800 bps minimum, asset yield = 8% annualized, which covers ~7% senior cost
 # and leaves ~1% margin for BPI equity (55% share on Phase 2/3 SPV funding).
-WAREHOUSE_ELIGIBILITY_FLOOR_BPS = 800    # minimum bps for SPV funding (ensures debt service)
+WAREHOUSE_ELIGIBILITY_FLOOR_BPS: Final[Decimal] = Decimal("800")    # minimum bps for SPV funding (ensures debt service)
 # Maximum multiplier for conformal uncertainty fee adjustment (QUANT sign-off
 # required to change). Caps the upward adjustment from prediction interval
 # width so economically unreasonable fees are never issued.
 CONFORMAL_UNCERTAINTY_MAX_MULTIPLIER = 2.0
 
 # ── Latency targets ───────────────────────────────────────────────────
-LATENCY_P50_TARGET_MS = 45   # Architecture Spec v1.2 — p50 inference budget
-LATENCY_P99_TARGET_MS = 94   # Architecture Spec v1.2 — canonical end-to-end SLO
+LATENCY_P50_TARGET_MS: Final[int] = 45   # Architecture Spec v1.2 — p50 inference budget
+LATENCY_P99_TARGET_MS: Final[int] = 94   # Architecture Spec v1.2 — canonical end-to-end SLO
 
 # ── C1 failure classifier ─────────────────────────────────────────────
 # F2-optimal threshold (τ*) calibrated from 10M corpus retraining.
 # Payments with failure_probability >= this threshold are flagged as
 # above-threshold and eligible for loan offers.
 # QUANT + ARIA must sign off on any change — affects offer volume and risk.
-C1_FAILURE_PROBABILITY_THRESHOLD = 0.110
+C1_FAILURE_PROBABILITY_THRESHOLD: Final[float] = 0.110
 
 # ── ML performance targets ────────────────────────────────────────────
 ML_BASELINE_AUC = Decimal("0.739")
@@ -82,9 +83,9 @@ GRAPHSAGE_K_TRAIN      = 10            # neighbors during training
 GRAPHSAGE_K_INFER      = 5             # neighbors during inference
 
 # ── Maturity windows (days) by rejection-code class ──────────────────
-MATURITY_CLASS_A_DAYS  = 3
-MATURITY_CLASS_B_DAYS  = 7
-MATURITY_CLASS_C_DAYS  = 21
+MATURITY_CLASS_A_DAYS: Final[int] = 3
+MATURITY_CLASS_B_DAYS: Final[int] = 7
+MATURITY_CLASS_C_DAYS: Final[int] = 21
 
 # ── AML velocity limits ───────────────────────────────────────────────
 # EPG-16: Default 0 = unlimited (no cap enforced). Retail $1M cap was inoperable
@@ -105,12 +106,27 @@ HPA_SCALE_IN_QUEUE_DEPTH  = 20
 LATENCY_SLO_MS = LATENCY_P99_TARGET_MS   # ≤ 94ms end-to-end SLO (Architecture Spec v1.2)
 
 # ── UETR TTL ──────────────────────────────────────────────────────────
-UETR_TTL_BUFFER_DAYS = 45                 # buffer beyond maturity for UETR deduplication window
+UETR_TTL_BUFFER_DAYS: Final[int] = 45     # buffer beyond maturity for UETR deduplication window
 
 # ── Maturity — BLOCK class ────────────────────────────────────────────
-MATURITY_BLOCK_DAYS = 0                   # BLOCK rejection class: no bridge loan, immediate close
+MATURITY_BLOCK_DAYS: Final[int] = 0       # BLOCK rejection class: no bridge loan, immediate close
 
-# ── Corridor buffer window ─────────────────────────────────────────────
+# ── CBDC rail maturity (P5 patent, differential maturity by rail) ────────────
+# CBDC transactions achieve programmatic finality in minutes; the 4-hour buffer
+# covers cross-chain interoperability delays and smart contract retry windows.
+# Legacy rails use the existing CLASS_A/B/C day-based maturity via UETR TTL.
+# NOVA sign-off required to change — affects settlement timing assumptions.
+RAIL_MATURITY_HOURS: dict[str, float] = {
+    "SWIFT": float(UETR_TTL_BUFFER_DAYS * 24),   # 1080h (45 days)
+    "FEDNOW": 24.0,                                # same-day domestic
+    "RTP": 24.0,                                   # same-day domestic
+    "SEPA": float(UETR_TTL_BUFFER_DAYS * 24),     # 1080h (45 days)
+    "CBDC_ECNY": 4.0,                             # PBoC e-CNY
+    "CBDC_EEUR": 4.0,                             # ECB experimental e-EUR
+    "CBDC_SAND_DOLLAR": 4.0,                      # CBB Sand Dollar
+}
+
+# ── Corridor buffer window ─────────────────────────────────────────────────────
 CORRIDOR_BUFFER_WINDOW_DAYS = 90          # rolling window for corridor risk / embedding lookback
 
 # ── Platform royalty (BPI technology licensor fee) ────────────────────────────
@@ -136,8 +152,8 @@ PHASE_3_BANK_DISTRIBUTION_PREMIUM  = Decimal("0.20")   # origination/compliance 
 PHASE_3_INCOME_TYPE                = "LENDING_REVENUE"
 
 # ── Salt rotation ─────────────────────────────────────────────────────
-SALT_ROTATION_DAYS = 365                  # full rotation cycle (CIPHER: cross-licensee salts)
-SALT_ROTATION_OVERLAP_DAYS = 30           # overlap window — old salt accepted during transition
+SALT_ROTATION_DAYS: Final[int] = 365           # full rotation cycle (CIPHER: cross-licensee salts)
+SALT_ROTATION_OVERLAP_DAYS: Final[int] = 30    # overlap window — old salt accepted during transition
 
 # ── FX risk policy (GAP-12) ───────────────────────────────────────────
 FX_G10_CURRENCIES: frozenset[str] = frozenset(

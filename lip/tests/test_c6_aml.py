@@ -1,6 +1,7 @@
 """
 test_c6_aml.py — Tests for C6 AML Velocity Controls
 """
+import logging
 from decimal import Decimal
 
 import pytest
@@ -119,6 +120,45 @@ class TestSanctionsScreener:
         hits = screener.screen("TEST BLOCKED PARTY")
         for hit in hits:
             assert "TEST BLOCKED PARTY" not in hit.entity_name_hash
+
+    def test_empty_name_raises_value_error(self):
+        # ESG-01: Empty name should raise ValueError to prevent bypass
+        screener = SanctionsScreener()
+        with pytest.raises(ValueError, match="empty_name"):
+            screener.screen("")
+
+    def test_whitespace_only_name_raises_value_error(self):
+        # ESG-01: Whitespace-only name should raise ValueError
+        screener = SanctionsScreener()
+        with pytest.raises(ValueError, match="whitespace_only"):
+            screener.screen("   ")
+
+    def test_non_alphabetic_only_name_raises_value_error(self):
+        # ESG-01: Purely numeric/special character name should raise ValueError
+        screener = SanctionsScreener()
+        with pytest.raises(ValueError, match="non_alphabetic_only"):
+            screener.screen("123456")
+
+    def test_empty_name_with_entity_id_logs_bypass(self, caplog):
+        # ESG-01: Verify bypass logger is called for empty names
+        screener = SanctionsScreener()
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(ValueError):
+                screener.screen("", entity_id="TESTBIC123")
+        # Check that the bypass logger was called
+        bypass_logs = [r for r in caplog.records if r.name == "lip.c6_sanctions_bypass"]
+        assert len(bypass_logs) > 0
+        # Verify entity_id was logged
+        assert "TESTBIC123" in bypass_logs[0].msg or "TESTBIC123" in bypass_logs[0].message
+
+    def test_valid_name_passes_screening(self):
+        # ESG-01: Valid names should still work normally
+        screener = SanctionsScreener()
+        # Clear name passes
+        assert screener.is_clear("VALID COMPANY INC") is True
+        # Sanctioned name is still detected
+        hits = screener.screen("ACME SHELL CORP")
+        assert len(hits) > 0
 
 
 class TestAnomalyDetector:

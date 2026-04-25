@@ -35,10 +35,13 @@ from lip.p12_federated_learning.synthetic_banks import (
 
 HAS_FLOWER = importlib.util.find_spec("flwr") is not None
 
-pytestmark = pytest.mark.skipif(
-    not HAS_FLOWER,
-    reason="Flower not available. Install with: pip install flwr[simulation]>=1.0"
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not HAS_FLOWER,
+        reason="Flower not available. Install with: pip install flwr[simulation]>=1.0"
+    ),
+    pytest.mark.filterwarnings("ignore:Secure RNG turned off.*:UserWarning"),
+]
 
 if HAS_FLOWER:
     from lip.p12_federated_learning.client import (  # noqa: E402

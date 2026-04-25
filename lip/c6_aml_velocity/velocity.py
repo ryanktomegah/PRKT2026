@@ -1,6 +1,13 @@
 """
 velocity.py — AML velocity controls
-Dollar cap $1M, count cap 100 per entity per 24hr rolling window.
+Dollar cap and count cap per entity per 24hr rolling window.
+
+Cap policy (EPG-16): caps default to ``0`` in the LIP binary, which means
+**unlimited** — no enforcement.  Effective caps are set per-licensee via the
+C8 license token (``aml_dollar_cap_usd`` / ``aml_count_cap``). A licensee
+that has not negotiated caps in its BPI license runs with no velocity-based
+velocity throttle; concentration and anomaly gates still apply.
+
 Beneficiary concentration: >80% to single beneficiary triggers alert.
 
 Three-entity role mapping:
@@ -40,9 +47,11 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Deque, Dict, List, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from lip.common.constants import (
+    BENEFICIARY_CONCENTRATION as BENEFICIARY_CONCENTRATION_THRESHOLD,
+)
 
-BENEFICIARY_CONCENTRATION_THRESHOLD = Decimal("0.80")
+logger = logging.getLogger(__name__)
 
 # Exponential decay half-life (hours) for velocity scoring — transactions older
 # than ~20h contribute < 50% weight to the rolling velocity estimate.

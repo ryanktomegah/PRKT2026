@@ -555,32 +555,49 @@ class TrainingPipeline:
 
         Returns
         -------
-        lgb.LGBMClassifier
-            Trained LightGBM classifier.
+        object
+            Trained LightGBM classifier, or a sklearn GradientBoostingClassifier
+            fallback when LightGBM is unavailable in the local runtime.
         """
-        import lightgbm as lgb
-
         n_pos = int(y_train.sum())
         n_neg = int(len(y_train) - n_pos)
         logger.info(
             "stage5b_lightgbm_pretrain: %d train samples (%d pos / %d neg)",
             len(y_train), n_pos, n_neg,
         )
+        try:
+            import lightgbm as lgb  # noqa: PLC0415
 
-        lgbm = lgb.LGBMClassifier(
-            n_estimators=300,
-            learning_rate=0.05,
-            max_depth=6,
-            num_leaves=63,
-            min_child_samples=20,
-            colsample_bytree=0.8,
-            subsample=0.8,
-            is_unbalance=True,
-            random_state=self.config.random_seed,
-            verbose=-1,
-        )
+            lgbm = lgb.LGBMClassifier(
+                n_estimators=300,
+                learning_rate=0.05,
+                max_depth=6,
+                num_leaves=63,
+                min_child_samples=20,
+                colsample_bytree=0.8,
+                subsample=0.8,
+                is_unbalance=True,
+                random_state=self.config.random_seed,
+                verbose=-1,
+            )
+        except (ImportError, OSError) as exc:
+            from sklearn.ensemble import GradientBoostingClassifier  # noqa: PLC0415
+
+            logger.warning(
+                "stage5b_lightgbm_pretrain: lightgbm unavailable (%s) — "
+                "falling back to GradientBoostingClassifier",
+                exc,
+            )
+            lgbm = GradientBoostingClassifier(
+                n_estimators=200,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.8,
+                random_state=self.config.random_seed,
+            )
+
         lgbm.fit(X_train, y_train.astype(int))
-        logger.info("stage5b_lightgbm_pretrain: complete")
+        logger.info("stage5b_lightgbm_pretrain: complete (%s)", type(lgbm).__name__)
         return lgbm
 
     # ------------------------------------------------------------------

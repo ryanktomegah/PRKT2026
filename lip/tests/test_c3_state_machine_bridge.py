@@ -520,7 +520,7 @@ class TestRustPythonParity:
         assert rust_result["debtor_bic"] == py_result["debtor_bic"]
 
     def test_taxonomy_parity(self):
-        import lip_c3_rust_state_machine as rust
+        import lip_c3_rust_state_machine as rust  # type: ignore[import-untyped]
 
         from lip.c3_repayment_engine.rejection_taxonomy import (
             classify_rejection_code as py_classify,

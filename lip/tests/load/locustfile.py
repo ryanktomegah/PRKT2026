@@ -33,7 +33,7 @@ import json
 import random
 import uuid
 
-from locust import HttpUser, between, events, task
+from locust import HttpUser, between, events, task  # type: ignore[import-not-found]
 
 # ---------------------------------------------------------------------------
 # Test data

@@ -3,7 +3,7 @@
 > **Model ID:** M-02 C2v1.0.0
 > **Classification:** SR 11-7 Tier 2 Model | EU AI Act Art.13 Technical Documentation
 > **Status:** Pre-deployment (pending pilot bank engagement and Bank MRM review)
-> **Last updated:** 2026-03-21
+> **Last updated:** 2026-04-24
 
 ---
 
@@ -17,6 +17,24 @@
 | **Input** | BIC-level financial features, transaction history, jurisdiction risk, corridor metadata |
 | **Output** | `pd_score` (calibrated PD), `fee_bps` (annualised fee in basis points, 300 bps floor) |
 | **Downstream consumers** | C7 Execution Agent (loan offer generation), C3 Repayment Engine (settlement monitoring) |
+
+### Current Staging RC
+
+The current staging RC replaces the old toy artifact with a signed, production-parameter candidate:
+
+| Field | Value |
+|-------|-------|
+| Corpus | `artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json` |
+| Records | 50,000 |
+| Optuna trials | 50 |
+| Ensemble size | 5 |
+| Backend | LightGBM 4.6.0 |
+| Held-out AUC | 0.931482085175773 |
+| Brier | 0.03374044185210159 |
+| KS | 0.7380619645214892 |
+| Stress gate | Passed |
+
+The RC artifact is signed and loaded strictly from `artifacts/c2_trained/c2_model.pkl`.
 
 ---
 
@@ -164,7 +182,65 @@ Training uses chronological OOT split (most recent records form validation/test 
 
 ---
 
-## 7. Approval Record
+## 7. Deployment Artifact Loading
+
+### 7.1 Signed Pickle Contract
+
+The deployed C2 service loads a **signed pickle** pair at boot:
+
+| File | Role |
+|------|------|
+| `artifacts/c2_trained/c2_model.pkl` | Serialised `PDModel` (LightGBM ensemble + calibration metadata) |
+| `artifacts/c2_trained/c2_model.pkl.sig` | HMAC-SHA256 signature over the pickle bytes |
+| `artifacts/c2_trained/c2_training_report.json` | Non-secret training metadata (metrics, seed, sample count) |
+
+Signature verification uses `LIP_MODEL_HMAC_KEY` (≥32 bytes). If the signature does not verify, `_load_or_bootstrap_model()` in `lip/c2_pd_model/api.py` falls back to an in-process bootstrap model and logs `C2 service ready (bootstrap)`. A successful artifact load logs `C2 service ready (artifact)`.
+
+This is a **deployment-time integrity control** (SR 11-7 Principle 4 — model change management): a tampered or unsigned pickle cannot silently replace the governed artifact. The key is injected via `kubectl apply -f` of `lip-model-artifact-secret`, never materialised on disk in the pod.
+
+### 7.2 Generation
+
+```bash
+# Requires LIP_MODEL_HMAC_KEY (or --hmac-key-file)
+PYTHONPATH=. python scripts/generate_c2_artifact.py \
+    --hmac-key-file .secrets/c2_model_hmac_key \
+    --output-dir artifacts/c2_trained \
+    --corpus artifacts/staging_rc_c2/c2_corpus_n50000_seed42.json \
+    --n-trials 50 --n-models 5 --min-auc 0.70
+```
+
+The script writes the signed `.pkl` + `.sig` + training report. Outputs are **gitignored** under `artifacts/` — the script is the reproducible source, artifacts are rebuilt per deployment. The RC path now fails closed if the Tier-3 stress gate fails, so a signed artifact is only produced after passing both AUC and stress checks.
+
+### 7.3 Runtime Env Vars
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `LIP_C2_MODEL_PATH` | Optional | Absolute path to the signed pickle inside the container. Unset → bootstrap path. |
+| `LIP_MODEL_HMAC_KEY` | Required when `LIP_C2_MODEL_PATH` is set | Signature verification key. Must match the key used during generation. |
+
+Staging defaults (see [`../operations/deployment.md`](../operations/deployment.md) § Self-Hosted Staging Deployment):
+
+```
+LIP_C2_MODEL_PATH=/app/artifacts/c2_trained/c2_model.pkl
+LIP_MODEL_HMAC_KEY=<from k8s secret lip-model-artifact-secret>
+```
+
+### 7.4 Model-Source Observability
+
+`C2Service.model_source` is the canonical label (`"artifact"`, `"bootstrap"`, or `"injected"`). It is accessible programmatically (`app.state.c2_service.model_source`) and is asserted in `test_c2_api_loads_signed_artifact`. It is intentionally **not** exposed on `/health` — the model-source label is governance metadata, not a live-traffic signal.
+
+For operational verification:
+
+| Signal | Command | Expected |
+|--------|---------|----------|
+| Service log line | `kubectl -n lip-staging logs deploy/lip-c2-pd \| grep "C2 service ready"` | `C2 service ready (artifact)` on success, `(bootstrap)` on signature-verification failure or missing `LIP_C2_MODEL_PATH` |
+| Artifact presence in pod | `kubectl -n lip-staging exec deploy/lip-c2-pd -- ls -l /app/artifacts/c2_trained/` | `c2_model.pkl`, `c2_model.pkl.sig`, `c2_training_report.json` |
+
+Log output is configured by `lip/common/logging_setup.py::configure_app_logging()`, called at import time from `lip/c2_pd_model/api.py`. Default level is `INFO`; override via `LIP_LOG_LEVEL` env var.
+
+---
+
+## 8. Approval Record
 
 | Role | Name | Date | Status |
 |------|------|------|--------|

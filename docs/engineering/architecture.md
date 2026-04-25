@@ -33,16 +33,16 @@ Step 4 — C7 (Execution Agent)
   Input:  payment_context dict
   Checks: kill_switch / KMS unavailability → HALT
           human override / risk controls   → DECLINE / PENDING_HUMAN_REVIEW
-  Output: {status, loan_offer, decision_entry_id}
+  Output: {status, loan_offer, decision_entry_id, delivery_id}
 
   if HALT   → return HALT
   if DECLINE → return DECLINED
+  if OFFER  → return OFFERED
 
-Step 5 — C3 Registration (if FUNDED)
-  PaymentStateMachine: FAILURE_DETECTED → BRIDGE_OFFERED → FUNDED
+Step 5 — Offer Acceptance (if ELO accepts)
+  PaymentStateMachine: BRIDGE_OFFERED → FUNDED
   LoanStateMachine:    OFFER_PENDING → ACTIVE
-  Register ActiveLoan with SettlementMonitor
-  → return FUNDED
+  Register ActiveLoan with SettlementMonitor only after acceptance
 ```
 
 ## Three-Entity Model

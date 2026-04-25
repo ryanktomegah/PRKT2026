@@ -1,0 +1,381 @@
+{
+  "schema_version": "1.0",
+  "description": "LIP Production Pipeline \u2014 ISO 20022 Synthetic Payment Dataset Parameters",
+  "calibration_date": "2024-Q4",
+  "corridors": [
+    {
+      "name": "EUR/USD",
+      "volume_weight": 0.25,
+      "failure_rate": 0.15,
+      "amount_lognormal_mu": 13.5,
+      "amount_lognormal_sigma": 1.4,
+      "rail_distribution": {
+        "SWIFT": 0.7,
+        "SEPA_INSTANT": 0.2,
+        "STATISTICAL": 0.1
+      }
+    },
+    {
+      "name": "USD/EUR",
+      "volume_weight": 0.15,
+      "failure_rate": 0.15,
+      "amount_lognormal_mu": 13.5,
+      "amount_lognormal_sigma": 1.4,
+      "rail_distribution": {
+        "SWIFT": 0.7,
+        "SEPA_INSTANT": 0.2,
+        "STATISTICAL": 0.1
+      }
+    },
+    {
+      "name": "GBP/USD",
+      "volume_weight": 0.12,
+      "failure_rate": 0.08,
+      "amount_lognormal_mu": 13.2,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "USD/GBP",
+      "volume_weight": 0.08,
+      "failure_rate": 0.08,
+      "amount_lognormal_mu": 13.2,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "USD/JPY",
+      "volume_weight": 0.1,
+      "failure_rate": 0.12,
+      "amount_lognormal_mu": 13.0,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "USD/CHF",
+      "volume_weight": 0.04,
+      "failure_rate": 0.09,
+      "amount_lognormal_mu": 13.1,
+      "amount_lognormal_sigma": 1.4,
+      "rail_distribution": {
+        "SWIFT": 0.85,
+        "STATISTICAL": 0.15
+      }
+    },
+    {
+      "name": "EUR/GBP",
+      "volume_weight": 0.06,
+      "failure_rate": 0.11,
+      "amount_lognormal_mu": 13.0,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.65,
+        "SEPA_INSTANT": 0.25,
+        "STATISTICAL": 0.1
+      }
+    },
+    {
+      "name": "USD/CAD",
+      "volume_weight": 0.05,
+      "failure_rate": 0.095,
+      "amount_lognormal_mu": 13.0,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.6,
+        "FEDNOW": 0.25,
+        "RTP": 0.1,
+        "STATISTICAL": 0.05
+      }
+    },
+    {
+      "name": "USD/CNY",
+      "volume_weight": 0.06,
+      "failure_rate": 0.26,
+      "amount_lognormal_mu": 12.0,
+      "amount_lognormal_sigma": 1.8,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "USD/INR",
+      "volume_weight": 0.04,
+      "failure_rate": 0.28,
+      "amount_lognormal_mu": 11.5,
+      "amount_lognormal_sigma": 1.8,
+      "rail_distribution": {
+        "SWIFT": 0.85,
+        "STATISTICAL": 0.15
+      }
+    },
+    {
+      "name": "USD/SGD",
+      "volume_weight": 0.03,
+      "failure_rate": 0.18,
+      "amount_lognormal_mu": 12.5,
+      "amount_lognormal_sigma": 1.6,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "EUR/CHF",
+      "volume_weight": 0.02,
+      "failure_rate": 0.085,
+      "amount_lognormal_mu": 13.0,
+      "amount_lognormal_sigma": 1.4,
+      "rail_distribution": {
+        "SWIFT": 0.6,
+        "SEPA_INSTANT": 0.3,
+        "STATISTICAL": 0.1
+      }
+    },
+    {
+      "name": "USD/AUD",
+      "volume_weight": 0.03,
+      "failure_rate": 0.1,
+      "amount_lognormal_mu": 12.8,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "AUD/USD",
+      "volume_weight": 0.02,
+      "failure_rate": 0.1,
+      "amount_lognormal_mu": 12.8,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "USD/HKD",
+      "volume_weight": 0.03,
+      "failure_rate": 0.13,
+      "amount_lognormal_mu": 12.9,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "HKD/USD",
+      "volume_weight": 0.02,
+      "failure_rate": 0.13,
+      "amount_lognormal_mu": 12.9,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.8,
+        "STATISTICAL": 0.2
+      }
+    },
+    {
+      "name": "EUR/SEK",
+      "volume_weight": 0.02,
+      "failure_rate": 0.095,
+      "amount_lognormal_mu": 12.7,
+      "amount_lognormal_sigma": 1.5,
+      "rail_distribution": {
+        "SWIFT": 0.65,
+        "SEPA_INSTANT": 0.25,
+        "STATISTICAL": 0.1
+      }
+    },
+    {
+      "name": "USD/KRW",
+      "volume_weight": 0.02,
+      "failure_rate": 0.22,
+      "amount_lognormal_mu": 11.8,
+      "amount_lognormal_sigma": 1.7,
+      "rail_distribution": {
+        "SWIFT": 0.85,
+        "STATISTICAL": 0.15
+      }
+    },
+    {
+      "name": "USD/BRL",
+      "volume_weight": 0.02,
+      "failure_rate": 0.3,
+      "amount_lognormal_mu": 11.2,
+      "amount_lognormal_sigma": 1.9,
+      "rail_distribution": {
+        "SWIFT": 0.85,
+        "STATISTICAL": 0.15
+      }
+    },
+    {
+      "name": "USD/MXN",
+      "volume_weight": 0.01,
+      "failure_rate": 0.19,
+      "amount_lognormal_mu": 11.5,
+      "amount_lognormal_sigma": 1.8,
+      "rail_distribution": {
+        "SWIFT": 0.7,
+        "FEDNOW": 0.2,
+        "STATISTICAL": 0.1
+      }
+    }
+  ],
+  "rejection_codes": {
+    "AC01": {
+      "class": "A",
+      "raw_weight": 0.12
+    },
+    "AC04": {
+      "class": "A",
+      "raw_weight": 0.08
+    },
+    "AG01": {
+      "class": "A",
+      "raw_weight": 0.05
+    },
+    "RC01": {
+      "class": "A",
+      "raw_weight": 0.05
+    },
+    "MD01": {
+      "class": "A",
+      "raw_weight": 0.05
+    },
+    "RR01": {
+      "class": "B",
+      "raw_weight": 0.1
+    },
+    "RR02": {
+      "class": "B",
+      "raw_weight": 0.08
+    },
+    "RR03": {
+      "class": "B",
+      "raw_weight": 0.07
+    },
+    "RR04": {
+      "class": "B",
+      "raw_weight": 0.05
+    },
+    "FRAU": {
+      "class": "B",
+      "raw_weight": 0.05
+    },
+    "LEGL": {
+      "class": "B",
+      "raw_weight": 0.05
+    },
+    "AM04": {
+      "class": "C",
+      "raw_weight": 0.12
+    },
+    "AM05": {
+      "class": "C",
+      "raw_weight": 0.07
+    },
+    "FF01": {
+      "class": "C",
+      "raw_weight": 0.03
+    },
+    "MS03": {
+      "class": "C",
+      "raw_weight": 0.03
+    }
+  },
+  "class_target_fractions": {
+    "A": 0.35,
+    "B": 0.4,
+    "C": 0.25
+  },
+  "settlement_params": {
+    "A": {
+      "mu": 0.8,
+      "sigma": 0.7,
+      "p95_hours": 7.0
+    },
+    "B": {
+      "mu": 2.5,
+      "sigma": 0.9,
+      "p95_hours": 53.6
+    },
+    "C": {
+      "mu": 3.5,
+      "sigma": 1.0,
+      "p95_hours": 171.0
+    }
+  },
+  "settlement_p95_targets_hours": {
+    "A": 7.0,
+    "B": 53.6,
+    "C": 171.0
+  },
+  "intraday_windows": [
+    {
+      "start_hour_utc": 6,
+      "end_hour_utc": 11,
+      "weight": 0.4,
+      "description": "06:00\u201311:00 UTC"
+    },
+    {
+      "start_hour_utc": 11,
+      "end_hour_utc": 17,
+      "weight": 0.35,
+      "description": "11:00\u201317:00 UTC"
+    },
+    {
+      "start_hour_utc": 17,
+      "end_hour_utc": 22,
+      "weight": 0.15,
+      "description": "17:00\u201322:00 UTC"
+    },
+    {
+      "start_hour_utc": 22,
+      "end_hour_utc": 6,
+      "weight": 0.1,
+      "description": "22:00\u201306:00 UTC"
+    }
+  ],
+  "epoch_start_iso": "2023-07-01T00:00:00Z",
+  "epoch_span_months": 18,
+  "amount_calibration": {
+    "ecb_median_eur": 6532,
+    "ecb_mean_eur": 4300000,
+    "model": "lognormal_per_corridor",
+    "note": "Corridor-specific \u03bc/\u03c3 from CorridorConfig.amount_mu/sigma"
+  },
+  "bic_pool_stats": {
+    "n_hub_banks": 10,
+    "n_spoke_banks": 190,
+    "hub_volume_weight": 0.6,
+    "spoke_volume_weight": 0.4,
+    "countries_covered": "30+",
+    "risk_tiers": {
+      "TIER1_bottom30pct": "multiplier=0.25 (failure_rate ~6%)",
+      "TIER2_30_80pct": "multiplier=1.0 (failure_rate ~20%, baseline)",
+      "TIER3_80_95pct": "multiplier=5.0 (failure_rate ~56%)",
+      "TIER4_top5pct": "multiplier=15.0 (failure_rate ~79%)"
+    },
+    "note": "Risk tiers assigned by BIC alphabetical order (deterministic). Drives sender_stats.failure_rate discriminative signal for C1."
+  },
+  "calibration_sources": [
+    "BIS CPMI Quarterly Payment Statistics 2024",
+    "BIS/SWIFT GPI Joint Analytics (corridor settlement times, STP rates)",
+    "ECB Annual Report on Payment Statistics 2023 (amounts, T2 timing)",
+    "BIS CPMI Brief No.10 (RTGS operating hours, fast payment coverage)",
+    "NY Fed EPR Vol.14 No.2 / Afonso & Zimmerman 2008 (Fedwire intraday)",
+    "PaySim 2016 (Lopez-Rojas et al.) \u2014 graph topology proxy only",
+    "IEEE-CIS Fraud Detection Kaggle 2019 \u2014 AML flag rate proxy only"
+  ]
+}

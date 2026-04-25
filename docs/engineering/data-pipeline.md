@@ -32,6 +32,8 @@ PYTHONPATH=. python lip/c6_aml_velocity/anomaly.py --fit  # fit anomaly detector
 
 ## C1 Failure Classifier — Performance Gap
 
+**Current RC note (2026-04-24):** the staging RC uses a 5M generated corpus, a 2M training sample, signed supplementary artifacts (`c1_calibrator.pkl`, `c1_scaler.pkl`, `c1_lgbm_parquet.pkl`), and a best chronological OOT AUC of `0.8839` with post-training summary AUC `0.887623`. The March 2026 10M-corpus baseline below is still the canonical historical production reference until the full remote production retrain is restored.
+
 > **Status**: Feature gap **RESOLVED** (2026-03-11). Production model **TRAINED** (2026-03-21, C1v1.1.0). Val AUC = 0.8871 on 10M synthetic corpus (2M sample, 20 corridors).
 
 | Metric | Baseline | Post-Fix (2K, 2026-03-11) | Production (2M/10M, 2026-03-21) | Target |

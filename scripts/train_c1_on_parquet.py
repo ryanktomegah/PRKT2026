@@ -597,8 +597,9 @@ def train(
     validated = np_pipeline.stage1_data_validation(records)
     graph = np_pipeline.stage2_graph_construction(validated)
     X, y, bics = np_pipeline.stage3_feature_extraction(validated, graph)
+    timestamps = np.array([float(r.get("timestamp_unix", 0.0)) for r in validated])
     X_train, X_val, y_train, y_val, bic_train, bic_val = np_pipeline.stage4_train_val_split(
-        X, y, bics
+        X, y, bics, timestamps
     )
 
     # Apply the same StandardScaler that was fitted during train_torch
@@ -744,6 +745,7 @@ def train(
         "parquet_path": parquet_path,
         "sample_n": sample_n,
         "seed": seed,
+        "validation_split": "chronological_oot",
     }
     metrics_path = output / "train_metrics_parquet.json"
     with open(metrics_path, "w") as fh:

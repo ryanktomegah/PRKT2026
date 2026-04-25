@@ -1,0 +1,18 @@
+{
+  "val_auc": 0.887623,
+  "val_auc_torch": 0.884256,
+  "val_auc_lgbm": 0.886426,
+  "f2_threshold": 0.11,
+  "f2_score": 0.623269,
+  "ece_pre_calibration": 0.188449,
+  "ece_post_calibration": 0.069066,
+  "ece": 0.069066,
+  "n_records": 2000000,
+  "n_epochs": 20,
+  "train_elapsed_s": 17787.6,
+  "parquet_path": "artifacts/staging_rc_c1_5m/payments_synthetic.parquet",
+  "sample_n": 2000000,
+  "seed": 42,
+  "training_best_oot_auc": 0.8839,
+  "post_training_summary_split": "random_fallback_before_timestamp_metrics_fix"
+}

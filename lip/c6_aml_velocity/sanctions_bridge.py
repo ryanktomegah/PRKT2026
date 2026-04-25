@@ -156,15 +156,15 @@ class RustSanctionsScreener:
     ) -> None:
         self._threshold = threshold
         self._lists_path = lists_path
+        self._rust_screener = None
+        self._py_screener = None
 
         if _RUST_AVAILABLE:
             self._rust_screener = _rust.PySanctionsScreener(threshold=threshold)
-            self._py_screener = None
             self._load_rust(lists_path)
         else:
             from lip.c6_aml_velocity.sanctions import SanctionsScreener
 
-            self._rust_screener = None
             self._py_screener = SanctionsScreener(lists_path=lists_path)
 
     def _load_rust(self, lists_path: Optional[str]) -> None:
@@ -174,6 +174,9 @@ class RustSanctionsScreener:
 
         from lip.c6_aml_velocity.sanctions import MOCK_SANCTIONS_ENTRIES, SanctionsList
 
+        rust_screener = self._rust_screener
+        if rust_screener is None:
+            raise RuntimeError("Rust sanctions backend is unavailable")
         if lists_path and os.path.exists(lists_path):
             with open(lists_path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -190,7 +193,7 @@ class RustSanctionsScreener:
             entries = {
                 k.value: list(v) for k, v in MOCK_SANCTIONS_ENTRIES.items()
             }
-        self._rust_screener.load(entries)
+        rust_screener.load(entries)
 
     def screen(self, entity_name: str, entity_id: Optional[str] = None) -> list:
         """Screen an entity name against all loaded sanctions lists.
@@ -206,10 +209,12 @@ class RustSanctionsScreener:
         t0 = time.monotonic()
         hits: list = []
         try:
-            if _RUST_AVAILABLE:
+            if self._rust_screener is not None:
                 raw = list(self._rust_screener.screen(entity_name))
                 hits = _adapt_rust_hits(raw, self._py_screener)
             else:
+                if self._py_screener is None:
+                    raise RuntimeError("Sanctions bridge has no active backend")
                 hits = self._py_screener.screen(entity_name, entity_id)
         finally:
             elapsed = time.monotonic() - t0
@@ -228,8 +233,10 @@ class RustSanctionsScreener:
         Args:
             entity_name: Human-readable entity name to screen.
         """
-        if _RUST_AVAILABLE:
+        if self._rust_screener is not None:
             return self._rust_screener.is_clear(entity_name)
+        if self._py_screener is None:
+            raise RuntimeError("Sanctions bridge has no active backend")
         return self._py_screener.is_clear(entity_name)
 
     def reload(self, lists_path: Optional[str] = None) -> None:
@@ -240,34 +247,39 @@ class RustSanctionsScreener:
                         path provided at construction time.
         """
         path = lists_path or self._lists_path
-        if _RUST_AVAILABLE:
+        if self._rust_screener is not None:
             self._load_rust(path)
         else:
-            self._py_screener._load_lists(path) if path else None
+            if self._py_screener is not None and path:
+                self._py_screener._load_lists(path)
 
     def flush(self) -> None:
         """Flush all loaded entries (for testing / reload workflows)."""
-        if _RUST_AVAILABLE:
+        if self._rust_screener is not None:
             self._rust_screener.flush()
         else:
+            if self._py_screener is None:
+                raise RuntimeError("Sanctions bridge has no active backend")
             self._py_screener._lists.clear()
 
     def entry_count(self) -> int:
         """Return the number of loaded sanctions entries."""
-        if _RUST_AVAILABLE:
+        if self._rust_screener is not None:
             return self._rust_screener.entry_count()
+        if self._py_screener is None:
+            raise RuntimeError("Sanctions bridge has no active backend")
         total = sum(len(v) for v in self._py_screener._lists.values())
         return total
 
     def get_rust_metrics(self) -> dict:
         """Return Rust-side atomic metric counters (Rust path only; {} on Python path)."""
-        if _RUST_AVAILABLE:
+        if self._rust_screener is not None:
             return dict(self._rust_screener.get_metrics())
         return {}
 
     def health_check(self) -> dict:
         """Return health dict with backend and entry count."""
-        if _RUST_AVAILABLE:
+        if self._rust_screener is not None:
             return dict(self._rust_screener.health_check())
         return {
             "ok": True,

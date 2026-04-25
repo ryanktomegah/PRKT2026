@@ -200,7 +200,7 @@ _CLASS_CONFIG = {
 
 def _make_ref(rng: np.random.Generator) -> str:
     template = rng.choice(_REFS)
-    hex8 = hashlib.md5(str(rng.integers(0, 2**32)).encode()).hexdigest()[:8]
+    hex8 = hashlib.md5(str(rng.integers(0, 2**32)).encode(), usedforsecurity=False).hexdigest()[:8]
     hex6 = hex8[:6]
     alpha = "".join(rng.choice(list("ABCDEFGHJKLMNPQRSTUVWXYZ"), size=3))
     year = str(rng.integers(2023, 2026))

@@ -10,7 +10,7 @@
 
 ## Purpose
 
-`pipeline.py` implements **Algorithm 1**, the end-to-end loop that turns a single ISO 20022 `pacs.002` payment-failure event into either (a) a funded bridge loan with a settlement-monitoring task, or (b) a refused outcome with a full audit trail.
+`pipeline.py` implements **Algorithm 1**, the end-to-end loop that turns a single ISO 20022 `pacs.002` payment-failure event into either (a) a delivered bridge-loan offer awaiting ELO acceptance, or (b) a refused outcome with a full audit trail. Funding-side effects happen only after the ELO accepts the delivered offer.
 
 It is the **only** place in the codebase where C1, C2, C3, C4, C5, C6, and C7 are composed together. Every other module either (a) implements one of those components, (b) provides shared infrastructure that they all use, or (c) supports them with data, configuration, or governance.
 
@@ -20,13 +20,14 @@ For each payment event:
 
 1. **C5 normalises the raw event** (done by the caller; `pipeline.py` accepts a `NormalizedEvent`)
 2. **C1** extracts features and predicts `failure_probability`
-3. If `failure_probability > τ*` (τ\* = 0.110, see canonical constants):
+3. If `failure_probability >= τ*` (τ\* = 0.110, see canonical constants):
    - **C4** checks for dispute (hard block)
    - **C6** checks AML velocity, sanctions, and anomaly (hard block; anomaly → human review per EPG-18)
    - **C2** computes PD + `fee_bps` (annualised, 300 bps floor)
    - **Decision Engine** aggregates signals and generates a `LoanOffer`
    - **C7** receives the offer, applies kill-switch / KMS / borrower-registry / stress-regime checks
-   - If accepted: state transitions to `FUNDED`, **C3** starts settlement monitoring on the UETR
+   - If C7 offers: `PipelineResult.outcome = OFFERED` while the offer awaits ELO acceptance
+   - If the ELO accepts: `OfferDeliveryService` calls `LIPPipeline.finalize_accepted_offer()`, C6 records velocity, C3 registers the active loan, and portfolio risk exposure is added
 4. Returns a `PipelineResult` with full audit trail (`outcome`, `compliance_hold`, `decision_log_entries`, latency telemetry)
 
 The `τ*` constant (`FAILURE_PROBABILITY_THRESHOLD = 0.110`) is documented inline in `pipeline.py` with the calibration provenance: F2-optimal threshold from C1 retraining on a 10M corpus, ECE = 0.0687 post-isotonic calibration, validated 2026-03-21. **It is locked** — see [`../../legal/decisions/README.md`](../../legal/decisions/README.md) and `CLAUDE.md` § Canonical Constants.
@@ -55,11 +56,11 @@ PipelineResult  (outcome, compliance_hold, decision_log, latency)
 
 ## Key responsibilities
 
-- **Threshold gating** at τ\* — short-circuit before invoking expensive downstream components if `failure_probability ≤ τ*`
+- **Threshold gating** at τ\* — short-circuit before invoking expensive downstream components if `failure_probability < τ*`
 - **Parallel C4 / C6 / C2** invocation where the architecture allows
 - **`payment_context` propagation** — a dict carrying `sending_bic`, `receiving_bic`, `amount`, `currency`, `licensee_id`, `original_payment_amount_usd`, etc., consumed by every downstream component
-- **UETR tracking** for retry detection (GAP-04) — checks `UETRTracker` before any decision and records on FUNDED
-- **Outcome routing** — the function that maps every internal state into one of the canonical `PipelineResult.outcome` values (`FUNDED`, `DECLINED`, `COMPLIANCE_HOLD`, `PENDING_HUMAN_REVIEW`, `BORROWER_NOT_ENROLLED`, etc.)
+- **UETR tracking** for retry detection (GAP-04) — checks `UETRTracker` before any decision and records the returned pipeline outcome
+- **Outcome routing** — the function that maps every internal state into one of the canonical `PipelineResult.outcome` values (`OFFERED`, `DECLINED`, `COMPLIANCE_HOLD`, `PENDING_HUMAN_REVIEW`, `BORROWER_NOT_ENROLLED`, etc.)
 - **Audit trail assembly** — appends `DecisionLogEntry` records at every gate so the `PipelineResult` is fully reconstructible after the fact
 - **Latency tracking** via `lip.instrumentation.LatencyTracker` against the 94 ms p99 SLO
 

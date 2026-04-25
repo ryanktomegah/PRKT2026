@@ -10,10 +10,11 @@ Backend selection via LIP_C4_BACKEND env var:
   github_models — GitHub Models API (free, requires GITHUB_TOKEN)
                   Endpoint: https://models.inference.ai.azure.com
                   Models: Mistral-7B-Instruct (default), mistral-small, etc.
-  groq          — Groq API (free tier, requires GROQ_API_KEY)
-                  Models: qwen/qwen3-32b (default), llama-3.1-8b-instant, etc.
+  groq          — Groq API (requires GROQ_API_KEY or GROQ_API_KEY_FILE)
+                  Endpoint: https://api.groq.com/openai/v1
+                  Model: qwen/qwen3-32b (default)
   openai_compat — Generic OpenAI-compatible endpoint
-                  Requires: LIP_C4_BASE_URL, LIP_C4_API_KEY, LIP_C4_MODEL
+                  Requires: LIP_C4_BASE_URL, LIP_C4_API_KEY or LIP_C4_API_KEY_FILE, LIP_C4_MODEL
 
 Architecture note: The zero-outbound K8s network policy in network-policies.yaml
 applies to PRODUCTION bank-side containers. Dev/staging deployments (without
@@ -21,11 +22,17 @@ the C4 zero-outbound NetworkPolicy) may use the hosted backends below.
 """
 import logging
 import os
+import time
 from typing import Optional
 
 from lip.common.circuit_breaker import CircuitBreaker
+from lip.common.local_env import load_repo_env_file
 
 logger = logging.getLogger(__name__)
+
+# Allow local dev/test runs to pick up gitignored .env.local without
+# hardcoding secrets into source or overriding real deployment env vars.
+load_repo_env_file()
 
 # Shared circuit breaker for all OpenAI-compatible API calls (GAP-19)
 _api_circuit_breaker = CircuitBreaker(
@@ -34,11 +41,60 @@ _api_circuit_breaker = CircuitBreaker(
     name="c4_llm_api",
 )
 
-# Default models for known free providers
+# Default models for known hosted providers
 _GITHUB_MODELS_DEFAULT = "Mistral-7B-Instruct"
 _GROQ_DEFAULT = "qwen/qwen3-32b"
 _GITHUB_BASE_URL = "https://models.inference.ai.azure.com"
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+_RETRYABLE_STATUS_CODES = frozenset({408, 409, 429, 500, 502, 503, 504})
+
+
+def _read_secret(env_var: str, file_env_var: str) -> str:
+    """Read a secret from env or a filesystem secret mount.
+
+    Environment variables remain the primary path for local development.
+    ``*_FILE`` supports mounted secret files in container runtimes.
+    """
+    value = os.environ.get(env_var, "").strip()
+    if value:
+        return value
+
+    secret_path = os.environ.get(file_env_var, "").strip()
+    if not secret_path:
+        return ""
+
+    try:
+        with open(secret_path, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError as exc:
+        logger.warning("Unable to read secret file %s for %s: %s", secret_path, env_var, exc)
+        return ""
+
+
+def _classify_openai_error(exc: Exception) -> tuple[bool, bool]:
+    """Return ``(retryable, timeout_like)`` for OpenAI-compatible client errors."""
+    timeout_like = isinstance(exc, TimeoutError)
+    connection_like = False
+    rate_limited = False
+    status_code = getattr(exc, "status_code", None)
+
+    try:
+        import openai as _openai  # noqa: PLC0415
+
+        timeout_like = timeout_like or isinstance(exc, _openai.APITimeoutError)
+        connection_like = isinstance(exc, _openai.APIConnectionError)
+        rate_limited = isinstance(exc, _openai.RateLimitError)
+    except ImportError:
+        pass
+
+    name = type(exc).__name__
+    timeout_like = timeout_like or "Timeout" in name
+    connection_like = connection_like or "Connection" in name
+    rate_limited = rate_limited or "RateLimit" in name
+
+    retryable = timeout_like or connection_like or rate_limited
+    retryable = retryable or status_code in _RETRYABLE_STATUS_CODES
+    return retryable, timeout_like
 
 
 class OpenAICompatibleBackend:
@@ -63,6 +119,8 @@ class OpenAICompatibleBackend:
         api_key: str,
         model: str,
         timeout: float = 10.0,
+        extra_body: Optional[dict] = None,
+        max_retries: int = 2,
     ) -> None:
         try:
             from openai import OpenAI  # type: ignore[import]
@@ -74,6 +132,8 @@ class OpenAICompatibleBackend:
         self._client = OpenAI(base_url=base_url, api_key=api_key)
         self._model = model
         self._timeout = timeout
+        self._extra_body = extra_body
+        self._max_retries = max_retries
         logger.info(
             "OpenAICompatibleBackend initialised: base_url=%s model=%s",
             base_url,
@@ -111,39 +171,38 @@ class OpenAICompatibleBackend:
         effective_timeout = min(timeout, self._timeout)
 
         def _do_call():
-            try:
-                response = self._client.chat.completions.create(
-                    model=self._model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    max_tokens=max_tokens,
-                    timeout=effective_timeout,
-                )
-                return response.choices[0].message.content.strip()
-            except Exception as exc:
-                # B10-16: Detect timeout exceptions robustly.
-                # Primary: isinstance check on openai-specific types (preferred).
-                # Fallback: class-name check for non-openai TimeoutError subclasses
-                #           and test stubs that can't inherit from openai types.
-                _is_timeout = isinstance(exc, TimeoutError)
-                if not _is_timeout:
-                    try:
-                        import openai as _openai  # noqa: PLC0415
-                        _is_timeout = isinstance(
-                            exc,
-                            (_openai.APITimeoutError, _openai.APIConnectionError),
+            for attempt in range(self._max_retries + 1):
+                try:
+                    response = self._client.chat.completions.create(
+                        model=self._model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        max_tokens=max_tokens,
+                        timeout=effective_timeout,
+                        extra_body=self._extra_body,
+                    )
+                    return response.choices[0].message.content.strip()
+                except Exception as exc:
+                    retryable, timeout_like = _classify_openai_error(exc)
+                    if retryable and attempt < self._max_retries:
+                        backoff_seconds = min(0.5 * (2**attempt), 2.0)
+                        logger.warning(
+                            "OpenAICompatibleBackend transient error (%s); retrying in %.1fs "
+                            "(attempt %d/%d)",
+                            type(exc).__name__,
+                            backoff_seconds,
+                            attempt + 1,
+                            self._max_retries,
                         )
-                    except ImportError:
-                        pass
-                if not _is_timeout:
-                    _is_timeout = "Timeout" in type(exc).__name__
-                if _is_timeout:
-                    raise TimeoutError(
-                        f"OpenAICompatibleBackend: request timed out after {effective_timeout}s"
-                    ) from exc
-                raise
+                        time.sleep(backoff_seconds)
+                        continue
+                    if timeout_like:
+                        raise TimeoutError(
+                            f"OpenAICompatibleBackend: request timed out after {effective_timeout}s"
+                        ) from exc
+                    raise
 
         return _api_circuit_breaker.call(_do_call)
 
@@ -188,11 +247,11 @@ def create_backend(backend_type: Optional[str] = None):
             return MockLLMBackend()
 
     if resolved == "groq":
-        api_key = os.environ.get("GROQ_API_KEY", "")
+        api_key = _read_secret("GROQ_API_KEY", "GROQ_API_KEY_FILE")
         model = os.environ.get("LIP_C4_MODEL", _GROQ_DEFAULT)
         if not api_key:
             logger.warning(
-                "LIP_C4_BACKEND=groq but GROQ_API_KEY not set — "
+                "LIP_C4_BACKEND=groq but GROQ_API_KEY/_FILE not set — "
                 "falling back to MockLLMBackend"
             )
             return MockLLMBackend()
@@ -204,11 +263,11 @@ def create_backend(backend_type: Optional[str] = None):
 
     if resolved == "openai_compat":
         base_url = os.environ.get("LIP_C4_BASE_URL", "")
-        api_key = os.environ.get("LIP_C4_API_KEY", "")
+        api_key = _read_secret("LIP_C4_API_KEY", "LIP_C4_API_KEY_FILE")
         model = os.environ.get("LIP_C4_MODEL", "")
         if not (base_url and api_key and model):
             logger.warning(
-                "LIP_C4_BACKEND=openai_compat but LIP_C4_BASE_URL/API_KEY/MODEL not set — "
+                "LIP_C4_BACKEND=openai_compat but LIP_C4_BASE_URL/API_KEY(_FILE)/MODEL not set — "
                 "falling back to MockLLMBackend"
             )
             return MockLLMBackend()

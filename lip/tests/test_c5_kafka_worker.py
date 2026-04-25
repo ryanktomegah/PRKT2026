@@ -122,9 +122,11 @@ def _make_swift_payload(uetr="test-uetr-001", rejection_code="AC01"):
 def _make_kafka_message(payload: dict, offset: int = 0):
     """Wrap a payload dict as a fake Kafka message."""
     import confluent_kafka as ck
+
     # Extract uetr from either flat or pacs.002 nested format
     uetr = payload.get("GrpHdr", {}).get("MsgId", payload.get("uetr", ""))
-    return ck._FakeMessage(
+    fake_message_cls = getattr(ck, "_FakeMessage")
+    return fake_message_cls(
         value=json.dumps(payload).encode("utf-8"),
         key=uetr.encode("utf-8"),
         offset=offset,

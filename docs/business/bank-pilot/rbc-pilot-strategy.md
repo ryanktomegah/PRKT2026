@@ -1,24 +1,32 @@
-# RBC Pilot Strategy — Internal Planning Document
+# RBC Pilot Strategy — BPI Planning Document
 
-> **CONFIDENTIAL — BPI internal use only. Do NOT share with RBC or any external party.**
-> This document plans the approach for engaging RBC as BPI's first pilot bank customer.
-> Execution gated on: (1) IP resolution, (2) patent filing, (3) clean separation from RBC employment.
+> **⚠ STATUS — SUPERSEDED as of 2026-04-18. Do NOT execute.**
+>
+> This document plans an "Angle 6" approach (resign → patent → external vendor) that **is no longer viable**. On 2026-04-18 the founder confirmed LIP was conceived *during* RBC employment, which under the RBC offer-letter IP-assignment clause makes LIP RBC property on the face of the contract. Sections **6 (Framing Your RBC Background)** and **8 (Timeline — Resign from RBC, File provisional patent)** rely on a framing that is now fraudulent.
+>
+> **Hold all execution until counsel opines** on (a) clause enforceability under BC employment law, (b) unrelated-to-business carve-out, and (c) waiver/license-back path. Sections 1–5 (org map, regulatory landscape, value proposition, pitch deck) remain factually useful for any post-clearance approach.
+>
+> See `~/.claude/projects/-Users-tomegah/memory/project_rbc_ip_clause_analysis.md` and `project_rbc_pilot_strategy.md` for the current status.
+
+> **DRAFT — BPI internal use only. Do NOT share with RBC or any external party.**
+> This document originally planned the approach for engaging RBC as BPI's first pilot bank customer.
+> Original execution premise (now broken): (1) IP resolution, (2) patent filing, (3) clean separation from RBC employment.
 
 ---
 
 ## 1. RBC Organisational Map (Post Sept 2024 Reorg)
 
-### Group Executive (reports to CEO Dave McKay)
+### Group Executive (reports to CEO Dave McKay [RBC 2024 Annual Report])
 
 | Name | Title | Relevance to LIP |
 |------|-------|-------------------|
-| **Derek Neldner** | CEO & Group Head, RBC Capital Markets | **HIGH** — Transaction Banking (institutional payments, clearing, custody) sits under Capital Markets |
-| **Sean Amato-Gauci** | Group Head, Commercial Banking | **MEDIUM** — commercial clients experience payment failures that LIP would bridge |
-| **Erica Nielsen** | Group Head, Personal Banking | **LOW** — your former division, retail-focused, not relevant to LIP |
-| **Neil McLaughlin** | Group Head, Wealth Management | **LOW** — not payments-related |
-| **Bruce Ross** | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
-| **Naim Kazmi** | Group Head, Technology & Operations | **MEDIUM** — infrastructure decisions, tech adoption |
-| **Sid Paquette** | Head, RBCx (venture arm) | **HIGH** — purpose-built to engage with fintechs, invests in B2B payments |
+| **Derek Neldner** [RBC IR site] | CEO & Group Head, RBC Capital Markets | **HIGH** — Transaction Banking (institutional payments, clearing, custody) sits under Capital Markets |
+| **Sean Amato-Gauci** [RBC IR site] | Group Head, Commercial Banking | **MEDIUM** — commercial clients experience payment failures that LIP would bridge |
+| **Erica Nielsen** [RBC IR site] | Group Head, Personal Banking | **LOW** — retail-focused, not relevant to LIP |
+| **Neil McLaughlin** [RBC IR site] | Group Head, Wealth Management | **LOW** — not payments-related |
+| **Bruce Ross** [LinkedIn — role formed Feb 2026, post-dates 2024 Annual Report] | Head, AI Group (reports to CEO) | **HIGH** — newly formed Feb 2026, mandate to scale AI use cases, looking for wins |
+| **Naim Kazmi** [RBC IR site] | Group Head, Technology & Operations | **MEDIUM** — infrastructure decisions, tech adoption |
+| **Sid Paquette** [rbcx.com] | Head, RBCx (venture arm) | **HIGH** — purpose-built to engage with fintechs, invests in B2B payments |
 
 ### Transaction Banking (under Capital Markets)
 
@@ -28,23 +36,23 @@ This is the business unit that actually handles institutional cross-border payme
 - Correspondent banking relationships
 - Trade finance
 
-RBC is the **#1 clearer for CAD payments** and has won multiple awards for treasury and cash management innovation.
+RBC is the **#1 clearer for CAD payments** [RBC 2024 Annual Report] and has won multiple awards for treasury and cash management innovation.
 
 ### RBC Borealis AI
 
-- AI research institute with labs in **Toronto, Montreal, Waterloo, and Vancouver**
-- 850+ AI developers and data engineers, 100+ PhDs
+- AI research institute with labs in **Toronto, Montreal, Waterloo, and Vancouver** [Borealis AI website]
+- 850+ AI developers and data engineers, 100+ PhDs [Borealis AI website]
 - Vancouver lab exists — relevant for local relationship building
-- Ranked **#1 in Canada, #3 globally** for AI maturity (2025 Evident AI Index)
-- Partnerships: MIT FinTechAI@CSAIL, Vector Institute, Cohere, Databricks
-- Focus areas: AI explainability, bias mitigation, financial crime prevention, responsible AI
+- Ranked **#1 in Canada, #3 globally** for AI maturity [Evident AI Index 2025]
+- Partnerships: MIT FinTechAI@CSAIL, Vector Institute, Cohere, Databricks [Borealis AI website]
+- Focus areas: AI explainability, bias mitigation, financial crime prevention, responsible AI [Borealis AI website]
 
 ### RBCx (Venture Arm)
 
 - Founded 2017, based in Toronto
 - Invests in: **B2B payments, fintech, AI/ML, cybersecurity**
 - Investment stages: seed through later-stage
-- Key question from Sid Paquette: *"What's the problem, what's the size of the prize, and why are you best suited to solve it?"*
+- RBCx intake focuses on three questions: the problem, the size of the prize, and why the team is best suited to solve it [rbcx.com intake guidance]
 - Website: rbcx.com — has "Connect With An Advisor" intake process
 
 ---
@@ -105,7 +113,7 @@ RBC is a D-SIB (Domestic Systemically Important Bank) regulated by OSFI. Key gui
 - Newly formed (Feb 2026), actively looking for AI use cases to prove value
 - Reports directly to CEO — can bypass business unit politics
 - LIP is an AI-native platform (ML classification, PD models, anomaly detection)
-- RBC wants $1B in AI-generated enterprise value by 2027 — LIP is a tangible use case
+- AI Group is actively seeking demonstrable AI use cases with revenue impact — LIP is a tangible use case
 
 **How to approach:**
 1. Borealis AI Vancouver lab is local — attend events, network
@@ -157,7 +165,7 @@ Phase 5 — Pilot Deployment
 
 ## 5. Pitch Deck Structure (For RBCx / Transaction Banking)
 
-Answering Sid Paquette's three questions:
+Structured around RBCx's three intake questions:
 
 ### Slide 1-2: The Problem
 
@@ -209,6 +217,8 @@ Answering Sid Paquette's three questions:
 
 ## 6. Framing Your RBC Background
 
+> **⚠ This section is fraudulent post-2026-04-18 IP admission.** The "After leaving RBC, I founded BPI" framing below presumes pre-RBC or unrelated-to-employment conception. Founder confirmed conception was during RBC employment. Do NOT use this framing. Counsel must drive any honest framing of the founder–RBC relationship.
+
 You previously worked at RBC. This is an advantage but must be framed carefully.
 
 **What to say:**
@@ -249,6 +259,8 @@ You previously worked at RBC. This is an advantage but must be framed carefully.
 ---
 
 ## 8. Timeline
+
+> **⚠ This timeline is built on the broken Angle-6 premise.** "Resign → file patent → external vendor" presumes BPI Technology can claim ownership of LIP IP. Per 2026-04-18 IP admission, that premise is dead until counsel opines. Do not execute this timeline as written.
 
 | Milestone | Target | Dependencies |
 |-----------|--------|-------------|

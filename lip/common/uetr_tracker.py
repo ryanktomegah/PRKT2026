@@ -153,7 +153,7 @@ class UETRTracker:
             if hist_uetr == current_uetr:
                 continue
 
-            # GAP-04 Requirement: ±0.01% tolerance for FX rounding
+            # GAP-04 Requirement: ±0.01% tolerance for FX rounding.
             # If amounts are zero, strict equality
             if current_amt == 0:
                 if hist_amt == 0:
@@ -163,7 +163,7 @@ class UETRTracker:
             diff = abs(current_amt - hist_amt)
             pct_diff = diff / current_amt
 
-            if pct_diff <= Decimal("0.0001"): # 0.01%
+            if pct_diff <= Decimal("0.0001"):  # 0.01%
                 logger.warning(
                     "RETRY DETECTED: Tuple match found. New UETR: %s matches Old UETR: %s. "
                     "Amount diff: %s%%", current_uetr, hist_uetr, pct_diff * 100

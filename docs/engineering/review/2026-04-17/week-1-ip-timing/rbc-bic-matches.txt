@@ -1,0 +1,2 @@
+docs/engineering/review/2026-04-17/week-1-ip-timing/rbc-search-terms.md:20:- `ROYCCAT2`, `ROYCCAT2XXX`, `ROYCUS33`, etc.
+docs/superpowers/plans/2026-04-17-pre-lawyer-review.md:338:- `ROYCCAT2`, `ROYCCAT2XXX`, `ROYCUS33`, etc.

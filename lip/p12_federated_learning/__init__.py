@@ -1,11 +1,20 @@
 """
-P4 Federated Learning Module
+P12 Federated Learning Module — **Phase 3 Research — Not Production**
 
-Phase 3 implementation enabling bank consortium members to jointly improve
-the C1 failure classifier without sharing raw transaction data.
+Simulation + prototype for bank-consortium federated training of the C1
+failure classifier without sharing raw transaction data. The module is
+**not** wired into ``lip.pipeline.LIPPipeline`` or any staging profile and
+must not be imported on the request path.
+
+**Production status**: requires bank consortium MOU + Flower aggregator
+infrastructure + DP budget sign-off before first live run. Until those
+exist, treat this directory as research — its runtime class references
+(``flwr.common``, ``LIPFlowerClient``) require the ``flwr`` optional
+dependency, which is not installed in the production Docker images.
 
 Patent Reference: Patent Family 4 — Federated Learning Across Bank Consortium (P12)
 Architecture Doc: docs/models/federated-learning-architecture.md
+Codebase Doc: docs/engineering/codebase/p12_federated_learning.md
 
 Key Components:
 - models.py: LocalModel, SharedModel, FederatedModel (model splitting for FL)

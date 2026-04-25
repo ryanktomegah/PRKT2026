@@ -6,8 +6,7 @@
 **Prepared by**: Bridgepoint Intelligence (patent counsel briefing session)
 
 > **Language scrub rule (EPG-21)**: All regulatory language has been replaced per the  
-> substitution table in `patent_counsel_briefing.md`. The terms AML, SAR, OFAC, PEP,  
-> money laundering, and tipping-off do not appear in these claims.
+> substitution table in `patent_counsel_briefing.md`.
 
 ---
 
@@ -38,9 +37,9 @@ The computer-implemented method of claim 2, further comprising enforcing a defen
 
 wherein the ISO 20022 rejection reason code evaluated at both the primary and secondary gating layers is first normalized from a proprietary payment rail rejection code — from at least one of a FedNow rail, an RTP rail, a SEPA rail, or a CBDC rail — into a canonical ISO 20022 rejection reason code by a streaming normalization component, and the normalized code is used uniformly by both layers.
 
-### Dependent Claim 4 — Hold-Type Code Enumeration (Open)
+### Dependent Claim 4 — Hold-Type Classification Gate
 
-The computer-implemented method of claim 2, wherein the hold-type classification class comprises at least the following ISO 20022 rejection reason codes: RR01, RR02, RR03, RR04, DNOR, CNOR, AG01, and LEGL; wherein each code in the hold-type classification class independently triggers a hold-type classification outcome regardless of any other pipeline conditions.
+The computer-implemented method of claim 2, wherein the hold-type classification class comprises at least a code in the non-bridgeable set defined in an internal taxonomy external to this claim, wherein each code in the hold-type classification class independently triggers a hold-type classification outcome regardless of any other pipeline conditions.
 
 ### Dependent Claim 5 — B1/B2 Sub-Classification Gate
 
@@ -253,11 +252,11 @@ The method of claim 2, wherein when the baseline failure rate for a corridor is 
 
 ### EPG-20/21 Language Compliance
 
-All claims use the substitution table from `patent_counsel_briefing.md`. No AML, SAR, OFAC, PEP, or money laundering language appears in any claim. Hold-type classification, hold-type indicator, and categorised originator are used throughout.
+All claims use the substitution table from `patent_counsel_briefing.md`. Hold-type classification, hold-type indicator, and categorised originator terminology is used throughout.
 
 ### What Is Deliberately Not Claimed
 
-Per EPG-21: the specific enumeration of ISO 20022 rejection codes that trigger a hard-block outcome does not appear in any independent claim. The enumeration in Family 1 Dependent Claim 4 uses open "comprising at least" language and covers only the hold-type class, not the hard-block class. The hard-block code list belongs in the specification description only.
+Per EPG-21: the specific enumeration of ISO 20022 rejection codes that trigger a hard-block outcome does not appear in any independent claim. The specific enumeration of ISO 20022 rejection codes that trigger a hold-type outcome is held in the internal taxonomy referenced by the claim, and is not disclosed in any independent or dependent claim.
 
 ### Filing Priority Recommendation
 

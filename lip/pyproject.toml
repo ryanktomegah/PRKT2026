@@ -39,6 +39,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+c2-runtime = [
+    # C2 HTTP runtime: CPU-only inference + SHAP explanations.
+    # Intentionally excludes training, federated learning, and dev tooling.
+    "lightgbm>=4.3.0",
+    "shap>=0.44.0",
+]
+c2-runtime-min = [
+    # Leanest C2 staging/runtime profile: inference only, SHAP falls back to zeros.
+    "lightgbm>=4.3.0",
+]
 ml = [
     # C2 PD model
     "lightgbm>=4.3.0",
@@ -150,6 +160,7 @@ ignore = [
 python_version = "3.10"
 strict = false
 ignore_missing_imports = true
+disable_error_code = ["import-not-found", "import-untyped"]
 
 [tool.coverage.run]
 omit = [

@@ -171,7 +171,8 @@ class PaymentEventWorker:
             raw_bytes = msg.value()
             if raw_bytes is None:
                 logger.warning("Received null-value message — skipping offset=%s", msg.offset())
-                self._consumer.commit(message=msg)
+                if self._consumer is not None:
+                    self._consumer.commit(message=msg)
                 return
 
             raw: dict = json.loads(raw_bytes.decode("utf-8"))
@@ -187,7 +188,8 @@ class PaymentEventWorker:
                 self._produce_with_retry(out_topic, key_bytes, value_bytes)
 
             self._processed += 1
-            self._consumer.commit(message=msg)
+            if self._consumer is not None:
+                self._consumer.commit(message=msg)
 
         except json.JSONDecodeError as exc:
             logger.error(
@@ -328,9 +330,9 @@ def _cli() -> None:
         bootstrap_servers=os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092"
         ).split(","),
-        ssl_ca_location=os.environ.get("KAFKA_SSL_CA_LOCATION"),
-        ssl_cert_location=os.environ.get("KAFKA_SSL_CERT_LOCATION"),
-        ssl_key_location=os.environ.get("KAFKA_SSL_KEY_LOCATION"),
+        ssl_ca_location=os.environ.get("KAFKA_SSL_CA_LOCATION") or "",
+        ssl_cert_location=os.environ.get("KAFKA_SSL_CERT_LOCATION") or "",
+        ssl_key_location=os.environ.get("KAFKA_SSL_KEY_LOCATION") or "",
     )
 
     # Build a minimal pipeline function for standalone operation.

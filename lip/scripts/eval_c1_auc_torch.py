@@ -90,6 +90,8 @@ def _run_numpy(X_train, y_train, X_val, y_val, n_epochs: int, lr: float, alpha: 
             best_tab_w = tabtransformer.get_weights_dict()
 
     if best_mlp_w is not None:
+        assert best_sage_w is not None
+        assert best_tab_w is not None
         mlp.set_weights(best_mlp_w)
         graphsage.set_weights_dict(best_sage_w)
         tabtransformer.set_weights_dict(best_tab_w)

@@ -8,7 +8,7 @@
 **Lead:** ARIA — ML & AI Engineering
 **Support:** REX (EU AI Act Art.13 compliance), QUANT (fee arithmetic),
              LEX (three-tier patent claim preservation)
-**Status:** ACTIVE BUILD — awaiting training data [UPDATE 2026-03-21: 10M synthetic payment corpus now available. C2 training data pipeline ready. C2 model training pending ARIA implementation.]
+**Status:** ACTIVE BUILD [UPDATE 2026-04-24: staging RC retrained on 50k corpus, 50 Optuna trials, 5 LightGBM models, signed artifact passed stress gate; see docs/operations/releases/staging-rc-2026-04-24.md]
 **Stealth Mode:** Active — Nothing External
 
 ---

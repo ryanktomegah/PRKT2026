@@ -1,0 +1,31 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0 -- /Users/tomegah/.pyenv/versions/3.14.3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/tomegah/PRKT2026/lip
+configfile: pyproject.toml
+plugins: anyio-4.12.1, cov-7.0.0
+collecting ... collected 3 items
+
+lip/tests/test_e2e_live.py::TestLiveInfraHealth::test_all_required_topics_exist PASSED [ 33%]
+lip/tests/test_e2e_live.py::TestLiveKafkaRoundTrip::test_uetr_survives_round_trip PASSED [ 66%]
+lip/tests/test_e2e_live.py::TestLiveC5Worker::test_worker_calls_pipeline_with_normalised_event FAILED [100%]
+
+=================================== FAILURES ===================================
+______ TestLiveC5Worker.test_worker_calls_pipeline_with_normalised_event _______
+lip/tests/test_e2e_live.py:323: in test_worker_calls_pipeline_with_normalised_event
+    assert worker.stats["errors"] == 0
+E   assert 1 == 0
+----------------------------- Captured stderr call -----------------------------
+%3|1776585146.996|FAIL|rdkafka#consumer-5| [thrd:localhost:9092/bootstrap]: localhost:9092/bootstrap: Connect to ipv6#[::1]:9092 failed: Connection refused (after 1ms in state CONNECT)
+%3|1776585147.503|FAIL|rdkafka#producer-6| [thrd:localhost:9092/bootstrap]: localhost:9092/bootstrap: Connect to ipv6#[::1]:9092 failed: Connection refused (after 1ms in state CONNECT)
+------------------------------ Captured log call -------------------------------
+WARNING  lip.c5_streaming.event_normalizer:event_normalizer.py:186 _safe_decimal received None — returning Decimal('0')
+ERROR    lip.c5_streaming.kafka_worker:kafka_worker.py:208 Unexpected error processing offset=0 — routing to dead letter
+Traceback (most recent call last):
+  File "/Users/tomegah/PRKT2026/lip/c5_streaming/kafka_worker.py", line 190, in _process_message
+    self._consumer.commit(message=msg)
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'commit'
+=========================== short test summary info ============================
+FAILED lip/tests/test_e2e_live.py::TestLiveC5Worker::test_worker_calls_pipeline_with_normalised_event - assert 1 == 0
+========================= 1 failed, 2 passed in 3.23s ==========================

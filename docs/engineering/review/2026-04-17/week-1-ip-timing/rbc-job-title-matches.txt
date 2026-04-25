@@ -1,0 +1,10 @@
+docs/engineering/review/2026-04-17/week-1-ip-timing/rbc-search-terms.md:24:- Job title fragments: `Credit Management Resolution Officer`, `Resolution Officer`
+docs/engineering/review/2026-04-17/week-1-ip-timing/commit-timeline-summary.md:114:- Ryan is a credit-management Resolution Officer (post-front-office) — some weeks may have flex hours
+docs/superpowers/plans/2026-04-17-pre-lawyer-review.md:342:- Job title fragments: `Credit Management Resolution Officer`, `Resolution Officer`
+docs/superpowers/plans/2026-04-17-pre-lawyer-review.md:361:Grep pattern: `Credit Management Resolution Officer|Resolution Officer`
+docs/business/fundraising/ip-risk-pre-counsel-analysis.md:34:| 3 | January 12, 2026 | Founder begins employment at RBC as Credit Management Resolution Officer (retail banking) | **CONFIRMED** |
+docs/business/fundraising/ip-risk-pre-counsel-analysis.md:1073:> The founder is currently employed by the Royal Bank of Canada ("RBC") as a Credit Management Resolution Officer in retail banking. The founder's RBC offer letter contains the following IP assignment clause:
+docs/business/fundraising/ip-risk-pre-counsel-analysis.md:1220:I am a Canadian citizen, resident of British Columbia, currently employed at the Royal Bank of Canada ("RBC") as a Credit Management Resolution Officer in the retail banking division. My employment began on January 12, 2026. I have not resigned.
+docs/business/fundraising/ip-risk-pre-counsel-analysis-revised.md:35:| 1 | January 12, 2026 | Founder begins RBC employment (Credit Mgmt Resolution Officer, retail banking) | CONFIRMED |
+docs/business/fundraising/ip-risk-pre-counsel-analysis-revised.md:489:I am a Canadian citizen, BC resident, currently employed at RBC as a Credit Management Resolution Officer (retail banking). Employment began January 12, 2026. I have not resigned.
+docs/business/fundraising/ip-risk-analysis-prompt.md:35:- I am currently employed at the **Royal Bank of Canada (RBC)** as a **Credit Management Resolution Officer** in their retail banking division.

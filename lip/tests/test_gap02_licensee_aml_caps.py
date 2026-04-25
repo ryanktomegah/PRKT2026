@@ -4,7 +4,7 @@ test_gap02_licensee_aml_caps.py — Verification of licensee-specific AML caps.
 Validates that:
   1. LicenseeContext caps are correctly loaded into ExecutionAgent.
   2. VelocityChecker.check() respects overrides passed from ExecutionAgent.
-  3. LIPPipeline.process() correctly records transactions using overrides.
+  3. LIPPipeline.process() checks licensee overrides without recording before offer acceptance.
 """
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -110,10 +110,12 @@ def test_pipeline_respects_licensee_caps():
     })
 
     result_ok = pipeline.process(event_ok)
-    assert result_ok.outcome == "FUNDED"
+    assert result_ok.outcome == "OFFERED"
     assert result_ok.aml_passed
 
-    # 5. Verify it was recorded (subsequent $60 payment should fail now as 50 + 60 > 100)
+    # 5. Offer creation is not funding; C6 velocity is recorded after acceptance.
+    # Therefore a subsequent $60 check still passes because the $50 offer was
+    # not accepted/funded and must not consume velocity capacity.
     event_fail = NormalizedEvent(
         uetr="uetr-3",
         individual_payment_id="pmt-3",
@@ -128,4 +130,4 @@ def test_pipeline_respects_licensee_caps():
     )
 
     result_fail = pipeline.process(event_fail)
-    assert result_fail.outcome == "AML_BLOCKED"
+    assert result_fail.outcome == "OFFERED"

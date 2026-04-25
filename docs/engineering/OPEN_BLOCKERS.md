@@ -2,9 +2,9 @@
 
 > **What this is.** Every item that stands between LIP and a live pilot bank deployment, lifted out of `PROGRESS.md` so it does not have to be hunted for. One row per blocker, with owner, gating decision, and downstream impact.
 >
-> **What this is NOT.** This is not the engineering backlog. Engineering work is tracked in `PROGRESS.md` and is largely complete (GAP-01 through GAP-17 all closed as of 2026-03-22). The blockers below are **legal, contractual, and patent-counsel work** that engineering cannot do for itself.
+> **What this is NOT.** This is not the full engineering backlog. Engineering work is tracked in `PROGRESS.md`. This register lists only items that block a live pilot bank deployment.
 
-**Last updated:** 2026-04-07
+**Last updated:** 2026-04-24
 **Engineering blocker count:** 0
 **Legal/contractual/patent blocker count:** 4 (all critical-path)
 
@@ -12,7 +12,7 @@
 
 ## Critical Path to Pilot Launch
 
-The four items below are the entire critical path. They are **independent** — none of them blocks the others — but **all four must be complete** before LIP can fund a single bridge in production.
+The items below are the current critical path. They are **independent** — none of them blocks the others — but all must be complete before LIP can fund a single bridge in production. There are no open engineering blockers; production deployments must still set `REDIS_URL` and `LIP_REQUIRE_DURABLE_OFFER_STORE=1` so startup fails closed if durable offer storage is unavailable.
 
 ### 🔴 BLOCKER-01 — Legal counsel engagement: MRFA explicit B2B framing
 
@@ -50,7 +50,7 @@ The four items below are the entire critical path. They are **independent** — 
 | **Owner** | Founder + patent counsel |
 | **Gates** | Defensible IP position; investor diligence; any external technical disclosure |
 | **Decision references** | [`decisions/EPG-20-21_patent_briefing.md`](decisions/EPG-20-21_patent_briefing.md) |
-| **What is needed** | Non-provisional patent filing based on [`docs/legal/patent/Provisional-Specification-v5.2.md`](../legal/patent/Provisional-Specification-v5.2.md), with: (a) claims scoped to two-step classification + conditional offer logic per EPG-20; (b) language scrub per EPG-21 (no AML/SAR/OFAC/SDN/PEP/etc.); (c) BLOCK code list NOT enumerated; (d) clean-room re-implementation if any reviewer-provided text was incorporated. Pre-counsel risk analysis already complete in [`docs/business/fundraising/ip-risk-pre-counsel-analysis.md`](../business/fundraising/ip-risk-pre-counsel-analysis.md) (140 KB). |
+| **What is needed** | Non-provisional patent filing based on [`docs/legal/patent/Provisional-Specification-v5.3.md`](../legal/patent/Provisional-Specification-v5.3.md), with: (a) claims scoped to two-step classification + conditional offer logic per EPG-20; (b) language scrub per EPG-21 (no AML/SAR/OFAC/SDN/PEP/etc.); (c) BLOCK code list NOT enumerated; (d) clean-room re-implementation if any reviewer-provided text was incorporated; and (e) written counsel confirmation of filing-fee status before any USPTO submission so the company does not assume micro-entity eligibility without basis. Pre-counsel risk analysis already complete in [`docs/business/fundraising/ip-risk-pre-counsel-analysis.md`](../business/fundraising/ip-risk-pre-counsel-analysis.md) (140 KB). |
 | **Why it blocks** | The provisional gives 12 months of priority. Without the non-provisional, the moat decays and any external technical conversation (RBC, FF round, future hires) erodes the trade-secret position. |
 | **Cannot be done by engineering** | This is patent prosecution work. |
 | **Downstream impact if delayed** | Reduced defensibility of the Tier 2/3 contribution that is the entire competitive moat against JPMorgan US7089207B1. |
@@ -101,11 +101,12 @@ There is no meaningful engineering work in step 3. Steps 1 and 2 are entirely ou
 
 For confidence that this register is real and not aspirational, here is what *was* on the critical path and is no longer:
 
-### Engineering — all closed as of 2026-03-22
+### Engineering — all closed as of 2026-04-24
 
 | Closed item | Resolution |
 |-------------|------------|
-| GAP-01: No loan acceptance protocol | Offer delivery + acceptance protocol shipped (commit `0e7c69a`) |
+| GAP-01: No loan acceptance protocol | Protocol shipped; offer creation now returns `OFFERED` until ELO acceptance |
+| ENGINEERING-BLOCKER-01: Durable offer-delivery state | Closed 2026-04-24. `OfferDeliveryService` now supports Redis-backed durable delivery/offer/acceptance/rejection/expiry state with atomic pending-to-terminal transitions. `build_runtime_pipeline()` supports `LIP_REQUIRE_DURABLE_OFFER_STORE=1` to fail startup when Redis is unavailable. |
 | GAP-02: AML velocity caps unscalable | Per-licensee caps via C8 token (EPG-16/17) |
 | GAP-03: No enrolled borrower registry | `BorrowerRegistry` + C7 first-gate check + `BORROWER_NOT_ENROLLED` state |
 | GAP-04: No retry detection | Redis-ready `UETRTracker` with 30-min TTL + tuple-based dedup |

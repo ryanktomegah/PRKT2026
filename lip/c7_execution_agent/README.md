@@ -2,15 +2,15 @@
 
 ## Role in Pipeline
 
-C7 is the **loan execution controller** and the primary **human oversight and safety layer** (ELO — Execution Lending Organisation). It receives the aggregated decision from C1/C4/C6/C2, applies kill switch and KMS availability checks, logs every decision to the immutable audit trail, and — if all safety gates pass — funds the bridge loan.
+C7 is the **loan execution controller** and the primary **human oversight and safety layer** (ELO — Execution Lending Organisation). It receives the aggregated decision from C1/C4/C6/C2, applies kill switch and KMS availability checks, logs every decision to the immutable audit trail, and — if all safety gates pass — emits a bridge-loan offer for ELO treasury acceptance.
 
 ## Algorithm 1 Position
 
 ```
-C2 → [C7: kill switch / KMS / human override / decision log] → FUNDED → C3
+C2 → [C7: kill switch / KMS / human override / decision log] → OFFER → ELO acceptance → FUNDED → C3
 ```
 
-C7 is **Step 4** of Algorithm 1. It is the last gate before a loan is funded.
+C7 is **Step 4** of Algorithm 1. It is the last gate before a loan offer is delivered. Funding and C3 activation happen only after explicit ELO acceptance.
 
 ## Key Classes
 
@@ -30,7 +30,7 @@ C7 is **Step 4** of Algorithm 1. It is the last gate before a loan is funded.
 3. AML / dispute double-check              → hard block
 4. HumanOverrideInterface                  → EU AI Act Art.14 review (if triggered)
 5. DecisionLogger.log()                    → HMAC-signed audit entry (always)
-6. Fund loan                               → outcome: FUNDED / DECLINED / HALT
+6. Deliver offer                          → outcome: OFFER / DECLINE / HALT
 ```
 
 ## Regulatory Obligations

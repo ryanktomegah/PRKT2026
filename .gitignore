@@ -32,8 +32,26 @@ env/
 htmlcov/
 .mypy_cache/
 
-# Artifacts — model binaries and training outputs
-artifacts/
+# Artifacts — training outputs, dry-run data, intermediate files
+artifacts/*
+# EXCEPT trained model binaries — these are code dependencies (runtime pipeline
+# loads them via LIP_C1_MODEL_DIR + LIP_C2_MODEL_PATH, Dockerfile.c2/c7 bake
+# them into images, tests assert on them). Small (~8MB total), signed via
+# HMAC sidecars, and deterministic-enough to belong in git. Regeneration
+# requires GPU + 20min + matching Optuna/torch versions, so committing them
+# is the reproducibility floor.
+#   Rationale history: the original "NEVER commit artifacts/" rule pre-dated
+#   the signed-artifact contract introduced in 2026-04. Keeping training
+#   corpora + intermediate outputs gitignored is still correct; trained
+#   binaries are now a different category.
+!artifacts/c1_trained/
+!artifacts/c2_trained/
+# Training corpora + intermediate outputs stay gitignored (regenerable from
+# seed; too large for git).
+artifacts/training_corpus_*/
+artifacts/production_data_*/
+artifacts/intermediate_*/
+artifacts/synthetic/
 
 # CIPHER: AML corpus must never be committed (contains typology patterns)
 # Generate fresh with: python -m lip.dgen.generate_all --output-dir artifacts/synthetic
@@ -41,6 +59,7 @@ artifacts/
 **/c6_corpus_*.json.sha256
 .env
 .env.local
+.secrets/
 
 # MLflow local tracking database
 mlflow.db
@@ -51,7 +70,12 @@ lip/c3/rust_state_machine/target/
 lip/c3/rust_state_machine/Cargo.lock
 lip/c6_aml_velocity/rust_velocity/target/
 lip/c6_aml_velocity/rust_velocity/Cargo.lock
+lip/c7_execution_agent/rust_kill_switch/target/
+lip/c7_execution_agent/rust_kill_switch/Cargo.lock
 pytest-of-*/
 
 # PyTorch inductor compilation cache
 torchinductor_*/
+
+# Pre-lawyer review — local-only sensitive findings
+docs/legal/.red-flag-register.md

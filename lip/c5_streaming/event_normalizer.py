@@ -279,10 +279,10 @@ class EventNormalizer:
 
         if isinstance(inst_amt, dict):
             amount = _safe_decimal(inst_amt.get('value', inst_amt.get('Amt', '0')))
-            currency = inst_amt.get('Ccy', inst_amt.get('currency', 'USD'))
+            currency = str(inst_amt.get('Ccy', inst_amt.get('currency', 'USD')) or 'USD')
         else:
             amount = _safe_decimal(inst_amt)
-            currency = orig_ref.get('Ccy', 'USD')
+            currency = str(orig_ref.get('Ccy', 'USD') or 'USD')
 
         sending_bic = (
             msg.get('DbtrAgt', {}).get('FinInstnId', {}).get('BIC', '')
@@ -448,14 +448,25 @@ class EventNormalizer:
         )
 
     def normalize(self, rail: str, msg: dict) -> NormalizedEvent:
-        """Dispatch to correct normalizer based on rail string."""
+        """Dispatch to correct normalizer based on rail string.
+
+        Legacy rails (SWIFT, FEDNOW, RTP, SEPA) are handled in-class.
+        CBDC rails (CBDC_ECNY, CBDC_EEUR, CBDC_SAND_DOLLAR) are delegated to
+        :class:`~lip.c5_streaming.cbdc_normalizer.CBDCNormalizer` (P5 patent).
+        """
+        upper = rail.upper()
+
+        if upper.startswith("CBDC_"):
+            from lip.c5_streaming.cbdc_normalizer import CBDCNormalizer
+            return CBDCNormalizer().normalize(upper, msg)
+
         handlers = {
             'SWIFT': self.normalize_swift,
             'FEDNOW': self.normalize_fednow,
             'RTP': self.normalize_rtp,
             'SEPA': self.normalize_sepa,
         }
-        handler = handlers.get(rail.upper())
+        handler = handlers.get(upper)
         if handler is None:
             raise ValueError(f"Unknown rail: {rail}")
         event = handler(msg)

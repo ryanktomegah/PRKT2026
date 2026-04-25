@@ -8,7 +8,7 @@
 
 > **WHAT CHANGED IN VERSION 2.1:**
 >
-> Two corrections from v2.0. First, Section 1.2 reference updated from "v5.0 provisional specification" to "v5.1 provisional specification" — consistent with the version update applied across the full document set. Second, the Week 4 action in the First 30 Days section has been updated: "Book Sibos 2026 registration" replaced with offset-neutral language — "Book registration for the next Sibos conference (held annually, typically October–November) if it falls within the next six months of the PFD" — consistent with the PFD-offset convention adopted throughout v2.0. Additionally, the Academic Paper reference in Section 2.1 updated from "v2.0" to "v2.1." All operational guidance, phase structures, deadlines, cost tables, and strategic instructions are unchanged from v2.0.
+> The document has been reconciled to the current working set. Section 1.2 now references the current prosecution-ready provisional specification rather than an older draft label. The Week 4 action in the First 30 Days section has been updated from the absolute-date phrasing "Book Sibos 2026 registration" to offset-neutral language — "Book registration for the next Sibos conference (held annually, typically October–November) if it falls within the next six months of the PFD" — consistent with the PFD-offset convention adopted throughout the document. The Academic Paper reference in Section 2.1 has also been updated from "v2.0" to "v2.1." Operational guidance, phase structures, deadlines, cost tables, and strategic instructions have otherwise been preserved.
 
 > **WHAT CHANGED IN VERSION 2.0 (retained for record):**
 >
@@ -72,13 +72,15 @@ Once the company number is issued by Corporations Canada, your patent lawyer fil
 
 The assignment must be structured as a tax-deferred rollover under Section 85 of the Income Tax Act. This provision allows you to transfer intellectual property to a corporation you control without triggering a taxable disposition at the moment of transfer. Without this election, the Canada Revenue Agency may treat the transfer as a sale at fair market value and assess income tax on a gain that does not correspond to any cash you have actually received. Your startup lawyer and your accountant need to coordinate on this — the Section 85 Rollover Briefing Note in Folder 02 of this document set contains the full analysis and the list of questions to put to your accountant.
 
+Do not leave the Section 85 election mechanics implicit. The elected amount should be set deliberately with tax counsel and documented contemporaneously. The default working assumption at this stage is that the elected amount should be anchored to the provisional application's adjusted cost base — typically the legal and filing costs incurred to prepare and file it — unless a tax advisor concludes that a higher fair market value is supportable and preferable. Ask the accountant for a short memo, dated before the transfer, explaining why the selected elected amount is defensible and why fair market value is or is not materially above cost base.
+
 > **⚠️ Critical sequencing note:**
 >
 > The patent assignment filing with the USPTO and CIPO must happen within 30 days of incorporation and before any commercial pitch, grant application, or investor conversation in which the company claims to own the patent. The assignment recording takes 4–6 weeks at the USPTO. Your lawyer should file immediately after the company number is issued — do not wait for any other step.
 
-| **Assignment legal cost** | **USPTO recording fee** | **Tax filing (S.85 rollover)** | **Total Phase 0 IP cost** |
-|---------------------------|------------------------|-------------------------------|--------------------------|
-| **$500–$1,500** | **$180 (micro-entity)** | **$500–$1,000 (accountant)** | **~$2,000** |
+| **Assignment legal cost** | **USPTO / related filing fees** | **Tax filing (S.85 rollover)** | **Total Phase 0 IP cost** |
+|---------------------------|----------------------------------|-------------------------------|--------------------------|
+| **$500–$1,500** | **Verify current fee status with counsel before filing; do not assume micro-entity eligibility** | **$500–$1,000 (accountant)** | **~$2,000 plus filing fees determined by counsel** |
 
 ### 0.3 Open Business Banking and Set Up Financial Infrastructure
 
@@ -86,11 +88,13 @@ Open a business chequing account in the company name immediately after receiving
 
 Register for a GST/HST number with the Canada Revenue Agency (online, free, 48 hours). Set up Wave Accounting (free) or QuickBooks ($25/month) from day one — SR&ED claims require contemporaneous documentation of qualifying expenditures. Every invoice you receive and every payment you make from the company account is a potential SR&ED-eligible expenditure if it relates to the technical development work.
 
+Because Bridgepoint's long-term revenue model is patent licensing, not just software services, obtain written tax advice on GST/HST treatment before the first licensing term sheet is issued. Patent royalty income paid by non-resident licensees may be zero-rated if the agreement is structured correctly; Canadian royalty income generally is not. The tax treatment must be stated explicitly in every licence agreement so that quoted royalty rates are not later reduced by unplanned GST/HST leakage.
+
 | **Business bank account** | **GST/HST registration** | **Accounting software** | **Phase 0 total cost** |
 |--------------------------|-------------------------|------------------------|----------------------|
 | **$0–$30/month** | **Free** | **$0 (Wave) or $25/mo (QuickBooks)** | **$5,000–$9,000** |
 
-### 0.4 Execute IP Assignment Agreements with All Technical Personnel *(NEW — v2.0)*
+### 0.4 Employment Agreement Template and Receivable Assignment Legal Architecture
 
 > **⚠️ NON-NEGOTIABLE — DO NOT ALLOW ANY TECHNICAL WORK WITHOUT THIS:**
 >
@@ -108,6 +112,80 @@ Register for a GST/HST number with the Canada Revenue Agency (online, free, 48 h
 | **IP Assignment Agreement template** | **Legal review (if modified)** | **Cash cost per hire (standard template)** | **Cost of omitting this step** |
 |--------------------------------------|-------------------------------|------------------------------------------|-------------------------------|
 | **Included in Folder 02** | **$500–$1,500** | **$0** | **Co-inventorship dispute risk on P3–P15** |
+
+The same Phase 0 legal work must cover cross-jurisdictional enforceability of the receivable assignment that underpins Claim 5's repayment loop. Before any pilot term sheet is signed, obtain a written legal opinion covering at minimum: British Columbia / Ontario PPSA perfection mechanics, UCC Article 9 treatment in the United States, and English-law treatment for SWIFT-governed cross-border payment assignments. Budget approximately $15,000–$30,000 for this opinion. Without it, the commercial auto-repayment story is incomplete even if the technical workflow functions perfectly.
+
+### 0.5 Lending Licence Requirements Assessment — *CRITICAL* (v2.1 Addition)
+
+Before deploying or offering any liquidity bridging product that extends credit, Bridgepoint Intelligence Inc. must confirm whether a lending licence is required in the jurisdictions where it operates. This is a non-negotiable compliance gate.
+
+> **⚠️ IMMEDIATE ACTION REQUIRED:** Within first 30 days of incorporation, engage a Canadian financial services regulation lawyer specializing in lending and fintech licensing. Do not proceed with pilot deployment or commercial conversations until a written regulatory opinion is received.
+
+**Why This Matters**
+
+Bridgepoint Intelligence's liquidity bridging product — whether structured as a short-duration bridge loan, a receivable purchase, or any other financial instrument — creates a credit obligation for the borrower. If Bridgepoint is considered a lender in a jurisdiction that requires lenders to be licensed, and Bridgepoint does not hold that licence, both Bridgepoint and its bank partners could be exposed to regulatory enforcement actions including cease-and-desist orders, fines, and criminal liability.
+
+**Key Question to Resolve**
+
+Does the Liquidity Intelligence Platform's activity constitute "lending" under applicable law?
+
+**Lending Activity That May NOT Require a Licence:**
+- **Automated loan pricing and offer generation:** The system prices bridge loans using PD models and displays offers. Pricing is the bank's commercial decision — Bridgepoint's role is to provide the pricing algorithm and risk assessment, not to extend credit.
+- **Risk assessment service:** The system provides probability-of-default estimates, counterparty credit scores, and working capital gap analysis. These are data services, not credit extension.
+- **Technology licensing:** Bridgepoint licenses patents and software to banks. The bank uses Bridgepoint's system to originate and manage bridge loans, but the credit decision and risk parameters are the bank's own business judgment.
+- **Payment settlement facilitation:** The system automates the repayment collection workflow using payment network confirmation data. This is a back-office automation service, not lending.
+
+**Lending Activity That May Require a Licence:**
+- **Disbursement of advances:** If Bridgepoint itself advances funds from its own balance sheet or capital facility (rather than partnering with a bank), this may constitute "lending" in jurisdictions with broad definitions. However, this can be structured as "merchant cash advance" or "working capital facility" rather than a consumer loan.
+- **Credit extension:** If Bridgepoint's platform extends credit lines or provides guarantees that improve the borrower's ability to repay, this may require additional regulatory approvals depending on structure.
+
+**Alternative Structures That May Avoid Licensing:**
+- **Bank-partnered model:** Bridgepoint provides technology and analytics; the licensed bank provides capital, makes lending decisions, holds loans on its balance sheet, and handles repayment collection. Bridgepoint never touches the funds directly.
+- **Marketplace model:** Bridgepoint operates as an exchange or marketplace matching borrowers with institutional investors who fund advances. No lending by Bridgepoint to borrowers.
+
+**Immediate Actions:**
+
+1. **Engage regulatory counsel** (within 30 days of incorporation):
+   - Consult lawyer with British Columbia commercial-lending, fintech, and regulatory-licensing expertise
+   - Obtain written opinion on whether current or planned activities require a lending licence
+   - If licence IS required: Map out application timeline, cost, and capital requirements
+   - If licence is NOT required: Document the analysis showing why each activity does not constitute lending
+
+2. **Document regulatory analysis in both key documents:**
+   - Add this Section 0.5 to Operational Playbook with detailed risk assessment and licence requirement determination
+   - Update the current provisional specification amendment table to reflect licence requirement assessment
+   - Update Investor Briefing v2.2 risk factors section if needed
+
+3. **Timeline Considerations:**
+   - Regulatory opinion: 2-4 weeks
+   - If licence required: Add 3-6 months for licence application (if needed) before any pilot or commercial rollout
+   - If no licence: Document decision as "No lending licence required based on legal analysis (date)"
+
+4. **Jurisdiction-Specific Analysis To Request From Counsel:**
+   - **British Columbia:** Does the contemplated pilot structure trigger any lending, money-services, or financing-company licensing requirement for Bridgepoint itself, or does a bank-funded / bank-of-record model keep Bridgepoint outside that scope?
+   - **Ontario:** If the same structure is rolled out in Ontario, does the answer change?
+   - **Federal (Canada):** Does any aspect of the contemplated structure create a Bank Act, AML, or other federal-regulatory issue for a non-bank technology provider?
+   - **United States (future):** Which direct-lending or marketplace variants would require separate state-by-state analysis before any US launch?
+   - **European Union (future):** Which licensing questions become live first if the product is commercialized through an EU bank or payments partner?
+
+5. **Documentation Standards:**
+   - Record the regulatory opinion in corporate records (board resolution with legal counsel opinion attached)
+   - Maintain audit trail of all regulatory consultations
+   - Update all marketing materials, pitch decks, and website compliance statements based on regulatory opinion
+
+**Cost Considerations:**
+   - Regulatory legal opinion: $5,000–$15,000 (BC-qualified lawyer)
+   - If licence application required: Government filing fees ($500–$1,000 depending on jurisdiction)
+   - Compliance infrastructure: AML screening, KYC processes, audit trail systems (additional operational costs if required for licensing)
+
+**Next Steps Until Opinion Received:**
+   - Structure all pilot and commercial activities as "data services" and "technology licensing" with bank-partnered capital
+   - Include explicit disclaimer in all investor communications: "Liquidity bridging provided by [Bank Partner] under their regulatory supervision"
+   - Do not use terms like "loan," "credit," or "interest" in Bridgepoint's own marketing unless clearly referring to [Bank Partner]'s lending activities
+
+---
+
+**Version 2.1 Amendment:** Section 0.5 added — Lending Licence Requirements Assessment (CRITICAL). Determines whether Bridgepoint requires lending licences in operating jurisdictions and provides regulatory framework to avoid enforcement risk.
 
 ---
 
@@ -133,7 +211,7 @@ The search should cover CPC classification codes G06Q20 (payment protocols), G06
 
 This is the most important legal filing in the portfolio. The utility application converts the provisional into a fully examined patent with a complete claim set, a prosecution record, and eventual issuance as an enforceable right. Every element of this filing must be done by a qualified patent attorney with specific experience in financial technology and machine learning patents.
 
-The claim set from the **v5.1 provisional specification** — five independent claims and thirteen dependent claims (D1–D13) — constitutes the starting negotiating position with the examiner. The attorney's job during prosecution is to argue for the broadest possible interpretation of each claim element at every stage, and to resist narrowing amendments wherever a legal argument for broader scope is available. Every amendment made during prosecution becomes prosecution history that can be used to limit claim scope in future litigation.
+The claim set from the **current prosecution-ready provisional specification** — five independent claims and thirteen dependent claims (D1–D13) — constitutes the starting negotiating position with the examiner. The attorney's job during prosecution is to argue for the broadest possible interpretation of each claim element at every stage, and to resist narrowing amendments wherever a legal argument for broader scope is available. Every amendment made during prosecution becomes prosecution history that can be used to limit claim scope in future litigation.
 
 > **📋 Instruction to give your patent attorney at the first briefing:**
 >
@@ -141,13 +219,13 @@ The claim set from the **v5.1 provisional specification** — five independent c
 >
 > Additionally: Dependent Claim D13 covering the adversarial camt.056 cancellation detection mechanism must be included in the utility application and must not be surrendered during prosecution without explicit instruction from Bridgepoint Intelligence. This claim element is the basis for P3 continuation claims and for the adversarial cancellation extension described in the Future Technology Disclosure.
 
-| **Attorney fees (drafting + filing)** | **USPTO filing fee (micro-entity)** | **Filing deadline** | **Expected prosecution timeline** |
-|--------------------------------------|------------------------------------|--------------------|----------------------------------|
-| **$15,000–$25,000** | **$830** | **PFD + 12 months [HARD]** | **18–36 months to issuance** |
+| **Attorney fees (drafting + filing)** | **USPTO filing fee** | **Filing deadline** | **Expected prosecution timeline** |
+|--------------------------------------|----------------------|--------------------|----------------------------------|
+| **$15,000–$25,000** | **Confirm fee status with patent counsel; if micro-entity is not clearly defensible, default to small-entity rates** | **PFD + 12 months [HARD]** | **18–36 months to issuance** |
 
 ### 1.3 File the PCT Application — International Coverage
 
-The Patent Cooperation Treaty application locks in patent protection across the US, Canada, EU, Singapore, and UAE simultaneously, using the PFD priority date. Without the PCT filing, you would need to file separately in each jurisdiction as a national phase entry, which costs three to five times as much and leaves gaps in coverage during the filing period. The PCT buys you thirty months from the priority date to enter national phase in each jurisdiction.
+The Patent Cooperation Treaty application locks in patent protection across the US, Canada, EU, Singapore, UAE, and Japan simultaneously, using the PFD priority date, while preserving a Hong Kong follow-on registration path from a recognized base patent. Without the PCT filing, you would need to file separately in each jurisdiction as a national phase entry, which costs three to five times as much and leaves gaps in coverage during the filing period. The PCT buys you thirty months from the priority date to enter national phase in each jurisdiction.
 
 > **🌍 Jurisdiction priority rationale:**
 >
@@ -189,7 +267,7 @@ Banks and payment technology companies receive unsolicited approaches from hundr
 
 ### 2.1 Post the Academic Paper to SSRN
 
-The paper — *Real-Time Payment Failure Detection and Automated Liquidity Bridging in Cross-Border Payment Networks* (Document 7 of this document set, **v2.1**) — is already written. The immediate next step is to post it as a working paper on the Social Science Research Network (SSRN). SSRN registration is free. The paper is publicly timestamped within 48 hours of submission. This creates a dated public record of the intellectual contribution that predates any formal journal review timeline and is immediately searchable.
+The paper — *Real-Time Payment Failure Detection and Automated Liquidity Bridging in Cross-Border Payment Networks* (Document 7 of this document set, **v2.1**) — is already written and ready for submission. SSRN registration is free and the paper will be posted to SSRN approximately one month after the utility filing is confirmed (approximately PFD + 13 months), not before. The paper is publicly timestamped within 48 hours of SSRN submission. This creates a dated public record of intellectual contribution that predates any formal journal review timeline and is immediately searchable.
 
 > **📄 SSRN timing — important:**
 >
@@ -227,6 +305,27 @@ A company website, a LinkedIn company page, and a well-constructed personal Link
 |------------------------|-------------------------------------|----------------------|--------------------------|
 | **$15–$50/year** | **$20–$40/month** | **$5,000–$15,000** | **PFD + 2–6 months (parallel with Phase 1)** |
 
+### 2.4 SWIFT Technology Partner Application
+
+SWIFT Technology Partner status is a credibility signal that bank product teams immediately understand. The system already integrates with SWIFT-native primitives — UETR tracking, pacs.002 failure signals, and camt.056 adversarial cancellation monitoring — which makes the partnership pathway a natural fit.
+
+Apply during Phase 2, not after the first pilot. If accepted, the designation should appear on the company website, commercial one-pagers, and investor materials. Even if the application results only in technical review and ecosystem contacts, that still shortens the path to bank conversations materially.
+
+### 2.5 BIS Innovation Hub Engagement
+
+The BIS Innovation Hub and the G20 cross-border payments roadmap are natural institutional homes for the problem Bridgepoint is solving. The objective here is not to wait for a formal programme award before doing anything else; it is to establish a credible research and relationship thread with the people who shape the future infrastructure Bridgepoint is patenting against.
+
+Prepare a short research-facing submission package: the academic paper, a one-page architecture note, and a framing memo tying the system to the G20 goals of reducing friction, delay, opacity, and cost in cross-border payments. Even a declined application can still create useful BIS staff visibility if the materials are strong.
+
+### 2.6 Advisor-Only vs. CCO Path
+
+Advisor introductions are high-leverage but low-bandwidth. If an outstanding commercial operator with pre-existing tier-1 or tier-2 bank relationships becomes available, compare that path seriously against the advisor-only plan rather than treating advisors as the only route.
+
+Use this decision rule:
+- Stay advisor-only if the current advisors can reliably open two to three target institutions within six months and you can personally run the pipeline.
+- Add a CCO if a candidate can compress time-to-LOI materially through existing bank relationships and is willing to work for meaningful but bounded equity.
+- For a true bank-relationship operator, 4%–6% vesting equity over three years is defensible if it removes 12 months from the path to a pilot or first licence.
+
 ---
 
 ## PHASE 3 — PFD + 2 TO 6 MONTHS
@@ -245,7 +344,7 @@ The application process begins with contacting an NRC Industrial Technology Advi
 
 > **📞 Your first call — NRC IRAP Vancouver Office:**
 >
-> Call (604) 666-6000 and ask to speak with the Industrial Technology Advisor for your area. Describe Bridgepoint Intelligence as an early-stage fintech company developing patented machine learning infrastructure for cross-border payment failure detection and automated liquidity provisioning. Have the SSRN paper and the provisional patent number ready to share. The ITA will assess your eligibility in the first conversation and advise on the application timeline — which typically runs 6 to 12 weeks from first contact to funding decision.
+> Call (604) 666-6000 and ask to speak with the Industrial Technology Advisor for your area. Describe Bridgepoint Intelligence as an early-stage fintech company developing patent-pending machine learning infrastructure for cross-border payment failure detection and automated liquidity provisioning. Have the SSRN paper and the provisional patent number ready to share. The ITA will assess your eligibility in the first conversation and advise on the application timeline — which typically runs 6 to 12 weeks from first contact to funding decision.
 >
 > **Contact NRC IRAP no later than PFD + 3 months.** The programme is oversubscribed. Late applicants join a waitlist. Missing the annual intake cycle means waiting 12 months for the next one.
 
@@ -257,7 +356,7 @@ The application process begins with contacting an NRC Industrial Technology Advi
 
 The Scientific Research and Experimental Development programme allows Canadian-controlled private corporations to recover 35% to 65% of qualifying R&D expenditures through refundable tax credits. For a company spending $200,000 per year on qualifying development work, SR&ED can return $70,000 to $130,000 annually in refundable credits.
 
-Qualifying SR&ED work specifically means work involving technological uncertainty, systematic investigation, and the generation of new technical knowledge. The development of the ML failure prediction model, the tiered PD framework calibration methodology, and the camt.056 adversarial event detection mechanism all qualify clearly. A qualified SR&ED consultant should review your expenditures quarterly and flag which activities and costs to document for the annual claim.
+Qualifying SR&ED work specifically means work involving technological uncertainty, systematic investigation, and the generation of new technical knowledge. Some Bridgepoint activities may qualify strongly — especially low-latency streaming inference under real-time constraints, adversarial cancellation detection, and infrastructure-level uncertainty around payment telemetry processing — but the claim must be documented carefully. Routine model tuning or applying an established ML library to a new business domain is not automatically SR&ED-eligible. A qualified SR&ED consultant should review the work quarterly and help frame the documentation around technological uncertainty rather than commercial-performance ambition.
 
 > **💡 SR&ED documentation practice — start on Day 1:**
 >
@@ -307,7 +406,43 @@ Phase 4 is where credibility built in Phase 2 meets commercial intent. The goal 
 
 > **🚫 What to never say in a first outreach:**
 >
-> Never mention royalties, licensing fees, or equity in the first message. Never use the word 'revolutionary' or 'disruptive.' Never send a deck as an attachment — it signals that you are a vendor rather than a peer. Never mention how many other institutions you are talking to, even if it is true — save competitive urgency for a later stage when it carries more weight because the relationship is already established.
+> Never mention royalties, licensing fees, or equity in the first message. Never use the word 'revolutionary' or 'disruptive.' Never send a deck as an attachment — it signals that you are a vendor rather than a peer. Never bluff about how many other institutions you are talking to. Competitive urgency only works when it is specific, truthful, and tied to a real exclusivity or pilot window.
+
+**Competitive urgency — use carefully and truthfully**
+
+Once an institution has engaged, frame the opportunity as time-sensitive in a way that is both accurate and corridor-specific. The right message is not "everyone is looking at this." The right message is: a limited pilot or exclusivity window exists for a named geography, segment, or corridor, and this institution is well positioned to move first if it wants that advantage. That framing activates competitive urgency without sounding like a generic sales tactic.
+
+**Target-specific first-message variants**
+
+Use competitive urgency only when it is true. Do not invent competing banks, active term sheets, or exclusivity windows. The templates below are starting points; every named corridor, segment, and timing constraint must map to a real commercial situation before use.
+
+**For an ambitious tier-2 international bank such as Scotiabank**
+
+Use when a real Canadian or LatAm corridor pilot window exists:
+
+> We are opening a limited pilot window for automated liquidity bridging on North America-to-LatAm corridors where delay risk is operationally visible but still handled manually. Scotiabank's cross-border footprint in CAD/USD and Latin American trade flows makes it one of the few institutions positioned to move first. If this is relevant, I would value 20 minutes to show the live decision workflow before that initial pilot slot is committed.
+
+**For an Asia-focused trade bank such as DBS or Standard Chartered**
+
+Use when corridor-specific sequencing is real:
+
+> We are sequencing early partner conversations around Asia-linked corridors where long correspondent chains create persistent delay friction. Your institution is unusually well positioned because of its operating footprint in those corridors and its transaction-banking product depth. I wanted to reach out before we narrow the first pilot cohort by region.
+
+**For a Canadian innovation arm or partnership team**
+
+Use when domestic-reference-customer value is real:
+
+> We expect to work with only one or two Canadian institutions in the first domestic reference cohort before shifting focus to broader international licensing. Because your team sits at the intersection of partnership evaluation and product innovation, I wanted to put this in front of you early rather than after that first cohort is effectively spoken for.
+
+**For a large global bank in the first wave**
+
+Use sparingly; the message must be precise, not theatrical:
+
+> We are not running a broad process. We are evaluating a very small number of institutions for an initial deployment sequence tied to specific high-friction cross-border corridors. Your organisation is on that short list because the operational problem is material in your network and the internal product maturity appears high enough to move quickly if there is interest.
+
+**The rule for all four variants**
+
+Competitive urgency should point to a real decision the institution could miss: a pilot slot, a corridor-specific exclusivity window, an early reference-customer position, or internal sequencing that will close. If there is no real scarce slot, remove the urgency framing and lead with relevance alone.
 
 ### 4.3 The Demonstration Meeting — Running It Correctly
 
@@ -335,15 +470,26 @@ The pilot deployment transforms Bridgepoint Intelligence from a holder of promis
 >
 > **Payment corridors:** three to five corridors identified jointly with the partner, chosen to represent the highest failure rate routes in their portfolio.
 >
-> **Volume cap:** up to 10,000 payment events per day monitored, with bridge loan offers capped at a total advance pool of $5 million to limit the partner's financial exposure during evaluation.
+> **Volume cap:** up to 10,000 payment events per day monitored, with bridge loan offers capped at a total advance capacity of $5 million if the pilot includes live funding. That capacity must be supplied either by the partner bank, an approved facility provider, or a marketplace funding structure; it is not assumed to come from Bridgepoint's balance sheet.
 >
-> **Success metric:** AUC ≥ 0.700 and recall ≥ 0.780 on the partner's live payment data. Slightly below the 0.739 and 0.810 achieved on the development dataset, appropriate since live data from a new institution will have distribution characteristics the model has not seen.
+> **Success metric:** AUC ≥ 0.820 and F2 ≥ 0.550 on the partner's live payment data, with calibration re-measured within 30 days of deployment. This is intentionally below the current synthetic benchmark of 0.887 AUC and 0.625 F2, recognizing that live data from a new institution will have distribution characteristics the model has not yet seen.
 >
 > **IP ownership — non-negotiable:** all improvements, optimisations, and derivative innovations developed during or following the pilot remain the exclusive property of Bridgepoint Intelligence Inc. The partner receives no rights to continuation patents, model improvements, or any element of the system beyond the evaluation access granted under this agreement.
 >
 > **Path to full licence:** the agreement should include a right of first negotiation for a full licence within 60 days of pilot completion if performance metrics are met.
 
 The right pilot pricing structure is a nominal pilot fee — $25,000 to $50,000 — described as covering integration support and technical consultation, with a credit against the first year of the full licence fee if the partner proceeds. This ensures the pilot is a commercial transaction rather than a favour.
+
+### 5.1a Capital Structure for the Pilot Advance Pool
+
+Do not present a live-funded pilot term sheet until the capital source is explicit. There are four structurally different pilot models:
+
+1. **Bank-funded pilot:** the partner bank supplies the advance capital and Bridgepoint supplies the detection, pricing, and workflow technology. This is the cleanest path if the partner is willing.
+2. **Third-party warehouse / facility:** a lender supplies capital to Bridgepoint or a special-purpose vehicle. This is viable only after regulatory and collateral enforceability work is complete.
+3. **Marketplace-funded pilot:** pre-qualified institutional investors fund the advances transaction by transaction. This changes the product structure materially and should not be the default first pilot.
+4. **Shadow-mode pilot:** the system runs live on real payment data, identifies and prices bridge opportunities, but no capital is actually disbursed. This produces operational validation data without capital-risk complexity.
+
+The recommended order is: shadow-mode first, then bank-funded live pilot if performance and legal work are satisfactory. Do not assume Bridgepoint itself will fund a $5 million pool at seed stage.
 
 ### 5.2 Technical Integration — What Connecting to a Bank's Systems Actually Means
 
@@ -369,7 +515,7 @@ The integration typically happens through one of three pathways. The sandbox pat
 >
 > **Annual royalty:** a recurring fee tied to transaction volume — for example, 2 basis points per dollar of payment volume monitored, with a minimum annual commitment of $2M to $5M. Volume-based pricing means your revenue grows automatically as the bank's payment volumes grow, without renegotiation.
 >
-> **Most-favoured-nation clause:** offer this voluntarily. It guarantees the partner that you will never license the same rights to a competitor on more favourable terms. Banks love this clause and offering it proactively builds significant goodwill.
+> **Most-favoured-nation clause:** do not offer this voluntarily. If a bank demands MFN protection, scope it narrowly to the same geography, the same payment corridors, and the same product scope. Anything broader turns every later discount into a retroactive concession to the first licensee.
 >
 > **IP ownership carve-out — the non-negotiable:** the licence agreement must explicitly state that all continuation patents, model improvements, calibration data, and derivative innovations remain the exclusive property of Bridgepoint Intelligence Inc. The partner receives a licence to use the current system. They acquire no rights, ownership interest, or co-inventorship claim over any future IP. This clause will be pushed back on by the bank's legal team. Do not concede it under any circumstances.
 
@@ -379,7 +525,7 @@ The seed raise is conditional, not inevitable. If NRC IRAP funding covers the op
 
 The seed raise becomes necessary if: the IRAP application is delayed or underfunded, the pilot requires technical integration resources that exceed grant funding, or the business development effort requires a dedicated hire that grant funding does not cover. If a raise is required, the right time is after the pilot LOI is signed but before the full licence is executed — because an LOI from a recognisable financial institution transforms the investment narrative from 'promising technology' to 'technology with a named customer about to pay for it.'
 
-The target raise is $1 million to $2 million at a post-money valuation of $8 million to $15 million. Target investors: QED Investors, Portage Ventures (Canada), Ribbit Capital, or BDC Ventures. The pitch narrative is: *'We have a patent-protected system with a signed pilot agreement at a major financial institution, and we need capital to close the full licence and file four continuation patents over the next 24 months.'*
+The target raise is $1 million to $2 million at a post-money valuation of $8 million to $15 million. Target investors: QED Investors, Portage Ventures (Canada), Ribbit Capital, or BDC Ventures. The pitch narrative is: *'We have a patent-pending system with a signed pilot agreement at a major financial institution, and we need capital to close the full licence and file four continuation patents over the next 24 months.'*
 
 | **Target raise amount** | **Target valuation** | **Implied dilution** | **Trigger condition** |
 |------------------------|---------------------|---------------------|-----------------------|
@@ -396,10 +542,12 @@ The target raise is $1 million to $2 million at a post-money valuation of $8 mil
 | **OUTFLOW** | PCT application — attorney + fees | $12,000–$18,000 | PFD + 18 mo [HARD] | Founder / IRAP |
 | **OUTFLOW** | Professional prior art search | $8,000–$15,000 | PFD + 2–3 mo | Founder / IRAP |
 | **OUTFLOW** | P3 continuation filing | $12,000–$18,000 | PFD + 24–30 mo | Revenue / raise |
+| **OUTFLOW** | Regulatory opinion + tax structuring memos | $10,000–$25,000 | Weeks 1–8 | Founder / legal budget |
+| **OUTFLOW** | Receivable assignment enforceability opinion | $15,000–$30,000 | Before pilot term sheet | Founder / raise |
 | **OUTFLOW** | Advisor equity (cash equivalent) | $0 cash / 0.75–1.5% equity | PFD + 4–6 mo | Equity (non-cash) |
 | **OUTFLOW** | BD + travel (Sibos, meetings) | $15,000–$30,000 | PFD + 6–18 mo | IRAP / founder |
 | **OUTFLOW** | Cyber insurance + legal (vendor assess.) | $8,000–$15,000/yr | From PFD + 10 mo | IRAP / founder |
-| **OUTFLOW** | **Total cash out (28 months)** | **$76,000–$131,000** | — | — |
+| **OUTFLOW** | **Total cash out (28 months)** | **$101,000–$186,000** | — | — |
 | **INFLOW** | NRC IRAP grant | $50,000–$500,000 | PFD + 4–12 mo | Non-dilutive |
 | **INFLOW** | SR&ED annual recovery | $35,000–$105,000/yr | Annual filing | Non-dilutive |
 | **INFLOW** | SWIFT Institute grant | £10,000–£30,000 | PFD + 10–14 mo | Non-dilutive |
@@ -419,6 +567,8 @@ The target raise is $1 million to $2 million at a post-money valuation of $8 mil
 | PCT filing | **PFD + 18 months [HARD DEADLINE]** | International protection requires separate national filings at 3–5× cost. Singapore and UAE coverage may be lost entirely. | Authorise PCT filing immediately after utility application is accepted by USPTO. |
 | P3 continuation filed | **PFD + 24–30 months [before P2 issues]** | Multi-party and adversarial cancellation coverage gap. Competitor may file on divided-infringement structure before P3 is claimed. | File P3 during prosecution of P2, before issuance. |
 | P4 pre-emptive continuation | PFD + 36 months | Pre-emptive liquidity portfolio management concept becomes obvious to the field once reactive bridging is commercially visible. Claim weakened or lost. | File continuation before first commercial deployment is publicly announced. |
+| Regulatory lending opinion | **PFD + 1 month** | Pilot structure may be illegal or mis-scoped if Bridgepoint is treated as the lender without required licensing. | Engage financial-services regulatory counsel immediately after incorporation. |
+| Receivable assignment legal opinion | Before first pilot term sheet | Repayment loop may be commercially unenforceable across governing jurisdictions. | Obtain BC/ON PPSA + UCC Article 9 + English-law analysis before live pilot. |
 | IRAP application submitted | No later than PFD + 3 months | Programme is oversubscribed. Late applicants join a waitlist. Missing the annual cycle means waiting 12 months for the next intake. | Contact NRC IRAP Vancouver office in Week 1. |
 | NDA before any bank demo | Before any meeting | Sharing proprietary system details without NDA creates prior art risk and waives trade secret protection. | Have NDA template (Document 4, Folder 02) prepared before outreach begins at PFD + 6 months. |
 | IP Assignment Agreement signed | **Before Day 1 of any technical hire** | Unassigned inventions created by technical personnel create co-inventorship claims on continuation patents P3 through P15. Risk surfaces in licensing negotiations. | Use Document 5 (Folder 02). No technical work commences without signed agreement. |
@@ -431,15 +581,17 @@ The target raise is $1 million to $2 million at a post-money valuation of $8 mil
 
 The playbook is most useful if you know specifically what to do on Monday morning. Here is the first 30 days broken into four weekly actions, sequenced so that nothing blocks anything else.
 
-> **📅 Week 1 — The Two Phone Calls That Unlock Everything**
+> **📅 Week 1 — The Initial Calls That Unlock Everything**
 >
 > - Monday: Call a technology startup lawyer in Vancouver — Fasken, Gowling, or Vantage Law — and book a 30-minute initial consultation. Describe what you need: federal CBCA incorporation, dual share class structure, founder share subscription agreement.
 >
 > - Wednesday: Call NRC IRAP Vancouver at (604) 666-6000 and ask to speak with an Industrial Technology Advisor. Describe Bridgepoint Intelligence, mention the provisional patent, and ask about eligibility.
 >
-> - Thursday: Register bridgepointintelligence.com and bridgepoint.ai before someone else does.
+> - Thursday: Book a financial-services regulatory lawyer and tax advisor. One opinion determines the lawful pilot structure; the other determines how the IP rollover and future royalty income are taxed.
 >
-> - Friday: Email your patent lawyer confirming that the patent assignment from individual to company will be the first post-incorporation filing, and that D13 (camt.056 adversarial cancellation detection) must be included as a dependent claim in the utility application.
+> - Friday: Register bridgepointintelligence.com and bridgepoint.ai before someone else does.
+>
+> - Friday afternoon: Email your patent lawyer confirming that the patent assignment from individual to company will be the first post-incorporation filing, and that D13 (camt.056 adversarial cancellation detection) must be included as a dependent claim in the utility application.
 
 > **📅 Week 2 — Incorporation and Financial Setup**
 >
@@ -483,4 +635,4 @@ The playbook is most useful if you know specifically what to do on Monday mornin
 
 ---
 
-*Version 2.1 corrections: (A) Section 1.2: "v5.0 provisional specification" updated to "v5.1 provisional specification." (B) First 30 Days, Week 4: "Book Sibos 2026 registration" replaced with PFD-offset-neutral language — "Book registration for the next Sibos conference (held annually, typically October–November) if it falls within the next six months of the PFD." (C) Section 2.1: Academic Paper version reference updated from "v2.0" to "v2.1." All operational guidance, phase structures, cost tables, deadline calendar, and strategic instructions unchanged.*
+*Version 2.1 corrections: (A) Section 1.2 updated to reference the current prosecution-ready provisional specification. (B) First 30 Days, Week 4: "Book Sibos 2026 registration" replaced with PFD-offset-neutral language — "Book registration for the next Sibos conference (held annually, typically October–November) if it falls within the next six months of the PFD." (C) Section 2.1: Academic Paper version reference updated from "v2.0" to "v2.1." (D) Phase 4.2 now includes target-specific competitive-urgency message variants. All other operational guidance, phase structures, cost tables, deadline calendar, and strategic instructions unchanged.*

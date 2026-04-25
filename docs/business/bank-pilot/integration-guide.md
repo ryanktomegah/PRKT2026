@@ -310,12 +310,14 @@ Document the activation authority in the operational runbook before go-live.
 
 ### Sandbox Environment
 
-LIP can run in full in-memory mode (no Redis, no Kafka) for integration testing:
+LIP can run in full in-memory mode (no Redis, no Kafka) for local integration testing only:
 
 ```bash
 REDIS_URL="" LIP_API_HMAC_KEY="" \
   uvicorn lip.api.app:app --host 0.0.0.0 --port 8080
 ```
+
+Pilot and production environments must set `REDIS_URL` and `LIP_REQUIRE_DURABLE_OFFER_STORE=1`; otherwise pending ELO offer accept/reject state is not durable across pod restarts.
 
 ### Test BICs
 
@@ -332,7 +334,7 @@ Use these BICs for integration testing (they are not real SWIFT BICs):
 
 - [ ] Health endpoints return 200 (live) and 200 (ready)
 - [ ] Known entity registration: POST, GET, DELETE cycle
-- [ ] Pipeline processes a Class A event → FUNDED outcome
+- [ ] Pipeline processes a Class A event → OFFERED outcome, then ELO acceptance registers an active C3 loan
 - [ ] Pipeline blocks a BLOCK-class event → short-circuit
 - [ ] Portfolio endpoints return active loan after funding
 - [ ] Admin summary reflects correct counts

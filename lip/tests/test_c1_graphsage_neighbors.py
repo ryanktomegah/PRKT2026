@@ -10,6 +10,8 @@ Verifies that:
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pytest
 import torch
@@ -26,6 +28,7 @@ from lip.c1_failure_classifier.training_torch import (
 # LightGBM (OpenMP) + PyTorch BLAS deadlock prevention on macOS
 @pytest.fixture(scope="session", autouse=True)
 def _torch_single_thread():
+    os.environ.setdefault("LOKY_MAX_CPU_COUNT", "1")
     torch.set_num_threads(1)
     try:
         torch.set_num_interop_threads(1)

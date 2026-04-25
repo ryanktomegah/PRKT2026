@@ -6,10 +6,19 @@ format consumed by SanctionsScreener(lists_path=...).
 
 Output JSON schema:
   {
+    "_metadata": {
+      "generated_at": "ISO-8601 UTC timestamp at build time",
+      "builder_version": "sanctions_loader/N.N",
+      "source_urls": {"OFAC": "...", "UN": "...", "EU": "..."}
+    },
     "OFAC": ["ENTITY NAME 1", "ENTITY NAME 2", ...],
     "UN":   [...],
     "EU":   [...]
   }
+
+The ``_metadata`` block is required for audit defensibility — AMLD6 Art.10
+evidence that a loan was screened against the then-current list relies on
+being able to read a ``generated_at`` off the on-disk snapshot.
 
 Sources (all public domain / open government data, no license fee):
   OFAC SDN: US Treasury, public domain
@@ -39,8 +48,11 @@ import logging
 import sys
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+BUILDER_VERSION = "sanctions_loader/1.0"
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +194,8 @@ def build_sanctions_json(
     un_names: List[str],
     eu_names: List[str],
     output_path: Optional[str] = None,
-) -> Dict[str, List[str]]:
+    source_urls: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
     """
     Merge three name lists into the SanctionsScreener JSON schema.
 
@@ -191,11 +204,23 @@ def build_sanctions_json(
         un_names:    Names from UN Consolidated List.
         eu_names:    Names from EU CFSP List.
         output_path: If given, write the resulting JSON to this path.
+        source_urls: Optional dict of source URLs recorded in ``_metadata``.
 
     Returns:
-        Dict with keys "OFAC", "UN", "EU" mapping to sorted name lists.
+        Dict with ``_metadata`` (generated_at, builder_version, source_urls)
+        plus "OFAC" / "UN" / "EU" sorted name lists. Audit-defensibility
+        requires the metadata block (C6-H2 in Day 11 review).
     """
-    data: Dict[str, List[str]] = {
+    data: Dict[str, Any] = {
+        "_metadata": {
+            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            "builder_version": BUILDER_VERSION,
+            "source_urls": source_urls or {
+                "OFAC": OFAC_SDN_CSV_URL,
+                "UN": UN_XML_URL,
+                "EU": EU_XML_URL,
+            },
+        },
         "OFAC": sorted(set(ofac_names)),
         "UN":   sorted(set(un_names)),
         "EU":   sorted(set(eu_names)),
@@ -204,19 +229,20 @@ def build_sanctions_json(
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        total = sum(len(v) for v in data.values())
+        total = len(data["OFAC"]) + len(data["UN"]) + len(data["EU"])
         logger.info(
-            "Wrote %d entries (OFAC=%d UN=%d EU=%d) to %s",
+            "Wrote %d entries (OFAC=%d UN=%d EU=%d) generated_at=%s to %s",
             total,
             len(data["OFAC"]),
             len(data["UN"]),
             len(data["EU"]),
+            data["_metadata"]["generated_at"],
             output_path,
         )
     return data
 
 
-def load_from_file(path: str) -> Dict[str, List[str]]:
+def load_from_file(path: str) -> Dict[str, Any]:
     """Load and return an existing JSON snapshot without making network calls."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -225,6 +251,10 @@ def load_from_file(path: str) -> Dict[str, List[str]]:
 def validate_snapshot(path: str) -> bool:
     """
     Validate that a sanctions.json snapshot has the expected structure.
+
+    Checks for presence of OFAC/UN/EU lists and warns if ``_metadata`` is
+    missing — pre-``_metadata`` snapshots continue to load but fail
+    AMLD6 Art.10 audit defensibility and should be rebuilt.
 
     Returns:
         True if valid, False otherwise.
@@ -239,13 +269,24 @@ def validate_snapshot(path: str) -> bool:
             if not isinstance(data[key], list):
                 logger.error("%s is not a list", key)
                 return False
+        metadata = data.get("_metadata")
+        if metadata is None or "generated_at" not in metadata:
+            logger.warning(
+                "Snapshot at %s has no _metadata.generated_at — audit defensibility "
+                "requires a freshness timestamp. Rebuild with the current loader.",
+                path,
+            )
+            generated_at = "<unknown>"
+        else:
+            generated_at = str(metadata["generated_at"])
         total = sum(len(data[k]) for k in required_keys)
         logger.info(
-            "Snapshot valid: OFAC=%d UN=%d EU=%d (total=%d)",
+            "Snapshot valid: OFAC=%d UN=%d EU=%d (total=%d) generated_at=%s",
             len(data["OFAC"]),
             len(data["UN"]),
             len(data["EU"]),
             total,
+            generated_at,
         )
         return True
     except Exception:
