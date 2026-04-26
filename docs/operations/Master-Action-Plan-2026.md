@@ -626,7 +626,23 @@ These are emerging developments or edge cases that may become relevant in future
 
 **Current Disclosure:** Based on BIS Project mBridge and MAS Project Nexus drafts
 
-**2026 Reality:** mBridge paused 2024; digital euro pilot slow; no dominant standard yet
+**2026 Reality (April 2026 update):** BIS exited Project mBridge in October 2024;
+the platform did NOT pause — it now operates independently under the 5
+participating central banks (PBOC, HKMA, BoT, CBUAE, SAMA) with 31 observers.
+Cumulative settlement volume reached approximately $55.5B across ~4,000
+transactions as of early 2026, with e-CNY accounting for 95% of volume.
+SAMA (Saudi Arabia) joined as a full participant post-BIS-exit. ECB digital
+euro pilot continues; production decision expected 2026-2027. Digital pound
+remains in BoE design phase. Project Nexus (Nexus Global Payments,
+Singapore-incorporated 2025, 5 founding banks: RBI/BNM/BSP/MAS/BoT) is now
+the multilateral instant-payments contender, but onboarding has been pushed
+to mid-2027 per BSP Deputy Governor Tangonan (March 2026).
+
+**Code coverage status (2026-04-25):** LIP now has runtime support for the
+mBridge rail (`CBDC_MBRIDGE`) via `lip/c5_streaming/cbdc_mbridge_normalizer.py`
+and a stub for the Nexus rail (`CBDC_NEXUS`) via `lip/c5_streaming/nexus_normalizer.py`.
+P5 patent claim coverage extended; P6 filing remains frozen pending RBC IP
+clause counsel opinion (CLAUDE.md non-negotiable #6).
 
 **Monitor:** Defer P6 filing until CBDC interoperability standards reach production maturity
 
