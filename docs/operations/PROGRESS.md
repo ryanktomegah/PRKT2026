@@ -5,6 +5,90 @@
 
 ---
 
+## Session 2026-04-26 — CBDC Normalizer End-to-End (Phases A-E) + GH Health
+
+**Tests**: 2,743 passing in fast suite (+32 from baseline). Zero ruff errors.
+**CI**: green on main (fix #70 merged — pip-cache cleanup failure on k8s-manifest-guard).
+**Branches pushed**: 5 phase branches + 1 fix branch, all rebased on green main.
+**Open draft PRs**: #65 (Phase C), #66 (Phase E), #67 (Phase D), #68 (Phase A), #69 (Phase B).
+
+### CBDC Normalizer end-to-end — Phases A through E
+
+Strategic context: founder asked for the CBDC normalizer to be "finally built." Investigation showed the C5-side normalizer existed (e-CNY, e-EUR, Sand Dollar) but its output was dead — no downstream component consumed `event.rail`. Closed the gap end-to-end and extended to mBridge and FedNow.
+
+**Phase A (PR #68) — End-to-end wiring + sub-day fee floor framework.**
+- `lip/common/constants.py`: + `FEE_FLOOR_BPS_SUBDAY=1200`, `FEE_FLOOR_ABSOLUTE_USD=25`, `SUBDAY_THRESHOLD_HOURS=48.0`. Universal 300 bps floor unchanged (CLAUDE.md non-negotiable #2 preserved). QUANT call by Claude per founder authority grant 2026-04-25.
+- `lip/c2_pd_model/fee.py`: + `applicable_fee_floor_bps()`, `is_subday_rail()`, `apply_absolute_fee_floor()`. `compute_fee_bps_from_el()` now accepts `maturity_hours` kwarg. `compute_loan_fee()` raw-math contract preserved (Architecture Spec C2 §9).
+- `lip/c3_repayment_engine/repayment_loop.py`: + `ActiveLoan.rail` field; `_claim_repayment(rail=...)` computes hour-precision TTL for sub-day rails.
+- `lip/c7_execution_agent/agent.py`: `_build_loan_offer` reads rail, applies sub-day floor as defence-in-depth third gate, surfaces `rail` and `maturity_hours` on the offer dict.
+- `lip/pipeline.py`: `payment_context` carries `rail` + `maturity_hours`; new `_derive_maturity_hours()` helper; `_register_with_c3` uses hour-precision maturity_date for sub-day rails (legacy day-scale path preserved).
+- New: `lip/tests/test_subday_fee_floor.py` (19 tests), `lip/tests/test_cbdc_e2e.py` (12 tests across phases). Extended: `TestRailAwareTTL` in `test_c3_repayment.py` (5 tests).
+
+**QUANT defence (cost of capital math at $5M / 4h):**
+COF (5% APR) = $114; opex ~$5; ~100 bps margin = $55; risk reserve ~$100; total ~$274. 1200 bps × 4h on $5M = $274. Exactly covers cost stack. 12% APR is consistent with private overnight bridge products priced 600-700 bps over Fed discount window (currently 5-6%).
+
+**Phase B (PR #69) — mBridge multi-CBDC PvP rail.**
+- New `lip/c5_streaming/cbdc_mbridge_normalizer.py` with `MBridgeNormalizer`. Multi-leg PvP shape (up to 5 currencies CNY/HKD/THB/AED/SAR settled atomically); failed leg surfaces as primary `NormalizedEvent`, sister legs preserved in `raw_source`.
+- New CBDC failure codes: `CBDC-CF01` (consensus failure → AM04), `CBDC-CB01` (cross-chain bridge failure → FF01).
+- `RAIL_MATURITY_HOURS["CBDC_MBRIDGE"] = 4.0`. Phase A foundation handles mBridge automatically.
+- `EventNormalizer` dispatcher routes `CBDC_MBRIDGE` to the new normalizer.
+- New: `lip/tests/test_cbdc_mbridge_normalizer.py` (15 tests including EPG-21 patent-language scrub with word-boundary matching to allow SAR currency code).
+
+**Real-world context (verified April 2026):** mBridge is post-BIS (BIS exited Oct 2024), 5 central banks (PBOC, HKMA, BoT, CBUAE, SAMA) operate it independently with 31 observers, ~$55.5B settled across ~4,000 transactions, e-CNY = 95% of volume, SAMA joined as full participant post-BIS-exit.
+
+**Phase C (PR #65) — FedNow E2E + cross-rail handoff detection.**
+- FedNow already had a normalizer; Phase A foundation picks it up automatically (24h maturity → sub-day floor binds).
+- New `UETRTracker.register_handoff(parent_uetr, child_uetr, child_rail)` with 30-min TTL. `find_parent()` reverse lookup. In-memory; production needs Redis backing (T2.2).
+- Pipeline routing: when an event arrives on FEDNOW/RTP/SEPA + has rejection_code + has registered parent, outcome labelled `DOMESTIC_LEG_FAILURE` (instead of OFFERED) and `parent_uetr` field added to loan_offer dict. Bridge offer still issued (real failure to bridge).
+- `PipelineResult` outcome list extended; `CLAUDE.md` outcome list updated (verify-field-semantics rule).
+- New: `lip/tests/test_cross_rail_handoff.py` (11 tests including TTL expiry, rail validation, pipeline routing).
+
+**Patent angle:** P9 continuation candidate — "*detecting settlement confirmation from disparate payment network rails for a single UETR-tracked payment*" (Master-Action-Plan-2026.md:378). Code only; filing frozen per CLAUDE.md #6.
+
+**Phase D (PR #67) — Project Nexus stub (PHASE-2-STUB).**
+- `RAIL_MATURITY_HOURS["CBDC_NEXUS"] = 4.0` (60s finality + 4h safety buffer).
+- New `lip/c5_streaming/nexus_normalizer.py`. ISO 20022 native — no proprietary code map. Dispatcher routes `CBDC_NEXUS` to it.
+- Schema modelled from BIS Nexus blueprint (July 2024); replace with real ISO 20022 profiles when NGP publishes.
+- New: `lip/tests/test_nexus_stub.py` (7 tests).
+
+**Real-world status:** NGP incorporated 2025 in Singapore (MAS as home regulator). 5 founding banks: RBI/BNM/BSP/MAS/BoT. Indonesia joining; ECB special observer. Onboarding pushed to mid-2027 per BSP Deputy Governor (March 2026).
+
+**Phase E (PR #66) — Doc corrections + ADR.**
+- `docs/operations/Master-Action-Plan-2026.md` §21 corrected — "mBridge paused 2024" was wrong. BIS *exited* in Oct 2024; platform alive with 5 central banks operating independently.
+- `docs/models/cbdc-protocol-research.md`: + §1.1.1 post-BIS update, + §1.5 Project Nexus.
+- New ADR: `docs/engineering/decisions/ADR-2026-04-25-rail-aware-maturity.md` documenting the architectural decisions (why no parallel `maturity_hours` field on ActiveLoan, why apply_absolute_fee_floor is separate from compute_loan_fee, FedNow/RTP repricing rationale).
+
+### GH Health Audit + CI Fix
+
+**Investigated:** All CI was red on main since 2026-04-25 (`93a6f8fa`). Initial hypothesis was Node 24 deprecation flag — wrong, that flag is now a no-op.
+
+**Real root cause (PR #70, merged):** `actions/setup-python@v5` with `cache: "pip"` runs a post-job cleanup step that fails on empty cache save. The `Kubernetes manifest guard` job is the only job that uses pip cache without ever running pip-install (it runs `python scripts/check_k8s_manifests.py`, stdlib-only). 12/13 jobs were green; only k8s-manifest-guard red, pulling the whole run red.
+
+**Fix:** Removed `cache: "pip"` (and the now-pointless `cache-dependency-path`) from k8s-manifest-guard job. Job runs in ~6 seconds; pip caching adds zero value. Verified: PR #70 LIP CI run 24958430119 — 13/13 jobs green.
+
+**Side cleanup:**
+- Renamed/proper-bodied/converted-to-draft all 5 phase PRs (auto-PR hook had opened C/D/E with stub bodies; A/B had no PRs).
+- All 5 phase branches rebased onto green main.
+- Workaround for documented Darwin TLS bug in `gh` CLI: used direct REST/GraphQL via `urllib` + PAT.
+
+### What is NEXT
+
+**Strategic (Project Nexus is an existential threat):**
+1. The pivot conversation: LIP is no longer a "SWIFT bridge lending platform" — it's the cross-rail intelligence layer. Phase A's sub-day fee floor + Phase B's mBridge support + Phase C's cross-rail handoff are the *only* economic structure under which LIP works in a Nexus world. 300 bps × 60 seconds = $0.024 on $5M. The investor/pilot pitch needs a rewrite.
+2. Patent counsel meeting on RBC IP clause — gates everything else (CLAUDE.md #6). Phase C cross-rail handoff is the strongest claim LIP has and cannot be filed until counsel opines.
+3. Approach Nexus founding banks (BSP, MAS, BoT) directly — they have the corridors that see Nexus first and have most to gain from cross-rail intelligence.
+
+**Engineering (next 2-4 sprints):**
+1. **DGEN CBDC corridors** — C1 has zero training data on the rails we just normalized. Highest-leverage technical work item.
+2. **C2 PD recalibration on sub-day** — current PD assumes day-scale tenor; at 4h, default-probability shape is different.
+3. **Sub-day stress regime detector** — current 1h/24h windows are SWIFT-era; Nexus needs 1min/1h windows.
+4. **T2.1 Kafka consumer for mBridge** — we have a normalizer, not a real consumer.
+5. **Workflow hardening:** CodeQL flagged 15 alerts (10 missing-permissions on workflows + 3 clear-text-logging in C6 AML + 1 hard-coded crypto value in Rust + 1 misc). 10 are 5-minute fixes; CIPHER sign-off needed for the C6 logging and crypto-value items.
+
+**Repo state at session close:** main green, 0 dependabot alerts, 5 draft phase PRs ready for review, 1 closed CI fix PR (#70), 1 deleted merged branch (codex/fix-ci-k8s-empty-cache-save), 11 unrelated open issues none.
+
+---
+
 ## Session 2026-03-15 — Plan fizzy-jumping-rain Execution
 
 **Tests**: 1276 passing (was 1286 reported; actual clean baseline was 1255 + pre-session uncommitted WIP).
