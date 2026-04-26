@@ -18,6 +18,23 @@ CREDIT_TIER_3_MIN_BPS = 900   # lower boundary for Tier 3 (inclusive)
 # ── Fee parameters ────────────────────────────────────────────────────
 FEE_FLOOR_BPS: Final[Decimal]            = Decimal("300")    # 300 bps annualized floor (platform minimum - ALL loans)
 FEE_FLOOR_PER_7DAY_CYCLE: Final[Decimal] = Decimal("0.000575")  # 0.0575% per 7-day cycle
+
+# ── Sub-day fee floor framework (CBDC + FedNow + RTP) ────────────────────────
+# QUANT call (Claude, 2026-04-25): the 300 bps annualized floor was set assuming
+# day-scale loans. For sub-day rails (CBDC at 4h, FedNow/RTP at 24h), 300 bps
+# annualized * duration < 5% cost-of-funds * duration — the loan loses money
+# before opex. The 1200 bps subday floor is calibrated to cost of capital +
+# operational margin: at $5M / 4h, $5M * 0.12 * 4/8760 = $274, covering 5% COF
+# ($114) + opex (~$5) + ~100 bps margin ($55) + risk reserve (~$100). 12% APR
+# is consistent with private overnight bridge products priced 600-700 bps over
+# the Fed discount window (currently 5-6%).
+#
+# FEE_FLOOR_BPS (300 bps universal) is preserved unchanged per CLAUDE.md
+# non-negotiable #2; the sub-day floor is a TIGHTER floor that activates only
+# when rail maturity < SUBDAY_THRESHOLD_HOURS.
+FEE_FLOOR_BPS_SUBDAY: Final[Decimal] = Decimal("1200")  # tighter floor for sub-day rails
+FEE_FLOOR_ABSOLUTE_USD: Final[Decimal] = Decimal("25")  # operational floor
+SUBDAY_THRESHOLD_HOURS: Final[float] = 48.0             # boundary: maturity_hours < this -> SUBDAY floor
 # Warehouse eligibility threshold for SPV-funded loans (Phase 2/3). Loans priced below this
 # rate are routed to bank balance sheet (BPI earns IP royalty only). Loans at or above
 # this rate are warehouse-eligible and generate positive returns for BPI equity.
@@ -124,6 +141,7 @@ RAIL_MATURITY_HOURS: dict[str, float] = {
     "CBDC_ECNY": 4.0,                             # PBoC e-CNY
     "CBDC_EEUR": 4.0,                             # ECB experimental e-EUR
     "CBDC_SAND_DOLLAR": 4.0,                      # CBB Sand Dollar
+    "CBDC_MBRIDGE": 4.0,                          # BIS mBridge multi-CBDC PvP (1-3s finality + 4h buffer)
 }
 
 # ── Corridor buffer window ─────────────────────────────────────────────────────

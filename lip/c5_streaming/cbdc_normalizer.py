@@ -61,6 +61,11 @@ CBDC_FAILURE_CODE_MAP: dict[str, str] = {
     "CBDC-CRY02": "DS02",  # certificate chain error → OrderRejected
     # Network congestion
     "CBDC-NET01": "MS03",  # network congestion delay → NotSpecifiedReasonAgentGenerated
+    # Consensus and cross-chain bridge errors (Phase B — mBridge support).
+    # mBridge multi-CBDC PvP atomic settlement may fail at the consensus or
+    # bridge layer rather than at any individual leg's smart-contract layer.
+    "CBDC-CF01": "AM04",   # consensus not reached within finality window → settlement-failed analog
+    "CBDC-CB01": "FF01",   # cross-chain bridge failure → protocol mismatch (closest ISO analog)
 }
 
 
