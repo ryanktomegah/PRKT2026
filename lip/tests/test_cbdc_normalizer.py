@@ -311,6 +311,19 @@ class TestRailMaturity(unittest.TestCase):
 # EPG-20/21 patent language scrub
 # ---------------------------------------------------------------------------
 
+class TestMBridgeFailureCodes(unittest.TestCase):
+    """Phase B groundwork: consensus + cross-chain bridge failure codes."""
+
+    def test_cf01_maps_to_am04_settlement_failed(self):
+        # Consensus not reached -> closest ISO 20022 analog is AM04
+        # (settlement-amount problem / liquidity at the network level).
+        assert normalize_cbdc_failure_code("CBDC-CF01") == "AM04"
+
+    def test_cb01_maps_to_ff01_protocol_mismatch(self):
+        # Cross-chain bridge failure between mBridge participating ledgers.
+        assert normalize_cbdc_failure_code("CBDC-CB01") == "FF01"
+
+
 class TestPatentLanguageScrub(unittest.TestCase):
     """Verify no AML/SAR/OFAC/PEP terms leaked into module-level strings.
 
