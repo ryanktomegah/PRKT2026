@@ -256,6 +256,23 @@ class LIPPipeline:
                 total_latency_ms=total_ms,
             )
 
+        # Phase C — cross-rail handoff detection. If this event is a domestic-rail
+        # leg with a registered upstream SWIFT/cross-border parent UETR, AND it
+        # rejected, we surface a DOMESTIC_LEG_FAILURE outcome so downstream
+        # consumers (audit trail, P9 patent claim support) can detect the handoff.
+        # This does not yet re-route the bridge offer to the parent UETR — that
+        # requires a C7 payment_context schema change deferred to a future sprint.
+        # See Master-Action-Plan-2026.md:378 (P9 continuation hook). Code-only;
+        # filing frozen per CLAUDE.md non-negotiable #6.
+        _handoff_parent: Optional[str] = None
+        if event.rail and event.rail.upper() in ("FEDNOW", "RTP", "SEPA") and event.rejection_code:
+            _handoff_parent = self._uetr_tracker.find_parent(event.uetr)
+            if _handoff_parent:
+                logger.info(
+                    "Cross-rail handoff failure detected: child_uetr=%s rail=%s parent_uetr=%s",
+                    event.uetr, event.rail, _handoff_parent,
+                )
+
         # Fix (stress timing): Record corridor failure NOW — before C1/C7 — so the
         # stress detector's is_stressed() call inside C7 reflects this event.
         # Every non-retry event entering the pipeline is an underlying payment failure.
@@ -562,6 +579,11 @@ class LIPPipeline:
             "anomaly_flagged": anomaly_flagged,
             # P3 Platform Licensing: tenant_id for per-tenant decision log partitioning
             "tenant_id": tenant_id or "",
+            # Phase A: rail propagation for rail-aware maturity and sub-day fee floor.
+            # C7 reads payment_context["rail"] in _build_loan_offer to look up
+            # RAIL_MATURITY_HOURS and apply applicable_fee_floor_bps(maturity_hours).
+            "rail": event.rail,
+            "maturity_hours": self._derive_maturity_hours(event.rail, event.rejection_code),
         }
 
         try:
@@ -725,8 +747,16 @@ class LIPPipeline:
 
         total_ms = (time.perf_counter() - t_start) * 1_000.0
 
+        # Phase C — cross-rail handoff label. When the upstream SWIFT parent is
+        # registered, surface DOMESTIC_LEG_FAILURE instead of OFFERED so the
+        # decision log and downstream consumers can detect the handoff. The
+        # offer itself is preserved (the bridge still goes out).
+        _outcome_label = "DOMESTIC_LEG_FAILURE" if _handoff_parent else "OFFERED"
+        if _handoff_parent and isinstance(loan_offer, dict):
+            loan_offer = {**loan_offer, "parent_uetr": _handoff_parent}
+
         result = PipelineResult(
-            outcome="OFFERED",
+            outcome=_outcome_label,
             uetr=event.uetr,
             failure_probability=failure_probability,
             above_threshold=True,
@@ -1083,6 +1113,25 @@ class LIPPipeline:
             )
             return 0
 
+    def _derive_maturity_hours(
+        self, rail: str, rejection_code: Optional[str]
+    ) -> float:
+        """Return loan maturity in hours for a given rail and rejection class.
+
+        Sub-day rails (CBDC_*, FedNow, RTP) read directly from
+        RAIL_MATURITY_HOURS. Legacy rails fall through to the day-class
+        derivation × 24 for backward compatibility.
+
+        Phase A — used by payment_context to drive C7's sub-day fee floor
+        selection and C3's rail-aware TTL.
+        """
+        from lip.common.constants import RAIL_MATURITY_HOURS
+
+        rail_upper = (rail or "").upper()
+        if rail_upper in RAIL_MATURITY_HOURS:
+            return float(RAIL_MATURITY_HOURS[rail_upper])
+        return float(self._derive_maturity_days(rejection_code) * 24)
+
     def _derive_rejection_class(self, rejection_code: Optional[str]) -> str:
         """Derive the rejection class string from the ISO 20022 rejection code.
 
@@ -1131,15 +1180,24 @@ class LIPPipeline:
         if self._c3 is None:
             return
         try:
+            from lip.common.constants import RAIL_MATURITY_HOURS
+
             now_utc = datetime.now(tz=timezone.utc)
-            # GAP-09: Use business days for maturity so weekend failures
-            # don't expire before SWIFT settlement can be attempted.
-            jurisdiction = currency_to_jurisdiction(event.currency)
-            maturity_date = datetime.combine(
-                add_business_days(now_utc.date(), maturity_days, jurisdiction),
-                now_utc.time(),
-                tzinfo=timezone.utc,
-            )
+            rail_upper = (event.rail or "SWIFT").upper()
+            if rail_upper in RAIL_MATURITY_HOURS and RAIL_MATURITY_HOURS[rail_upper] < 24.0:
+                # Phase A: sub-day rails (CBDC 4h, etc.) use hour-granularity
+                # maturity. Business-day calendar doesn't apply to sub-day tenors.
+                maturity_hours = float(RAIL_MATURITY_HOURS[rail_upper])
+                maturity_date = now_utc + timedelta(hours=maturity_hours)
+            else:
+                # GAP-09: legacy day-scale rails use business days so weekend
+                # failures don't expire before SWIFT settlement can be attempted.
+                jurisdiction = currency_to_jurisdiction(event.currency)
+                maturity_date = datetime.combine(
+                    add_business_days(now_utc.date(), maturity_days, jurisdiction),
+                    now_utc.time(),
+                    tzinfo=timezone.utc,
+                )
             # Derive rejection class from the event's rejection code
             try:
                 rej_class = classify_rejection_code(event.rejection_code).value if event.rejection_code else RejectionClass.CLASS_B.value
@@ -1157,6 +1215,7 @@ class LIPPipeline:
                 funded_at=now_utc,
                 licensee_id=getattr(self._c7, "licensee_id", ""),
                 deployment_phase=loan_offer.get("deployment_phase", "LICENSOR"),
+                rail=rail_upper,   # Phase A — drives rail-aware TTL in C3
             )
             self._c3.register_loan(loan)
             logger.info(
