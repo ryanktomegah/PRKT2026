@@ -10,6 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Workflow-level minimum permissions. Per-job overrides may declare more
+# (Go build jobs already do). CodeQL `actions/missing-workflow-permissions`
+# closes when any explicit permissions block is present.
+permissions:
+  contents: read
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
