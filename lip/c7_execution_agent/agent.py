@@ -525,6 +525,21 @@ class ExecutionAgent:
         tiered_floor = int(compute_tiered_fee_floor(loan_amount))
         fee_bps = max(fee_bps, tiered_floor)
 
+        # Phase A: rail-aware maturity + sub-day fee floor.
+        # For sub-day rails (CBDC 4h, FedNow/RTP 24h), the 300 bps annualized
+        # floor doesn't cover 5% cost-of-funds × duration. The 1200 bps subday
+        # floor (FEE_FLOOR_BPS_SUBDAY) corrects this. See Phase A QUANT call.
+        from lip.c2_pd_model.fee import applicable_fee_floor_bps
+        from lip.common.constants import RAIL_MATURITY_HOURS
+
+        rail_upper = (payment_context.get("rail") or "SWIFT").upper()
+        if rail_upper in RAIL_MATURITY_HOURS:
+            maturity_hours = float(RAIL_MATURITY_HOURS[rail_upper])
+        else:
+            maturity_hours = float(int(payment_context.get("maturity_days", 7)) * 24)
+        subday_floor_bps = int(applicable_fee_floor_bps(maturity_hours))
+        fee_bps = max(fee_bps, subday_floor_bps)
+
         # GAP-17: Validate that the loan amount equals the original payment
         # amount the receiver is owed. ±$0.01 tolerance covers FX rounding.
         original_amt = Decimal(str(payment_context.get("original_payment_amount_usd", loan_amount)))
@@ -588,13 +603,25 @@ class ExecutionAgent:
         else:
             governing_law = law_for_jurisdiction(currency_to_jurisdiction(loan_currency))
 
+        # Phase A: surface rail + maturity_hours on the offer dict so downstream
+        # (C3 ActiveLoan, repayment monitoring, audit logs) can apply differential
+        # rail logic without re-deriving from rejection_class. For sub-day rails
+        # the existing maturity_days field is set to ceil(hours/24) for legacy
+        # schema compatibility (LoanOffer.maturity_days >= 1 constraint).
+        if rail_upper in RAIL_MATURITY_HOURS and maturity_hours < 24.0:
+            schema_maturity_days = 1   # sub-day → 1-day envelope for legacy validators
+        else:
+            schema_maturity_days = maturity_days
+
         return {
             "loan_id": loan_id,
             "uetr": uetr,
             "individual_payment_id": payment_context.get("individual_payment_id", ""),
             "loan_amount": str(capped),
             "fee_bps": fee_bps,
-            "maturity_days": maturity_days,
+            "maturity_days": schema_maturity_days,
+            "maturity_hours": maturity_hours,
+            "rail": rail_upper,
             "pd_score": pd,
             "lgd": payment_context.get("lgd", 0.45),
             "offered_at": datetime.now(tz=timezone.utc).isoformat(),

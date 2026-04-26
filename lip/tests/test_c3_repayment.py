@@ -393,3 +393,97 @@ class TestSettlementHandlers:
         registry = SettlementHandlerRegistry.create_default()
         for rail in SettlementRail:
             assert rail in registry._handlers
+
+
+# ─── Phase A: Rail-aware TTL on _claim_repayment ─────────────────────────────
+
+class TestRailAwareTTL:
+    """ActiveLoan.rail drives TTL calc for sub-day rails (CBDC, FedNow, RTP)."""
+
+    def _loan(self, **overrides) -> ActiveLoan:
+        # Build kwargs as Any so mypy accepts the **expansion across the
+        # mixed-type ActiveLoan signature. Without this, mypy infers
+        # dict[str, object] and rejects the call.
+        kwargs: dict = dict(
+            loan_id="L1",
+            uetr="UETR-1",
+            individual_payment_id="P1",
+            principal=Decimal("1000000"),
+            fee_bps=300,
+            maturity_date=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            rejection_class="CLASS_B",
+            corridor="USD_USD",
+            funded_at=datetime(2026, 4, 25, tzinfo=timezone.utc),
+        )
+        kwargs.update(overrides)
+        return ActiveLoan(**kwargs)
+
+    def test_active_loan_default_rail_is_swift(self):
+        loan = self._loan()
+        assert loan.rail == "SWIFT"
+
+    def test_active_loan_accepts_cbdc_rail(self):
+        loan = self._loan(rail="CBDC_ECNY")
+        assert loan.rail == "CBDC_ECNY"
+
+    def test_claim_repayment_uses_hour_ttl_for_cbdc_rail(self):
+        # CBDC_ECNY = 4h maturity. TTL = 4*3600 + 45*86400 = 14400 + 3888000 = 3902400 s.
+        captured: list = []
+
+        class _FakeRedis:
+            def set(self, key, value, ex=None, nx=None):
+                captured.append(ex)
+                return True
+
+        loop = RepaymentLoop(
+            monitor=MagicMock(),
+            repayment_callback=lambda _: None,
+            redis_client=_FakeRedis(),
+        )
+        ok = loop._claim_repayment(
+            uetr="UETR-CBDC-1", maturity_days=0, tenant_id="t1", rail="CBDC_ECNY"
+        )
+        assert ok is True
+        assert captured == [4 * 3600 + 45 * 86_400]
+
+    def test_claim_repayment_uses_day_ttl_for_legacy_rail(self):
+        # Legacy: maturity_days=7 + 45 days = 52 days = 4_492_800 s.
+        captured: list = []
+
+        class _FakeRedis:
+            def set(self, key, value, ex=None, nx=None):
+                captured.append(ex)
+                return True
+
+        loop = RepaymentLoop(
+            monitor=MagicMock(),
+            repayment_callback=lambda _: None,
+            redis_client=_FakeRedis(),
+        )
+        ok = loop._claim_repayment(
+            uetr="UETR-SWIFT-1", maturity_days=7, tenant_id="t1", rail="SWIFT"
+        )
+        assert ok is True
+        # SWIFT IS in RAIL_MATURITY_HOURS (1080h = 45 days). So TTL = 1080*3600 + 45*86400.
+        # = 3888000 + 3888000 = 7776000 s.
+        assert captured == [1080 * 3600 + 45 * 86_400]
+
+    def test_claim_repayment_unknown_rail_falls_back_to_maturity_days(self):
+        captured: list = []
+
+        class _FakeRedis:
+            def set(self, key, value, ex=None, nx=None):
+                captured.append(ex)
+                return True
+
+        loop = RepaymentLoop(
+            monitor=MagicMock(),
+            repayment_callback=lambda _: None,
+            redis_client=_FakeRedis(),
+        )
+        # rail=None and rail="UNKNOWN" both fall through to maturity_days legacy path.
+        ok = loop._claim_repayment(
+            uetr="UETR-LEGACY-1", maturity_days=7, tenant_id="t1", rail=None
+        )
+        assert ok is True
+        assert captured == [(7 + 45) * 86_400]
