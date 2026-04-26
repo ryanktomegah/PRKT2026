@@ -1,6 +1,7 @@
 """
 uetr_tracker.py — Retry detection for payment UETRs.
 GAP-04: Prevent double-funding when banks retry manual payments.
+Phase C: cross-rail handoff registration (SWIFT -> FedNow last-mile etc).
 """
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ import logging
 import threading
 import time
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 
@@ -19,6 +21,13 @@ _UETR_TTL_SECONDS: int = UETR_TTL_BUFFER_DAYS * 24 * 3600  # 45 days in seconds
 
 # Run cleanup every N calls to avoid O(n) cost on every call.
 _CLEANUP_INTERVAL = 1000
+
+# Phase C — cross-rail handoff TTL.
+# A SWIFT pacs.008 with US-domestic destination is typically forwarded via
+# FedNow last-mile within seconds. 30 minutes covers retry, network jitter,
+# and any reasonable processing delay. Beyond that window, the link is stale.
+_HANDOFF_TTL_MINUTES = 30
+_VALID_HANDOFF_RAILS: frozenset[str] = frozenset({"FEDNOW", "RTP", "SEPA"})
 
 
 class UETRTracker:
@@ -53,6 +62,10 @@ class UETRTracker:
         # (sending_bic, receiving_bic, currency) -> List[(amount, uetr, timestamp)]
         # We group by BIC pair + currency to enable efficient fuzzy amount matching.
         self._tuple_index: Dict[Tuple[str, str, str], List[Tuple[Decimal, str, float]]] = defaultdict(list)
+
+        # Phase C — cross-rail handoff index (child_uetr -> (parent_uetr, registered_at)).
+        # In-memory by default; production deployments should back with Redis (T2.2).
+        self._handoffs: Dict[str, Tuple[str, datetime]] = {}
 
     def is_retry(self, uetr: str, context: Optional[dict] = None) -> bool:
         """Return True if the UETR or an equivalent payment has been processed.
@@ -208,3 +221,65 @@ class UETRTracker:
         with self._lock:
             self._processed.clear()
             self._tuple_index.clear()
+            self._handoffs.clear()
+
+    # ── Phase C: cross-rail handoff tracking ───────────────────────────────
+
+    def register_handoff(
+        self,
+        parent_uetr: str,
+        child_uetr: str,
+        child_rail: str,
+        timestamp: Optional[datetime] = None,
+    ) -> None:
+        """Register a domestic-rail handoff for a cross-border UETR.
+
+        When a SWIFT pacs.008 indicates a US/EU/UK domestic destination, the
+        receiving correspondent bank may settle the last mile via a domestic
+        instant rail (FedNow, RTP, SEPA Instant). The domestic rail message
+        carries its own UETR (or end-to-end ID), distinct from the upstream
+        SWIFT UETR.
+
+        This method links the upstream (parent) and downstream (child) UETRs
+        so a domestic-leg failure can be routed to the parent for bridge
+        eligibility — addressing the cross-rail settlement detection gap
+        flagged in Master-Action-Plan-2026.md:378 (P9 continuation hook).
+
+        Patent angle: detecting settlement confirmation from disparate payment
+        network rails for a single UETR-tracked payment.
+
+        Args:
+            parent_uetr: Upstream cross-border UETR (typically SWIFT).
+            child_uetr: Downstream domestic-rail UETR / end-to-end ID.
+            child_rail: One of FEDNOW, RTP, SEPA.
+            timestamp: Override registration time (default: now). Used in tests.
+
+        Raises:
+            ValueError: child_rail is not a recognised handoff rail.
+        """
+        if child_rail.upper() not in _VALID_HANDOFF_RAILS:
+            raise ValueError(
+                f"child_rail must be one of {sorted(_VALID_HANDOFF_RAILS)}; "
+                f"got {child_rail!r}"
+            )
+        ts = timestamp or datetime.now(timezone.utc)
+        with self._lock:
+            self._handoffs[child_uetr] = (parent_uetr, ts)
+
+    def find_parent(
+        self, child_uetr: str, at: Optional[datetime] = None
+    ) -> Optional[str]:
+        """Reverse lookup: given a child UETR, return its parent if within TTL.
+
+        Returns None when no handoff is registered or when the registration
+        is older than _HANDOFF_TTL_MINUTES.
+        """
+        with self._lock:
+            entry = self._handoffs.get(child_uetr)
+        if entry is None:
+            return None
+        parent, registered_at = entry
+        now = at or datetime.now(timezone.utc)
+        if (now - registered_at) > timedelta(minutes=_HANDOFF_TTL_MINUTES):
+            return None
+        return parent

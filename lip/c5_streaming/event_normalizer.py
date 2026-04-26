@@ -456,6 +456,9 @@ class EventNormalizer:
         """
         upper = rail.upper()
 
+        if upper == "CBDC_MBRIDGE":
+            from lip.c5_streaming.cbdc_mbridge_normalizer import MBridgeNormalizer
+            return MBridgeNormalizer().normalize(msg)
         if upper.startswith("CBDC_"):
             from lip.c5_streaming.cbdc_normalizer import CBDCNormalizer
             return CBDCNormalizer().normalize(upper, msg)
