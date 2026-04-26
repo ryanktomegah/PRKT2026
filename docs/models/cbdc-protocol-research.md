@@ -34,6 +34,28 @@ commercial launch under BIS Innovation Hub governance.
 Bank of Thailand (digital baht), UAE Central Bank (digital dirham).
 Observers: Saudi Arabia, BIS member central banks.
 
+#### 1.1.1 Post-BIS Status Update (April 2026)
+
+In October 2024, BIS general manager Agustín Carstens announced that BIS would
+exit Project mBridge. **The platform did not shut down** — the 5 participating
+central banks (PBOC, HKMA, BoT, CBUAE, SAMA) continue to operate it
+independently. Saudi Arabia (SAMA) joined as a **full participant** post-exit
+(not just observer). As of early 2026, mBridge has settled approximately
+**$55.5 billion across ~4,000 cross-border transactions**, with e-CNY
+accounting for ~95% of volume. The platform has 31 observing members
+including the ECB, Reserve Bank of India, Bank of Korea, and Bank of France.
+
+**Strategic implication for LIP**: The "wait for production standards"
+posture from `Master-Action-Plan-2026.md §21` is partially overtaken by
+events — mBridge IS in production for participant central banks, even
+though it has not been formally declared "commercially launched." Building
+code support for the `CBDC_MBRIDGE` rail (Phase B of the 2026-04-25 sprint)
+is a defensible position. P9 patent code support is in place; filing remains
+frozen per CLAUDE.md non-negotiable #6.
+
+**Sources**: Atlantic Council CBDC Tracker; BIS Innovation Hub announcements;
+TradingView/Cointelegraph aggregation (Q1 2026).
+
 **Architecture**:
 - Shared distributed ledger: purpose-built mBridge Ledger (not Ethereum or existing DLT)
 - Atomic PvP (payment-vs-payment) settlement: eliminates settlement risk across currencies
@@ -96,6 +118,34 @@ Decision to build ("foundation" phase) announced 2024. Not yet operational.
 **LIP Implication**: GBP corridors (GBP/USD, EUR/GBP) would eventually see
 settlement via digital pound infrastructure. Sterling MPC constraints on corridor
 timing may change with on-chain settlement.
+
+### 1.5 Project Nexus / Nexus Global Payments (April 2026 update)
+
+**Status**: NGP incorporated 2025 in Singapore (MAS as home regulator).
+Onboarding pushed to **mid-2027** per BSP Deputy Governor Tangonan
+(March 2026 statement).
+
+**Founding banks**: Reserve Bank of India (RBI), Bank Negara Malaysia (BNM),
+Bangko Sentral ng Pilipinas (BSP), Monetary Authority of Singapore (MAS),
+Bank of Thailand (BoT). Indonesia joining; ECB special observer.
+
+**Architecture**:
+- ISO 20022 native — no proprietary failure-code map needed
+- 60-second cross-border instant payments
+- Multilateral hub eliminating bilateral PSP-to-PSP links
+- Connects participating domestic instant payment systems (UPI, DuitNow, InstaPay, FAST, PromptPay)
+
+**Operational status**:
+- CEO Andrew McCormack appointed; Nexus Technical Operator (NTO) procurement underway
+- ISO 20022 specs and rulebook expected during 2026
+
+**LIP Implication**: Reserved `CBDC_NEXUS` rail at 4h maturity in
+`RAIL_MATURITY_HOURS` (60s finality + 4h safety buffer). Stub normalizer
+in `lip/c5_streaming/nexus_normalizer.py` (PHASE-2-STUB). Real wiring
+when NGP publishes ISO 20022 profiles.
+
+**Reference**: Asian Banker, Manila Bulletin (March 2026), BIS Innovation Hub,
+NGP press releases (2025-2026).
 
 ---
 
