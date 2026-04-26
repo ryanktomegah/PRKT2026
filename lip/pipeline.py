@@ -562,6 +562,11 @@ class LIPPipeline:
             "anomaly_flagged": anomaly_flagged,
             # P3 Platform Licensing: tenant_id for per-tenant decision log partitioning
             "tenant_id": tenant_id or "",
+            # Phase A: rail propagation for rail-aware maturity and sub-day fee floor.
+            # C7 reads payment_context["rail"] in _build_loan_offer to look up
+            # RAIL_MATURITY_HOURS and apply applicable_fee_floor_bps(maturity_hours).
+            "rail": event.rail,
+            "maturity_hours": self._derive_maturity_hours(event.rail, event.rejection_code),
         }
 
         try:
@@ -1083,6 +1088,25 @@ class LIPPipeline:
             )
             return 0
 
+    def _derive_maturity_hours(
+        self, rail: str, rejection_code: Optional[str]
+    ) -> float:
+        """Return loan maturity in hours for a given rail and rejection class.
+
+        Sub-day rails (CBDC_*, FedNow, RTP) read directly from
+        RAIL_MATURITY_HOURS. Legacy rails fall through to the day-class
+        derivation × 24 for backward compatibility.
+
+        Phase A — used by payment_context to drive C7's sub-day fee floor
+        selection and C3's rail-aware TTL.
+        """
+        from lip.common.constants import RAIL_MATURITY_HOURS
+
+        rail_upper = (rail or "").upper()
+        if rail_upper in RAIL_MATURITY_HOURS:
+            return float(RAIL_MATURITY_HOURS[rail_upper])
+        return float(self._derive_maturity_days(rejection_code) * 24)
+
     def _derive_rejection_class(self, rejection_code: Optional[str]) -> str:
         """Derive the rejection class string from the ISO 20022 rejection code.
 
@@ -1131,15 +1155,24 @@ class LIPPipeline:
         if self._c3 is None:
             return
         try:
+            from lip.common.constants import RAIL_MATURITY_HOURS
+
             now_utc = datetime.now(tz=timezone.utc)
-            # GAP-09: Use business days for maturity so weekend failures
-            # don't expire before SWIFT settlement can be attempted.
-            jurisdiction = currency_to_jurisdiction(event.currency)
-            maturity_date = datetime.combine(
-                add_business_days(now_utc.date(), maturity_days, jurisdiction),
-                now_utc.time(),
-                tzinfo=timezone.utc,
-            )
+            rail_upper = (event.rail or "SWIFT").upper()
+            if rail_upper in RAIL_MATURITY_HOURS and RAIL_MATURITY_HOURS[rail_upper] < 24.0:
+                # Phase A: sub-day rails (CBDC 4h, etc.) use hour-granularity
+                # maturity. Business-day calendar doesn't apply to sub-day tenors.
+                maturity_hours = float(RAIL_MATURITY_HOURS[rail_upper])
+                maturity_date = now_utc + timedelta(hours=maturity_hours)
+            else:
+                # GAP-09: legacy day-scale rails use business days so weekend
+                # failures don't expire before SWIFT settlement can be attempted.
+                jurisdiction = currency_to_jurisdiction(event.currency)
+                maturity_date = datetime.combine(
+                    add_business_days(now_utc.date(), maturity_days, jurisdiction),
+                    now_utc.time(),
+                    tzinfo=timezone.utc,
+                )
             # Derive rejection class from the event's rejection code
             try:
                 rej_class = classify_rejection_code(event.rejection_code).value if event.rejection_code else RejectionClass.CLASS_B.value
@@ -1157,6 +1190,7 @@ class LIPPipeline:
                 funded_at=now_utc,
                 licensee_id=getattr(self._c7, "licensee_id", ""),
                 deployment_phase=loan_offer.get("deployment_phase", "LICENSOR"),
+                rail=rail_upper,   # Phase A — drives rail-aware TTL in C3
             )
             self._c3.register_loan(loan)
             logger.info(
