@@ -19,6 +19,12 @@ concurrency:
   group: deploy-staging-self-hosted
   cancel-in-progress: false
 
+# Workflow runs kubectl on a self-hosted runner. Repo-side it only needs
+# read access to checkout the manifests. The kubectl context is configured
+# from the runner's local kubeconfig — no GitHub-side write needed.
+permissions:
+  contents: read
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
