@@ -19,9 +19,12 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Union
 
 from lip.common.constants import (
+    FEE_FLOOR_ABSOLUTE_USD,
     FEE_FLOOR_BPS,
+    FEE_FLOOR_BPS_SUBDAY,
     FEE_FLOOR_PER_7DAY_CYCLE,  # noqa: F401 — re-exported for test consumers
     PLATFORM_ROYALTY_RATE,
+    SUBDAY_THRESHOLD_HOURS,
     WAREHOUSE_ELIGIBILITY_FLOOR_BPS,
 )
 from lip.p5_cascade_engine.constants import CASCADE_DISCOUNT_CAP
@@ -29,12 +32,40 @@ from lip.p5_cascade_engine.constants import CASCADE_DISCOUNT_CAP
 _DAYS_IN_YEAR: Decimal = Decimal("365")
 _BPS_DIVISOR: Decimal = Decimal("10000")
 
+# Default duration assumed by callers that don't specify maturity_hours.
+# Set to 7 days (CLASS_B legacy default) to preserve historical behaviour.
+_DEFAULT_MATURITY_HOURS: float = 7.0 * 24
+
+
+def is_subday_rail(maturity_hours: float) -> bool:
+    """Return True when a loan of this duration triggers the sub-day fee floor.
+
+    Boundary: maturity_hours < SUBDAY_THRESHOLD_HOURS (48h). Includes CBDC
+    rails (4h), FedNow (24h), RTP (24h). Excludes SWIFT/SEPA (1080h) and any
+    rail with maturity >= 48h.
+    """
+    return float(maturity_hours) < SUBDAY_THRESHOLD_HOURS
+
+
+def applicable_fee_floor_bps(maturity_hours: float) -> Decimal:
+    """Return the applicable annualized fee floor in bps for a given duration.
+
+    Sub-day rails (maturity_hours < SUBDAY_THRESHOLD_HOURS) get the tighter
+    FEE_FLOOR_BPS_SUBDAY (1200 bps); day-scale rails get FEE_FLOOR_BPS (300).
+
+    The 300 bps universal floor remains the floor of last resort per CLAUDE.md
+    non-negotiable #2; the sub-day floor is a *tighter* additional floor for
+    short-tenor loans whose 300-bps fee wouldn't cover cost of funds.
+    """
+    return FEE_FLOOR_BPS_SUBDAY if is_subday_rail(maturity_hours) else FEE_FLOOR_BPS
+
 
 def compute_fee_bps_from_el(
     pd: Decimal,
     lgd: Decimal,
     ead: Decimal,
     risk_free_rate: Decimal = Decimal("0.05"),
+    maturity_hours: float = _DEFAULT_MATURITY_HOURS,
 ) -> Decimal:
     """Derive ANNUALIZED fee in basis points from expected-loss components.
 
@@ -81,8 +112,11 @@ def compute_fee_bps_from_el(
     # Annualized expected-loss bps: PD * LGD * 10_000
     fee_bps = pd * lgd * _BPS_DIVISOR
 
-    # Apply platform floor (300 bps minimum - applies to ALL loans)
-    fee_bps = max(fee_bps, FEE_FLOOR_BPS)
+    # Apply rail-aware floor: 1200 bps for sub-day, 300 bps for day-scale.
+    # Sub-day rails (CBDC 4h, FedNow/RTP 24h) need the tighter floor to
+    # cover cost of capital — see is_subday_rail() docstring.
+    floor = applicable_fee_floor_bps(maturity_hours)
+    fee_bps = max(fee_bps, floor)
 
     return fee_bps.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
@@ -147,6 +181,29 @@ def compute_loan_fee(
 
     fee = loan_amount * (fee_bps / _BPS_DIVISOR) * (days / _DAYS_IN_YEAR)
     return fee.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def apply_absolute_fee_floor(fee_usd: Decimal) -> Decimal:
+    """Apply the FEE_FLOOR_ABSOLUTE_USD operational floor to a computed fee.
+
+    Returns max(fee_usd, FEE_FLOOR_ABSOLUTE_USD) for non-negative fees;
+    passes through unchanged for non-positive inputs (zero/negative fees
+    are not "real" loans — they're test fixtures or error states).
+
+    This is a SEPARATE function from compute_loan_fee() to preserve the
+    raw-math contract of the per-cycle formula (Architecture Spec C2 §9).
+    C7 calls this at offer-construction time to enforce the operational
+    floor before disbursing.
+
+    Below FEE_FLOOR_ABSOLUTE_USD ($25), per-loan opex (compute, monitoring,
+    signed pacs.008 disbursement message) dominates revenue. C7 should
+    decline rather than charge — but as a defence-in-depth backstop, this
+    function ensures any offer that does go out has at least the floor fee.
+    """
+    fee_usd = Decimal(str(fee_usd))
+    if fee_usd <= Decimal("0"):
+        return fee_usd  # preserve raw-math semantics for zero/negative
+    return max(fee_usd, FEE_FLOOR_ABSOLUTE_USD)
 
 
 def compute_platform_royalty(
