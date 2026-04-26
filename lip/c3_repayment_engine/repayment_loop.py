@@ -60,6 +60,10 @@ class ActiveLoan:
     funded_at: datetime
     licensee_id: str = ""
     deployment_phase: str = "LICENSOR"
+    # Phase A — drives rail-aware TTL in _claim_repayment. Values:
+    # SWIFT, SEPA, FEDNOW, RTP, CBDC_ECNY, CBDC_EEUR, CBDC_SAND_DOLLAR,
+    # CBDC_MBRIDGE, CBDC_NEXUS. Unknown rails fall back to maturity_days TTL.
+    rail: str = "SWIFT"
 
 
 class RepaymentTrigger(str, Enum):
@@ -249,7 +253,13 @@ class RepaymentLoop:
 
     # ── Repayment dispatch ────────────────────────────────────────────────────
 
-    def _claim_repayment(self, uetr: str, maturity_days: int, tenant_id: str = "") -> bool:
+    def _claim_repayment(
+        self,
+        uetr: str,
+        maturity_days: int,
+        tenant_id: str = "",
+        rail: Optional[str] = None,
+    ) -> bool:
         """Attempt to claim exclusive repayment rights for a UETR.
 
         Returns True if the claim succeeded (this instance should process the
@@ -258,12 +268,27 @@ class RepaymentLoop:
         Uses Redis SETNX when available; falls back to an in-memory set for
         single-process deployments.
 
-        TTL = maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS (days).
+        TTL semantics (Phase A):
+          - When ``rail`` is in RAIL_MATURITY_HOURS (SWIFT/SEPA/FEDNOW/RTP/CBDC_*):
+            TTL = rail's maturity_hours * 3600 + 45-day buffer in seconds.
+            This handles sub-day rails (CBDC 4h, FedNow 24h) without losing
+            precision in the day-int representation.
+          - Otherwise: TTL = (maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS) * 86_400.
+            Legacy fallback for callers that don't pass a rail.
         """
+        # Phase A: rail-aware TTL — preserves hour-precision for sub-day rails.
+        from lip.common.constants import RAIL_MATURITY_HOURS
+
+        rail_upper = (rail or "").upper()
+        if rail_upper in RAIL_MATURITY_HOURS:
+            maturity_hours = RAIL_MATURITY_HOURS[rail_upper]
+            ttl_seconds = int(maturity_hours * 3600 + _REDIS_REPAID_TTL_EXTRA_DAYS * 86_400)
+        else:
+            ttl_seconds = (maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS) * 86_400
+
         if self._redis is not None:
             try:
                 key = f"lip:{tenant_id}:repaid:{uetr}" if tenant_id else f"{_REDIS_REPAID_PREFIX}{uetr}"
-                ttl_seconds = (maturity_days + _REDIS_REPAID_TTL_EXTRA_DAYS) * 86_400
                 result = self._redis.set(key, "1", nx=True, ex=ttl_seconds)
                 if result is None:
                     logger.info(
@@ -346,7 +371,9 @@ class RepaymentLoop:
                 }
             # ACCEPT_PARTIAL: fall through — fee computed on settlement_amount below
 
-        if not self._claim_repayment(loan.uetr, maturity_days, tenant_id=loan.licensee_id):
+        if not self._claim_repayment(
+            loan.uetr, maturity_days, tenant_id=loan.licensee_id, rail=loan.rail
+        ):
             return {}
 
         now = _utcnow()
