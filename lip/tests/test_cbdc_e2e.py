@@ -222,3 +222,48 @@ class TestMBridgeE2E:
         assert result.loan_offer["rail"] == "CBDC_MBRIDGE"
         assert result.loan_offer["maturity_hours"] == 4.0
         assert result.loan_offer["fee_bps"] >= 1200  # sub-day floor binding
+
+
+# ---------------------------------------------------------------------------
+# Phase C — FedNow E2E (uses Phase A foundation; sub-day floor applies)
+# ---------------------------------------------------------------------------
+
+class TestFedNowE2E:
+    """FedNow at 24h maturity is a sub-day rail (24 < 48). The Phase A
+    sub-day floor applies — same machinery as CBDC, no new C7 logic needed.
+
+    Side effect documented in spec: existing FedNow loans previously priced
+    at 300 bps annualized are repriced at 1200 bps. This is a correction
+    (300 bps undercovers cost of funds at 24h tenor); no production FedNow
+    loans existed at the time of this change.
+    """
+
+    def test_fednow_event_produces_offer_with_24h_maturity(self):
+        pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
+        event = make_event(rejection_code="CURR", rail="FEDNOW", currency="USD",
+                           amount=Decimal("5000000.00"))
+        result = pipeline.process(event)
+        assert result.outcome == "OFFERED"
+        assert result.loan_offer is not None
+        assert result.loan_offer["rail"] == "FEDNOW"
+        assert result.loan_offer["maturity_hours"] == RAIL_MATURITY_HOURS["FEDNOW"]
+        assert result.loan_offer["maturity_hours"] == 24.0
+
+    def test_fednow_subday_floor_binds(self):
+        """FedNow at 24h -> sub-day floor (1200 bps) binds even though MockC2
+        returns 300 bps."""
+        pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
+        event = make_event(rejection_code="CURR", rail="FEDNOW", currency="USD",
+                           amount=Decimal("5000000.00"))
+        result = pipeline.process(event)
+        assert result.loan_offer["fee_bps"] >= 1200
+
+    def test_rtp_also_subday_floored(self):
+        """RTP at 24h gets the same treatment."""
+        pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
+        event = make_event(rejection_code="CURR", rail="RTP", currency="USD",
+                           amount=Decimal("5000000.00"))
+        result = pipeline.process(event)
+        assert result.loan_offer["rail"] == "RTP"
+        assert result.loan_offer["maturity_hours"] == 24.0
+        assert result.loan_offer["fee_bps"] >= 1200

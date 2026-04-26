@@ -256,6 +256,23 @@ class LIPPipeline:
                 total_latency_ms=total_ms,
             )
 
+        # Phase C — cross-rail handoff detection. If this event is a domestic-rail
+        # leg with a registered upstream SWIFT/cross-border parent UETR, AND it
+        # rejected, we surface a DOMESTIC_LEG_FAILURE outcome so downstream
+        # consumers (audit trail, P9 patent claim support) can detect the handoff.
+        # This does not yet re-route the bridge offer to the parent UETR — that
+        # requires a C7 payment_context schema change deferred to a future sprint.
+        # See Master-Action-Plan-2026.md:378 (P9 continuation hook). Code-only;
+        # filing frozen per CLAUDE.md non-negotiable #6.
+        _handoff_parent: Optional[str] = None
+        if event.rail and event.rail.upper() in ("FEDNOW", "RTP", "SEPA") and event.rejection_code:
+            _handoff_parent = self._uetr_tracker.find_parent(event.uetr)
+            if _handoff_parent:
+                logger.info(
+                    "Cross-rail handoff failure detected: child_uetr=%s rail=%s parent_uetr=%s",
+                    event.uetr, event.rail, _handoff_parent,
+                )
+
         # Fix (stress timing): Record corridor failure NOW — before C1/C7 — so the
         # stress detector's is_stressed() call inside C7 reflects this event.
         # Every non-retry event entering the pipeline is an underlying payment failure.
@@ -730,8 +747,16 @@ class LIPPipeline:
 
         total_ms = (time.perf_counter() - t_start) * 1_000.0
 
+        # Phase C — cross-rail handoff label. When the upstream SWIFT parent is
+        # registered, surface DOMESTIC_LEG_FAILURE instead of OFFERED so the
+        # decision log and downstream consumers can detect the handoff. The
+        # offer itself is preserved (the bridge still goes out).
+        _outcome_label = "DOMESTIC_LEG_FAILURE" if _handoff_parent else "OFFERED"
+        if _handoff_parent and isinstance(loan_offer, dict):
+            loan_offer = {**loan_offer, "parent_uetr": _handoff_parent}
+
         result = PipelineResult(
-            outcome="OFFERED",
+            outcome=_outcome_label,
             uetr=event.uetr,
             failure_probability=failure_probability,
             above_threshold=True,
