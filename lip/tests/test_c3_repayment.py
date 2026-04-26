@@ -401,7 +401,10 @@ class TestRailAwareTTL:
     """ActiveLoan.rail drives TTL calc for sub-day rails (CBDC, FedNow, RTP)."""
 
     def _loan(self, **overrides) -> ActiveLoan:
-        defaults = dict(
+        # Build kwargs as Any so mypy accepts the **expansion across the
+        # mixed-type ActiveLoan signature. Without this, mypy infers
+        # dict[str, object] and rejects the call.
+        kwargs: dict = dict(
             loan_id="L1",
             uetr="UETR-1",
             individual_payment_id="P1",
@@ -412,8 +415,8 @@ class TestRailAwareTTL:
             corridor="USD_USD",
             funded_at=datetime(2026, 4, 25, tzinfo=timezone.utc),
         )
-        defaults.update(overrides)
-        return ActiveLoan(**defaults)
+        kwargs.update(overrides)
+        return ActiveLoan(**kwargs)
 
     def test_active_loan_default_rail_is_swift(self):
         loan = self._loan()
