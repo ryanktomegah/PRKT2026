@@ -205,10 +205,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: |
-            requirements.txt
-            requirements-ml.txt
+          # No pip cache: this job runs check_k8s_manifests.py (stdlib only,
+          # no pip installs). With cache: "pip" the post-run cleanup step fails
+          # trying to save an empty cache, marking the whole job failed even
+          # though every actual check passed. (Same pattern as 446d04e tried
+          # to address; that fix only added cache-dependency-path which doesn't
+          # solve the empty-cache-save problem when no deps are ever installed.)
       - name: Validate Docker/Kubernetes wiring
         run: python scripts/check_k8s_manifests.py
 
