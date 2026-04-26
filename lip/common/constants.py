@@ -142,6 +142,7 @@ RAIL_MATURITY_HOURS: dict[str, float] = {
     "CBDC_EEUR": 4.0,                             # ECB experimental e-EUR
     "CBDC_SAND_DOLLAR": 4.0,                      # CBB Sand Dollar
     "CBDC_MBRIDGE": 4.0,                          # BIS mBridge multi-CBDC PvP (1-3s finality + 4h buffer)
+    "CBDC_NEXUS": 4.0,                            # NGP multilateral instant rail (60s finality + 4h buffer; PHASE-2-STUB)
 }
 
 # ── Corridor buffer window ─────────────────────────────────────────────────────
