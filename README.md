@@ -10,23 +10,41 @@ Real-time payment failure detection and automated bridge lending for corresponde
 
 ## What LIP Does
 
-When a cross-border SWIFT payment fails (ISO 20022 `pacs.002` rejection), LIP detects it in milliseconds, classifies the failure type, assesses the borrowing bank's credit risk, and conditionally offers a short-term bridge loan — all within a 94ms SLO. Banks license LIP as a technology platform; BPI does not hold deposits or make loans directly.
+When a cross-border payment fails on **any supported rail** (ISO 20022 `pacs.002` rejection on SWIFT/SEPA, proprietary status on FedNow/RTP, or CBDC-specific failure events), LIP detects it in milliseconds, normalises the failure into the canonical ISO 20022 taxonomy, classifies the failure type, assesses the borrowing bank's credit risk, and conditionally offers a short-term bridge loan — all within a 94ms SLO. Banks license LIP as a technology platform; BPI does not hold deposits or make loans directly.
+
+**Supported rails** (`lip/common/constants.py:RAIL_MATURITY_HOURS`):
+
+| Rail | Maturity buffer | Notes |
+|---|---|---|
+| `SWIFT` | 1080h (45 days) | Primary cross-border rail |
+| `SEPA` | 1080h (45 days) | EUR cross-border |
+| `FEDNOW` | 24h | US domestic instant — sub-day floor applies |
+| `RTP` | 24h | TCH instant — sub-day floor applies |
+| `CBDC_ECNY` | 4h | PBoC e-CNY |
+| `CBDC_EEUR` | 4h | ECB experimental e-EUR |
+| `CBDC_SAND_DOLLAR` | 4h | CBB Sand Dollar |
+| `CBDC_MBRIDGE` | 4h | BIS mBridge multi-CBDC PvP (5 currencies, atomic settlement) |
+| `CBDC_NEXUS` | 4h | NGP multilateral instant rail (PHASE-2-STUB; mid-2027 onboarding) |
 
 ---
 
 ## Architecture
 
 ```
-pacs.002 rejection
+pacs.002 / FedNow / RTP / SEPA / CBDC event
        │
        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  C5 Streaming          ISO 20022 normalisation, Kafka ingestion (Go)        │
+│  C5 Streaming          Multi-rail normalisation + Kafka ingestion           │
+│                          - EventNormalizer (SWIFT/FedNow/RTP/SEPA)          │
+│                          - CBDCNormalizer (e-CNY/e-EUR/Sand Dollar)         │
+│                          - MBridgeNormalizer (multi-leg PvP)                │
+│                          - NexusNormalizer (PHASE-2-STUB)                   │
 │  C6 AML/Velocity       Sanctions screening, velocity limits (Rust + Python) │
 │  C1 Failure Classifier GraphSAGE + TabTransformer + LightGBM failure pred.  │
 │  C4 Dispute Classifier LLM-based dispute detection (Qwen3-32B / Groq)       │
-│  C2 PD Model           Tiered structural PD + LGD + fee pricing             │
-│  C3 Repayment Engine   UETR polling, settlement monitoring (Rust FSM)       │
+│  C2 PD Model           Tiered structural PD + LGD + rail-aware fee pricing  │
+│  C3 Repayment Engine   Rail-aware TTL, UETR polling, settlement (Rust FSM)  │
 │  C7 Execution Agent    Loan execution, kill switch, Go gRPC router          │
 │  C8 License Manager    HMAC-SHA256 token enforcement (cross-cutting)        │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -46,24 +64,28 @@ pacs.002 rejection
       RETRY_BLOCKED,            // C7 retry-budget exhausted.
       AML_CHECK_UNAVAILABLE,    // C6 unavailable / fail-closed.
       SYSTEM_ERROR,             // unhandled exception.
+      DOMESTIC_LEG_FAILURE,     // Phase C: FedNow/RTP/SEPA leg failed with a
+                                //   registered upstream SWIFT parent UETR.
+                                //   Bridge offer issued + parent_uetr field
+                                //   added to loan_offer for cross-rail audit.
   }
        │ (only if FUNDED)
        ▼
   C3 Repayment Engine: UETR polling, settlement monitoring, repayment / default
 
-Source of truth for outcome strings: lip/pipeline_result.py:25-44
+Source of truth for outcome strings: lip/pipeline_result.py:23-44
 Source of truth for state machine: lip/common/state_machines.py:91-148
 ```
 
 | Component | Purpose | Key Tech |
 |-----------|---------|----------|
 | C1 — Failure Classifier | Predict payment failure probability | GraphSAGE, TabTransformer, LightGBM |
-| C2 — PD Model | Tiered PD/LGD + fee pricing | Merton/KMV, Damodaran, Altman Z' |
-| C3 — Repayment Engine | Settlement monitoring + auto-repayment | UETR polling, Rust FSM (PyO3) |
+| C2 — PD Model | Tiered PD/LGD + rail-aware fee pricing (sub-day floor) | Merton/KMV, Damodaran, Altman Z' |
+| C3 — Repayment Engine | Rail-aware TTL, settlement monitoring, auto-repayment | UETR polling, Rust FSM (PyO3) |
 | C4 — Dispute Classifier | Hard-block disputed payments | Qwen3-32B via Groq |
-| C5 — Streaming | ISO 20022 normalisation + ingestion | Kafka (Go consumer) |
+| C5 — Streaming | Multi-rail (SWIFT/SEPA/FedNow/RTP/5 CBDC) normalisation + Kafka ingest | Kafka (Go consumer) |
 | C6 — AML/Velocity | OFAC/EU sanctions + velocity limits | Rust velocity counters (PyO3) |
-| C7 — Execution Agent | Loan execution with safety controls | Go gRPC offer router, kill switch |
+| C7 — Execution Agent | Rail-aware loan execution + cross-rail handoff detection | Go gRPC offer router, kill switch |
 | C8 — License Manager | Technology licensing enforcement | HMAC-SHA256, boot validation |
 
 **Additional modules:** C9 (Settlement Predictor), P5 (Cascade Engine), P10 (Regulatory Data Product)
@@ -76,13 +98,19 @@ These values are **QUANT-locked** — never change without explicit QUANT sign-o
 
 | Constant | Value | Location |
 |----------|-------|----------|
-| Fee floor | 300 bps | `lip/common/constants.py` |
+| Fee floor (universal) | 300 bps | `lip/common/constants.py:FEE_FLOOR_BPS` |
+| Fee floor (sub-day rails) | 1200 bps | `lip/common/constants.py:FEE_FLOOR_BPS_SUBDAY` |
+| Operational fee floor (absolute) | $25 | `lip/common/constants.py:FEE_FLOOR_ABSOLUTE_USD` |
+| Sub-day rail boundary | < 48h maturity | `lip/common/constants.py:SUBDAY_THRESHOLD_HOURS` |
 | Maturity CLASS_A | 3 days | `lip/common/constants.py` |
 | Maturity CLASS_B | 7 days | `lip/common/constants.py` |
 | Maturity CLASS_C | 21 days | `lip/common/constants.py` |
+| CBDC rail maturity | 4 hours | `lip/common/constants.py:RAIL_MATURITY_HOURS` |
 | C1 decision threshold (τ★) | 0.110 | `lip/common/constants.py` |
 | Latency SLO | ≤ 94ms | `lip/common/constants.py` |
 | UETR TTL buffer | 45 days | `lip/common/constants.py` |
+
+**Rail-aware fee floor framework** (`docs/engineering/decisions/ADR-2026-04-25-rail-aware-maturity.md`): 300 bps annualised × 4h on $5M = $68, below 5% cost-of-funds capital cost ($114). The 1200 bps sub-day floor is calibrated to cost of capital + opex margin + risk reserve. Universal 300 bps floor is preserved unchanged; the sub-day floor is a *tighter, additive* floor that activates only when the rail's maturity is below 48h.
 
 ---
 
@@ -205,7 +233,7 @@ PRKT2026/
 │   ├── infrastructure/          ← Docker, Kubernetes, Helm, Grafana
 │   ├── integrity/               ← Structural integrity enforcement
 │   ├── risk/                    ← Portfolio risk utilities
-│   └── tests/                   ← 1284 tests, 92% coverage
+│   └── tests/                   ← 2,750 fast tests passing, 92% coverage
 │
 ├── scripts/                     ← Training, benchmarking, validation CLI
 │
@@ -244,9 +272,10 @@ See [`docs/legal/patent/`](docs/legal/patent/) for provisional specifications an
 ## Key Rules (Non-Negotiable)
 
 - **Never bridge compliance-hold payments** (EPG-19): DNOR, CNOR, RR01-RR04, AG01, LEGL are permanently blocked — AMLD6 Art.10 criminal liability applies.
-- **Fee floor is 300 bps** (QUANT authority): No code may produce a fee below this without explicit QUANT sign-off.
+- **Universal 300 bps fee floor** (QUANT authority): No code may produce a fee below 300 bps annualised. Sub-day rails (CBDC, FedNow, RTP) are subject to a *tighter* additional 1200 bps floor calibrated to cost of capital — see `ADR-2026-04-25-rail-aware-maturity.md`.
 - **Never commit AML typology patterns** (`c6_corpus_*.json`): CIPHER rule — generate fresh with dgen.
 - **Governing law from BIC, not currency** (EPG-14): `bic_to_jurisdiction()` uses BIC chars 4–5.
+- **Patent filing frozen** (CLAUDE.md non-negotiable #6): all P5/P9 continuation hooks are in code only, not filed, until counsel opines on RBC IP-assignment clause.
 
 ---
 

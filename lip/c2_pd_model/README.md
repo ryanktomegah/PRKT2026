@@ -66,18 +66,65 @@ per_cycle_fee = loan_amount × (fee_bps / 10_000) × (days_funded / 365)
 
 **DO NOT** apply `fee_bps` as a flat per-cycle rate. 300 bps annualised ≈ 0.0575% per 7-day cycle.
 
+## Sub-day fee floor framework (Phase A, 2026-04-25)
+
+Sub-day rails (CBDC at 4h, FedNow/RTP at 24h) need a *tighter* fee floor than the universal 300 bps because at sub-day tenor, 300 bps annualised doesn't cover bank cost of funds.
+
+**Math at $5M / 4h:** 300 bps × 4/8760 = $68 vs 5% COF capital cost = $114 — loss-making at universal floor.
+
+**`compute_fee_bps_from_el(maturity_hours=...)`** selects the binding floor via `applicable_fee_floor_bps()`:
+
+```
+applicable_fee_floor_bps(maturity_hours)
+  → FEE_FLOOR_BPS_SUBDAY (1200) if maturity_hours < 48h
+  → FEE_FLOOR_BPS (300)          otherwise
+```
+
+The two floors are **additive** — sub-day is a *tighter* floor, not a replacement. The universal 300 bps floor is preserved unchanged per CLAUDE.md non-negotiable #2.
+
+**`apply_absolute_fee_floor(fee_usd)`** is a *separate* helper (not embedded in `compute_loan_fee`) that enforces a $25 operational absolute floor at C7 offer-construction time. Keeping it separate preserves `compute_loan_fee`'s raw-math contract (Architecture Spec C2 §9) so edge-case tests (zero principal, negative inputs) still work.
+
+**Side effect:** existing FedNow / RTP loans (24h maturity) are now subject to the 1200 bps floor. This is a *correction* of pricing that previously under-recovered cost of funds; no production FedNow/RTP loans existed when the change was made.
+
+## ⚠️ Fee Formula Warning
+
+`fee_bps` is an **ANNUALISED** rate. The correct per-cycle calculation is:
+
+```
+per_cycle_fee = loan_amount × (fee_bps / 10_000) × (days_funded / 365)
+```
+
+**DO NOT** apply `fee_bps` as a flat per-cycle rate. 300 bps annualised ≈ 0.0575% per 7-day cycle.
+
 ## Canonical Constants Used
 
 | Constant | Value | Significance |
 |----------|-------|-------------|
-| `FEE_FLOOR_BPS` | **300** | Minimum annualised fee — **QUANT sign-off required** |
+| `FEE_FLOOR_BPS` | **300** | Universal annualised floor — applies to ALL loans (CLAUDE.md non-negotiable #2) |
+| `FEE_FLOOR_BPS_SUBDAY` | **1200** | Tighter floor for sub-day rails (maturity < 48h). Calibrated to cost of capital. |
+| `FEE_FLOOR_ABSOLUTE_USD` | **25** | Operational absolute floor applied via `apply_absolute_fee_floor()` at C7 |
+| `SUBDAY_THRESHOLD_HOURS` | **48.0** | Boundary: maturity_hours < this → SUBDAY floor |
 | `FEE_FLOOR_PER_7DAY_CYCLE` | `0.000575` | 0.0575% per 7-day cycle (= 300 bps / 365 × 7) |
+| `WAREHOUSE_ELIGIBILITY_FLOOR_BPS` | **800** | Warehouse-eligibility floor for SPV-funded loans (Phase 2/3) |
 | `MATURITY_CLASS_A_DAYS` | 3 | Class A rejection codes (e.g., technical errors) |
 | `MATURITY_CLASS_B_DAYS` | 7 | Class B rejection codes (default) |
 | `MATURITY_CLASS_C_DAYS` | 21 | Class C rejection codes (complex disputes) |
+| `RAIL_MATURITY_HOURS["CBDC_*"]` | **4.0** | All CBDC-class rails — 4h buffer over programmatic finality |
+
+## Key fee-math API
+
+| Function | Purpose |
+|---|---|
+| `compute_fee_bps_from_el(pd, lgd, ead, maturity_hours=...)` | Annualised fee bps from EL, with rail-aware floor selection |
+| `compute_loan_fee(amount, fee_bps, days_funded)` | Raw per-cycle formula — preserved exactly for spec compliance |
+| `apply_absolute_fee_floor(fee_usd)` | C7-side enforcement of $25 operational floor |
+| `is_subday_rail(maturity_hours)` | Boolean: True iff maturity_hours < SUBDAY_THRESHOLD_HOURS |
+| `applicable_fee_floor_bps(maturity_hours)` | Returns the binding floor in bps |
+| `compute_tiered_fee_floor(loan_amount)` | Tier-based floor (defence-in-depth in C7) |
 
 ## Spec References
 
 - Architecture Spec v1.2 Appendix A — fee formula and 300 bps floor
 - Architecture Spec v1.2 §4.3 — `PDRequest` / `PDResponse` API schemas
+- ADR-2026-04-25-rail-aware-maturity.md — sub-day fee floor design + cost-of-capital math
 - SR 11-7 §4.4 — Tiered model validation requirements

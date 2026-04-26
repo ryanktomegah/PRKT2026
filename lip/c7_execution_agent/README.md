@@ -33,6 +33,38 @@ C7 is **Step 4** of Algorithm 1. It is the last gate before a loan offer is deli
 6. Deliver offer                          → outcome: OFFER / DECLINE / HALT
 ```
 
+## Rail-aware offer construction (Phase A, 2026-04-25)
+
+`_build_loan_offer(payment_context, pd, fee_bps)` enforces three layered fee floors as defence-in-depth:
+
+```
+Layer 1 — tiered floor      compute_tiered_fee_floor(loan_amount)   [<$500K → 500 bps, $500K-$2M → 400 bps, ≥$2M → 300 bps]
+Layer 2 — sub-day floor     applicable_fee_floor_bps(maturity_hours) [<48h → 1200 bps; ≥48h → 300 bps]
+Layer 3 — operational floor apply_absolute_fee_floor(fee_usd)        [≥ $25 absolute]
+```
+
+Maturity is read from `RAIL_MATURITY_HOURS[payment_context["rail"]]`:
+
+```
+rail_upper = (payment_context.get("rail") or "SWIFT").upper()
+if rail_upper in RAIL_MATURITY_HOURS:
+    maturity_hours = RAIL_MATURITY_HOURS[rail_upper]   # CBDC=4h, FedNow/RTP=24h, SWIFT/SEPA=1080h
+else:
+    maturity_hours = float(maturity_days * 24)         # legacy fallback
+maturity_date = funded_at + timedelta(hours=maturity_hours)
+```
+
+The constructed offer dict carries:
+- `rail` — the rail the offer was built for
+- `maturity_hours` — exact hour-precision duration
+- `maturity_days` — `ceil(hours/24)` for legacy schema validators (`LoanOffer.maturity_days >= 1`)
+
+Rail-specific FX policy is unchanged: `FXRiskConfig.is_supported(payment_currency)` continues to gate. CNY/EUR/BSD CBDC bridges work when the licensee bank's `bank_base_currency` matches the CBDC.
+
+## Cross-rail handoff (Phase C, 2026-04-25)
+
+When a FedNow/RTP/SEPA event has a registered upstream SWIFT parent UETR (`UETRTracker.find_parent`), pipeline.py emits `DOMESTIC_LEG_FAILURE` instead of `OFFERED` and adds `parent_uetr` to the loan_offer dict for cross-rail audit. C7's offer construction is unchanged; the outcome label is set in `pipeline.py` after C7 returns. Patent angle: P9 continuation candidate; filing frozen per CLAUDE.md non-negotiable #6.
+
 ## Regulatory Obligations
 
 | Regulation | Requirement | Implementation |

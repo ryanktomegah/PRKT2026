@@ -2,31 +2,50 @@
 
 ## Role in Pipeline
 
-C5 is the **ingest and normalisation layer**. It ingests raw payment events from multiple payment rails (SWIFT, FedNow, RTP, SEPA) via Kafka, normalises them into the canonical `NormalizedEvent` format, and routes them to the appropriate downstream Flink jobs.
+C5 is the **ingest and normalisation layer**. It ingests raw payment events from **9 supported rails** (SWIFT, SEPA, FedNow, RTP, plus 5 CBDC-class rails) via Kafka, normalises them into the canonical `NormalizedEvent` format, and routes them to the appropriate downstream Flink jobs.
 
 ## Algorithm 1 Position
 
 ```
-pacs.002 / FedNow / RTP / SEPA
+SWIFT pacs.002 / FedNow / RTP / SEPA / CBDC event (e-CNY/e-EUR/Sand Dollar/mBridge/Nexus)
         │
         ▼
-  [C5: Kafka worker]
-        │  normalise to NormalizedEvent
+  [C5: EventNormalizer dispatcher]
+        │  routes by rail tag → rail-specific normalizer
+        │  normalise to canonical NormalizedEvent (with rail field)
         ▼
   C1 (via Flink PAYMENT_SCORING job)
 ```
 
-C5 is **Step 0 / pre-Step 1** of Algorithm 1 — it produces the `NormalizedEvent` consumed by the pipeline.
+C5 is **Step 0 / pre-Step 1** of Algorithm 1 — it produces the `NormalizedEvent` consumed by the pipeline. The `rail` field on the event drives rail-aware maturity in C3 and the sub-day fee floor in C2/C7 (see ADR-2026-04-25-rail-aware-maturity).
 
 ## Key Classes
 
 | Class / Module | File | Description |
 |---------------|------|-------------|
-| `EventNormalizer` | `event_normalizer.py` | Multi-rail message parser (SWIFT/FedNow/RTP/SEPA) |
+| `EventNormalizer` | `event_normalizer.py` | Multi-rail dispatcher + in-class SWIFT/FedNow/RTP/SEPA normalisers |
+| `CBDCNormalizer` | `cbdc_normalizer.py` | Retail CBDC normaliser (e-CNY, e-EUR experimental, Sand Dollar) |
+| `MBridgeNormalizer` | `cbdc_mbridge_normalizer.py` | BIS mBridge multi-leg PvP atomic-settlement (5 currencies: CNY/HKD/THB/AED/SAR) |
+| `NexusNormalizer` | `nexus_normalizer.py` | Project Nexus / NGP stub (PHASE-2-STUB; mid-2027 onboarding) |
+| `CBDC_FAILURE_CODE_MAP` | `cbdc_normalizer.py` | CBDC-specific failure codes → ISO 20022 (16 mappings, P5 patent claim 3) |
+| `UETRTracker` (cross-rail) | `lip/common/uetr_tracker.py` | Phase C: SWIFT → FedNow handoff registry, 30-min TTL |
 | `KafkaConfig` | `kafka_config.py` | Producer/consumer configuration with EOS settings |
 | `RedisConfig` | `redis_config.py` | Cluster config + key schema definitions |
 | `FlinkJobRegistry` | `flink_jobs.py` | Job registry with configs and routing handlers |
-| `KafkaTopic` | `kafka_config.py` | Enum of all 9 LIP topics |
+| `KafkaTopic` | `kafka_config.py` | Enum of all 10 LIP topics (incl. `lip.stress.regime`) |
+
+### Rail dispatcher routing (`event_normalizer.EventNormalizer.normalize`)
+
+```
+upper = rail.upper()
+if upper == "CBDC_MBRIDGE":   → MBridgeNormalizer (multi-leg PvP)
+if upper == "CBDC_NEXUS":     → NexusNormalizer (PHASE-2-STUB)
+if upper.startswith("CBDC_"): → CBDCNormalizer (retail rails)
+elif upper in {"SWIFT","SEPA","FEDNOW","RTP"}: → in-class handler
+else:                          → ValueError ("Unknown rail")
+```
+
+Unknown rails fail-closed with `ValueError` — never silently default.
 
 ## Kafka Topic Map
 

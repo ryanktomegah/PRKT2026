@@ -47,7 +47,7 @@ The pipeline short-circuits to a terminal outcome on dispute / AML / compliance 
 | C2 | PD model + fee pricing | Merton/KMV + Damodaran + Altman Z' (LightGBM) |
 | C3 | Repayment FSM (post-FUNDED) | UETR polling + settlement monitoring (Rust via PyO3) |
 | C4 | Dispute classifier | Qwen3-32B via Groq with negation-aware prefilter |
-| C5 | Streaming ingestion | Kafka + ISO 20022 normalisation (Go consumer) |
+| C5 | Streaming ingestion | Kafka + 9-rail normalisation (SWIFT/SEPA/FedNow/RTP + 5 CBDC: e-CNY, e-EUR, Sand Dollar, mBridge multi-leg PvP, Nexus stub). Go consumer for SWIFT, Python normalizers for everything else. |
 | C6 | AML / velocity | Sanctions + velocity counters (Rust via PyO3) |
 | C7 | Execution agent (offer generation) | Loan execution + kill switch (Go gRPC router) |
 | C8 | License manager | HMAC-SHA256 token enforcement (cross-cutting) |
@@ -67,7 +67,7 @@ These never relax — even with explicit instruction to do so, push back and exp
    - `MS03` and `NARR` are CLASS_B (systemic delays, 7-day maturity), **not** BLOCK — they may be bridged. The narrative point that banks may use ambiguous codes like MS03/NARR to comply with FATF R.21 tipping-off rules is a separate compliance-visibility *limit*, not a code-classification rule.
    Defense-in-depth: Layer 1 in `rejection_taxonomy.py` (BLOCK class, pipeline short-circuit) + Layer 2 in `agent.py` (`_COMPLIANCE_HOLD_CODES`, C7 gate). Bypassing the EPG-19 subset triggers AMLD6 Art.10 criminal liability for the bank. Source: EPG-19, `lip/common/block_codes.json`.
 
-2. **Fee floor is 300 bps.** No code path may produce a fee below this. Located: `lip/common/constants.py`. Below this, the math doesn't work. Lower floors require a full pricing redesign, not a constant change.
+2. **Fee floor is 300 bps universal — never lowered.** No code path may produce a fee below 300 bps annualised. Located: `lip/common/constants.py:FEE_FLOOR_BPS`. Below this, the math doesn't work. Lower floors require a full pricing redesign, not a constant change. **Sub-day rails (CBDC/FedNow/RTP) carry an additional, *tighter* 1200 bps floor** (`FEE_FLOOR_BPS_SUBDAY`, Phase A 2026-04-25) and a $25 absolute operational floor (`FEE_FLOOR_ABSOLUTE_USD`) — these are *additive*, not replacements. The universal 300 bps floor is preserved unchanged. See `docs/engineering/decisions/ADR-2026-04-25-rail-aware-maturity.md` for cost-of-capital math.
 
 3. **AML typology patterns NEVER commit.** `c6_corpus_*.json` is gitignored — generate fresh via `PYTHONPATH=. python -m lip.dgen.generate_all`. Patterns in version control are a circumvention roadmap.
 
@@ -91,14 +91,21 @@ Change requires explicit founder sign-off — these are business decisions, not 
 
 | Constant | Value | Location |
 |----------|-------|----------|
-| Fee floor | 300 bps | `lip/common/constants.py` |
+| Fee floor (universal) | 300 bps | `lip/common/constants.py:FEE_FLOOR_BPS` |
+| Fee floor (sub-day rails, additive) | 1200 bps | `lip/common/constants.py:FEE_FLOOR_BPS_SUBDAY` |
+| Operational fee floor (absolute) | $25 | `lip/common/constants.py:FEE_FLOOR_ABSOLUTE_USD` |
+| Sub-day boundary | < 48h | `lip/common/constants.py:SUBDAY_THRESHOLD_HOURS` |
 | Maturity CLASS_A | 3 days | same |
 | Maturity CLASS_B | 7 days | same |
 | Maturity CLASS_C | 21 days | same |
 | Maturity BLOCK | 0 days | same |
+| Rail maturity (CBDC_*) | 4h | `lip/common/constants.py:RAIL_MATURITY_HOURS` |
+| Rail maturity (FedNow/RTP) | 24h | same |
+| Rail maturity (SWIFT/SEPA) | 1080h (45d) | same |
 | C1 decision threshold (τ★) | 0.110 | same |
 | Latency SLO | ≤ 94ms | same |
 | UETR TTL buffer | 45 days | same |
+| Cross-rail handoff TTL | 30 minutes | `lip/common/uetr_tracker.py:_HANDOFF_TTL_MINUTES` |
 | Salt rotation | 365 days, 30-day overlap | same |
 | AML caps (`aml_dollar_cap_usd`, `aml_count_cap`) | default sentinel `_AML_CAP_UNSET` (-1) — must be set explicitly per-token at boot; `LicenseBootValidator` rejects tokens with the sentinel. `0` means "unlimited" (valid, explicit); `-1` means "unset" (rejected). | EPG-16/17, B3-03 fix in `lip/c8_license_manager/license_token.py:42-87` |
 

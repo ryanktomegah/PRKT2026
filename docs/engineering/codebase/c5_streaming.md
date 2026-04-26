@@ -100,11 +100,88 @@ Malformed events raise `MalformedEventError` which the Kafka consumer commits to
 
 ---
 
-## CBDC normaliser (`cbdc_normalizer.py`)
+## CBDC + Project Nexus normalisers (Phases A-E, 2026-04-25)
 
-Multi-CBDC support — mBridge (BIS), Hong Kong e-HKD, digital ECB euro, Project Dunbar. Each CBDC rail has its own message format; `CBDCNormalizer` adapts them all into the same `NormalizedEvent` shape.
+Multi-CBDC support is **end-to-end wired** — events flow from raw rail message through dispatcher → rail-specific normaliser → `NormalizedEvent` → pipeline → rail-aware C7 offer construction. Five CBDC-class rails are supported across three normalizer modules:
 
-Research status — wired for proof-of-concept integration. Production use requires per-CBDC signed integration agreements which don't yet exist. The adapter tests (`test_c5_streaming.py::test_mbridge_normalisation`) validate the mapping shape only, not live CBDC traffic.
+| Rail | Module | Class | Maturity buffer | Real-world status (April 2026) |
+|---|---|---|---|---|
+| `CBDC_ECNY` | `cbdc_normalizer.py` (`CBDCNormalizer.normalize_ecny`) | retail | 4h | PBoC e-CNY |
+| `CBDC_EEUR` | `cbdc_normalizer.py` (`CBDCNormalizer.normalize_eeur`) | retail | 4h | ECB experimental e-EUR |
+| `CBDC_SAND_DOLLAR` | `cbdc_normalizer.py` (`CBDCNormalizer.normalize_sand_dollar`) | retail | 4h | CBB Sand Dollar |
+| `CBDC_MBRIDGE` | `cbdc_mbridge_normalizer.py` (`MBridgeNormalizer`) | wholesale multi-leg PvP | 4h | Post-BIS-exit (Oct 2024); 5 central banks operate; ~$55.5B settled, e-CNY = 95% of volume |
+| `CBDC_NEXUS` | `nexus_normalizer.py` (`NexusNormalizer`) | wholesale instant | 4h | NGP Singapore-incorporated 2025; **PHASE-2-STUB** — onboarding mid-2027 per BSP |
+
+### Failure-code mapping (`cbdc_normalizer.CBDC_FAILURE_CODE_MAP`)
+
+CBDC-specific codes are translated to ISO 20022 equivalents at normalisation time so downstream components (C7 compliance gate, rejection taxonomy, C1 classifier) operate on a uniform code space without CBDC-specific branching:
+
+| CBDC code | ISO 20022 | Class | Meaning |
+|---|---|---|---|
+| `CBDC-SC01` | `AC01` | A | Smart-contract execution failure |
+| `CBDC-SC02` | `AC04` | A | Smart-contract timeout |
+| `CBDC-SC03` | `ED05` | A | Contract validation failure |
+| `CBDC-KYC01` | `RR01` | **BLOCK** | KYC identity verification failure |
+| `CBDC-KYC02` | `RR02` | **BLOCK** | KYC address verification failure |
+| `CBDC-LIQ01` | `AM04` | B | Liquidity pool insufficient |
+| `CBDC-LIQ02` | `AM02` | B | Amount exceeds wallet limit |
+| `CBDC-FIN01` | `TM01` | B | Finality timeout |
+| `CBDC-FIN02` | `DT01` | B | Settlement date mismatch |
+| `CBDC-INT01` | `FF01` | A | Interoperability bridge failure |
+| `CBDC-INT02` | `NARR` | C | Cross-chain protocol error (no direct ISO equivalent) |
+| `CBDC-CRY01` | `DS02` | A | Signature validation failure |
+| `CBDC-CRY02` | `DS02` | A | Certificate chain error |
+| `CBDC-NET01` | `MS03` | C | Network congestion delay |
+| `CBDC-CF01` | `AM04` | B | Consensus not reached (mBridge) |
+| `CBDC-CB01` | `FF01` | A | Cross-chain bridge failure (mBridge) |
+
+EPG-20/21: KYC failures map to the *generic* `RR01`/`RR02` codes — **not** to AML/SAR-tagged values. The CBDC normalizer source is patent-language-scrubbed.
+
+### mBridge multi-leg PvP
+
+mBridge transactions can settle **up to 5 currency legs atomically** (CNY/HKD/THB/AED/SAR). On failure, `MBridgeNormalizer` selects the failed leg as the primary `NormalizedEvent`; sister legs and bridge metadata (`consensus_round`, `finality_seconds`, `atomic_settlement_id`) are preserved in `raw_source` for forensic / regulatory reporting.
+
+Selection rule:
+1. If `msg['failed_leg_index']` is present and in range, use that leg.
+2. Else, find the first leg with `status == 'FAILED'`.
+3. If no failed leg, raise `ValueError` (atomic PvP success has no bridge-lending implications).
+
+### Schema status
+
+- e-CNY / e-EUR / Sand Dollar: schemas modelled from public PBoC / ECB / CBB documentation; tests cover the modelled shape.
+- mBridge: schema modelled from BIS Innovation Hub published material — the formal production message schema has not been released. Module docstring documents this; swap when published.
+- Nexus: `PHASE-2-STUB`. ISO 20022 native — uses standard `ExternalStatusReason1Code` codes (no proprietary map needed). Schema modelled from BIS Nexus blueprint (July 2024); replace with formal NGP ISO 20022 profile when published (expected during 2026).
+
+### Dispatcher routing (`event_normalizer.EventNormalizer.normalize`)
+
+```python
+upper = rail.upper()
+if upper == "CBDC_MBRIDGE":  → MBridgeNormalizer
+if upper == "CBDC_NEXUS":    → NexusNormalizer
+if upper.startswith("CBDC_"):→ CBDCNormalizer
+else:                        → in-class SWIFT/FedNow/RTP/SEPA handlers
+```
+
+Unknown rails raise `ValueError` — never silently fall through.
+
+### Cross-rail handoff detection (Phase C)
+
+`UETRTracker.register_handoff(parent_uetr, child_uetr, child_rail)` links an upstream cross-border SWIFT UETR to a downstream domestic-rail UETR (FedNow/RTP/SEPA) with a 30-minute TTL. When the child fails, `pipeline.process()` emits a `DOMESTIC_LEG_FAILURE` outcome and adds `parent_uetr` to the loan_offer dict for cross-rail audit. Patent angle: P9 continuation candidate ("detecting settlement confirmation from disparate payment network rails for a single UETR-tracked payment"). See `Master-Action-Plan-2026.md:378`. Filing remains frozen per CLAUDE.md non-negotiable #6.
+
+### Tests
+
+- `test_cbdc_normalizer.py` — 38 tests (per-rail normalisation, code mapping, dispatcher, EPG-21 patent-language scrub)
+- `test_cbdc_mbridge_normalizer.py` — 15 tests (multi-leg parsing, failed-leg selection, dispatcher, patent-language scrub with currency-code allowance)
+- `test_nexus_stub.py` — 7 tests (smoke + dispatcher routing)
+- `test_cross_rail_handoff.py` — 11 tests (TTL expiry, rail validation, pipeline routing for `DOMESTIC_LEG_FAILURE`)
+- `test_cbdc_e2e.py` — 12 tests (pipeline E2E for e-CNY, e-EUR, Sand Dollar, mBridge, FedNow, regression on SWIFT)
+
+### Spec + ADR
+
+- Design: `docs/superpowers/specs/2026-04-25-cbdc-normalizer-end-to-end-design.md`
+- Plan: `docs/superpowers/plans/2026-04-25-cbdc-normalizer-end-to-end.md`
+- ADR: `docs/engineering/decisions/ADR-2026-04-25-rail-aware-maturity.md`
+- Research: `docs/models/cbdc-protocol-research.md`
 
 ---
 

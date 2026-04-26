@@ -24,25 +24,48 @@ Step 2 — C4 ∥ C6 (parallel, ThreadPoolExecutor max_workers=2)
 
 Step 3 — C2 (PD Model)
   Input:  payment_dict, borrower_dict
-  Output: pd_score, fee_bps (ANNUALISED, floor 300 bps), tier, shap_values_c2
+  Output: pd_score, fee_bps (ANNUALISED, rail-aware floor), tier, shap_values_c2
 
-  maturity_days = _derive_maturity_days(rejection_code)
+  Rail-aware maturity (Phase A, 2026-04-25):
+    payment_context["rail"] is set by pipeline._derive_maturity_hours(event.rail).
+    For known rails in RAIL_MATURITY_HOURS (SWIFT/SEPA/FEDNOW/RTP/CBDC_*),
+    maturity_hours is read directly. Sub-day rails (< 48h) trigger the
+    1200 bps FEE_FLOOR_BPS_SUBDAY floor; day-scale rails use the universal
+    300 bps FEE_FLOOR_BPS floor. Both floors are additive — neither lowers
+    the universal floor.
+
+  maturity_days = _derive_maturity_days(rejection_code) [legacy fallback]
     Class A → 3 days, Class B → 7 days, Class C → 21 days
 
+Step 3.5 — Cross-rail handoff detection (Phase C, 2026-04-25)
+  Pre-step that runs after C5 normalisation, before C1: when a FedNow/RTP/SEPA
+  event has a rejection_code AND UETRTracker.find_parent(event.uetr) returns
+  a registered upstream SWIFT UETR, the result outcome is later labelled
+  DOMESTIC_LEG_FAILURE (instead of OFFERED) and parent_uetr is added to
+  loan_offer for cross-rail audit. The bridge offer is still issued —
+  the underlying payment failure is real and bridgeable.
+
 Step 4 — C7 (Execution Agent)
-  Input:  payment_context dict
+  Input:  payment_context dict (includes rail + maturity_hours per Phase A)
   Checks: kill_switch / KMS unavailability → HALT
           human override / risk controls   → DECLINE / PENDING_HUMAN_REVIEW
   Output: {status, loan_offer, decision_entry_id, delivery_id}
 
+  _build_loan_offer reads payment_context["rail"]:
+    - For known rails: maturity_date = funded_at + RAIL_MATURITY_HOURS[rail]
+    - Loan offer dict carries rail + maturity_hours fields for downstream consumers
+    - Defence-in-depth third gate: applicable_fee_floor_bps(maturity_hours)
+
   if HALT   → return HALT
   if DECLINE → return DECLINED
-  if OFFER  → return OFFERED
+  if OFFER  → return OFFERED (or DOMESTIC_LEG_FAILURE if handoff parent found)
 
 Step 5 — Offer Acceptance (if ELO accepts)
   PaymentStateMachine: BRIDGE_OFFERED → FUNDED
   LoanStateMachine:    OFFER_PENDING → ACTIVE
-  Register ActiveLoan with SettlementMonitor only after acceptance
+  Register ActiveLoan with SettlementMonitor only after acceptance.
+  ActiveLoan.rail field drives _claim_repayment hour-precision TTL for
+  sub-day rails; legacy day-scale rails preserve the existing TTL path.
 ```
 
 ## Three-Entity Model

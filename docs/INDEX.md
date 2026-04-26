@@ -123,6 +123,8 @@ docs/
 │   ├── codebase/                         ← Subsystem reference docs
 │   │   ├── README.md                     ← Index of subsystem docs
 │   │   └── api.md, common.md, pipeline.md, risk.md … (13 files)
+│   ├── decisions/                        ← Architecture Decision Records
+│   │   └── ADR-2026-04-25-rail-aware-maturity.md  ← CBDC sub-day fee floor framework, rail field on ActiveLoan
 │   ├── review/                           ← Code review and architecture audit
 │   │   ├── EPIGNOSIS_ARCHITECTURE_REVIEW.md  ← 87 KB deep architecture audit (19 issues)
 │   │   └── 2026-04-08/                   ← Code review (13 batches, B1–B13 findings)
@@ -202,7 +204,7 @@ docs/
 │   ├── c2-model-card.md                  ← M-02: B2B MRFA, Merton/KMV, Damodaran, Altman Z', Tier 1/2/3 PD
 │   ├── c1-training-data-card.md          ← 10M synthetic corpus, 20 corridors, 200 BICs (EU AI Act Art.10)
 │   ├── federated-learning-architecture.md ← P12 patent: FedProx, DP-SGD (ε=1.0, δ=1e-5)
-│   └── cbdc-protocol-research.md         ← P9 patent: mBridge, ECB DLT, FedNow analysis
+│   └── cbdc-protocol-research.md         ← P9 research: mBridge (post-BIS, $55.5B+ settled), ECB DLT, FedNow, Project Nexus (NGP, mid-2027)
 │
 └── superpowers/                          ← Sprint planning artefacts (preserved)
     ├── plans/                            ← Sprint implementation plans
