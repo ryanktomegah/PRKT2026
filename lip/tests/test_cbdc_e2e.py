@@ -17,7 +17,7 @@ normalizer would emit on a real PBoC / ECB / CBB / mBridge feed.
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from lip.c5_streaming.event_normalizer import NormalizedEvent
+from lip.c5_streaming.event_normalizer import EventNormalizer, NormalizedEvent
 from lip.common.constants import RAIL_MATURITY_HOURS
 
 from .conftest import make_event
@@ -172,3 +172,53 @@ class TestRailPropagationToC3:
         # Sub-day rail: maturity_date should be ~4h after funded_at.
         elapsed_hours = (loan.maturity_date - loan.funded_at).total_seconds() / 3600.0
         assert 3.5 < elapsed_hours < 4.5
+
+
+# ---------------------------------------------------------------------------
+# Phase B — mBridge E2E
+# ---------------------------------------------------------------------------
+
+def _mbridge_msg() -> dict:
+    """Multi-leg mBridge atomic settlement event with one failed leg."""
+    return {
+        "bridge_tx_id": "MBRIDGE-E2E-001",
+        "atomic_settlement_id": "ATM-001",
+        "consensus_round": 99,
+        "finality_seconds": 2.1,
+        "failed_leg_index": 0,
+        "legs": [
+            {
+                "index": 0,
+                "status": "FAILED",
+                "amount": "5000000.00",
+                "currency": "CNY",
+                "sender_wallet": "W-CN-SND",
+                "receiver_wallet": "W-HK-RCV",
+                "sender_bic": "ICBKCNBJXXX",
+                "receiver_bic": "HSBCHKHHXXX",
+                "failure_code": "CBDC-CF01",
+                "failure_description": "Consensus not reached",
+            },
+        ],
+        "timestamp": "2026-04-25T12:00:00",
+    }
+
+
+class TestMBridgeE2E:
+
+    def test_mbridge_event_through_pipeline_produces_offer_with_4h_maturity(self):
+        """Full E2E: raw mBridge dict -> EventNormalizer dispatch ->
+        MBridgeNormalizer -> NormalizedEvent -> LIPPipeline -> LoanOffer."""
+        # First normalize the raw mBridge message (this is what C5 does upstream).
+        event = EventNormalizer().normalize("CBDC_MBRIDGE", _mbridge_msg())
+        assert event.rail == "CBDC_MBRIDGE"
+        assert event.rejection_code == "AM04"  # CBDC-CF01 -> AM04
+
+        # Now feed into the pipeline.
+        pipeline = _make_pipeline(failure_probability=0.80, fee_bps=300)
+        result = pipeline.process(event)
+        assert result.outcome == "OFFERED"
+        assert result.loan_offer is not None
+        assert result.loan_offer["rail"] == "CBDC_MBRIDGE"
+        assert result.loan_offer["maturity_hours"] == 4.0
+        assert result.loan_offer["fee_bps"] >= 1200  # sub-day floor binding
