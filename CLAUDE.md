@@ -26,7 +26,7 @@ The founder is non-technical and strategic. Make architecture, design, code-revi
 
 ## Architecture
 
-**Pipeline** (synchronous, ≤94ms): `pacs.002 → C5 → C6 → C1 → C4 → C2 → C7` produces a `PipelineResult` with `outcome ∈ {OFFERED, DISPUTE_BLOCKED, AML_BLOCKED, BELOW_THRESHOLD, HALT, DECLINED, PENDING_HUMAN_REVIEW, RETRY_BLOCKED, COMPLIANCE_HOLD, AML_CHECK_UNAVAILABLE, SYSTEM_ERROR}`.
+**Pipeline** (synchronous, ≤94ms): `pacs.002 → C5 → C6 → C1 → C4 → C2 → C7` produces a `PipelineResult` with `outcome ∈ {OFFERED, DISPUTE_BLOCKED, AML_BLOCKED, BELOW_THRESHOLD, HALT, DECLINED, PENDING_HUMAN_REVIEW, RETRY_BLOCKED, COMPLIANCE_HOLD, AML_CHECK_UNAVAILABLE, SYSTEM_ERROR, DOMESTIC_LEG_FAILURE}`. `DOMESTIC_LEG_FAILURE` (Phase C, 2026-04-25) flags a domestic-rail leg (FedNow/RTP/SEPA) failure where the upstream cross-border SWIFT parent UETR was registered via `UETRTracker.register_handoff` — the bridge offer is still issued but tagged with `parent_uetr` for cross-rail audit and P9 patent claim support.
 
 **Lifecycle** (async, post-pipeline): `OFFERED` is **not** funded exposure. `OFFERED → FUNDED` requires an **explicit ELO acceptance callback** — C3 activates and exposure begins only on that transition. Source: `lip/pipeline_result.py:30-32`, `lip/common/state_machines.py:123-128`.
 

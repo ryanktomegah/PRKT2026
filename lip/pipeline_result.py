@@ -25,7 +25,7 @@ class PipelineResult:
         ``"OFFERED"`` | ``"FUNDED"`` | ``"DISPUTE_BLOCKED"`` | ``"AML_BLOCKED"`` |
         ``"BELOW_THRESHOLD"`` | ``"HALT"`` | ``"DECLINED"`` | ``"PENDING_HUMAN_REVIEW"`` |
         ``"RETRY_BLOCKED"`` | ``"COMPLIANCE_HOLD"`` | ``"AML_CHECK_UNAVAILABLE"`` |
-        ``"SYSTEM_ERROR"``
+        ``"SYSTEM_ERROR"`` | ``"DOMESTIC_LEG_FAILURE"``
 
         ``"OFFERED"`` — C7 generated and delivered or queued a bridge offer. The
         ELO has not accepted it yet; C3 activation and funded exposure must happen
