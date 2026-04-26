@@ -128,16 +128,14 @@ Add the four new constants (Section 3). Update `RAIL_MATURITY_HOURS` docstring t
 - New helper: `is_subday_rail(maturity_hours: float) -> bool`.
 
 #### A.3 — `lip/c3_repayment_engine/repayment_loop.py` + `settlement_handlers.py` + `uetr_mapping.py`
-- Add `maturity_hours: float` field to `ActiveLoan` dataclass (parallel to existing `maturity_days`). Default = `maturity_days * 24` for backward compatibility.
-- Add `rail: str` field to `ActiveLoan` (default `"SWIFT"` for backward compatibility).
-- New helper in `repayment_loop.py`:
-  ```python
-  def _maturity_hours_for(rail: str, rejection_class: str) -> float:
-      """RAIL_MATURITY_HOURS[rail] if defined, else CLASS_*_DAYS * 24."""
-  ```
-- TTL calc in `uetr_mapping.py` accepts `maturity_hours: float` (existing `maturity_days: int` overload preserved). New: `get_ttl_seconds_from_hours(maturity_hours: float) -> int` → `int((maturity_hours + 45*24) * 3600)`.
-- `_REDIS_REPAID_TTL_EXTRA_DAYS = 45` becomes `_REDIS_REPAID_TTL_EXTRA_HOURS = 45 * 24` internally.
-- `register_loan()` derives `maturity_hours` from rail, stores both `maturity_hours` and a back-computed `maturity_days = ceil(maturity_hours / 24)` for legacy reads.
+
+**Design simplification (post-spec, pre-plan):** `ActiveLoan.maturity_date: datetime` is already absolute (`repayment_loop.py:35-62`). C3 doesn't need a parallel `maturity_hours` field — durations can be derived from `maturity_date - funded_at` when needed. Smaller blast radius than adding a parallel field.
+
+- Add `rail: str` field to `ActiveLoan` dataclass (default `"SWIFT"` for backward compat). Used by `_claim_repayment` to compute correct TTL.
+- `_claim_repayment(uetr, maturity_days, tenant_id)` (`repayment_loop.py:252`) — extend signature to accept `rail: Optional[str] = None`. When `rail` is in `RAIL_MATURITY_HOURS`, compute TTL from hours instead of days: `ttl_seconds = int(RAIL_MATURITY_HOURS[rail] * 3600 + _REDIS_REPAID_TTL_EXTRA_DAYS * 86_400)`. Existing `maturity_days` path unchanged for legacy.
+- `trigger_repayment()` (`repayment_loop.py:293`) reads `loan.rail` and forwards to `_claim_repayment`.
+- `uetr_mapping.py` already TTL-on-store via `maturity_days`; add a new method `store_with_hours(end_to_end_id, uetr, maturity_hours)` that computes seconds-based TTL. Old `store(maturity_days)` path preserved.
+- No change to `_REDIS_REPAID_TTL_EXTRA_DAYS = 45` constant; semantics ("buffer beyond maturity") preserved.
 
 #### A.4 — `lip/c7_execution_agent/agent.py`
 - `_build_loan_offer` reads `event.rail` (already on `NormalizedEvent`) and looks up `RAIL_MATURITY_HOURS[rail]`.
