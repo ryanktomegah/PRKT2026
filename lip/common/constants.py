@@ -145,6 +145,42 @@ RAIL_MATURITY_HOURS: dict[str, float] = {
     "CBDC_NEXUS": 4.0,                            # NGP multilateral instant rail (60s finality + 4h buffer; PHASE-2-STUB)
 }
 
+# ── Stress regime detector windows by rail ────────────────────────────────────
+# (baseline_seconds, current_seconds, min_transactions_for_signal)
+#
+# The default detector windows (24h baseline, 1h current, 20 min txns) are
+# calibrated to SWIFT/SEPA where loans run 3-21 days and a 1h spike is
+# meaningful. On sub-day rails this is wrong:
+#   - CBDC at 4h tenor: 1h current = 25% of loan duration → spike detected
+#     too late to circuit-break the loan. The detector won't fire until
+#     after the rail's natural settlement window has nearly elapsed.
+#   - Project Nexus at 60s finality: 1h current is 60× the loan duration —
+#     completely useless.
+#
+# Per-rail windows scale to roughly 5-15% of typical loan duration for the
+# current window, and 5-10× current for the baseline. min_txns is reduced
+# for low-volume rails so the signal can fire on realistic Q1 2026 traffic
+# (CBDC corridors see fewer txns than SWIFT majors).
+#
+# When the detector is called with rail=None (legacy callers), it falls
+# back to the constructor defaults — preserves backward compatibility.
+RAIL_STRESS_WINDOWS: dict[str, tuple[int, int, int]] = {
+    # SWIFT/SEPA: 24h baseline / 1h current / 20 min txns (legacy default)
+    "SWIFT":            (86400,  3600,  20),
+    "SEPA":             (86400,  3600,  20),
+    # FedNow/RTP: 24h tenor → 1h baseline / 5min current / 10 min txns
+    "FEDNOW":           ( 3600,   300,  10),
+    "RTP":              ( 3600,   300,  10),
+    # CBDC retail at 4h: 30min baseline / 5min current / 5 min txns
+    "CBDC_ECNY":        ( 1800,   300,   5),
+    "CBDC_EEUR":        ( 1800,   300,   5),
+    "CBDC_SAND_DOLLAR": ( 1800,   300,   5),
+    # mBridge at 4h with PvP atomic settlement — sharper window
+    "CBDC_MBRIDGE":     ( 1800,   180,   5),
+    # Nexus at 60s finality — tightest window of all
+    "CBDC_NEXUS":       (  300,    30,   3),
+}
+
 # ── Corridor buffer window ─────────────────────────────────────────────────────
 CORRIDOR_BUFFER_WINDOW_DAYS = 90          # rolling window for corridor risk / embedding lookback
 

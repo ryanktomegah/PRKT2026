@@ -131,14 +131,16 @@ def test_pipeline_integration_with_stress():
         narrative="Test"
     )
 
-    # 1. First event establishes some baseline (failure)
+    # 1. First event establishes some baseline (failure).
+    # Phase A follow-up (2026-04-26): pipeline now records with rail=event.rail
+    # so the SWIFT-keyed bucket holds the event, not the legacy unkeyed bucket.
     pipeline.process(event)
-    curr, base = detector.get_rates("EUR_USD")
+    curr, base = detector.get_rates("EUR_USD", rail="SWIFT")
     assert base > 0
 
     # 2. Mocking a stress condition is easier by directly recording to detector
-    # but let's just verify the 'outcome' is being recorded.
-    assert len(detector._history["EUR_USD"]) == 1
+    # but let's just verify the 'outcome' is being recorded in the rail-keyed bucket.
+    assert len(detector._history[("SWIFT", "EUR_USD")]) == 1
 
 
 class TestEPG18AnomalyTriggersHumanReview:

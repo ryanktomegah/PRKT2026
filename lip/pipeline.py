@@ -276,8 +276,12 @@ class LIPPipeline:
         # Fix (stress timing): Record corridor failure NOW — before C1/C7 — so the
         # stress detector's is_stressed() call inside C7 reflects this event.
         # Every non-retry event entering the pipeline is an underlying payment failure.
+        # rail= passed so sub-day rails get tuned windows (CBDC 30min/5min vs
+        # SWIFT 24h/1h). See lip.common.constants.RAIL_STRESS_WINDOWS.
         if self._stress_detector:
-            self._stress_detector.record_event(f"{event.currency}_USD", True)
+            self._stress_detector.record_event(
+                f"{event.currency}_USD", True, rail=event.rail
+            )
 
         # Fix (early BLOCK): Short-circuit on FRAU / FRAD / DISP / DUPL rejection
         # codes before running C1. These are unconditional BLOCK codes — no ML needed.
