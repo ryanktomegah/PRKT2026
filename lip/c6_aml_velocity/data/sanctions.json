@@ -1,4 +1,13 @@
 {
+  "_metadata": {
+    "generated_at": "2026-04-27T08:28:47.130367+00:00",
+    "builder_version": "sanctions_loader/1.0",
+    "source_urls": {
+      "OFAC": "https://sanctionslist.ofac.treas.gov/Home/SdnList",
+      "UN": "https://scsanctions.un.org/resources/xml/en/consolidated.xml",
+      "EU": "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
+    }
+  },
   "OFAC": [
     "'EDGE'",
     "1",
