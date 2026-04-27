@@ -5,6 +5,112 @@
 
 ---
 
+## Session 2026-04-26 (continuation) — Doc alignment + post-Nexus tech debt sweep
+
+**Tests**: 2,774 passing in fast suite (+24 since the early-day Phase E commit). Zero ruff errors. Zero CodeQL alerts. Zero Dependabot alerts.
+**Main commits since the Phase E merge**:
+```
+5e0e781 feat(c5/stress): rail-aware window tuning for sub-day detection (#73)
+f16f78f feat(dgen): add CBDC corridor coverage to C1 training corpus (#72)
+482b4b2 fix(ci): close 14 CodeQL workflow-permissions alerts (#71)
+19b5be7 docs: align all READMEs + architecture docs with shipped Phases A-E reality
+```
+
+### Documentation alignment (1 commit, 9 files)
+
+Documentation drift detected post-merge: top-level `README.md`, `CLAUDE.md`, `docs/INDEX.md`, the engineering architecture reference, `docs/engineering/codebase/c5_streaming.md`, plus 4 component READMEs (c2, c3, c5, c7) all referenced pre-Phase-A state. Updated to reflect what's actually in main as of the Phase E merge:
+- `README.md` — 9 supported rails table; PipelineResult.outcome list now includes DOMESTIC_LEG_FAILURE; canonical-constants table adds FEE_FLOOR_BPS_SUBDAY / FEE_FLOOR_ABSOLUTE_USD / SUBDAY_THRESHOLD_HOURS / CBDC rail maturity; test count corrected.
+- `CLAUDE.md` — C5 row lists 9 rails (was: just SWIFT); non-negotiable #2 documents universal vs sub-day floor distinction; canonical constants table gains 5 new rows.
+- `docs/engineering/architecture.md` — Algorithm 1 documents rail-aware maturity step + cross-rail handoff (Step 3.5).
+- `docs/engineering/codebase/c5_streaming.md` — full CBDC normalizer rewrite (5 rails table, failure-code mapping, mBridge multi-leg PvP, dispatcher routing, cross-rail handoff section).
+- Component READMEs: rail-aware/sub-day mentions on C2 / C3 / C5 / C7.
+
+All claims verified against source per CLAUDE.md "field semantics before assessment" rule. No business/legal/strategy docs touched (out of scope; legal frozen per CLAUDE.md non-negotiable #6).
+
+### Tech debt #2 — CodeQL workflow permissions (PR #71, merged)
+
+14 `actions/missing-workflow-permissions` alerts closed by adding workflow-level `permissions: contents: read` to 6 workflow files (`ci.yml`, `train_c{1,2,4,6}.yml`, `deploy.yml`). Per-job overrides preserved (Go build jobs, docker-build packages: write).
+
+### Tech debt #1 — DGEN CBDC corridors for C1 retraining (PR #72, merged)
+
+C1 training corpus extended from SWIFT-only to **9 rails**:
+- SWIFT (12 corridors, 84% combined weight) — unchanged distribution
+- FedNow / RTP (USD/USD, 4% combined) — domestic instant
+- CBDC retail (CNY/CNY, EUR/EUR, BSD/USD, 2.5% combined)
+- CBDC mBridge (5 corridors: CNY/HKD, CNY/THB, HKD/AED, THB/AED, AED/SAR — 9% combined; matches Q1 2026 reality where mBridge represents the largest non-SWIFT CBDC volume)
+
+16 new CBDC failure codes added in a separate `_CBDC_REJECTION_CODES` dict with weights normalised independently. CBDC rails sample CBDC-* codes; non-CBDC rails sample ISO 20022 — C1 thus learns rail × code interactions.
+
+EPG-19 BLOCK invariant preserved across both code paths: ISO BLOCK codes (12, in `ALL_BLOCK_CODES`) and CBDC BLOCK codes (CBDC-KYC01/02) all carry `is_bridgeable=False`.
+
+10 new tests in `test_dgen_cbdc_corridors.py` lock in the corridor coverage, code-sampling segregation, BLOCK invariant, and seeded determinism. Existing `test_block_code_drift.py` (load-bearing B11-02 invariant) unchanged.
+
+**C1 retraining required to realise the benefit** (separate sprint; needs GPU runner via `train_c1.yml` workflow_dispatch).
+
+### Tech debt #3 — Sub-day stress regime detector windows (PR #73, merged)
+
+`RAIL_STRESS_WINDOWS` map added to `lip/common/constants.py`:
+
+| Rail | Baseline | Current | Min txns |
+|---|---|---|---|
+| SWIFT/SEPA | 24h | 1h | 20 (legacy default) |
+| FedNow/RTP | 1h | 5min | 10 |
+| CBDC retail | 30min | 5min | 5 |
+| CBDC_MBRIDGE | 30min | 3min | 5 |
+| CBDC_NEXUS | 5min | 30s | 3 |
+
+`StressRegimeDetector` rewritten to use `(rail, corridor)` bucket keys; `rail` kwarg added to all public methods. `_windows_for(None or unknown rail)` falls back to constructor defaults (deliberately not sub-day — fail-closed for unknowns). Pipeline + C7 wired to pass rail. ADR at `docs/engineering/decisions/ADR-2026-04-26-rail-aware-stress-detection.md`.
+
+14 new tests + 22 existing stress-regime tests + 7 gap-stress tests all green.
+
+### Tech debt #6 — CodeQL false-positive triage (no PR; API dismissals only)
+
+Investigated all 16 open alerts (12 `py/clear-text-logging-sensitive-data`, 1 `rust/hard-coded-cryptographic-value`, 3 K8s-manifest-script logging). **All are false positives** — CodeQL flagged sensitive-by-name fields (`offer_id`, `loan_id`, `uetr`, `operator_id`) that are non-PII identifiers required for SR 11-7 / EU AI Act Art.13 / FATF audit trails per CLAUDE.md non-negotiable #1; the Rust "hardcoded crypto" was a `b"salt"` test fixture; the K8s script's purpose IS to log secret-pattern findings.
+
+All 16 dismissed via Code Scanning API with documented per-file rationale. CIPHER can review and re-open in the GitHub Security tab if any are wrong.
+
+### Repo state at session close
+
+| Metric | Value |
+|---|---|
+| main CI | ✓ green on `5e0e781` (LIP CI + Docker Build + Push) |
+| Open PRs | 0 |
+| Open Dependabot alerts | 0 |
+| Open CodeQL alerts | **0** (was 16; 14 closed by PR #71, 16 dismissed as false positives, with overlap as workflow-permission alerts also auto-resolved) |
+| Fast tests | 2,774 passing |
+| Ruff | 0 errors |
+| Stale local branches | 0 |
+
+### Post-Nexus tech debt sequence status
+
+| # | Item | Status |
+|---|---|---|
+| 1 | DGEN CBDC corridors | ✅ Shipped (PR #72) |
+| 2 | CodeQL workflow permissions | ✅ Shipped (PR #71) |
+| 3 | Sub-day stress regime detector windows | ✅ Shipped (PR #73) |
+| 4 | C2 PD recalibration on sub-day | ⏸ Blocked on C1 retrain (GPU runner trigger) |
+| 5 | T2.1 Kafka mBridge consumer | Pending (requires partner test env access) |
+| 6 | C6 CodeQL findings | ✅ Triaged + dismissed (false positives, no code change) |
+
+### What is NEXT
+
+**Founder-gated:**
+1. Trigger `train_c1.yml` workflow_dispatch on a GPU runner — uses the new CBDC corridor data from PR #72. Estimated runtime: ~75 min (15 min DGEN + 60 min training).
+2. Review the 16 CodeQL dismissals in the GitHub Security tab — confirm CIPHER agrees with the "false positive" rationale.
+
+**Engineering-executable without founder gating (ordered by leverage):**
+1. **C2 sub-day PD floor backstop** — defence-in-depth: when C2 outputs `pd_score < empirical_rail_failure_rate`, raise a flag in `PipelineResult` (audit-trail field, not a behavior change). Independent of C1 retrain.
+2. **Stress detector emit-rate benchmark** — confirm 30-min CBDC_MBRIDGE window with Q1-2026 traffic levels stays under the 94ms SLO. Use existing `scripts/benchmark_pipeline.py`.
+3. **`StressRegimeEvent.rail` field** — currently the event carries `corridor` only. With multi-rail traffic, downstream Kafka consumers can't tell `CBDC_MBRIDGE::CNY_HKD` stress from `SWIFT::CNY_HKD` stress. Flagged in ADR-2026-04-26.
+4. **DGEN CBDC FedNow/RTP corridor calibration** — current weights are modelled. When pilot bank traffic arrives, recalibrate via the `_CORRIDORS` dict (no code refactor needed).
+5. **NGP Nexus schema integration** — when NGP publishes the formal Nexus ISO 20022 profile (expected 2026), replace the PHASE-2-STUB shape in `nexus_normalizer.py`.
+
+**Strategic (founder + counsel):**
+1. Patent counsel meeting on RBC IP clause — gates everything else (CLAUDE.md #6). Phase C cross-rail handoff is the strongest claim LIP has and cannot be filed until counsel opines.
+2. Pilot pivot: position LIP as cross-rail intelligence layer, not SWIFT bridge lender. Phase A's sub-day fee floor + Phase B's mBridge support + Phase C's cross-rail handoff are the only economic structure under which LIP works in a Nexus world.
+
+---
+
 ## Session 2026-04-26 — CBDC Normalizer End-to-End (Phases A-E) + GH Health
 
 **Tests**: 2,743 passing in fast suite (+32 from baseline). Zero ruff errors.

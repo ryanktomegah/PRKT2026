@@ -187,13 +187,33 @@ Unknown rails raise `ValueError` — never silently fall through.
 
 ## Stress regime detector (`stress_regime_detector.py`)
 
-Monitors corridor failure rates in real-time. If the short-term (1h) failure rate exceeds the long-term (24h) baseline by a multiplier (default 3.0), the corridor is declared a `STRESS_REGIME`.
+Monitors corridor failure rates in real-time. If the short-term (current) failure rate exceeds the long-term (baseline) by a multiplier (default 3.0), the corridor is declared a `STRESS_REGIME`.
 
 When in stress:
-1. Triggers human review for all offers in the stressed corridor
+1. Triggers human review for all offers in the stressed corridor (EU AI Act Art.14 circuit breaker)
 2. Alerts the licensee bank's risk desk via Kafka topic `lip.stress.regime`
 
 Wired into the real runtime pipeline via `build_runtime_pipeline()` — enabled by default, disable with `LIP_STRESS_DETECTOR_DISABLED=1`. Configurable via `LIP_STRESS_BASELINE_SECONDS`, `LIP_STRESS_CURRENT_SECONDS`, `LIP_STRESS_MULTIPLIER`, `LIP_STRESS_MIN_TXNS` env vars.
+
+### Rail-aware window tuning (Phase A follow-up, 2026-04-26)
+
+The constructor defaults (24h baseline / 1h current / 20 min txns) are calibrated for SWIFT/SEPA where loans run 3–21 days. On sub-day rails the legacy windows would detect a spike only after the loan has nearly settled — exactly when the circuit breaker most needs to fire.
+
+`RAIL_STRESS_WINDOWS` in `lip/common/constants.py` provides per-rail tuning:
+
+| Rail | Baseline | Current | Min txns | Rationale |
+|---|---|---|---|---|
+| `SWIFT`, `SEPA` | 24h | 1h | 20 | Legacy default |
+| `FEDNOW`, `RTP` | 1h | 5min | 10 | 24h tenor |
+| `CBDC_ECNY`, `CBDC_EEUR`, `CBDC_SAND_DOLLAR` | 30min | 5min | 5 | 4h tenor |
+| `CBDC_MBRIDGE` | 30min | 3min | 5 | 4h tenor + sharper PvP signal |
+| `CBDC_NEXUS` | 5min | 30s | 3 | 60s finality |
+
+Detector API gained an optional `rail` kwarg on `record_event()`, `is_stressed()`, `check_and_emit()`, `get_rates()`. When `rail` is provided, the detector keeps a separate history bucket per `(rail, corridor)` pair and uses the rail's tuned windows for evaluation. Unknown rails (or `rail=None` legacy callers) fall back to constructor defaults — deliberately *not* sub-day, so a future rail without tuning gets the safer SWIFT-shaped windows.
+
+Pipeline wiring: `pipeline.py:_stress_detector.record_event(corridor, True, rail=event.rail)`. C7 wiring: `agent.py:stress_detector.is_stressed(corridor, rail=rail)` in both call sites (line 350 and line 658).
+
+ADR: `docs/engineering/decisions/ADR-2026-04-26-rail-aware-stress-detection.md`
 
 ---
 
