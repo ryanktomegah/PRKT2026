@@ -373,9 +373,12 @@ class TestCleanup:
         _pump(det, "EUR_USD", n_total=100, n_fail=100)
 
         clock[0] = now
-        # After cleanup, history should be empty
+        # After cleanup, history should be empty.
+        # Phase A follow-up (2026-04-26): bucket key is ("" rail, "EUR_USD")
+        # for legacy callers that don't pass rail=. Default bucket =
+        # ("", corridor); rail-specific bucket = (rail.upper(), corridor).
         det._cleanup("EUR_USD")
-        assert len(det._history["EUR_USD"]) == 0
+        assert len(det._history[("", "EUR_USD")]) == 0
 
     def test_recent_records_not_evicted(self):
         """Records within the baseline window are retained."""
@@ -387,7 +390,7 @@ class TestCleanup:
 
         clock[0] = now
         det._cleanup("EUR_USD")
-        assert len(det._history["EUR_USD"]) == 10
+        assert len(det._history[("", "EUR_USD")]) == 10
 
 
 class TestStressRegimeEvent:

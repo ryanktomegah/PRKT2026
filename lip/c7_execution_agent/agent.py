@@ -343,7 +343,14 @@ class ExecutionAgent:
             else:
                 pd_limit = self.config.require_human_review_above_pd
                 corridor = payment_context.get("corridor", "UNKNOWN")
-                is_stressed = self.stress_detector.is_stressed(corridor) if self.stress_detector else False
+                # Phase A follow-up (2026-04-26): pass rail so the detector
+                # uses sub-day windows on CBDC/FedNow/Nexus events. None falls
+                # back to legacy SWIFT-tuned windows.
+                rail = payment_context.get("rail")
+                is_stressed = (
+                    self.stress_detector.is_stressed(corridor, rail=rail)
+                    if self.stress_detector else False
+                )
 
                 anomaly_flagged = payment_context.get("anomaly_flagged", False)
                 if anomaly_flagged:
@@ -645,7 +652,8 @@ class ExecutionAgent:
             return True
 
         corridor = payment_context.get("corridor", "UNKNOWN")
-        if self.stress_detector and self.stress_detector.is_stressed(corridor):
+        rail = payment_context.get("rail")
+        if self.stress_detector and self.stress_detector.is_stressed(corridor, rail=rail):
             return True
 
         # EPG-18: AML anomaly flag triggers human review (was advisory-only before)

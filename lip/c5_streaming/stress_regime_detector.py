@@ -131,43 +131,94 @@ class StressRegimeDetector:
         self._time: Callable[[], float] = time_func or time.time
         self._producer = kafka_producer
 
-        # corridor -> deque of (unix_timestamp, is_failure)
-        self._history: Dict[str, Deque[Tuple[float, bool]]] = defaultdict(deque)
+        # (rail_key, corridor) -> deque of (unix_timestamp, is_failure)
+        # Phase A follow-up (2026-04-26): rail-aware buckets so sub-day rails
+        # (CBDC/FedNow/Nexus) can use tuned windows without contaminating the
+        # SWIFT bucket. rail_key="" preserves the legacy single-bucket layout
+        # for callers that don't pass rail=. See RAIL_STRESS_WINDOWS in
+        # lip.common.constants for tuning rationale.
+        self._history: Dict[Tuple[str, str], Deque[Tuple[float, bool]]] = defaultdict(deque)
 
         # In-memory event store — populated when Kafka is unavailable
         self.emitted_events: List[StressRegimeEvent] = []
 
-    def record_event(self, corridor: str, is_failure: bool) -> None:
+    def _windows_for(self, rail: Optional[str]) -> Tuple[int, int, int]:
+        """Return (baseline_seconds, current_seconds, min_txns) for *rail*.
+
+        When rail is None or unknown, returns the constructor defaults.
+        When rail is in ``RAIL_STRESS_WINDOWS``, returns the rail-specific
+        tuning calibrated to that rail's loan duration.
+        """
+        if rail is None:
+            return self.baseline_window, self.current_window, self.min_txns
+        # Lazy import to avoid heavy module dependency at import time.
+        from lip.common.constants import RAIL_STRESS_WINDOWS
+        cfg = RAIL_STRESS_WINDOWS.get(rail.upper())
+        if cfg is None:
+            # Unknown rail → fall back to constructor defaults rather than
+            # silently picking SWIFT settings. Logs once per unknown rail.
+            logger.debug(
+                "StressRegimeDetector: no per-rail windows for rail=%r — "
+                "using constructor defaults (baseline=%ss, current=%ss, min=%d)",
+                rail, self.baseline_window, self.current_window, self.min_txns,
+            )
+            return self.baseline_window, self.current_window, self.min_txns
+        return cfg
+
+    def _bucket_key(self, corridor: str, rail: Optional[str]) -> Tuple[str, str]:
+        """Return the internal history-bucket key for (corridor, rail)."""
+        return ("" if rail is None else rail.upper(), corridor)
+
+    def record_event(
+        self,
+        corridor: str,
+        is_failure: bool,
+        rail: Optional[str] = None,
+    ) -> None:
         """Record a payment outcome for a corridor.
 
         Args:
             corridor: Corridor identifier (e.g. ``"EUR_USD"``).
             is_failure: ``True`` if the payment failed / was rejected.
+            rail: Optional payment rail (``"SWIFT"``, ``"CBDC_MBRIDGE"``,
+                etc.). When provided, the event is recorded in a rail-specific
+                bucket so subsequent ``is_stressed(rail=...)`` calls use
+                the rail's tuned windows. When None (legacy callers), uses
+                a shared default bucket — preserves existing behaviour.
         """
-        self._history[corridor].append((self._time(), is_failure))
-        self._cleanup(corridor)
+        key = self._bucket_key(corridor, rail)
+        self._history[key].append((self._time(), is_failure))
+        self._cleanup(corridor, rail=rail)
 
-    def is_stressed(self, corridor: str) -> bool:
+    def is_stressed(self, corridor: str, rail: Optional[str] = None) -> bool:
         """Return ``True`` if the corridor is currently in a stress regime.
 
         See class docstring for the full evaluation logic.
+
+        Args:
+            corridor: Corridor identifier.
+            rail: Optional payment rail. When provided, evaluation uses
+                the rail-specific window tuning from
+                ``lip.common.constants.RAIL_STRESS_WINDOWS``. When None,
+                uses constructor defaults — preserves legacy behaviour.
         """
-        self._cleanup(corridor)
-        history = self._history[corridor]
+        self._cleanup(corridor, rail=rail)
+        history = self._history[self._bucket_key(corridor, rail)]
+        baseline_window, current_window, min_txns = self._windows_for(rail)
         now = self._time()
 
-        current_cutoff = now - self.current_window
+        current_cutoff = now - current_window
 
         current_events = [h for h in history if h[0] >= current_cutoff]
-        if len(current_events) < self.min_txns:
+        if len(current_events) < min_txns:
             return False
 
         current_failures = sum(1 for h in current_events if h[1])
         current_rate = current_failures / len(current_events)
 
-        # Baseline: events older than the current window (still within 24h)
+        # Baseline: events older than the current window (still within baseline)
         baseline_events = [h for h in history if h[0] < current_cutoff]
-        if len(baseline_events) < self.min_txns:
+        if len(baseline_events) < min_txns:
             return False
 
         baseline_failures = sum(1 for h in baseline_events if h[1])
@@ -179,7 +230,11 @@ class StressRegimeDetector:
 
         return current_rate > (baseline_rate * self.multiplier)
 
-    def check_and_emit(self, corridor: str) -> Optional[StressRegimeEvent]:
+    def check_and_emit(
+        self,
+        corridor: str,
+        rail: Optional[str] = None,
+    ) -> Optional[StressRegimeEvent]:
         """Evaluate stress and emit a :class:`StressRegimeEvent` if triggered.
 
         Call this after :meth:`record_event` to produce an event when the
@@ -188,14 +243,16 @@ class StressRegimeDetector:
 
         Args:
             corridor: Corridor to evaluate.
+            rail: Optional payment rail (forwarded to is_stressed and rate
+                computation). When provided, uses rail-tuned windows.
 
         Returns:
             The emitted :class:`StressRegimeEvent`, or ``None`` if not stressed.
         """
-        if not self.is_stressed(corridor):
+        if not self.is_stressed(corridor, rail=rail):
             return None
 
-        rate_1h, baseline = self._stress_window_rates(corridor)
+        rate_1h, baseline = self._stress_window_rates(corridor, rail=rail)
         ratio = (rate_1h / baseline) if baseline > 0 else float("inf")
         event = StressRegimeEvent(
             corridor=corridor,
@@ -207,17 +264,22 @@ class StressRegimeDetector:
         self._emit(event)
         return event
 
-    def _stress_window_rates(self, corridor: str) -> Tuple[float, float]:
-        """Return ``(current_1h_rate, baseline_excl_current_rate)``.
+    def _stress_window_rates(
+        self,
+        corridor: str,
+        rail: Optional[str] = None,
+    ) -> Tuple[float, float]:
+        """Return ``(current_rate, baseline_excl_current_rate)``.
 
         Uses the same window split as :meth:`is_stressed` so that
         :class:`StressRegimeEvent` ``ratio`` is directly comparable to
         ``threshold_multiplier``.
         """
-        self._cleanup(corridor)
-        history = self._history[corridor]
+        self._cleanup(corridor, rail=rail)
+        history = self._history[self._bucket_key(corridor, rail)]
+        _, current_window, _ = self._windows_for(rail)
         now = self._time()
-        current_cutoff = now - self.current_window
+        current_cutoff = now - current_window
 
         current_events = [h for h in history if h[0] >= current_cutoff]
         current_rate = (
@@ -233,17 +295,22 @@ class StressRegimeDetector:
         )
         return current_rate, baseline_rate
 
-    def get_rates(self, corridor: str) -> Tuple[float, float]:
-        """Return ``(current_rate_1h, baseline_rate_24h)`` for a corridor.
+    def get_rates(
+        self,
+        corridor: str,
+        rail: Optional[str] = None,
+    ) -> Tuple[float, float]:
+        """Return ``(current_rate, baseline_rate)`` for a corridor.
 
         Both rates are in the range [0.0, 1.0].  Returns ``(0.0, 0.0)`` if
         no events have been recorded.
         """
-        self._cleanup(corridor)
-        history = self._history[corridor]
+        self._cleanup(corridor, rail=rail)
+        history = self._history[self._bucket_key(corridor, rail)]
+        _, current_window, _ = self._windows_for(rail)
         now = self._time()
 
-        current_cutoff = now - self.current_window
+        current_cutoff = now - current_window
         current_events = [h for h in history if h[0] >= current_cutoff]
         current_rate = (
             sum(1 for h in current_events if h[1]) / len(current_events)
@@ -251,7 +318,7 @@ class StressRegimeDetector:
             else 0.0
         )
 
-        # Overall baseline (entire 24h window, including current hour)
+        # Overall baseline (entire baseline window, including current period)
         baseline_rate = (
             sum(1 for h in history if h[1]) / len(history) if history else 0.0
         )
@@ -343,9 +410,10 @@ class StressRegimeDetector:
             )
             self.emitted_events.append(event)
 
-    def _cleanup(self, corridor: str) -> None:
-        """Evict records older than ``baseline_window`` seconds."""
-        cutoff = self._time() - self.baseline_window
-        dq = self._history[corridor]
+    def _cleanup(self, corridor: str, rail: Optional[str] = None) -> None:
+        """Evict records older than the rail's baseline window."""
+        baseline_window, _, _ = self._windows_for(rail)
+        cutoff = self._time() - baseline_window
+        dq = self._history[self._bucket_key(corridor, rail)]
         while dq and dq[0][0] < cutoff:
             dq.popleft()
