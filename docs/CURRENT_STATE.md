@@ -10,7 +10,7 @@ This file is the canonical status bridge between active documentation and dated 
 
 ## Product Functionality
 
-LIP turns payment-network failure signals into auditable bridge-loan decisions for bank-operated deployments.
+LIP turns payment-network failure signals into auditable cross-rail exception decisions for bank-operated deployments. Bridge lending remains one response path; Exception OS v1 now records the exception type and recommended response for every pipeline outcome.
 
 1. C5 normalises payment events from supported rails into the canonical event schema.
 2. C1 predicts payment failure probability and applies the locked operating threshold `tau* = 0.110`.
@@ -18,7 +18,8 @@ LIP turns payment-network failure signals into auditable bridge-loan decisions f
 4. C6 blocks sanctions, AML velocity, and compliance-risk conditions.
 5. C2 estimates borrower probability of default, LGD, and annualised fee pricing with rail-aware floors.
 6. C7 applies execution controls, borrower enrollment, kill switch, KMS availability, durable offer logging, and human-review gates.
-7. C3 monitors accepted offers against settlement telemetry and drives repayment/default state transitions.
+7. Exception OS v1 enriches the final `PipelineResult` with `exception_assessment` across SWIFT, SEPA, FedNow/RTP, CBDC, mBridge, and Nexus.
+8. C3 monitors accepted offers against settlement telemetry and drives repayment/default state transitions.
 
 The platform is designed for bank-side operation: the bank supplies capital, origination authority, compliance certification, and final acceptance; BPI supplies the licensed technology.
 
@@ -34,6 +35,7 @@ The platform is designed for bank-side operation: the bank supplies capital, ori
 | Multi-rail code | SWIFT, SEPA, FedNow, RTP, CBDC retail, mBridge, and Nexus stub paths are represented in code/docs. |
 | CBDC training coverage | DGEN now supports CBDC corridor generation, but the currently signed C1 RC artifact predates the post-CBDC retraining sprint. Retrain C1 before claiming CBDC-trained model coverage. |
 | Sub-day rails | Rail-aware maturity, sub-day fee floor, rail-aware C3 TTL, cross-rail handoff detection, and rail-aware stress windows are implemented. |
+| Exception OS v1 | Deterministic cross-rail exception assessment is implemented on `PipelineResult` and exposed through `/miplo/process`. `GUARANTEE_CANDIDATE` is advisory metadata only; no guarantee execution path or new funding product exists in this milestone. |
 | C7 container | Staging C7 image was built and strict artifact smoke-tested for the 2026-04-24 RC. |
 | Engineering blockers | No known code blocker for staging validation. Production-final artifacts still require the full remote production-size C1 workflow after account billing/spend-limit repair. |
 
@@ -83,7 +85,7 @@ Production-final status still requires:
 6. Legal/patent/IP clearance before external disclosure or bank engagement.
 7. Pilot-bank contract language for `hold_bridgeable` certification and required warranties.
 
-Project Nexus is an active strategic threat to the SWIFT-first narrative. The counsel-session packet is [`legal/patent/project-nexus-counsel-session-2026-04-28.md`](legal/patent/project-nexus-counsel-session-2026-04-28.md).
+Project Nexus changes the product framing from SWIFT-first bridge lending to rail-agnostic exception intelligence. Code coverage remains a `CBDC_NEXUS` stub until NGP publishes its formal ISO 20022 profile.
 
 ---
 

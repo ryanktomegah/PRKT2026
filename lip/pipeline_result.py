@@ -86,6 +86,10 @@ class PipelineResult:
         ``{"c1": 20.3, "c2": 3.1, "c4": 2.5, "c6": 1.8, "c7": 0.5}``.
     total_latency_ms:
         End-to-end wall-clock latency in milliseconds.
+    exception_assessment:
+        Exception OS v1 assessment dict with ``exception_type``,
+        ``recommended_action``, reason metadata, rail/maturity fields, and
+        deterministic input signals. Populated for every pipeline outcome.
     """
 
     # Core outcome
@@ -136,3 +140,6 @@ class PipelineResult:
     # Latency
     component_latencies: Dict[str, float] = field(default_factory=dict)
     total_latency_ms: float = 0.0
+
+    # Cross-rail Exception OS output
+    exception_assessment: Optional[dict] = None

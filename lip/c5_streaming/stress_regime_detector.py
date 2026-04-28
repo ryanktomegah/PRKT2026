@@ -57,6 +57,7 @@ class StressRegimeEvent:
         ratio: ``failure_rate_1h / baseline_rate``.  ``float('inf')`` when
             baseline is zero and current failures are non-zero.
         triggered_at: Unix timestamp (seconds) when the event was produced.
+        rail: Optional payment rail for rail-aware stress buckets.
     """
 
     corridor: str
@@ -64,18 +65,20 @@ class StressRegimeEvent:
     baseline_rate: float
     ratio: float
     triggered_at: float
+    rail: Optional[str] = None
 
     def to_json(self) -> str:
         """Serialise to a compact JSON string suitable for a Kafka payload."""
-        return json.dumps(
-            {
-                "corridor": self.corridor,
-                "failure_rate_1h": self.failure_rate_1h,
-                "baseline_rate": self.baseline_rate,
-                "ratio": self.ratio if self.ratio != float("inf") else None,
-                "triggered_at": self.triggered_at,
-            }
-        )
+        payload = {
+            "corridor": self.corridor,
+            "failure_rate_1h": self.failure_rate_1h,
+            "baseline_rate": self.baseline_rate,
+            "ratio": self.ratio if self.ratio != float("inf") else None,
+            "triggered_at": self.triggered_at,
+        }
+        if self.rail is not None:
+            payload["rail"] = self.rail
+        return json.dumps(payload)
 
 
 class StressRegimeDetector:
@@ -260,6 +263,7 @@ class StressRegimeDetector:
             baseline_rate=baseline,
             ratio=ratio,
             triggered_at=self._time(),
+            rail=rail.upper() if rail else None,
         )
         self._emit(event)
         return event

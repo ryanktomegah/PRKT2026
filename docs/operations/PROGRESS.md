@@ -91,6 +91,12 @@ EPG-19 BLOCK invariant preserved across both code paths: ISO BLOCK codes (12, in
 
 14 new tests + 22 existing stress-regime tests + 7 gap-stress tests all green.
 
+### Exception OS v1 — Cross-rail exception intelligence (2026-04-28)
+
+`lip/exception_intelligence/` adds deterministic exception classification and response recommendation for every `PipelineResult`. The new `exception_assessment` field is exposed through `/miplo/process` and covers SWIFT, SEPA, FedNow/RTP, CBDC, mBridge, and the Nexus stub path.
+
+`StressRegimeEvent` now carries optional `rail` in emitted JSON when the caller supplied a rail, closing the earlier multi-rail observability gap. Nexus remains `PHASE-2-STUB` until NGP publishes the formal ISO 20022 profile.
+
 ### Tech debt #6 — CodeQL false-positive triage (no PR; API dismissals only)
 
 Investigated all 16 open alerts (12 `py/clear-text-logging-sensitive-data`, 1 `rust/hard-coded-cryptographic-value`, 3 K8s-manifest-script logging). **All are false positives** — CodeQL flagged sensitive-by-name fields (`offer_id`, `loan_id`, `uetr`, `operator_id`) that are non-PII identifiers required for SR 11-7 / EU AI Act Art.13 / FATF audit trails per CLAUDE.md non-negotiable #1; the Rust "hardcoded crypto" was a `b"salt"` test fixture; the K8s script's purpose IS to log secret-pattern findings.
@@ -129,9 +135,8 @@ All 16 dismissed via Code Scanning API with documented per-file rationale. CIPHE
 **Engineering-executable without founder gating (ordered by leverage):**
 1. **C2 sub-day PD floor backstop** — defence-in-depth: when C2 outputs `pd_score < empirical_rail_failure_rate`, raise a flag in `PipelineResult` (audit-trail field, not a behavior change). Independent of C1 retrain.
 2. **Stress detector emit-rate benchmark** — confirm 30-min CBDC_MBRIDGE window with Q1-2026 traffic levels stays under the 94ms SLO. Use existing `scripts/benchmark_pipeline.py`.
-3. **`StressRegimeEvent.rail` field** — currently the event carries `corridor` only. With multi-rail traffic, downstream Kafka consumers can't tell `CBDC_MBRIDGE::CNY_HKD` stress from `SWIFT::CNY_HKD` stress. Flagged in ADR-2026-04-26.
-4. **DGEN CBDC FedNow/RTP corridor calibration** — current weights are modelled. When pilot bank traffic arrives, recalibrate via the `_CORRIDORS` dict (no code refactor needed).
-5. **NGP Nexus schema integration** — when NGP publishes the formal Nexus ISO 20022 profile (expected 2026), replace the PHASE-2-STUB shape in `nexus_normalizer.py`.
+3. **DGEN CBDC FedNow/RTP corridor calibration** — current weights are modelled. When pilot bank traffic arrives, recalibrate via the `_CORRIDORS` dict (no code refactor needed).
+4. **NGP Nexus schema integration** — when NGP publishes the formal Nexus ISO 20022 profile (expected 2026), replace the PHASE-2-STUB shape in `nexus_normalizer.py`.
 
 **Strategic (founder + counsel):**
 1. Patent counsel meeting on RBC IP clause — gates everything else (CLAUDE.md #6). Phase C cross-rail handoff is the strongest claim LIP has and cannot be filed until counsel opines.

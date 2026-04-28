@@ -47,6 +47,8 @@ else:                          → ValueError ("Unknown rail")
 
 Unknown rails fail-closed with `ValueError` — never silently default.
 
+`CBDC_NEXUS` remains a stub rail until NGP publishes the formal ISO 20022 profile and onboarding schemas. It exists so the pipeline and Exception OS can validate Nexus-shaped synthetic events without claiming live Nexus production compatibility.
+
 ## Kafka Topic Map
 
 | Topic | Partitions | Retention | Description |

@@ -150,7 +150,7 @@ Selection rule:
 
 - e-CNY / e-EUR / Sand Dollar: schemas modelled from public PBoC / ECB / CBB documentation; tests cover the modelled shape.
 - mBridge: schema modelled from BIS Innovation Hub published material — the formal production message schema has not been released. Module docstring documents this; swap when published.
-- Nexus: `PHASE-2-STUB`. ISO 20022 native — uses standard `ExternalStatusReason1Code` codes (no proprietary map needed). Schema modelled from BIS Nexus blueprint (July 2024); replace with formal NGP ISO 20022 profile when published (expected during 2026).
+- Nexus: `PHASE-2-STUB`. ISO 20022 native — uses standard `ExternalStatusReason1Code` codes (no proprietary map needed). Schema modelled from BIS Nexus blueprint (July 2024); keep this path stubbed until NGP publishes the formal ISO 20022 profile and onboarding schemas.
 
 ### Dispatcher routing (`event_normalizer.EventNormalizer.normalize`)
 
@@ -211,7 +211,7 @@ The constructor defaults (24h baseline / 1h current / 20 min txns) are calibrate
 
 Detector API gained an optional `rail` kwarg on `record_event()`, `is_stressed()`, `check_and_emit()`, `get_rates()`. When `rail` is provided, the detector keeps a separate history bucket per `(rail, corridor)` pair and uses the rail's tuned windows for evaluation. Unknown rails (or `rail=None` legacy callers) fall back to constructor defaults — deliberately *not* sub-day, so a future rail without tuning gets the safer SWIFT-shaped windows.
 
-Pipeline wiring: `pipeline.py:_stress_detector.record_event(corridor, True, rail=event.rail)`. C7 wiring: `agent.py:stress_detector.is_stressed(corridor, rail=rail)` in both call sites (line 350 and line 658).
+Pipeline wiring: `pipeline.py:_stress_detector.record_event(corridor, True, rail=event.rail)`. C7 wiring: `agent.py:stress_detector.is_stressed(corridor, rail=rail)` in both call sites (line 350 and line 658). Emitted `StressRegimeEvent` payloads now include `rail` when the caller supplied one, so downstream consumers can distinguish `CBDC_MBRIDGE::CNY_HKD` stress from `SWIFT::CNY_HKD` stress.
 
 ADR: `docs/engineering/decisions/ADR-2026-04-26-rail-aware-stress-detection.md`
 

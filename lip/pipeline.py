@@ -36,7 +36,6 @@ from typing import Any, Callable, List, Optional
 from lip.c3_repayment_engine.rejection_taxonomy import (
     RejectionClass,
     classify_rejection_code,
-    is_dispute_block,
 )
 from lip.c3_repayment_engine.rejection_taxonomy import (
     maturity_days as get_maturity_days,
@@ -55,6 +54,7 @@ from lip.common.state_machines import (
     PaymentStateMachine,
 )
 from lip.common.uetr_tracker import UETRTracker
+from lip.exception_intelligence import assess_exception
 from lip.instrumentation import LatencyTracker
 from lip.pipeline_result import PipelineResult
 
@@ -245,15 +245,56 @@ class LIPPipeline:
             "amount": event.amount,
             "currency": event.currency,
         }
+        _handoff_parent: Optional[str] = None
+        c7_status: Optional[str] = None
+
+        def _stress_regime_active() -> bool:
+            if self._stress_detector is None:
+                return False
+            try:
+                return bool(
+                    self._stress_detector.is_stressed(
+                        f"{event.currency}_USD",
+                        rail=event.rail,
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Stress-regime assessment failed for uetr=%s: %s", event.uetr, exc)
+                return False
+
+        def _enrich_result(res: PipelineResult) -> PipelineResult:
+            maturity_hours = self._derive_maturity_hours(event.rail, event.rejection_code)
+            assessment = assess_exception(
+                outcome=res.outcome,
+                rail=event.rail,
+                rejection_code=event.rejection_code,
+                maturity_hours=maturity_hours,
+                failure_probability=res.failure_probability,
+                above_threshold=res.above_threshold,
+                dispute_hard_block=res.dispute_hard_block,
+                aml_hard_block=res.aml_hard_block,
+                aml_passed=res.aml_passed,
+                compliance_hold=res.compliance_hold,
+                pd_estimate=res.pd_estimate,
+                c7_status=c7_status,
+                handoff_parent_uetr=_handoff_parent,
+                stress_regime=_stress_regime_active(),
+                loan_offer_present=res.loan_offer is not None,
+            )
+            res.exception_assessment = assessment.to_dict()
+            return res
+
         if self._uetr_tracker.is_retry(event.uetr, context=_retry_context):
             logger.warning("Retry detected: uetr=%s - blocking to prevent double-funding", event.uetr)
             total_ms = (time.perf_counter() - t_start) * 1_000.0
-            return PipelineResult(
-                outcome="RETRY_BLOCKED",
-                uetr=event.uetr,
-                failure_probability=0.0,
-                above_threshold=False,
-                total_latency_ms=total_ms,
+            return _enrich_result(
+                PipelineResult(
+                    outcome="RETRY_BLOCKED",
+                    uetr=event.uetr,
+                    failure_probability=0.0,
+                    above_threshold=False,
+                    total_latency_ms=total_ms,
+                )
             )
 
         # Phase C — cross-rail handoff detection. If this event is a domestic-rail
@@ -264,7 +305,6 @@ class LIPPipeline:
         # requires a C7 payment_context schema change deferred to a future sprint.
         # See Master-Action-Plan-2026.md:378 (P9 continuation hook). Code-only;
         # filing frozen per CLAUDE.md non-negotiable #6.
-        _handoff_parent: Optional[str] = None
         if event.rail and event.rail.upper() in ("FEDNOW", "RTP", "SEPA") and event.rejection_code:
             _handoff_parent = self._uetr_tracker.find_parent(event.uetr)
             if _handoff_parent:
@@ -287,7 +327,7 @@ class LIPPipeline:
         # codes before running C1. These are unconditional BLOCK codes — no ML needed.
         # Uses the same DISPUTE_BLOCKED outcome as the C4 path so callers see a
         # consistent API regardless of whether the block was caught early or via C4.
-        if event.rejection_code and is_dispute_block(event.rejection_code):
+        if event.rejection_code and _is_known_block_code(event.rejection_code):
             logger.warning(
                 "Rejection code BLOCK: uetr=%s code=%s — skipping C1/C2/C7",
                 event.uetr, event.rejection_code,
@@ -295,21 +335,23 @@ class LIPPipeline:
             entry_id = self._log_block(event, 0.0, "dispute_blocked")
             self._uetr_tracker.record(event.uetr, "DISPUTE_BLOCKED", context=_retry_context)
             total_ms = (time.perf_counter() - t_start) * 1_000.0
-            return PipelineResult(
-                outcome="DISPUTE_BLOCKED",
-                uetr=event.uetr,
-                failure_probability=0.0,
-                above_threshold=False,
-                dispute_hard_block=True,
-                aml_passed=True,
-                decision_entry_id=entry_id,
-                payment_state=PaymentState.DISPUTE_BLOCKED.value,
-                loan_state=LoanState.OFFER_PENDING.value,
-                payment_state_history=[
-                    PaymentState.MONITORING.value,
-                    PaymentState.DISPUTE_BLOCKED.value,
-                ],
-                total_latency_ms=total_ms,
+            return _enrich_result(
+                PipelineResult(
+                    outcome="DISPUTE_BLOCKED",
+                    uetr=event.uetr,
+                    failure_probability=0.0,
+                    above_threshold=False,
+                    dispute_hard_block=True,
+                    aml_passed=True,
+                    decision_entry_id=entry_id,
+                    payment_state=PaymentState.DISPUTE_BLOCKED.value,
+                    loan_state=LoanState.OFFER_PENDING.value,
+                    payment_state_history=[
+                        PaymentState.MONITORING.value,
+                        PaymentState.DISPUTE_BLOCKED.value,
+                    ],
+                    total_latency_ms=total_ms,
+                )
             )
 
         borrower = borrower or {}
@@ -337,6 +379,7 @@ class LIPPipeline:
             state_history.append(payment_sm.current_state.value)
 
         def _record_and_return(res: PipelineResult) -> PipelineResult:
+            res = _enrich_result(res)
             self._uetr_tracker.record(res.uetr, res.outcome, context=_retry_context)
             self._record_global(tracker, res.total_latency_ms)
             return res
@@ -1301,3 +1344,16 @@ def _normalise_rejection_class(value: str) -> str:
     if normalized == "BLOCK":
         return RejectionClass.BLOCK.value
     return RejectionClass.CLASS_B.value
+
+
+def _is_known_block_code(code: str) -> bool:
+    """Return True only when a classified rejection code is BLOCK.
+
+    Unknown codes continue through C1 so Exception OS can distinguish
+    below-threshold telemetry from above-threshold human-review cases. Later
+    gates still treat unknown maturity/class conservatively.
+    """
+    try:
+        return classify_rejection_code(code) is RejectionClass.BLOCK
+    except ValueError:
+        return False

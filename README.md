@@ -16,7 +16,9 @@ For the canonical 2026-04-28 status, read [`docs/CURRENT_STATE.md`](docs/CURRENT
 
 ## What LIP Does
 
-When a cross-border payment fails on **any supported rail** (ISO 20022 `pacs.002` rejection on SWIFT/SEPA, proprietary status on FedNow/RTP, or CBDC-specific failure events), LIP detects it in milliseconds, normalises the failure into the canonical ISO 20022 taxonomy, classifies the failure type, assesses the borrowing bank's credit risk, and conditionally offers a short-term bridge loan — all within a 94ms SLO. Banks license LIP as a technology platform; BPI does not hold deposits or make loans directly.
+When a cross-border payment fails on **any supported rail** (ISO 20022 `pacs.002` rejection on SWIFT/SEPA, proprietary status on FedNow/RTP, or CBDC-specific failure events), LIP detects it in milliseconds, normalises the failure into the canonical ISO 20022 taxonomy, classifies the exception, assesses the borrowing bank's credit risk, and conditionally offers a short-term bridge loan — all within a 94ms SLO. Banks license LIP as a technology platform; BPI does not hold deposits or make loans directly.
+
+The Nexus-world product pivot is implemented as **Exception OS v1**: every `PipelineResult` now carries `exception_assessment`, a rail-agnostic response recommendation across SWIFT, SEPA, FedNow/RTP, CBDC, mBridge, and Nexus. Bridge lending is one recommended response (`OFFER_BRIDGE`); the same layer can also recommend `HOLD`, `DECLINE`, `HUMAN_REVIEW`, `GUARANTEE_CANDIDATE`, `RETRY`, or `TELEMETRY_ONLY` without changing the existing financial gates.
 
 **Supported rails** (`lip/common/constants.py:RAIL_MATURITY_HOURS`):
 
@@ -52,6 +54,7 @@ pacs.002 / FedNow / RTP / SEPA / CBDC event
 │  C2 PD Model           Tiered structural PD + LGD + rail-aware fee pricing  │
 │  C3 Repayment Engine   Rail-aware TTL, UETR polling, settlement (Rust FSM)  │
 │  C7 Execution Agent    Loan execution, kill switch, Go gRPC router          │
+│  Exception OS v1       Cross-rail exception type + response recommendation  │
 │  C8 License Manager    HMAC-SHA256 token enforcement (cross-cutting)        │
 └─────────────────────────────────────────────────────────────────────────────┘
        │
@@ -75,6 +78,10 @@ pacs.002 / FedNow / RTP / SEPA / CBDC event
                                 //   Bridge offer issued + parent_uetr field
                                 //   added to loan_offer for cross-rail audit.
   }
+  PipelineResult.exception_assessment = {
+      exception_type, recommended_action, reason_code, reason,
+      rail, maturity_hours, is_subday, confidence, signals
+  }
        │ (only if FUNDED)
        ▼
   C3 Repayment Engine: UETR polling, settlement monitoring, repayment / default
@@ -92,6 +99,7 @@ Source of truth for state machine: lip/common/state_machines.py:91-148
 | C5 — Streaming | Multi-rail (SWIFT/SEPA/FedNow/RTP/5 CBDC) normalisation + Kafka ingest | Kafka (Go consumer) |
 | C6 — AML/Velocity | OFAC/EU sanctions + velocity limits | Rust velocity counters (PyO3) |
 | C7 — Execution Agent | Rail-aware loan execution + cross-rail handoff detection | Go gRPC offer router, kill switch |
+| Exception OS v1 | Rail-agnostic exception classification and response recommendation | Deterministic rules |
 | C8 — License Manager | Technology licensing enforcement | HMAC-SHA256, boot validation |
 
 **Additional modules:** C9 (Settlement Predictor), P5 (Cascade Engine), P10 (Regulatory Data Product)

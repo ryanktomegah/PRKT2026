@@ -31,6 +31,7 @@ try:
         receiving_bic: str = Field(..., description="Beneficiary bank BIC")
         amount: str = Field(..., description="Payment amount as Decimal string")
         currency: str = Field(..., description="ISO 4217 currency code")
+        rail: str = Field(default="SWIFT", description="Payment rail (default SWIFT)")
         rejection_code: str = Field(..., description="ISO 20022 rejection reason code")
         narrative: str = Field(default="", description="Free-text payment narrative")
         debtor_account: str = Field(
@@ -56,6 +57,7 @@ try:
         above_threshold: bool
         loan_offer: Optional[dict] = None
         decision_entry_id: Optional[str] = None
+        exception_assessment: Optional[dict] = None
         pd_estimate: Optional[float] = None
         fee_bps: Optional[int] = None
         total_latency_ms: float = 0.0
@@ -90,7 +92,7 @@ try:
                 amount=Decimal(request.amount),
                 currency=request.currency,
                 timestamp=datetime.now(tz=timezone.utc),
-                rail="SWIFT",
+                rail=request.rail or "SWIFT",
                 rejection_code=request.rejection_code,
                 narrative=request.narrative,
                 debtor_account=request.debtor_account or None,
@@ -116,6 +118,7 @@ try:
                 above_threshold=result.above_threshold,
                 loan_offer=result.loan_offer,
                 decision_entry_id=result.decision_entry_id,
+                exception_assessment=getattr(result, "exception_assessment", None),
                 pd_estimate=result.pd_estimate,
                 fee_bps=result.fee_bps,
                 total_latency_ms=result.total_latency_ms,

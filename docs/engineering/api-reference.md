@@ -5,6 +5,64 @@ All monetary amounts use `Decimal` for precision. All timestamps are timezone-aw
 
 ---
 
+## Pipeline Result: Exception OS v1
+
+Every `PipelineResult` includes `exception_assessment: dict`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `exception_type` | `str` | One of `TECHNICAL_RETRYABLE`, `ACCOUNT_OR_ADDRESS`, `INSUFFICIENT_FUNDS_OR_LIQUIDITY`, `COMPLIANCE_OR_LEGAL_HOLD`, `DISPUTE_OR_COMMERCIAL_CONTEST`, `SANCTIONS_AML_RISK`, `CROSS_RAIL_HANDOFF_FAILURE`, `SETTLEMENT_TIMEOUT_OR_FINALITY`, `STRESS_REGIME`, `UNKNOWN` |
+| `recommended_action` | `str` | One of `RETRY`, `HOLD`, `DECLINE`, `HUMAN_REVIEW`, `OFFER_BRIDGE`, `GUARANTEE_CANDIDATE`, `TELEMETRY_ONLY` |
+| `reason_code` | `str` | Stable deterministic rule identifier |
+| `reason` | `str` | Short operational explanation |
+| `rail` | `str \| None` | Source rail, e.g. `SWIFT`, `FEDNOW`, `CBDC_NEXUS` |
+| `maturity_hours` | `float \| None` | Rail-aware maturity used for the response context |
+| `is_subday` | `bool` | `True` when maturity is under 24 hours |
+| `confidence` | `float [0,1]` | Rule confidence, not a model probability |
+| `signals` | `dict` | Auditable input signals used by the rule |
+
+`GUARANTEE_CANDIDATE` is advisory metadata only in v1. It does not create a guarantee product, loan economics, or funding path.
+
+---
+
+## MIPLO API: `/miplo/process`
+
+### `MIPLOProcessRequest`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `uetr` | `str` | Yes | Unique End-to-End Transaction Reference |
+| `individual_payment_id` | `str` | No | ISO 20022 individual payment ID |
+| `sending_bic` | `str` | Yes | Originator bank BIC |
+| `receiving_bic` | `str` | Yes | Beneficiary bank BIC |
+| `amount` | `str` | Yes | Payment amount as Decimal string |
+| `currency` | `str` | Yes | ISO 4217 currency code |
+| `rail` | `str` | No | Payment rail; defaults to `SWIFT` for backward compatibility |
+| `rejection_code` | `str` | Yes | ISO 20022 rejection reason code |
+| `narrative` | `str` | No | Free-text payment narrative |
+| `debtor_account` | `str` | No | Debtor account identifier |
+| `borrower` | `dict \| None` | No | Borrower data for C2 PD inference |
+| `entity_id` | `str \| None` | No | Override entity ID for C6 velocity |
+| `beneficiary_id` | `str \| None` | No | Override beneficiary ID for C6 velocity |
+
+### `MIPLOProcessResponse`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `outcome` | `str` | Final pipeline outcome |
+| `uetr` | `str` | Echo of request UETR |
+| `tenant_id` | `str` | Processor tenant ID |
+| `failure_probability` | `float` | C1 score |
+| `above_threshold` | `bool` | Whether C1 crossed `tau*` |
+| `loan_offer` | `dict \| None` | C7 offer when produced |
+| `decision_entry_id` | `str \| None` | C7 decision log entry |
+| `exception_assessment` | `dict \| None` | Exception OS v1 assessment |
+| `pd_estimate` | `float \| None` | C2 PD score |
+| `fee_bps` | `int \| None` | Annualised bridge fee |
+| `total_latency_ms` | `float` | End-to-end latency |
+
+---
+
 ## C1: Failure Classifier (§4.2)
 
 ### `ClassifyRequest`

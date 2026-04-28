@@ -62,6 +62,23 @@ Step 4 — C7 (Execution Agent)
   if DECLINE → return DECLINED
   if OFFER  → return OFFERED (or DOMESTIC_LEG_FAILURE if handoff parent found)
 
+Step 4.5 — Exception OS v1 enrichment
+  Input:  final PipelineResult + event rail/rejection code + C1/C2/C4/C6/C7 signals
+  Output: PipelineResult.exception_assessment dict:
+          exception_type, recommended_action, reason_code, reason,
+          rail, maturity_hours, is_subday, confidence, signals
+
+  Deterministic v1 rules classify:
+    - compliance/legal holds and AML blocks → HOLD
+    - dispute/commercial contests → DECLINE
+    - cross-rail parent UETR failures → OFFER_BRIDGE when C7 already offered
+    - stressed rail/corridor → HUMAN_REVIEW
+    - sub-day clean gates without an offer → GUARANTEE_CANDIDATE advisory metadata
+    - below-threshold events → TELEMETRY_ONLY
+
+  This layer is metadata only in v1. It does not change C7 outcomes, fee math,
+  funding paths, or settlement behavior.
+
 Step 5 — Offer Acceptance (if ELO accepts)
   PaymentStateMachine: BRIDGE_OFFERED → FUNDED
   LoanStateMachine:    OFFER_PENDING → ACTIVE
