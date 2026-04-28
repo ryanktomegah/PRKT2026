@@ -5,6 +5,8 @@
 **Date:** March 5, 2026  
 **Status:** ACTIVE — Stealth Mode. Nothing External.
 
+> **Current-state addendum (2026-04-28):** this pack preserves the March 2026 SR 11-7 governance baseline. For deployable artifact truth, current C1/C2 staging RC metrics, and production-final caveats, read [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md) and [`../../operations/releases/staging-rc-2026-04-24.md`](../../operations/releases/staging-rc-2026-04-24.md).
+
 ---
 
 ## REX SELF-CRITIQUE BEFORE DELIVERY

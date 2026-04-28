@@ -1,6 +1,7 @@
 # LIP Integration Guide
 
 > Technical integration guide for pilot bank engineering teams.
+> Current technical status: see [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md). Production integration requires legal/IP clearance, pilot-bank certification warranties, durable offer storage, and staging smoke validation.
 
 ---
 

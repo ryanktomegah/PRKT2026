@@ -1,5 +1,7 @@
 # BPI / LIP Project Status Report — April 11, 2026
 
+> **Current-state note (2026-04-28):** this report is a dated April 11 snapshot. The current deployable engineering state is tracked in [`../CURRENT_STATE.md`](../CURRENT_STATE.md), including the 2026-04-24 signed staging RC, post-RC multi-rail work, and remaining production/legal blockers.
+
 ## Quick Answers
 
 | Question | Answer |

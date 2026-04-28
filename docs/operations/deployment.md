@@ -1,5 +1,7 @@
 # LIP Deployment Reference
 
+**Current status:** read [`../CURRENT_STATE.md`](../CURRENT_STATE.md) for the 2026-04-28 staging RC and production-final caveats. The C7 staging image has been built and strict artifact-smoke-tested, but production deployment still requires full staging smoke, durable offer-store, rollback drills, and legal/pilot readiness.
+
 ## Docker Images
 
 LIP ships Docker images under `lip/infrastructure/docker/`. Licensee deployments use the C1–C7 images; C8 is an operator-only image for BPI internal use.

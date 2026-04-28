@@ -7,6 +7,8 @@
 **Regulatory Alignment:** EU AI Act Art.10 (Data Governance), SR 11-7 §3.3 (Training Data Documentation)
 **Data Type:** FULLY SYNTHETIC — no real transaction data, no real BICs
 
+> **Current-state note (2026-04-28):** this card documents the 2026-03-21 10M-corpus baseline. The latest signed staging RC uses the 2026-04-24 artifact set documented in [`../CURRENT_STATE.md`](../CURRENT_STATE.md). CBDC corridor generation has since been added to DGEN, but the signed C1 RC artifact must be retrained before CBDC-trained model coverage is claimed.
+
 ---
 
 ## 1. Dataset Summary

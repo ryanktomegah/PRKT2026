@@ -1,5 +1,7 @@
 # LIP Compliance Reference
 
+**Current status:** read [`../CURRENT_STATE.md`](../CURRENT_STATE.md) before relying on dated model metrics in this compliance reference. The C1/C2 staging RC artifacts were retrained and signed on 2026-04-24, while the March model governance evidence remains part of the historical audit trail.
+
 ## SR 11-7: Model Risk Management (Fed / OCC)
 
 **Scope**: All ML models deployed in C1 (Failure Classifier) and C2 (PD Model).

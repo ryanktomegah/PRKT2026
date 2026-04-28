@@ -1,6 +1,7 @@
 # LIP Legal Prerequisites Checklist
 
 > Requirements that must be in place before pilot bank LOI signature.
+> Current technical status: see [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md). This checklist remains gating even when the engineering RC is ready.
 
 ---
 

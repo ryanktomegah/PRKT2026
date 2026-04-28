@@ -9,6 +9,8 @@
 **Reviewers:** LEX, CIPHER, QUANT (re-review), ARIA/NOVA/REX/FORGE (already signed)
 **Stealth Mode:** Active — Nothing External
 
+> **Current-state addendum (2026-04-28):** this specification is the locked architecture baseline. For current staging RC artifacts, post-spec multi-rail additions, and production-final blockers, read [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md).
+
 ---
 
 ## VERSION HISTORY

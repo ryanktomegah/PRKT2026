@@ -4,6 +4,12 @@
 
 ---
 
+## Current State First
+
+Start with [`CURRENT_STATE.md`](CURRENT_STATE.md) for the canonical 2026-04-28 view of deployable functionality, staging RC artifacts, production blockers, and historical-document interpretation. The latest signed staging RC is [`operations/releases/staging-rc-2026-04-24.md`](operations/releases/staging-rc-2026-04-24.md).
+
+---
+
 ## Reading Paths by Role
 
 ### A. New Team Member / Contributor
@@ -35,7 +41,7 @@ Start here to understand what you're working on:
 ### C. Compliance Officer / Regulator
 
 1. [`legal/compliance.md`](legal/compliance.md) — SR 11-7, EU AI Act Art.9/13/14/17/61, DORA Art.30, AML, GDPR
-2. [`models/c1-model-card.md`](models/c1-model-card.md) — C1 model card (AUC 0.8871, τ★=0.110, ECE 0.069)
+2. [`models/c1-model-card.md`](models/c1-model-card.md) — C1 model card (historical 2026-03-21 baseline plus 2026-04-24 staging RC note)
 3. [`models/c2-model-card.md`](models/c2-model-card.md) — C2 model card (B2B MRFA, Tier 1/2/3 PD, 300 bps floor)
 4. [`models/c1-training-data-card.md`](models/c1-training-data-card.md) — Training data card (EU AI Act Art.10)
 5. [`legal/governance/BPI_SR11-7_Model_Governance_Pack_v1.0.md`](legal/governance/BPI_SR11-7_Model_Governance_Pack_v1.0.md) — SR 11-7 governance pack
@@ -200,9 +206,9 @@ docs/
 │   └── Master-Action-Plan-2026.md        ← 2026 operational action plan
 │
 ├── models/                               ← For ML engineers and auditors
-│   ├── c1-model-card.md                  ← M-01: AUC 0.8871, τ★=0.110, ECE 0.069, GraphSAGE+TabTransformer+LightGBM
+│   ├── c1-model-card.md                  ← M-01: historical baseline + staging RC note, GraphSAGE+TabTransformer+LightGBM
 │   ├── c2-model-card.md                  ← M-02: B2B MRFA, Merton/KMV, Damodaran, Altman Z', Tier 1/2/3 PD
-│   ├── c1-training-data-card.md          ← 10M synthetic corpus, 20 corridors, 200 BICs (EU AI Act Art.10)
+│   ├── c1-training-data-card.md          ← historical 10M synthetic corpus card; current RC truth in CURRENT_STATE.md
 │   ├── federated-learning-architecture.md ← P12 patent: FedProx, DP-SGD (ε=1.0, δ=1e-5)
 │   └── cbdc-protocol-research.md         ← P9 research: mBridge (post-BIS, $55.5B+ settled), ECB DLT, FedNow, Project Nexus (NGP, mid-2027)
 │

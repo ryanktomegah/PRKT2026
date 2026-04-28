@@ -5,6 +5,28 @@
 
 ---
 
+## Session 2026-04-28 — Current-state documentation cross-reference pass
+
+**Tests**: documentation-only change; `git diff --check` run after edits.
+**Purpose**: make the whole active documentation set easier to interpret after the 2026-04-24 staging RC and later multi-rail/CBDC work.
+
+### Documentation alignment
+
+Created `docs/CURRENT_STATE.md` as the canonical status bridge for:
+- Current product functionality from C5 event normalisation through C7 execution and C3 repayment monitoring.
+- Current C1/C2 staging RC metrics and signed-artifact status.
+- The distinction between staging RC readiness and production-final readiness.
+- The CBDC training caveat: DGEN supports CBDC corridors, but the signed C1 RC artifact still needs post-CBDC retraining before CBDC-trained model coverage can be claimed.
+- Historical-document policy: preserve dated model cards, governance packs, research papers, and strategy memos, but interpret them through the current-state file.
+
+Added current-state links to active entry points and long-form docs: `README.md`, `docs/INDEX.md`, architecture, pipeline, data pipeline, PoC validation, deployment, C1/C2 model docs, SR 11-7 governance, compliance, the complete narrative, the April 11 status report, and pilot-facing bank docs.
+
+### Remaining blockers
+
+No new engineering blocker introduced. Production-final status still requires the full remote production-size C1 retrain after billing/spend-limit repair, signed artifact promotion, staging API smoke, durable offer-store verification, rollback drills, live pilot validation, and legal/IP/pilot contract clearance.
+
+---
+
 ## Session 2026-04-26 (continuation) — Doc alignment + post-Nexus tech debt sweep
 
 **Tests**: 2,774 passing in fast suite (+24 since the early-day Phase E commit). Zero ruff errors. Zero CodeQL alerts. Zero Dependabot alerts.

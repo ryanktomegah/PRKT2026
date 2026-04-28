@@ -5,7 +5,7 @@
 **Data type**: FULLY SYNTHETIC — no real transaction data  
 **Regulatory tag**: EU AI Act Art.10 traceability (seed-controlled)  
 
-**Status note (2026-04-24):** this is a historical PoC report. Current deployable RC artifacts are documented in `docs/operations/releases/staging-rc-2026-04-24.md`, `docs/models/c1-model-card.md`, and `docs/models/c2-model-card.md`.
+**Status note (2026-04-28):** this is a historical PoC report. Current deployable RC artifacts are documented in [`../CURRENT_STATE.md`](../CURRENT_STATE.md), [`../operations/releases/staging-rc-2026-04-24.md`](../operations/releases/staging-rc-2026-04-24.md), [`../models/c1-model-card.md`](../models/c1-model-card.md), and [`../models/c2-model-card.md`](../models/c2-model-card.md).
 
 ---
 

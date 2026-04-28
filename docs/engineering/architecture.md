@@ -1,5 +1,7 @@
 # LIP Architecture Reference
 
+**Current status:** read [`../CURRENT_STATE.md`](../CURRENT_STATE.md) before using this file for execution planning. This architecture reference describes the implemented pipeline shape; staging RC artifact truth and production caveats are tracked in the current-state file and the 2026-04-24 release note.
+
 ## Algorithm 1: End-to-End Pipeline Processing Loop
 
 **Source of truth**: `lip/pipeline.py` (`LIPPipeline.process`)

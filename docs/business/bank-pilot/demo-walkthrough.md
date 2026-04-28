@@ -2,6 +2,7 @@
 
 > Step-by-step demo script for pilot bank technical teams.
 > Estimated duration: 30–45 minutes.
+> Current technical status: see [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md). Demos must remain internal until legal/IP clearance allows external disclosure.
 
 ---
 

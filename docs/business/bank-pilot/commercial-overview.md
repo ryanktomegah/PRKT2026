@@ -1,6 +1,7 @@
 # LIP Commercial Overview
 
 > BPI Lending Intelligence Platform — Three-Phase Deployment Model
+> Current technical status: see [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md). External bank use remains legal/IP and contract-gated.
 
 ---
 

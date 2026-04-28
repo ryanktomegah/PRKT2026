@@ -6,6 +6,8 @@
 
 *Version 2.1 — Factual Corrections Applied*
 
+> **Current-state note (2026-04-28):** this manuscript preserves the March 2026 research baseline. Use [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md) and [`../../operations/releases/staging-rc-2026-04-24.md`](../../operations/releases/staging-rc-2026-04-24.md) for current staging RC artifact metrics, production caveats, and the post-paper multi-rail/CBDC implementation status.
+
 | **Change** | **Detail** |
 |------------|------------|
 | v2.0 → v2.1 | (A) BIS attribution corrected to FXC Intelligence; market size updated to $31.7T; Reference [1] updated accordingly. (B) 3–5% failure rate reframed as STP-derived estimate with footnote disclosure; "industry survey data" language removed. (C) SWIFT Annual Review [2] retained as supporting reference for STP rate data. (D) C1 methodology and evaluation reconciled to the current repo-controlled model documentation: held-out synthetic corpus, hybrid GraphSAGE + TabTransformer + LightGBM ensemble, calibrated threshold τ* = 0.110, AUC 0.8871, and canonical latency targets of 45ms p50 / 94ms p99. |

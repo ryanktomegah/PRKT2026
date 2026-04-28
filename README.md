@@ -8,6 +8,12 @@ Real-time payment failure detection and automated bridge lending for corresponde
 
 ---
 
+## Current State
+
+For the canonical 2026-04-28 status, read [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md). The latest signed staging RC is documented in [`docs/operations/releases/staging-rc-2026-04-24.md`](docs/operations/releases/staging-rc-2026-04-24.md). Older model cards, research papers, and governance packs preserve dated baseline evidence and should be interpreted through that current-state file.
+
+---
+
 ## What LIP Does
 
 When a cross-border payment fails on **any supported rail** (ISO 20022 `pacs.002` rejection on SWIFT/SEPA, proprietary status on FedNow/RTP, or CBDC-specific failure events), LIP detects it in milliseconds, normalises the failure into the canonical ISO 20022 taxonomy, classifies the failure type, assesses the borrowing bank's credit risk, and conditionally offers a short-term bridge loan — all within a 94ms SLO. Banks license LIP as a technology platform; BPI does not hold deposits or make loans directly.

@@ -4,6 +4,8 @@
 **Bridgepoint Intelligence Inc.**
 **Last updated: 2026-04-24 | Ground truth: docs/c1-model-card.md, docs/c1-training-data-card.md, docs/operations/releases/staging-rc-2026-04-24.md**
 
+**Current-state index:** [`../CURRENT_STATE.md`](../CURRENT_STATE.md) is the canonical 2026-04-28 bridge between this long-form narrative, the staging RC release note, and later multi-rail/CBDC implementation status.
+
 **RC note:** the March 2026 narrative remains the historical base case, but the current staging RC has now been retrained, signed, and container-verified. Use the release note above for deployable artifact truth.
 
 > **⚠ Status (as of 2026-04-25):** PARTIALLY SUPERSEDED — IP-ownership-conditional for go-to-market narrative.

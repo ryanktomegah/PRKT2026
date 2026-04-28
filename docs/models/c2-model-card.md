@@ -5,6 +5,8 @@
 > **Status:** Pre-deployment (pending pilot bank engagement and Bank MRM review)
 > **Last updated:** 2026-04-24
 
+> **Current-state note (2026-04-28):** this card reflects the signed 2026-04-24 staging RC. Use [`../CURRENT_STATE.md`](../CURRENT_STATE.md) for the canonical product-wide status and production-final caveats.
+
 ---
 
 ## 1. Model Overview

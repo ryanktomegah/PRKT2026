@@ -2,6 +2,7 @@
 
 > Steps to deploy LIP on GCP Free Tier for pilot bank demonstrations.
 > **Status:** Documentation only — actual deployment deferred to next session.
+> Current technical status: see [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md). Do not run an external demo before legal/IP clearance and staging RC smoke validation.
 
 ---
 

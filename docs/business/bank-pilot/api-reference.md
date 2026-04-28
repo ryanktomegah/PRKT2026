@@ -2,6 +2,7 @@
 
 > Version 1.0.0 — Lending Intelligence Platform
 > Base URL: `https://<deployment-host>:8080`
+> Current technical status: see [`../../CURRENT_STATE.md`](../../CURRENT_STATE.md). Treat this as pilot-facing API documentation, not permission to deploy externally before legal/IP clearance.
 
 ---
 

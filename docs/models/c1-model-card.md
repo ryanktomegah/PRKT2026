@@ -8,6 +8,8 @@
 **Regulatory Alignment:** SR 11-7 (Fed/OCC), EU AI Act Art.13 (Regulation 2024/1689)
 **Status:** Post-training — validated on synthetic corpus; pending pilot bank validation on live SWIFT data
 
+> **Current-state note (2026-04-28):** this model card preserves the 2026-03-21 C1v1.1.0 baseline and includes a 2026-04-24 staging RC section below. Use [`../CURRENT_STATE.md`](../CURRENT_STATE.md) for the current deployable artifact summary and CBDC retraining caveat.
+
 ---
 
 ## 1. Model Overview

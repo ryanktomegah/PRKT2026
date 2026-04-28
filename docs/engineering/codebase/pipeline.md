@@ -5,6 +5,7 @@
 **Source:** `lip/pipeline.py`
 **Implements:** Algorithm 1 (Architecture Specification v1.2 § 3)
 **Canonical spec:** [`docs/engineering/specs/BPI_Architecture_Specification_v1.2.md`](../specs/BPI_Architecture_Specification_v1.2.md)
+**Current status:** [`docs/CURRENT_STATE.md`](../../CURRENT_STATE.md) is the canonical 2026-04-28 status bridge for staging RC artifacts, CBDC retraining caveats, and production blockers.
 
 ---
 
