@@ -54,14 +54,15 @@ Start here to understand what you're working on:
 ### D. Patent Counsel
 
 1. [`legal/patent/Provisional-Specification-v5.3.md`](legal/patent/Provisional-Specification-v5.3.md) — Latest provisional specification
-2. [`legal/patent/Patent-Family-Architecture-v2.1.md`](legal/patent/Patent-Family-Architecture-v2.1.md) — Patent family architecture (P1–P12)
-3. [`legal/patent/patent_claims_consolidated.md`](legal/patent/patent_claims_consolidated.md) — Consolidated claims
-4. [`legal/patent/Future-Technology-Disclosure-v2.1.md`](legal/patent/Future-Technology-Disclosure-v2.1.md) — Future technology disclosure
-5. [`legal/patent/patent_counsel_briefing.md`](legal/patent/patent_counsel_briefing.md) — Pre-session briefing for counsel
-6. [`legal/patent/Lawyer-Decision-Memo-2026-04-22.md`](legal/patent/Lawyer-Decision-Memo-2026-04-22.md) — Open items requiring counsel decisions
-7. [`legal/decisions/EPG-20-21_patent_briefing.md`](legal/decisions/EPG-20-21_patent_briefing.md) — Language scrub rules (no AML/SAR/OFAC in claims)
-8. [`engineering/research/Academic-Paper-v2.1.md`](engineering/research/Academic-Paper-v2.1.md) — Academic publication draft
-9. [`legal/patent/Provisional-Specification-v5.1.md`](legal/patent/Provisional-Specification-v5.1.md) — Prior provisional (v5.1, for comparison)
+2. [`legal/patent/project-nexus-counsel-session-2026-04-28.md`](legal/patent/project-nexus-counsel-session-2026-04-28.md) — Counsel session brief for Project Nexus survival/pivot decision
+3. [`legal/patent/Patent-Family-Architecture-v2.1.md`](legal/patent/Patent-Family-Architecture-v2.1.md) — Patent family architecture (P1–P12)
+4. [`legal/patent/patent_claims_consolidated.md`](legal/patent/patent_claims_consolidated.md) — Consolidated claims
+5. [`legal/patent/Future-Technology-Disclosure-v2.1.md`](legal/patent/Future-Technology-Disclosure-v2.1.md) — Future technology disclosure
+6. [`legal/patent/patent_counsel_briefing.md`](legal/patent/patent_counsel_briefing.md) — Pre-session briefing for counsel
+7. [`legal/patent/Lawyer-Decision-Memo-2026-04-22.md`](legal/patent/Lawyer-Decision-Memo-2026-04-22.md) — Open items requiring counsel decisions
+8. [`legal/decisions/EPG-20-21_patent_briefing.md`](legal/decisions/EPG-20-21_patent_briefing.md) — Language scrub rules (no AML/SAR/OFAC in claims)
+9. [`engineering/research/Academic-Paper-v2.1.md`](engineering/research/Academic-Paper-v2.1.md) — Academic publication draft
+10. [`legal/patent/Provisional-Specification-v5.1.md`](legal/patent/Provisional-Specification-v5.1.md) — Prior provisional (v5.1, for comparison)
 
 ---
 

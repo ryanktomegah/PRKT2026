@@ -10,6 +10,12 @@
 **Tests**: documentation-only change; `git diff --check` run after edits.
 **Purpose**: make the whole active documentation set easier to interpret after the 2026-04-24 staging RC and later multi-rail/CBDC work.
 
+### Project Nexus counsel packet
+
+Created `docs/legal/patent/project-nexus-counsel-session-2026-04-28.md` after checking current public Nexus sources (BIS and NGP). The packet frames Nexus as an existential threat to the SWIFT-first lending story, but not necessarily to the invention if counsel can clear ownership and if the product/patent strategy pivots toward rail-agnostic payment exception intelligence and liquidity response.
+
+Immediate rule: no NGP, Nexus founding bank, RBC, or external-bank outreach until counsel clears the RBC IP issue, disclosure posture, freedom-to-operate posture, and safe pivot language.
+
 ### Documentation alignment
 
 Created `docs/CURRENT_STATE.md` as the canonical status bridge for:

@@ -83,6 +83,8 @@ Production-final status still requires:
 6. Legal/patent/IP clearance before external disclosure or bank engagement.
 7. Pilot-bank contract language for `hold_bridgeable` certification and required warranties.
 
+Project Nexus is an active strategic threat to the SWIFT-first narrative. The counsel-session packet is [`legal/patent/project-nexus-counsel-session-2026-04-28.md`](legal/patent/project-nexus-counsel-session-2026-04-28.md).
+
 ---
 
 ## Documentation Policy
